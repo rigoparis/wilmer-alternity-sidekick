@@ -13,40 +13,40 @@ func _init() -> void:
 	rules.load_core_data()
 	var character := rules.default_character()
 	rules.ensure_character_shape(character)
-	character["species_id"] = rules.mutant_species_id()
+	character["species_id"] = rules.mutations.mutant_species_id()
 	character["abilities"]["STR"] = 11
 	character["abilities"]["DEX"] = 9
-	rules.set_mutation_points(character, 4, 2)
-	rules.set_mutation_distribution(character, "advantage", "Ordinary:2|Good:1|Amazing:0")
-	rules.set_mutation_distribution(character, "drawback", "Slight:0|Moderate:1|Extreme:0")
+	rules.mutations.set_mutation_points(character, 4, 2)
+	rules.mutations.set_mutation_distribution(character, "advantage", "Ordinary:2|Good:1|Amazing:0")
+	rules.mutations.set_mutation_distribution(character, "drawback", "Slight:0|Moderate:1|Extreme:0")
 
 	if rules.mutation_advantages.size() < 60:
 		_fail("Mutation advantages did not load.")
 	if rules.mutation_drawbacks.size() < 24:
 		_fail("Mutation drawbacks did not load.")
-	if not rules.mutations_enabled(character):
+	if not rules.mutations.mutations_enabled(character):
 		_fail("Mutations should be enabled for Mutant species.")
-	if rules.mutation_distribution_label(character, "advantage") != "1 Good + 2 Ordinary":
+	if rules.mutations.mutation_distribution_label(character, "advantage") != "1 Good + 2 Ordinary":
 		_fail("Advantage point distribution was not selected correctly.")
-	if rules.mutation_distribution_label(character, "drawback") != "1 Moderate":
+	if rules.mutations.mutation_distribution_label(character, "drawback") != "1 Moderate":
 		_fail("Drawback point distribution was not selected correctly.")
 
 	var str_before := rules._as_int(rules.effective_abilities(character).get("STR", 0))
-	var result := rules.add_mutation_advantage(character, "improved_str")
+	var result = rules.mutations.add_mutation_advantage(character, "improved_str")
 	if not bool(result.get("ok", false)):
 		_fail("Improved STR mutation could not be added.")
 	var str_after := rules._as_int(rules.effective_abilities(character).get("STR", 0))
 	if str_after != str_before + 1:
 		_fail("Improved STR did not affect effective abilities.")
 
-	result = rules.add_mutation_advantage(character, "dermal_reinforcement")
+	result = rules.mutations.add_mutation_advantage(character, "dermal_reinforcement")
 	if not bool(result.get("ok", false)):
 		_fail("Dermal Reinforcement mutation could not be added.")
-	var equipment: Dictionary = rules.equipment_summary(character)
+	var equipment: Dictionary = rules.equipment.equipment_summary(character)
 	if equipment.get("combat_armor", []).is_empty():
 		_fail("Mutation natural armor was not exposed to equipment summary.")
 
-	result = rules.add_mutation_advantage(character, "natural_attack")
+	result = rules.mutations.add_mutation_advantage(character, "natural_attack")
 	if not bool(result.get("ok", false)):
 		_fail("Natural Attack mutation could not be added.")
 	var found_natural_attack := false
@@ -55,7 +55,7 @@ func _init() -> void:
 			found_natural_attack = true
 	if found_natural_attack:
 		_fail("Natural Attack appeared before summary refresh.")
-	equipment = rules.equipment_summary(character)
+	equipment = rules.equipment.equipment_summary(character)
 	for form in equipment.get("attack_forms", []):
 		if typeof(form) == TYPE_DICTIONARY and String(form.get("name", "")) == "Natural Attack":
 			found_natural_attack = true
@@ -63,7 +63,7 @@ func _init() -> void:
 		_fail("Natural Attack was not exposed to attack forms.")
 
 	var base_action: Dictionary = rules.action_check(character)
-	result = rules.add_mutation_drawback(character, "slow_reflexes")
+	result = rules.mutations.add_mutation_drawback(character, "slow_reflexes")
 	if not bool(result.get("ok", false)):
 		_fail("Slow Reflexes drawback could not be added.")
 	var slower_action: Dictionary = rules.action_check(character)
@@ -81,15 +81,15 @@ func _init() -> void:
 
 	var random_character := rules.default_character()
 	rules.ensure_character_shape(random_character)
-	random_character["species_id"] = rules.mutant_species_id()
-	var origin_roll: Dictionary = rules.roll_mutation_origin_and_points(random_character)
+	random_character["species_id"] = rules.mutations.mutant_species_id()
+	var origin_roll: Dictionary = rules.mutations.roll_mutation_origin_and_points(random_character)
 	if origin_roll.is_empty() or rules._as_int(random_character.get("mutations", {}).get("advantage_points", 0)) <= 0:
 		_fail("Roll Origin and Points did not set random mutation origin and point totals.")
-	rules.roll_mutation_distribution(random_character, "advantage")
-	rules.roll_mutation_distribution(random_character, "drawback")
-	rules.roll_mutations_for_distribution(random_character, "advantage")
-	rules.roll_mutations_for_distribution(random_character, "drawback")
-	if rules.selected_mutation_advantages(random_character).is_empty() or rules.selected_mutation_drawbacks(random_character).is_empty():
+	rules.mutations.roll_mutation_distribution(random_character, "advantage")
+	rules.mutations.roll_mutation_distribution(random_character, "drawback")
+	rules.mutations.roll_mutations_for_distribution(random_character, "advantage")
+	rules.mutations.roll_mutations_for_distribution(random_character, "drawback")
+	if rules.mutations.selected_mutation_advantages(random_character).is_empty() or rules.mutations.selected_mutation_drawbacks(random_character).is_empty():
 		_fail("Random mutation rolling did not select advantages and drawbacks.")
 
 	quit()

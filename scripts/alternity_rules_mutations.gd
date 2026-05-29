@@ -486,15 +486,15 @@ func mutation_attack_forms(character: Dictionary) -> Array:
 	for mutation in selected_mutation_advantages(character):
 		for effect in _mutation_effects(mutation, "attack"):
 			var skill_id: int = _get_parent()._as_int(effect.get("skill_id", 16))
-			var score: Dictionary = _get_parent()._combat_skill_score(character, skill_id)
+			var score: Dictionary = _get_parent().equipment._combat_skill_score(character, skill_id)
 			score["step"] = _get_parent()._as_int(score.get("step", 0)) + _get_parent()._as_int(effect.get("step", 0))
 			var damage := String(effect.get("damage", ""))
 			if bool(effect.get("strength_bonus", false)):
 				var abilities: Dictionary = _get_parent().effective_abilities(character)
-				damage = _get_parent()._damage_with_bonus(damage, _get_parent().strength_damage_bonus(_get_parent()._as_int(abilities.get("STR", 10))))
+				damage = _get_parent().equipment._damage_with_bonus(damage, _get_parent().equipment.strength_damage_bonus(_get_parent()._as_int(abilities.get("STR", 10))))
 			var form := {
 				"name": String(effect.get("name", mutation.get("name", "Mutation Attack"))),
-				"score": _get_parent()._score_text(score),
+				"score": _get_parent().equipment._score_text(score),
 				"base_die": _get_parent().action_step_die(_get_parent()._as_int(score.get("step", 0))),
 				"type": String(effect.get("damage_type", "")),
 				"range": String(effect.get("range", "Personal")),
@@ -511,7 +511,7 @@ func mutation_attack_forms(character: Dictionary) -> Array:
 
 func is_perk_selected(character: Dictionary, perk_id: String) -> bool:
 	var selected: Dictionary = character.get("selected_perks", {})
-	return selected.has(perk_id) or _get_parent().is_perk_granted_by_achievement(character, perk_id)
+	return selected.has(perk_id) or _get_parent().achievements.is_perk_granted_by_achievement(character, perk_id)
 
 
 

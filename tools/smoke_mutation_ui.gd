@@ -15,8 +15,8 @@ func _run() -> void:
 	root.add_child(scene)
 	await process_frame
 
-	scene.character["species_id"] = scene.rules.mutant_species_id()
-	scene.rules.set_mutation_points(scene.character, 3, 2)
+	scene.character["species_id"] = scene.rules.mutations.mutant_species_id()
+	scene.rules.mutations.set_mutation_points(scene.character, 3, 2)
 	scene.active_tab = "Mutations"
 	scene._render()
 	await process_frame
@@ -26,8 +26,8 @@ func _run() -> void:
 	if scene.content.get_child_count() <= 0:
 		_fail("Mutations tab did not render content.")
 
-	scene.rules.add_mutation_advantage(scene.character, "improved_str")
-	scene.rules.add_mutation_drawback(scene.character, "slow_reflexes")
+	scene.rules.mutations.add_mutation_advantage(scene.character, "improved_str")
+	scene.rules.mutations.add_mutation_drawback(scene.character, "slow_reflexes")
 	scene.active_tab = "Summary"
 	scene._render()
 	await process_frame

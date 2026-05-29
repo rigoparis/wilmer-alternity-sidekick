@@ -227,7 +227,7 @@ func equipment_summary(character: Dictionary) -> Dictionary:
 			combat_armor.append(row)
 			if bool(row.get("equipped", false)):
 				equipped_armor.append(row)
-	for mutation_armor in _get_parent().mutation_armor_rows(character):
+	for mutation_armor in _get_parent().mutations.mutation_armor_rows(character):
 		combat_armor.append(mutation_armor)
 		equipped_armor.append(mutation_armor)
 	for psionic_armor in _get_parent().psionic_armor_rows(character):
@@ -256,7 +256,7 @@ func attack_forms_for_character(character: Dictionary) -> Array:
 		form["equipped"] = bool(row.get("equipped", false))
 		form["slot"] = String(row.get("slot", ""))
 		forms.append(form)
-	for form in _get_parent().mutation_attack_forms(character):
+	for form in _get_parent().mutations.mutation_attack_forms(character):
 		forms.append(form)
 	for form in psionic_attack_forms(character):
 		forms.append(form)
@@ -432,7 +432,7 @@ func _combat_skill_score(character: Dictionary, skill_id: int) -> Dictionary:
 	var ordinary: int = _get_parent()._as_int(abilities.get(String(use_skill.get("stat", "STR")), 10)) + rank_bonus
 	var step := 1 if String(use_skill.get("type", "")) == "broad" else 0
 	step += _get_parent()._species_skill_step_bonus(character, selected_skill_id)
-	step += _get_parent().mutation_skill_step_bonus(character, selected_skill_id)
+	step += _get_parent().mutations.mutation_skill_step_bonus(character, selected_skill_id)
 	
 	# Mindwalker profession bonus (-1 step to focused broad skill and its specialties)
 	if _get_parent()._as_int(character.get("profession_id", 0)) == 6:

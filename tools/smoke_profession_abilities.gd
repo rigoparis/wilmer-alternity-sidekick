@@ -14,7 +14,7 @@ func _init() -> void:
 
 	var character := rules.default_character()
 	rules.ensure_character_shape(character)
-	character["species_id"] = rules.mutant_species_id()
+	character["species_id"] = rules.mutations.mutant_species_id()
 	character["profession_id"] = 5
 	rules.set_optional_rule(character, "2a", true)
 	rules.set_optional_rule(character, "2c", true)
@@ -26,9 +26,9 @@ func _init() -> void:
 		"WIL": 10,
 		"PER": 8,
 	}
-	rules.set_mutation_points(character, 2, 0)
-	rules.set_mutation_distribution(character, "advantage", "Ordinary:0|Good:1|Amazing:0")
-	var result := rules.add_mutation_advantage(character, "enhanced_wil")
+	rules.mutations.set_mutation_points(character, 2, 0)
+	rules.mutations.set_mutation_distribution(character, "advantage", "Ordinary:0|Good:1|Amazing:0")
+	var result = rules.mutations.add_mutation_advantage(character, "enhanced_wil")
 	if not bool(result.get("ok", false)):
 		_fail("Enhanced WIL mutation could not be added for the profession ability smoke test.")
 
