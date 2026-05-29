@@ -1215,6 +1215,8 @@ var achievement_catalog: Array = []
 var achievements_by_id: Dictionary = {}
 var mutation_rules: Array = []
 var mutation_origins: Array = []
+var mutation_origins_by_id: Dictionary = {}
+var mutation_uniqueness_by_id: Dictionary = {}
 var mutation_advantages: Array = []
 var mutation_drawbacks: Array = []
 var mutation_advantages_by_id: Dictionary = {}
@@ -1291,6 +1293,8 @@ func _load_achievement_catalog(path := "res://data/rules/achievements_core.json"
 func _load_mutation_catalog(path := "res://data/rules/mutations_core.json") -> void:
 	mutation_rules.clear()
 	mutation_origins.clear()
+	mutation_origins_by_id.clear()
+	mutation_uniqueness_by_id.clear()
 	mutation_advantages.clear()
 	mutation_drawbacks.clear()
 	mutation_advantages_by_id.clear()
@@ -1308,6 +1312,24 @@ func _load_mutation_catalog(path := "res://data/rules/mutations_core.json") -> v
 
 	mutation_rules = parsed.get("rules", [])
 	mutation_origins = parsed.get("origins", [])
+	for item_value in mutation_origins:
+		if typeof(item_value) != TYPE_DICTIONARY:
+			continue
+		var item: Dictionary = item_value
+		var item_id := String(item.get("id", ""))
+		if not item_id.is_empty():
+			mutation_origins_by_id[item_id] = item
+
+			var uniqueness_dict: Dictionary = {}
+			for uniqueness_value in item.get("uniqueness", []):
+				if typeof(uniqueness_value) != TYPE_DICTIONARY:
+					continue
+				var uniqueness: Dictionary = uniqueness_value
+				var uniqueness_id := String(uniqueness.get("id", ""))
+				if not uniqueness_id.is_empty():
+					uniqueness_dict[uniqueness_id] = uniqueness
+			mutation_uniqueness_by_id[item_id] = uniqueness_dict
+
 	mutation_advantages = parsed.get("advantages", [])
 	mutation_drawbacks = parsed.get("drawbacks", [])
 	for item_value in mutation_advantages:
@@ -1558,23 +1580,12 @@ func mutation_uniqueness_options(origin_id: String) -> Array:
 
 
 func get_mutation_origin_by_id(origin_id: String) -> Dictionary:
-	for origin_value in mutation_origins:
-		if typeof(origin_value) != TYPE_DICTIONARY:
-			continue
-		var origin: Dictionary = origin_value
-		if String(origin.get("id", "")) == origin_id:
-			return origin
-	return {}
+	return mutation_origins_by_id.get(origin_id, {})
 
 
 func get_mutation_uniqueness_by_id(origin_id: String, uniqueness_id: String) -> Dictionary:
-	for uniqueness_value in mutation_uniqueness_options(origin_id):
-		if typeof(uniqueness_value) != TYPE_DICTIONARY:
-			continue
-		var uniqueness: Dictionary = uniqueness_value
-		if String(uniqueness.get("id", "")) == uniqueness_id:
-			return uniqueness
-	return {}
+	var origin_uniqueness: Dictionary = mutation_uniqueness_by_id.get(origin_id, {})
+	return origin_uniqueness.get(uniqueness_id, {})
 
 
 func set_mutation_generation_mode(character: Dictionary, mode: String) -> void:
