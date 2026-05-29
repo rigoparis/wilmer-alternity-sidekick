@@ -1,0 +1,1971 @@
+﻿{
+    "generated_on":  "2026-05-27",
+    "manuals":  [
+                    {
+                        "name":  "Alternity 01 Players Handbook.pdf",
+                        "used_for":  "Core character equipment, weapons, and armor tables",
+                        "pages":  "135-136, 172-173, 176-177, 182-183, 188"
+                    },
+                    {
+                        "name":  "Alternity 00 Gamemaster Guide.pdf",
+                        "used_for":  "Reviewed for character-usable gear scope; vehicle/spaceship gear deferred",
+                        "pages":  "Chapter 10+ vehicle material is out of current carried-equipment scope"
+                    }
+                ],
+    "notes":  [
+                  "Personal equipment is transcribed from PHB Table P33.",
+                  "Weapon and armor rows preserve stable WAlter IDs where possible, while names, references, availability labels, damage type, selected range/clip display values, and catalog coverage are aligned to PHB Tables P38-P41.",
+                  "Unarmed appears by default in the summary attack forms and is not added as carried catalog equipment."
+              ],
+    "counts":  {
+                   "equipment":  129,
+                   "weapon":  99,
+                   "armor":  31,
+                   "total":  259
+               },
+    "items":  [
+                  {
+                      "id":  "equip_core_011",
+                      "kind":  "equipment",
+                      "name":  "Antiscan weave",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_001",
+                      "kind":  "equipment",
+                      "name":  "Backpack",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_006",
+                      "kind":  "equipment",
+                      "name":  "Bioholster",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_002",
+                      "kind":  "equipment",
+                      "name":  "Boots",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_003",
+                      "kind":  "equipment",
+                      "name":  "Briefcase",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_003",
+                      "kind":  "equipment",
+                      "name":  "Business dress",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_007",
+                      "kind":  "equipment",
+                      "name":  "Casual dress",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_004",
+                      "kind":  "equipment",
+                      "name":  "Coat",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_009",
+                      "kind":  "equipment",
+                      "name":  "Fatigues",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_005",
+                      "kind":  "equipment",
+                      "name":  "Formal dress",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_004",
+                      "kind":  "equipment",
+                      "name":  "Glasses",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_006",
+                      "kind":  "equipment",
+                      "name":  "Goggles, protective",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_001",
+                      "kind":  "equipment",
+                      "name":  "Holster/scabbard",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_007",
+                      "kind":  "equipment",
+                      "name":  "Jewelry",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_002",
+                      "kind":  "equipment",
+                      "name":  "Pouch",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_010",
+                      "kind":  "equipment",
+                      "name":  "Shoes, athletic",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_008",
+                      "kind":  "equipment",
+                      "name":  "Shoes, business",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_008",
+                      "kind":  "equipment",
+                      "name":  "Shoes, formal",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_009",
+                      "kind":  "equipment",
+                      "name":  "Stealth cloak",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_005",
+                      "kind":  "equipment",
+                      "name":  "Utility harness",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_010",
+                      "kind":  "equipment",
+                      "name":  "Watch",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_012",
+                      "kind":  "equipment",
+                      "name":  "Cellular phone",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_011",
+                      "kind":  "equipment",
+                      "name":  "Comm gear",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_013",
+                      "kind":  "equipment",
+                      "name":  "Command link",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_012",
+                      "kind":  "equipment",
+                      "name":  "Mass transceiver",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_014",
+                      "kind":  "equipment",
+                      "name":  "Orbital uplink",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_013",
+                      "kind":  "equipment",
+                      "name":  "Radio, personal",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_015",
+                      "kind":  "equipment",
+                      "name":  "First aid kit",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_014",
+                      "kind":  "equipment",
+                      "name":  "Forensics kit",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_021",
+                      "kind":  "equipment",
+                      "name":  "Life support pack",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_015",
+                      "kind":  "equipment",
+                      "name":  "Medical gauntlet",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_019",
+                      "kind":  "equipment",
+                      "name":  "Medical scanner",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_016",
+                      "kind":  "equipment",
+                      "name":  "Pharmaceuticals - Anesthetic (dose)",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_016",
+                      "kind":  "equipment",
+                      "name":  "Pharmaceuticals - Antibiotic (dose)",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_017",
+                      "kind":  "equipment",
+                      "name":  "Pharmaceuticals - Antiradiation (dose)",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_017",
+                      "kind":  "equipment",
+                      "name":  "Pharmaceuticals - Antivenom (dose)",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_018",
+                      "kind":  "equipment",
+                      "name":  "Pharmaceuticals - Coagulant (dose)",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_022",
+                      "kind":  "equipment",
+                      "name":  "Pharmaceuticals - Psi-enhancer (dose)",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_019",
+                      "kind":  "equipment",
+                      "name":  "Pharmaceuticals - Sedative (dose)",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_018",
+                      "kind":  "equipment",
+                      "name":  "Pharmaceuticals - Stimulant (dose)",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_020",
+                      "kind":  "equipment",
+                      "name":  "Surgical kit",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_020",
+                      "kind":  "equipment",
+                      "name":  "Trauma pack I",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_021",
+                      "kind":  "equipment",
+                      "name":  "Trauma pack II",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_034",
+                      "kind":  "equipment",
+                      "name":  "Chain hoist",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_022",
+                      "kind":  "equipment",
+                      "name":  "Cutting torch",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_036",
+                      "kind":  "equipment",
+                      "name":  "Demolitions pack",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_023",
+                      "kind":  "equipment",
+                      "name":  "Generator, portable",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_037",
+                      "kind":  "equipment",
+                      "name":  "Instrument pack",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_024",
+                      "kind":  "equipment",
+                      "name":  "Rescue pack",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_035",
+                      "kind":  "equipment",
+                      "name":  "Toolkit",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_025",
+                      "kind":  "equipment",
+                      "name":  "Toolkit, special",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_038",
+                      "kind":  "equipment",
+                      "name":  "Walker",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_026",
+                      "kind":  "equipment",
+                      "name":  "Weight neutralizer",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_039",
+                      "kind":  "equipment",
+                      "name":  "Workshop, portable",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_027",
+                      "kind":  "equipment",
+                      "name":  "Audiorecorder",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_040",
+                      "kind":  "equipment",
+                      "name":  "Binoculars",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_028",
+                      "kind":  "equipment",
+                      "name":  "Compass",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_041",
+                      "kind":  "equipment",
+                      "name":  "Goggles, imaging",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_029",
+                      "kind":  "equipment",
+                      "name":  "Goggles, infrared",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_042",
+                      "kind":  "equipment",
+                      "name":  "GPS receiver",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_030",
+                      "kind":  "equipment",
+                      "name":  "Holorecorder",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_043",
+                      "kind":  "equipment",
+                      "name":  "Microphone, para.",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_031",
+                      "kind":  "equipment",
+                      "name":  "Psi-detector",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_045",
+                      "kind":  "equipment",
+                      "name":  "Radar gauntlet",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_032",
+                      "kind":  "equipment",
+                      "name":  "Sensor boom",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_046",
+                      "kind":  "equipment",
+                      "name":  "Sensor gauntlet",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_033",
+                      "kind":  "equipment",
+                      "name":  "Surveillance gear",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_044",
+                      "kind":  "equipment",
+                      "name":  "Videorecorder",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_034",
+                      "kind":  "equipment",
+                      "name":  "Weapon detector",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_023",
+                      "kind":  "equipment",
+                      "name":  "Animal, guard",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_035",
+                      "kind":  "equipment",
+                      "name":  "Animal, mount",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_024",
+                      "kind":  "equipment",
+                      "name":  "Animal, pack",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_036",
+                      "kind":  "equipment",
+                      "name":  "Animal, pet",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_030",
+                      "kind":  "equipment",
+                      "name":  "Biolock",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_037",
+                      "kind":  "equipment",
+                      "name":  "Duct tape",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_026",
+                      "kind":  "equipment",
+                      "name":  "Ear plugs",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_038",
+                      "kind":  "equipment",
+                      "name":  "Fire extinguisher",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_027",
+                      "kind":  "equipment",
+                      "name":  "Handcuffs",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_039",
+                      "kind":  "equipment",
+                      "name":  "Holoviewer",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_028",
+                      "kind":  "equipment",
+                      "name":  "Instant glue",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_040",
+                      "kind":  "equipment",
+                      "name":  "Lockpick set",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_031",
+                      "kind":  "equipment",
+                      "name":  "Magnetic clamp",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_041",
+                      "kind":  "equipment",
+                      "name":  "Music gauntlet",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_025",
+                      "kind":  "equipment",
+                      "name":  "Musical instrument",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_042",
+                      "kind":  "equipment",
+                      "name":  "Padlock",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_043",
+                      "kind":  "equipment",
+                      "name":  "Psi-restraint helm",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_032",
+                      "kind":  "equipment",
+                      "name":  "Psi-restraint collar",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_033",
+                      "kind":  "equipment",
+                      "name":  "Psi-restraint implant",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_044",
+                      "kind":  "equipment",
+                      "name":  "Suitcase",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_029",
+                      "kind":  "equipment",
+                      "name":  "Videoviewer",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_045",
+                      "kind":  "equipment",
+                      "name":  "Weapon biokey",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_050",
+                      "kind":  "equipment",
+                      "name":  "Bedroll",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_046",
+                      "kind":  "equipment",
+                      "name":  "Boots, magnetic",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_065",
+                      "kind":  "equipment",
+                      "name":  "Cabin, portable",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_047",
+                      "kind":  "equipment",
+                      "name":  "Camping unit",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_047",
+                      "kind":  "equipment",
+                      "name":  "Candle",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_048",
+                      "kind":  "equipment",
+                      "name":  "Climate weave",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_052",
+                      "kind":  "equipment",
+                      "name":  "Climbing gear",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_049",
+                      "kind":  "equipment",
+                      "name":  "Cooler",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_059",
+                      "kind":  "equipment",
+                      "name":  "Emergency beacon",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_060",
+                      "kind":  "equipment",
+                      "name":  "E-suit, soft",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_050",
+                      "kind":  "equipment",
+                      "name":  "E-suit, hard",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_051",
+                      "kind":  "equipment",
+                      "name":  "Flare",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_053",
+                      "kind":  "equipment",
+                      "name":  "Flashlight",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_052",
+                      "kind":  "equipment",
+                      "name":  "Grappling hook",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_062",
+                      "kind":  "equipment",
+                      "name":  "Habitat dome",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_053",
+                      "kind":  "equipment",
+                      "name":  "Heater, portable",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_063",
+                      "kind":  "equipment",
+                      "name":  "Jumpsuit",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_054",
+                      "kind":  "equipment",
+                      "name":  "Lantern",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_054",
+                      "kind":  "equipment",
+                      "name":  "Lighter",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_055",
+                      "kind":  "equipment",
+                      "name":  "Machete",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_051",
+                      "kind":  "equipment",
+                      "name":  "Matches",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_056",
+                      "kind":  "equipment",
+                      "name":  "Mirror",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_055",
+                      "kind":  "equipment",
+                      "name":  "Parachute",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_057",
+                      "kind":  "equipment",
+                      "name":  "Raft, inflatable",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_056",
+                      "kind":  "equipment",
+                      "name":  "Rations (1 wk.)",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_058",
+                      "kind":  "equipment",
+                      "name":  "Respirator mask",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_048",
+                      "kind":  "equipment",
+                      "name":  "Rope, 50 m",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_059",
+                      "kind":  "equipment",
+                      "name":  "Scuba gear",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_057",
+                      "kind":  "equipment",
+                      "name":  "Skis",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_060",
+                      "kind":  "equipment",
+                      "name":  "Stove, portable",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_058",
+                      "kind":  "equipment",
+                      "name":  "Survival gear",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_061",
+                      "kind":  "equipment",
+                      "name":  "Tent",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_049",
+                      "kind":  "equipment",
+                      "name":  "Torch",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_062",
+                      "kind":  "equipment",
+                      "name":  "Vacuum mask",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_061",
+                      "kind":  "equipment",
+                      "name":  "Water condenser",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_063",
+                      "kind":  "equipment",
+                      "name":  "Water purifier",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_core_064",
+                      "kind":  "equipment",
+                      "name":  "Weather monitor",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "equip_phb_064",
+                      "kind":  "equipment",
+                      "name":  "Zero-g web",
+                      "status":  "manual_table_p33",
+                      "reference":  "Player\u0027s Handbook p. 135-136, Table P33: Personal Equipment"
+                  },
+                  {
+                      "id":  "weapon_core_001",
+                      "kind":  "weapon",
+                      "name":  "Pistol, 9mm ch",
+                      "status":  "manual_table_p39",
+                      "reference":  "Player\u0027s Handbook p. 176-177, Table P39: Ranged Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_002",
+                      "kind":  "weapon",
+                      "name":  "Pistol, 11mm ch",
+                      "status":  "manual_table_p39",
+                      "reference":  "Player\u0027s Handbook p. 176-177, Table P39: Ranged Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_003",
+                      "kind":  "weapon",
+                      "name":  "Rifle, 11mm ch",
+                      "status":  "manual_table_p39",
+                      "reference":  "Player\u0027s Handbook p. 176-177, Table P39: Ranged Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_004",
+                      "kind":  "weapon",
+                      "name":  "Pistol, 9mm zero-g",
+                      "status":  "manual_table_p39",
+                      "reference":  "Player\u0027s Handbook p. 176-177, Table P39: Ranged Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_005",
+                      "kind":  "weapon",
+                      "name":  "SMG, 9mm",
+                      "status":  "manual_table_p39",
+                      "reference":  "Player\u0027s Handbook p. 176-177, Table P39: Ranged Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_006",
+                      "kind":  "weapon",
+                      "name":  "Pistol, 9mm",
+                      "status":  "manual_table_p39",
+                      "reference":  "Player\u0027s Handbook p. 176-177, Table P39: Ranged Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_007",
+                      "kind":  "weapon",
+                      "name":  "Pistol, .44 magnum",
+                      "status":  "manual_table_p39",
+                      "reference":  "Player\u0027s Handbook p. 176-177, Table P39: Ranged Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_008",
+                      "kind":  "weapon",
+                      "name":  "Rifle, assault",
+                      "status":  "manual_table_p39",
+                      "reference":  "Player\u0027s Handbook p. 176-177, Table P39: Ranged Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_009",
+                      "kind":  "weapon",
+                      "name":  "Rifle, 7.62mm",
+                      "status":  "manual_table_p39",
+                      "reference":  "Player\u0027s Handbook p. 176-177, Table P39: Ranged Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_010",
+                      "kind":  "weapon",
+                      "name":  "Pistol, stutter",
+                      "status":  "manual_table_p39",
+                      "reference":  "Player\u0027s Handbook p. 176-177, Table P39: Ranged Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_011",
+                      "kind":  "weapon",
+                      "name":  "Pistol, mass",
+                      "status":  "manual_table_p39",
+                      "reference":  "Player\u0027s Handbook p. 176-177, Table P39: Ranged Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_012",
+                      "kind":  "weapon",
+                      "name":  "Rifle, mass",
+                      "status":  "manual_table_p39",
+                      "reference":  "Player\u0027s Handbook p. 176-177, Table P39: Ranged Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_013",
+                      "kind":  "weapon",
+                      "name":  "Rifle, laser",
+                      "status":  "manual_table_p39",
+                      "reference":  "Player\u0027s Handbook p. 176-177, Table P39: Ranged Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_014",
+                      "kind":  "weapon",
+                      "name":  "Pistol, laser",
+                      "status":  "manual_table_p39",
+                      "reference":  "Player\u0027s Handbook p. 176-177, Table P39: Ranged Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_015",
+                      "kind":  "weapon",
+                      "name":  "Shotgun, autoflec",
+                      "status":  "manual_table_p39",
+                      "reference":  "Player\u0027s Handbook p. 176-177, Table P39: Ranged Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_016",
+                      "kind":  "weapon",
+                      "name":  "Rifle, 11mm zero-g",
+                      "status":  "manual_table_p39",
+                      "reference":  "Player\u0027s Handbook p. 176-177, Table P39: Ranged Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_017",
+                      "kind":  "weapon",
+                      "name":  "Pistol, 15mm sabot",
+                      "status":  "manual_table_p39",
+                      "reference":  "Player\u0027s Handbook p. 176-177, Table P39: Ranged Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_018",
+                      "kind":  "weapon",
+                      "name":  "SMG, 9mm ch",
+                      "status":  "manual_table_p39",
+                      "reference":  "Player\u0027s Handbook p. 176-177, Table P39: Ranged Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_019",
+                      "kind":  "weapon",
+                      "name":  "Pistol, .38 rev.",
+                      "status":  "manual_table_p39",
+                      "reference":  "Player\u0027s Handbook p. 176-177, Table P39: Ranged Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_020",
+                      "kind":  "weapon",
+                      "name":  "Crossbow",
+                      "status":  "manual_table_p39",
+                      "reference":  "Player\u0027s Handbook p. 176-177, Table P39: Ranged Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_021",
+                      "kind":  "weapon",
+                      "name":  "Bow, long",
+                      "status":  "manual_table_p39",
+                      "reference":  "Player\u0027s Handbook p. 176-177, Table P39: Ranged Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_022",
+                      "kind":  "weapon",
+                      "name":  "Musket, flintlock",
+                      "status":  "manual_table_p39",
+                      "reference":  "Player\u0027s Handbook p. 176-177, Table P39: Ranged Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_023",
+                      "kind":  "weapon",
+                      "name":  "Shuriken",
+                      "status":  "manual_table_p39",
+                      "reference":  "Player\u0027s Handbook p. 176-177, Table P39: Ranged Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_024",
+                      "kind":  "weapon",
+                      "name":  "Javelin",
+                      "status":  "manual_table_p39",
+                      "reference":  "Player\u0027s Handbook p. 176-177, Table P39: Ranged Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_025",
+                      "kind":  "weapon",
+                      "name":  "Tri-staff",
+                      "status":  "manual_table_p38",
+                      "reference":  "Player\u0027s Handbook p. 172-173, Table P38: Melee Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_026",
+                      "kind":  "weapon",
+                      "name":  "Star sword",
+                      "status":  "manual_table_p38",
+                      "reference":  "Player\u0027s Handbook p. 172-173, Table P38: Melee Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_027",
+                      "kind":  "weapon",
+                      "name":  "Sling",
+                      "status":  "manual_table_p39",
+                      "reference":  "Player\u0027s Handbook p. 176-177, Table P39: Ranged Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_028",
+                      "kind":  "weapon",
+                      "name":  "Bow, short",
+                      "status":  "manual_table_p39",
+                      "reference":  "Player\u0027s Handbook p. 176-177, Table P39: Ranged Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_029",
+                      "kind":  "weapon",
+                      "name":  "Rifle, .44 lever",
+                      "status":  "manual_table_p39",
+                      "reference":  "Player\u0027s Handbook p. 176-177, Table P39: Ranged Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_030",
+                      "kind":  "weapon",
+                      "name":  "Rifle, .30 bolt",
+                      "status":  "manual_table_p39",
+                      "reference":  "Player\u0027s Handbook p. 176-177, Table P39: Ranged Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_031",
+                      "kind":  "weapon",
+                      "name":  "SMG, .45 cal",
+                      "status":  "manual_table_p39",
+                      "reference":  "Player\u0027s Handbook p. 176-177, Table P39: Ranged Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_032",
+                      "kind":  "weapon",
+                      "name":  "Shotgun, 12 gauge",
+                      "status":  "manual_table_p39",
+                      "reference":  "Player\u0027s Handbook p. 176-177, Table P39: Ranged Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_033",
+                      "kind":  "weapon",
+                      "name":  "Pistol, .45 rev.",
+                      "status":  "manual_table_p39",
+                      "reference":  "Player\u0027s Handbook p. 176-177, Table P39: Ranged Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_034",
+                      "kind":  "weapon",
+                      "name":  "Rifle, long",
+                      "status":  "manual_table_p39",
+                      "reference":  "Player\u0027s Handbook p. 176-177, Table P39: Ranged Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_035",
+                      "kind":  "weapon",
+                      "name":  "Pistol, flintlock",
+                      "status":  "manual_table_p39",
+                      "reference":  "Player\u0027s Handbook p. 176-177, Table P39: Ranged Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_036",
+                      "kind":  "weapon",
+                      "name":  "Pistol, .32 rev.",
+                      "status":  "manual_table_p39",
+                      "reference":  "Player\u0027s Handbook p. 176-177, Table P39: Ranged Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_037",
+                      "kind":  "weapon",
+                      "name":  "Derringer",
+                      "status":  "manual_table_p39",
+                      "reference":  "Player\u0027s Handbook p. 176-177, Table P39: Ranged Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_038",
+                      "kind":  "weapon",
+                      "name":  "Rifle, quantum",
+                      "status":  "manual_table_p39",
+                      "reference":  "Player\u0027s Handbook p. 176-177, Table P39: Ranged Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_039",
+                      "kind":  "weapon",
+                      "name":  "Rail gun",
+                      "status":  "manual_table_p40",
+                      "reference":  "Player\u0027s Handbook p. 182-183, Table P40: Heavy Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_040",
+                      "kind":  "weapon",
+                      "name":  "Heavy machine gun, ch",
+                      "status":  "manual_table_p40",
+                      "reference":  "Player\u0027s Handbook p. 182-183, Table P40: Heavy Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_041",
+                      "kind":  "weapon",
+                      "name":  "Cannon, 25mm sabot",
+                      "status":  "manual_table_p40",
+                      "reference":  "Player\u0027s Handbook p. 182-183, Table P40: Heavy Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_042",
+                      "kind":  "weapon",
+                      "name":  "Arc gun",
+                      "status":  "manual_table_p40",
+                      "reference":  "Player\u0027s Handbook p. 182-183, Table P40: Heavy Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_043",
+                      "kind":  "weapon",
+                      "name":  "Grenade, stun",
+                      "status":  "manual_table_p40",
+                      "reference":  "Player\u0027s Handbook p. 182-183, Table P40: Heavy Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_044",
+                      "kind":  "weapon",
+                      "name":  "Bantam, antiper.",
+                      "status":  "manual_table_p40",
+                      "reference":  "Player\u0027s Handbook p. 182-183, Table P40: Heavy Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_045",
+                      "kind":  "weapon",
+                      "name":  "Bantam, antiair",
+                      "status":  "manual_table_p40",
+                      "reference":  "Player\u0027s Handbook p. 182-183, Table P40: Heavy Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_046",
+                      "kind":  "weapon",
+                      "name":  "Grenade, plasma",
+                      "status":  "manual_table_p40",
+                      "reference":  "Player\u0027s Handbook p. 182-183, Table P40: Heavy Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_047",
+                      "kind":  "weapon",
+                      "name":  "Bantam, antiveh.",
+                      "status":  "manual_table_p40",
+                      "reference":  "Player\u0027s Handbook p. 182-183, Table P40: Heavy Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_048",
+                      "kind":  "weapon",
+                      "name":  "Cannon, maser",
+                      "status":  "manual_table_p40",
+                      "reference":  "Player\u0027s Handbook p. 182-183, Table P40: Heavy Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_049",
+                      "kind":  "weapon",
+                      "name":  "Bantam, starload",
+                      "status":  "manual_table_p40",
+                      "reference":  "Player\u0027s Handbook p. 182-183, Table P40: Heavy Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_050",
+                      "kind":  "weapon",
+                      "name":  "Mass launcher",
+                      "status":  "manual_table_p40",
+                      "reference":  "Player\u0027s Handbook p. 182-183, Table P40: Heavy Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_051",
+                      "kind":  "weapon",
+                      "name":  "Grenade, mass",
+                      "status":  "manual_table_p40",
+                      "reference":  "Player\u0027s Handbook p. 182-183, Table P40: Heavy Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_052",
+                      "kind":  "weapon",
+                      "name":  "Quantum mini",
+                      "status":  "manual_table_p40",
+                      "reference":  "Player\u0027s Handbook p. 182-183, Table P40: Heavy Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_053",
+                      "kind":  "weapon",
+                      "name":  "Grenade, pulse",
+                      "status":  "manual_table_p40",
+                      "reference":  "Player\u0027s Handbook p. 182-183, Table P40: Heavy Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_054",
+                      "kind":  "weapon",
+                      "name":  "Cannon, stutter",
+                      "status":  "manual_table_p40",
+                      "reference":  "Player\u0027s Handbook p. 182-183, Table P40: Heavy Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_055",
+                      "kind":  "weapon",
+                      "name":  "Plasma gun",
+                      "status":  "manual_table_p40",
+                      "reference":  "Player\u0027s Handbook p. 182-183, Table P40: Heavy Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_056",
+                      "kind":  "weapon",
+                      "name":  "Grenade, tracer",
+                      "status":  "manual_table_p40",
+                      "reference":  "Player\u0027s Handbook p. 182-183, Table P40: Heavy Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_057",
+                      "kind":  "weapon",
+                      "name":  "Bantam launcher",
+                      "status":  "manual_table_p40",
+                      "reference":  "Player\u0027s Handbook p. 182-183, Table P40: Heavy Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_058",
+                      "kind":  "weapon",
+                      "name":  "Rifle, hvy maser",
+                      "status":  "manual_table_p39",
+                      "reference":  "Player\u0027s Handbook p. 176-177, Table P39: Ranged Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_059",
+                      "kind":  "weapon",
+                      "name":  "Pistol, maser",
+                      "status":  "manual_table_p39",
+                      "reference":  "Player\u0027s Handbook p. 176-177, Table P39: Ranged Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_060",
+                      "kind":  "weapon",
+                      "name":  "Flamethrower",
+                      "status":  "manual_table_p40",
+                      "reference":  "Player\u0027s Handbook p. 182-183, Table P40: Heavy Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_061",
+                      "kind":  "weapon",
+                      "name":  "Rifle, maser",
+                      "status":  "manual_table_p39",
+                      "reference":  "Player\u0027s Handbook p. 176-177, Table P39: Ranged Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_062",
+                      "kind":  "weapon",
+                      "name":  "Pistol, hvy maser",
+                      "status":  "manual_table_p39",
+                      "reference":  "Player\u0027s Handbook p. 176-177, Table P39: Ranged Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_063",
+                      "kind":  "weapon",
+                      "name":  "SMG, laser",
+                      "status":  "manual_table_p39",
+                      "reference":  "Player\u0027s Handbook p. 176-177, Table P39: Ranged Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_064",
+                      "kind":  "weapon",
+                      "name":  "Rifle, render",
+                      "status":  "manual_table_p39",
+                      "reference":  "Player\u0027s Handbook p. 176-177, Table P39: Ranged Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_065",
+                      "kind":  "weapon",
+                      "name":  "Automaser",
+                      "status":  "manual_table_p39",
+                      "reference":  "Player\u0027s Handbook p. 176-177, Table P39: Ranged Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_066",
+                      "kind":  "weapon",
+                      "name":  "SMG, stutter",
+                      "status":  "manual_table_p39",
+                      "reference":  "Player\u0027s Handbook p. 176-177, Table P39: Ranged Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_067",
+                      "kind":  "weapon",
+                      "name":  "Grenade, smoke",
+                      "status":  "manual_table_p40",
+                      "reference":  "Player\u0027s Handbook p. 182-183, Table P40: Heavy Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_068",
+                      "kind":  "weapon",
+                      "name":  "Grenade, incend.",
+                      "status":  "manual_table_p40",
+                      "reference":  "Player\u0027s Handbook p. 182-183, Table P40: Heavy Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_069",
+                      "kind":  "weapon",
+                      "name":  "SAM, handheld",
+                      "status":  "manual_table_p40",
+                      "reference":  "Player\u0027s Handbook p. 182-183, Table P40: Heavy Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_070",
+                      "kind":  "weapon",
+                      "name":  "Heavy machine gun",
+                      "status":  "manual_table_p40",
+                      "reference":  "Player\u0027s Handbook p. 182-183, Table P40: Heavy Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_071",
+                      "kind":  "weapon",
+                      "name":  "Grenade, concus.",
+                      "status":  "manual_table_p40",
+                      "reference":  "Player\u0027s Handbook p. 182-183, Table P40: Heavy Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_072",
+                      "kind":  "weapon",
+                      "name":  "Machine gun, .30",
+                      "status":  "manual_table_p40",
+                      "reference":  "Player\u0027s Handbook p. 182-183, Table P40: Heavy Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_073",
+                      "kind":  "weapon",
+                      "name":  "Grenade, frag.",
+                      "status":  "manual_table_p40",
+                      "reference":  "Player\u0027s Handbook p. 182-183, Table P40: Heavy Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_074",
+                      "kind":  "weapon",
+                      "name":  "Grenade launcher",
+                      "status":  "manual_table_p40",
+                      "reference":  "Player\u0027s Handbook p. 182-183, Table P40: Heavy Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_075",
+                      "kind":  "weapon",
+                      "name":  "Rocket launcher",
+                      "status":  "manual_table_p40",
+                      "reference":  "Player\u0027s Handbook p. 182-183, Table P40: Heavy Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_076",
+                      "kind":  "weapon",
+                      "name":  "Rapier",
+                      "status":  "manual_table_p38",
+                      "reference":  "Player\u0027s Handbook p. 172-173, Table P38: Melee Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_077",
+                      "kind":  "weapon",
+                      "name":  "Saber",
+                      "status":  "manual_table_p38",
+                      "reference":  "Player\u0027s Handbook p. 172-173, Table P38: Melee Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_078",
+                      "kind":  "weapon",
+                      "name":  "Katana",
+                      "status":  "manual_table_p38",
+                      "reference":  "Player\u0027s Handbook p. 172-173, Table P38: Melee Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_079",
+                      "kind":  "weapon",
+                      "name":  "Polearm",
+                      "status":  "manual_table_p38",
+                      "reference":  "Player\u0027s Handbook p. 172-173, Table P38: Melee Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_080",
+                      "kind":  "weapon",
+                      "name":  "Cutlass",
+                      "status":  "manual_table_p38",
+                      "reference":  "Player\u0027s Handbook p. 172-173, Table P38: Melee Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_081",
+                      "kind":  "weapon",
+                      "name":  "Bayonet",
+                      "status":  "manual_table_p38",
+                      "reference":  "Player\u0027s Handbook p. 172-173, Table P38: Melee Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_082",
+                      "kind":  "weapon",
+                      "name":  "Pulse baton",
+                      "status":  "manual_table_p38",
+                      "reference":  "Player\u0027s Handbook p. 172-173, Table P38: Melee Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_083",
+                      "kind":  "weapon",
+                      "name":  "Gravmace",
+                      "status":  "manual_table_p38",
+                      "reference":  "Player\u0027s Handbook p. 172-173, Table P38: Melee Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_084",
+                      "kind":  "weapon",
+                      "name":  "Chainsword",
+                      "status":  "manual_table_p38",
+                      "reference":  "Player\u0027s Handbook p. 172-173, Table P38: Melee Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_085",
+                      "kind":  "weapon",
+                      "name":  "Combat knife",
+                      "status":  "manual_table_p38",
+                      "reference":  "Player\u0027s Handbook p. 172-173, Table P38: Melee Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_086",
+                      "kind":  "weapon",
+                      "name":  "Stun baton",
+                      "status":  "manual_table_p38",
+                      "reference":  "Player\u0027s Handbook p. 172-173, Table P38: Melee Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_087",
+                      "kind":  "weapon",
+                      "name":  "Nunchaku",
+                      "status":  "manual_table_p38",
+                      "reference":  "Player\u0027s Handbook p. 172-173, Table P38: Melee Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_088",
+                      "kind":  "weapon",
+                      "name":  "Spear",
+                      "status":  "manual_table_p38",
+                      "reference":  "Player\u0027s Handbook p. 172-173, Table P38: Melee Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_089",
+                      "kind":  "weapon",
+                      "name":  "Gauntlet",
+                      "status":  "manual_table_p38",
+                      "reference":  "Player\u0027s Handbook p. 172-173, Table P38: Melee Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_090",
+                      "kind":  "weapon",
+                      "name":  "Quarterstaff",
+                      "status":  "manual_table_p38",
+                      "reference":  "Player\u0027s Handbook p. 172-173, Table P38: Melee Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_091",
+                      "kind":  "weapon",
+                      "name":  "Club",
+                      "status":  "manual_table_p38",
+                      "reference":  "Player\u0027s Handbook p. 172-173, Table P38: Melee Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_092",
+                      "kind":  "weapon",
+                      "name":  "Dagger",
+                      "status":  "manual_table_p38",
+                      "reference":  "Player\u0027s Handbook p. 172-173, Table P38: Melee Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_093",
+                      "kind":  "weapon",
+                      "name":  "Hand ax",
+                      "status":  "manual_table_p38",
+                      "reference":  "Player\u0027s Handbook p. 172-173, Table P38: Melee Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_094",
+                      "kind":  "weapon",
+                      "name":  "Flail",
+                      "status":  "manual_table_p38",
+                      "reference":  "Player\u0027s Handbook p. 172-173, Table P38: Melee Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_095",
+                      "kind":  "weapon",
+                      "name":  "Great ax",
+                      "status":  "manual_table_p38",
+                      "reference":  "Player\u0027s Handbook p. 172-173, Table P38: Melee Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_096",
+                      "kind":  "weapon",
+                      "name":  "Broad sword",
+                      "status":  "manual_table_p38",
+                      "reference":  "Player\u0027s Handbook p. 172-173, Table P38: Melee Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_097",
+                      "kind":  "weapon",
+                      "name":  "Mace",
+                      "status":  "manual_table_p38",
+                      "reference":  "Player\u0027s Handbook p. 172-173, Table P38: Melee Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_098",
+                      "kind":  "weapon",
+                      "name":  "Short sword",
+                      "status":  "manual_table_p38",
+                      "reference":  "Player\u0027s Handbook p. 172-173, Table P38: Melee Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "weapon_core_099",
+                      "kind":  "weapon",
+                      "name":  "Power Cestus",
+                      "status":  "manual_table_p38",
+                      "reference":  "Player\u0027s Handbook p. 172-173, Table P38: Melee Weapons",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "armor_core_001",
+                      "kind":  "armor",
+                      "name":  "Attack armor, powered",
+                      "status":  "manual_table_p41",
+                      "reference":  "Player\u0027s Handbook p. 188, Table P41: Armor",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "armor_core_002",
+                      "kind":  "armor",
+                      "name":  "Attack armor",
+                      "status":  "manual_table_p41",
+                      "reference":  "Player\u0027s Handbook p. 188, Table P41: Armor",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "armor_core_003",
+                      "kind":  "armor",
+                      "name":  "Battle jacket",
+                      "status":  "manual_table_p41",
+                      "reference":  "Player\u0027s Handbook p. 188, Table P41: Armor",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "armor_core_004",
+                      "kind":  "armor",
+                      "name":  "CF short coat",
+                      "status":  "manual_table_p41",
+                      "reference":  "Player\u0027s Handbook p. 188, Table P41: Armor",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "armor_core_005",
+                      "kind":  "armor",
+                      "name":  "CF long coat",
+                      "status":  "manual_table_p41",
+                      "reference":  "Player\u0027s Handbook p. 188, Table P41: Armor",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "armor_core_006",
+                      "kind":  "armor",
+                      "name":  "Battle vest",
+                      "status":  "manual_table_p41",
+                      "reference":  "Player\u0027s Handbook p. 188, Table P41: Armor",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "armor_core_007",
+                      "kind":  "armor",
+                      "name":  "Assault gear",
+                      "status":  "manual_table_p41",
+                      "reference":  "Player\u0027s Handbook p. 188, Table P41: Armor",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "armor_core_008",
+                      "kind":  "armor",
+                      "name":  "Riot helmet",
+                      "status":  "manual_table_p41",
+                      "reference":  "Player\u0027s Handbook p. 188, Table P41: Armor",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "armor_core_009",
+                      "kind":  "armor",
+                      "name":  "Assault gear, heavy",
+                      "status":  "manual_table_p41",
+                      "reference":  "Player\u0027s Handbook p. 188, Table P41: Armor",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "armor_core_010",
+                      "kind":  "armor",
+                      "name":  "Riot shield",
+                      "status":  "manual_table_p41",
+                      "reference":  "Player\u0027s Handbook p. 188, Table P41: Armor",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "armor_core_011",
+                      "kind":  "armor",
+                      "name":  "Body tank",
+                      "status":  "manual_table_p41",
+                      "reference":  "Player\u0027s Handbook p. 188, Table P41: Armor",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "armor_core_012",
+                      "kind":  "armor",
+                      "name":  "Body tank, overland",
+                      "status":  "manual_table_p41",
+                      "reference":  "Player\u0027s Handbook p. 188, Table P41: Armor",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "armor_core_013",
+                      "kind":  "armor",
+                      "name":  "Ablative harness",
+                      "status":  "manual_table_p41",
+                      "reference":  "Player\u0027s Handbook p. 188, Table P41: Armor",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "armor_core_014",
+                      "kind":  "armor",
+                      "name":  "Displacer softsuit",
+                      "status":  "manual_table_p41",
+                      "reference":  "Player\u0027s Handbook p. 188, Table P41: Armor",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "armor_core_015",
+                      "kind":  "armor",
+                      "name":  "Stealth softsuit",
+                      "status":  "manual_table_p41",
+                      "reference":  "Player\u0027s Handbook p. 188, Table P41: Armor",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "armor_core_016",
+                      "kind":  "armor",
+                      "name":  "Energy web",
+                      "status":  "manual_table_p41",
+                      "reference":  "Player\u0027s Handbook p. 188, Table P41: Armor",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "armor_core_017",
+                      "kind":  "armor",
+                      "name":  "Body tank, zero-g",
+                      "status":  "manual_table_p41",
+                      "reference":  "Player\u0027s Handbook p. 188, Table P41: Armor",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "armor_core_018",
+                      "kind":  "armor",
+                      "name":  "Body tank, recon",
+                      "status":  "manual_table_p41",
+                      "reference":  "Player\u0027s Handbook p. 188, Table P41: Armor",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "armor_core_019",
+                      "kind":  "armor",
+                      "name":  "Cerametal armor",
+                      "status":  "manual_table_p41",
+                      "reference":  "Player\u0027s Handbook p. 188, Table P41: Armor",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "armor_core_020",
+                      "kind":  "armor",
+                      "name":  "Deflection harness",
+                      "status":  "manual_table_p41",
+                      "reference":  "Player\u0027s Handbook p. 188, Table P41: Armor",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "armor_core_021",
+                      "kind":  "armor",
+                      "name":  "CF softsuit",
+                      "status":  "manual_table_p41",
+                      "reference":  "Player\u0027s Handbook p. 188, Table P41: Armor",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "armor_core_022",
+                      "kind":  "armor",
+                      "name":  "Plate, partial",
+                      "status":  "manual_table_p41",
+                      "reference":  "Player\u0027s Handbook p. 188, Table P41: Armor",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "armor_core_023",
+                      "kind":  "armor",
+                      "name":  "Helm",
+                      "status":  "manual_table_p41",
+                      "reference":  "Player\u0027s Handbook p. 188, Table P41: Armor",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "armor_core_024",
+                      "kind":  "armor",
+                      "name":  "Leather coat",
+                      "status":  "manual_table_p41",
+                      "reference":  "Player\u0027s Handbook p. 188, Table P41: Armor",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "armor_core_025",
+                      "kind":  "armor",
+                      "name":  "Shield, medium",
+                      "status":  "manual_table_p41",
+                      "reference":  "Player\u0027s Handbook p. 188, Table P41: Armor",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "armor_core_026",
+                      "kind":  "armor",
+                      "name":  "Plate, full",
+                      "status":  "manual_table_p41",
+                      "reference":  "Player\u0027s Handbook p. 188, Table P41: Armor",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "armor_core_027",
+                      "kind":  "armor",
+                      "name":  "Shield, small",
+                      "status":  "manual_table_p41",
+                      "reference":  "Player\u0027s Handbook p. 188, Table P41: Armor",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "armor_core_028",
+                      "kind":  "armor",
+                      "name":  "Leather armor",
+                      "status":  "manual_table_p41",
+                      "reference":  "Player\u0027s Handbook p. 188, Table P41: Armor",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "armor_core_029",
+                      "kind":  "armor",
+                      "name":  "Chain mail",
+                      "status":  "manual_table_p41",
+                      "reference":  "Player\u0027s Handbook p. 188, Table P41: Armor",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "armor_core_030",
+                      "kind":  "armor",
+                      "name":  "Hide armor",
+                      "status":  "manual_table_p41",
+                      "reference":  "Player\u0027s Handbook p. 188, Table P41: Armor",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  },
+                  {
+                      "id":  "armor_core_031",
+                      "kind":  "armor",
+                      "name":  "Flak jacket",
+                      "status":  "manual_table_p41",
+                      "reference":  "Player\u0027s Handbook p. 188, Table P41: Armor",
+                      "structured_baseline":  "WAlter core XML, checked against Player\u0027s Handbook table images/OCR"
+                  }
+              ]
+}

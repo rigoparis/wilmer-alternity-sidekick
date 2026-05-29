@@ -1,0 +1,7 @@
+# Godot 4+ specific ignores
+.godot/
+/android/
+/builds/
+
+# Local cached manual OCR/page extracts generated during rule research.
+/manuals/_extracts/
