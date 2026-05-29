@@ -59,6 +59,11 @@ var skills_body: HBoxContainer
 var sticky_skills_panel: VBoxContainer
 var tab_buttons: Dictionary = {}
 var is_wide_layout := false
+var _tab_containers: Dictionary = {}
+var _tab_dirty: Dictionary = {}
+var _is_tab_changing := false
+var main_content: VBoxContainer
+var _tab_scroll_positions: Dictionary = {}
 var notes_editing := false
 var notes_draft := ""
 var equipment_filter_text := ""
@@ -240,6 +245,7 @@ func _build_shell() -> void:
 	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	content.add_theme_constant_override("separation", 10)
 	content_margin.add_child(content)
+	main_content = content
 
 	_build_optional_rules_overlay()
 	_build_skill_details_overlay()
@@ -247,6 +253,12 @@ func _build_shell() -> void:
 	_build_achievement_form_overlay()
 	_build_perk_flaw_catalog_overlay()
 	_build_mutation_catalog_overlay()
+
+
+func _resize_modal_panel(panel: Control, available_width: float, max_width: float, height_updater: Callable) -> void:
+	if panel != null:
+		panel.custom_minimum_size.x = minf(available_width - 12.0, max_width)
+		height_updater.call()
 
 
 func _apply_responsive_layout() -> void:
@@ -269,30 +281,15 @@ func _apply_responsive_layout() -> void:
 	if status_label != null and rules != null and not character.is_empty():
 		_refresh_status()
 
-	if optional_rules_panel != null:
-		optional_rules_panel.custom_minimum_size.x = minf(available_width - 12.0, 680.0)
-		_update_optional_rules_modal_height()
-
-	if skill_details_panel != null:
-		skill_details_panel.custom_minimum_size.x = minf(available_width - 12.0, 720.0)
-		_update_skill_details_modal_height()
-
-	if equipment_form_panel != null:
-		var form_width := 920.0 if String(equipment_form_state.get("mode", "")) == "catalog" else 760.0
-		equipment_form_panel.custom_minimum_size.x = minf(available_width - 12.0, form_width)
-		_update_equipment_form_modal_height()
-
-	if achievement_form_panel != null:
-		achievement_form_panel.custom_minimum_size.x = minf(available_width - 12.0, 820.0)
-		_update_achievement_form_modal_height()
-
-	if perk_flaw_catalog_panel != null:
-		perk_flaw_catalog_panel.custom_minimum_size.x = minf(available_width - 12.0, 820.0)
-		_update_perk_flaw_catalog_modal_height()
-
-	if mutation_catalog_panel != null:
-		mutation_catalog_panel.custom_minimum_size.x = minf(available_width - 12.0, 820.0)
-		_update_mutation_catalog_modal_height()
+	_resize_modal_panel(optional_rules_panel, available_width, 680.0, _update_optional_rules_modal_height)
+	_resize_modal_panel(skill_details_panel, available_width, 720.0, _update_skill_details_modal_height)
+	
+	var equipment_form_width := 920.0 if String(equipment_form_state.get("mode", "")) == "catalog" else 760.0
+	_resize_modal_panel(equipment_form_panel, available_width, equipment_form_width, _update_equipment_form_modal_height)
+	
+	_resize_modal_panel(achievement_form_panel, available_width, 820.0, _update_achievement_form_modal_height)
+	_resize_modal_panel(perk_flaw_catalog_panel, available_width, 820.0, _update_perk_flaw_catalog_modal_height)
+	_resize_modal_panel(mutation_catalog_panel, available_width, 820.0, _update_mutation_catalog_modal_height)
 
 
 func _update_header_layout(compact: bool) -> void:
@@ -543,6 +540,7 @@ func _build_equipment_form_overlay() -> void:
 
 	var scroll_margin := MarginContainer.new()
 	scroll_margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll_margin.add_theme_constant_override("margin_left", 12)
 	scroll_margin.add_theme_constant_override("margin_right", 12)
 	equipment_form_scroll.add_child(scroll_margin)
 
@@ -619,6 +617,7 @@ func _build_achievement_form_overlay() -> void:
 
 	var scroll_margin := MarginContainer.new()
 	scroll_margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll_margin.add_theme_constant_override("margin_left", 12)
 	scroll_margin.add_theme_constant_override("margin_right", 12)
 	achievement_form_scroll.add_child(scroll_margin)
 
@@ -696,6 +695,7 @@ func _build_perk_flaw_catalog_overlay() -> void:
 
 	var scroll_margin := MarginContainer.new()
 	scroll_margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll_margin.add_theme_constant_override("margin_left", 12)
 	scroll_margin.add_theme_constant_override("margin_right", 12)
 	perk_flaw_catalog_scroll.add_child(scroll_margin)
 
@@ -773,6 +773,7 @@ func _build_mutation_catalog_overlay() -> void:
 
 	var scroll_margin := MarginContainer.new()
 	scroll_margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll_margin.add_theme_constant_override("margin_left", 12)
 	scroll_margin.add_theme_constant_override("margin_right", 12)
 	mutation_catalog_scroll.add_child(scroll_margin)
 
@@ -991,7 +992,7 @@ func _visible_tab_count() -> int:
 
 func _tab_visible(tab: String) -> bool:
 	if tab == "Mutations":
-		return rules != null and rules.mutations_enabled(character)
+		return rules != null and rules.mutations.mutations_enabled(character)
 	return true
 
 
@@ -1006,13 +1007,34 @@ func _set_tab(tab: String) -> void:
 		return
 	if not active_character_file.is_empty():
 		_save_character()
+	if not active_tab.is_empty() and content_scroll != null:
+		_tab_scroll_positions[active_tab] = content_scroll.scroll_vertical
 	active_tab = tab
+	_is_tab_changing = true
 	_render()
+	_is_tab_changing = false
+
+
+func _clear_tab_cache() -> void:
+	for tab in _tab_containers.keys():
+		var container = _tab_containers[tab]
+		if is_instance_valid(container):
+			container.queue_free()
+	_tab_containers.clear()
+	_tab_dirty.clear()
+	_tab_scroll_positions.clear()
+
+
+func _mark_tabs_dirty() -> void:
+	for tab in tab_buttons.keys():
+		_tab_dirty[tab] = true
 
 
 func _render() -> void:
 	# State 1: Standalone Character Select (no active character)
 	if active_character_file.is_empty():
+		content = main_content
+		_clear_tab_cache()
 		if tabs != null and tabs.get_parent() != null:
 			tabs.get_parent().visible = false
 		if close_char_button != null:
@@ -1036,6 +1058,11 @@ func _render() -> void:
 	if close_char_button != null:
 		close_char_button.visible = true
 
+	# Clear any non-tab children in main_content (e.g., character select elements)
+	for child in main_content.get_children():
+		if not child in _tab_containers.values():
+			child.queue_free()
+
 	rules.ensure_character_shape(character)
 	if not _tab_visible(active_tab):
 		active_tab = "Basics"
@@ -1044,33 +1071,66 @@ func _render() -> void:
 	for tab in tab_buttons.keys():
 		tab_buttons[tab].button_pressed = tab == active_tab
 
-	for child in content.get_children():
-		child.queue_free()
-	if sticky_skills_panel != null:
-		for child in sticky_skills_panel.get_children():
-			child.queue_free()
+	# Invalidate caches if this is not a tab switch
+	if not _is_tab_changing:
+		rules.clear_cache()
+		_mark_tabs_dirty()
 
-	match active_tab:
-		"Basics":
-			_render_basics()
-		"Skills":
-			_render_skills()
-		"Perks/Flaws":
-			_render_perks_flaws()
-		"Equipment":
-			_render_equipment()
-		"Cybertech":
-			_render_cybertech()
-		"Psionics":
-			_render_fx_psionics()
-		"Achievements":
-			_render_achievements()
-		"Mutations":
-			_render_mutations()
-		"Summary":
-			_render_summary()
+	# Ensure the active tab container exists
+	if not _tab_containers.has(active_tab) or not is_instance_valid(_tab_containers[active_tab]):
+		var tab_container := VBoxContainer.new()
+		tab_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		tab_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		tab_container.add_theme_constant_override("separation", 10)
+		_tab_containers[active_tab] = tab_container
+		main_content.add_child(tab_container)
+		_tab_dirty[active_tab] = true
+
+	# Set the active tab container as current content target
+	content = _tab_containers[active_tab]
+
+	# Set visibility of all tab containers
+	for tab in _tab_containers.keys():
+		if is_instance_valid(_tab_containers[tab]):
+			_tab_containers[tab].visible = (tab == active_tab)
+
+	# Only rebuild the active tab container if it is dirty
+	if _tab_dirty.get(active_tab, true):
+		for child in content.get_children():
+			child.queue_free()
+		if sticky_skills_panel != null:
+			for child in sticky_skills_panel.get_children():
+				child.queue_free()
+
+		match active_tab:
+			"Basics":
+				_render_basics()
+			"Skills":
+				_render_skills()
+			"Perks/Flaws":
+				_render_perks_flaws()
+			"Equipment":
+				_render_equipment()
+			"Cybertech":
+				_render_cybertech()
+			"Psionics":
+				_render_fx_psionics()
+			"Achievements":
+				_render_achievements()
+			"Mutations":
+				_render_mutations()
+			"Summary":
+				_render_summary()
+
+		_tab_dirty[active_tab] = false
 
 	_refresh_status()
+	_restore_scroll_position.call_deferred()
+
+
+func _restore_scroll_position() -> void:
+	if content_scroll != null:
+		content_scroll.scroll_vertical = _tab_scroll_positions.get(active_tab, 0)
 
 
 func _set_sticky_skills_layout(enabled: bool) -> void:
@@ -1136,11 +1196,11 @@ func _refresh_status() -> void:
 
 
 func _achievement_level_label(points: int) -> String:
-	return "Hero Level %d" % rules.achievement_level_for_points(points)
+	return "Hero Level %d" % rules.achievements.achievement_level_for_points(points)
 
 
 func _achievement_next_level_label(points: int) -> String:
-	return "Next level at %d achievement points" % rules.achievement_next_level_points(points)
+	return "Next level at %d achievement points" % rules.achievements.achievement_next_level_points(points)
 
 
 func _achievement_usage_text(summary: Dictionary) -> String:
@@ -1167,7 +1227,7 @@ func _render_basics() -> void:
 	var level_label := _add_text(basics, _achievement_level_label(achievement_points), 15, color_text)
 	var next_level_label := _add_text(basics, _achievement_next_level_label(achievement_points), 12, color_muted)
 	var achievement_input := _add_number_input(basics, "Achievement Points", achievement_points, 0, 9999, func(value):
-		rules.set_achievement_points(character, value)
+		rules.achievements.set_achievement_points(character, value)
 		level_label.text = _achievement_level_label(value)
 		next_level_label.text = _achievement_next_level_label(value)
 		_refresh_status()
@@ -1593,7 +1653,7 @@ func _add_perk_catalog_rows(parent: VBoxContainer, filter: String) -> int:
 			continue
 		shown += 1
 		var perk_id := String(option.get("id", ""))
-		if rules.is_perk_granted_by_achievement(character, perk_id):
+		if rules.achievements.is_perk_granted_by_achievement(character, perk_id):
 			_add_granted_perk_row(parent, option)
 			continue
 		var selected_value := rules.perk_cost_selected(character, perk_id)
@@ -1765,7 +1825,7 @@ func _render_achievements() -> void:
 		_add_text(box, String(note), 12, color_muted)
 
 	var bought := _add_section("Bought Achievements")
-	var selected := rules.selected_achievements(character)
+	var selected := rules.achievements.selected_achievements(character)
 	if selected.is_empty():
 		_add_text(bought, "No achievement benefits purchased yet.", 14, color_muted)
 		return
@@ -1797,7 +1857,7 @@ func _add_bought_achievement_row(parent: VBoxContainer, entry: Dictionary) -> vo
 	remove.text = "Remove"
 	remove.custom_minimum_size = Vector2(82, 34)
 	remove.pressed.connect(func():
-		rules.remove_achievement_purchase(character, String(entry.get("line_id", "")))
+		rules.achievements.remove_achievement_purchase(character, String(entry.get("line_id", "")))
 		_render()
 	)
 	top.add_child(remove)
@@ -1838,7 +1898,7 @@ func _refresh_achievement_form_panel() -> void:
 	_add_field(achievement_form_body, "Search", search)
 	_restore_search_focus(search, "achievement")
 
-	var current_profession := rules.achievement_profile_key(character).replace("_", " ").capitalize()
+	var current_profession := rules.achievements.achievement_profile_key(character).replace("_", " ").capitalize()
 	_add_text(achievement_form_body, "Costs and minimum levels shown for %s." % current_profession, 12, color_muted)
 
 	var shown := 0
@@ -1890,13 +1950,13 @@ func _add_achievement_catalog_row(parent: VBoxContainer, achievement: Dictionary
 	if effect_type == "remove_flaw":
 		_add_remove_flaw_achievement_targets(row, achievement)
 	else:
-		var check := rules.can_purchase_achievement(character, achievement)
+		var check := rules.achievements.can_purchase_achievement(character, achievement)
 		var add := Button.new()
 		add.text = "Add"
 		add.custom_minimum_size = Vector2(70, 34)
 		add.disabled = not bool(check.get("allowed", false))
 		add.pressed.connect(func():
-			var result := rules.add_achievement_purchase(character, String(achievement.get("id", "")))
+			var result := rules.achievements.add_achievement_purchase(character, String(achievement.get("id", "")))
 			if bool(result.get("ok", false)):
 				achievement_form_overlay.visible = false
 				_render()
@@ -1928,17 +1988,17 @@ func _add_remove_flaw_achievement_targets(parent: VBoxContainer, achievement: Di
 	for flaw in flaws:
 		var flaw_id := String(flaw.get("id", ""))
 		var flaw_bonus := rules._as_int(flaw.get("bonus", 0))
-		var check := rules.can_purchase_achievement(character, achievement, flaw_id, flaw_bonus)
+		var check := rules.achievements.can_purchase_achievement(character, achievement, flaw_id, flaw_bonus)
 		var button := Button.new()
 		button.text = "Remove %s  %d SP" % [
 			String(flaw.get("name", "Flaw")),
-			rules.achievement_purchase_cost(character, achievement, flaw_bonus),
+			rules.achievements.achievement_purchase_cost(character, achievement, flaw_bonus),
 		]
 		button.disabled = not bool(check.get("allowed", false))
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.custom_minimum_size = Vector2(0, 34)
 		button.pressed.connect(func():
-			var result := rules.add_achievement_purchase(character, String(achievement.get("id", "")), flaw_id, flaw_bonus)
+			var result := rules.achievements.add_achievement_purchase(character, String(achievement.get("id", "")), flaw_id, flaw_bonus)
 			if bool(result.get("ok", false)):
 				achievement_form_overlay.visible = false
 				_render()
@@ -1951,7 +2011,7 @@ func _add_remove_flaw_achievement_targets(parent: VBoxContainer, achievement: Di
 
 
 func _achievement_meta(achievement: Dictionary) -> String:
-	var cost_info := rules.achievement_cost_entry(achievement, character)
+	var cost_info := rules.achievements.achievement_cost_entry(achievement, character)
 	var effect: Dictionary = achievement.get("effect", {})
 	var cost_text := "%d SP" % rules._as_int(cost_info.get("cost", 0))
 	if String(effect.get("type", "")) == "remove_flaw":
@@ -1965,7 +2025,7 @@ func _achievement_meta(achievement: Dictionary) -> String:
 
 
 func _render_mutations() -> void:
-	if not rules.mutations_enabled(character):
+	if not rules.mutations.mutations_enabled(character):
 		var unavailable := _add_section("Mutations")
 		_add_text(unavailable, "Only Mutant heroes use the Player's Handbook Chapter 13 mutation rules.", 14, color_muted)
 		return
@@ -1986,13 +2046,13 @@ func _render_mutations() -> void:
 			mode.select(index)
 	mode.item_selected.connect(func(index):
 		var mode_row: Dictionary = modes[index]
-		rules.set_mutation_generation_mode(character, String(mode_row.get("id", "random")))
+		rules.mutations.set_mutation_generation_mode(character, String(mode_row.get("id", "random")))
 		_render()
 	)
 	_add_field(overview, "Mutation Generation", mode)
 
 	var origin := OptionButton.new()
-	var origins := rules.mutation_origin_options()
+	var origins := rules.mutations.mutation_origin_options()
 	for index in range(origins.size()):
 		var origin_row: Dictionary = origins[index]
 		origin.add_item(String(origin_row.get("name", "")), index)
@@ -2000,14 +2060,14 @@ func _render_mutations() -> void:
 			origin.select(index)
 	origin.item_selected.connect(func(index):
 		var origin_row: Dictionary = origins[index]
-		rules.set_mutation_origin(character, String(origin_row.get("id", "")))
+		rules.mutations.set_mutation_origin(character, String(origin_row.get("id", "")))
 		_render()
 	)
 	origin.disabled = random_generation
 	_add_field(overview, "Mutant Origin", origin)
 
 	var uniqueness := OptionButton.new()
-	var uniqueness_rows := rules.mutation_uniqueness_options(String(character.get("mutations", {}).get("origin", "engineered")))
+	var uniqueness_rows := rules.mutations.mutation_uniqueness_options(String(character.get("mutations", {}).get("origin", "engineered")))
 	for index in range(uniqueness_rows.size()):
 		var uniqueness_row: Dictionary = uniqueness_rows[index]
 		uniqueness.add_item(String(uniqueness_row.get("name", "")), index)
@@ -2015,7 +2075,7 @@ func _render_mutations() -> void:
 			uniqueness.select(index)
 	uniqueness.item_selected.connect(func(index):
 		var uniqueness_row: Dictionary = uniqueness_rows[index]
-		rules.set_mutation_uniqueness(character, String(uniqueness_row.get("id", "")))
+		rules.mutations.set_mutation_uniqueness(character, String(uniqueness_row.get("id", "")))
 		_render()
 	)
 	uniqueness.disabled = random_generation
@@ -2036,7 +2096,7 @@ func _render_mutations() -> void:
 	roll_origin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	roll_origin.disabled = not random_generation
 	roll_origin.pressed.connect(func():
-		rules.roll_mutation_origin_and_points(character)
+		rules.mutations.roll_mutation_origin_and_points(character)
 		_render()
 	)
 	roll_actions.add_child(roll_origin)
@@ -2070,7 +2130,7 @@ func _render_selected_mutation_list(parent: Container, title: String, kind: Stri
 	var point_total := rules._as_int(mutation_summary.get(points_key, 0))
 
 	_add_number_stepper(box, points_label, point_total, 0, 12, func(value):
-		rules.set_mutation_point_total(character, kind, value)
+		rules.mutations.set_mutation_point_total(character, kind, value)
 	)
 
 	var point_actions: BoxContainer
@@ -2082,8 +2142,8 @@ func _render_selected_mutation_list(parent: Container, title: String, kind: Stri
 	point_actions.add_theme_constant_override("separation", 8)
 
 	var distribution := OptionButton.new()
-	var distribution_options := rules.mutation_distribution_options(kind, point_total)
-	var selected_distribution_id := rules.mutation_distribution_id(character, kind)
+	var distribution_options := rules.mutations.mutation_distribution_options(kind, point_total)
+	var selected_distribution_id := rules.mutations.mutation_distribution_id(character, kind)
 	for index in range(distribution_options.size()):
 		var option: Dictionary = distribution_options[index]
 		distribution.add_item(String(option.get("label", "")), index)
@@ -2091,7 +2151,7 @@ func _render_selected_mutation_list(parent: Container, title: String, kind: Stri
 			distribution.select(index)
 	distribution.item_selected.connect(func(index):
 		var option: Dictionary = distribution_options[index]
-		rules.set_mutation_distribution(character, kind, String(option.get("id", "")))
+		rules.mutations.set_mutation_distribution(character, kind, String(option.get("id", "")))
 		_render()
 	)
 	distribution.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -2103,7 +2163,7 @@ func _render_selected_mutation_list(parent: Container, title: String, kind: Stri
 	roll_points.custom_minimum_size = Vector2(0, 38)
 	roll_points.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	roll_points.pressed.connect(func():
-		rules.roll_mutation_point_total(character, kind)
+		rules.mutations.roll_mutation_point_total(character, kind)
 		_render()
 	)
 	point_actions.add_child(roll_points)
@@ -2114,7 +2174,7 @@ func _render_selected_mutation_list(parent: Container, title: String, kind: Stri
 	roll_distribution.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	roll_distribution.disabled = distribution_options.is_empty()
 	roll_distribution.pressed.connect(func():
-		rules.roll_mutation_distribution(character, kind)
+		rules.mutations.roll_mutation_distribution(character, kind)
 		_render()
 	)
 	point_actions.add_child(roll_distribution)
@@ -2124,7 +2184,7 @@ func _render_selected_mutation_list(parent: Container, title: String, kind: Stri
 		rules._as_int(mutation_summary.get(remaining_key, 0)),
 	])
 
-	var rows := rules.selected_mutation_drawbacks(character) if kind == "drawback" else rules.selected_mutation_advantages(character)
+	var rows := rules.mutations.selected_mutation_drawbacks(character) if kind == "drawback" else rules.mutations.selected_mutation_advantages(character)
 	if rows.is_empty():
 		_add_text(box, "No %s selected." % ("mutation drawbacks" if kind == "drawback" else "advantageous mutations"), 14, color_muted)
 	else:
@@ -2145,7 +2205,7 @@ func _render_selected_mutation_list(parent: Container, title: String, kind: Stri
 	roll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	roll.disabled = point_total <= 0 or distribution_options.is_empty()
 	roll.pressed.connect(func():
-		rules.roll_mutations_for_distribution(character, kind)
+		rules.mutations.roll_mutations_for_distribution(character, kind)
 		_render()
 	)
 	actions.add_child(roll)
@@ -2183,9 +2243,9 @@ func _add_selected_mutation_table(parent: VBoxContainer, rows: Array, kind: Stri
 		remove.custom_minimum_size = Vector2(78, 32)
 		remove.pressed.connect(func():
 			if kind == "drawback":
-				rules.remove_mutation_drawback(character, String(mutation.get("id", "")))
+				rules.mutations.remove_mutation_drawback(character, String(mutation.get("id", "")))
 			else:
-				rules.remove_mutation_advantage(character, String(mutation.get("id", "")))
+				rules.mutations.remove_mutation_advantage(character, String(mutation.get("id", "")))
 			_render()
 		)
 		grid.add_child(remove)
@@ -2218,9 +2278,9 @@ func _add_selected_mutation_row(parent: VBoxContainer, mutation: Dictionary, kin
 	remove.custom_minimum_size = Vector2(82, 34)
 	remove.pressed.connect(func():
 		if kind == "drawback":
-			rules.remove_mutation_drawback(character, String(mutation.get("id", "")))
+			rules.mutations.remove_mutation_drawback(character, String(mutation.get("id", "")))
 		else:
-			rules.remove_mutation_advantage(character, String(mutation.get("id", "")))
+			rules.mutations.remove_mutation_advantage(character, String(mutation.get("id", "")))
 		_render()
 	)
 	top.add_child(remove)
@@ -2258,7 +2318,7 @@ func _refresh_mutation_catalog_panel() -> void:
 	_add_field(mutation_catalog_body, "Search", search)
 	_restore_search_focus(search, "mutation")
 
-	var distribution_label := rules.mutation_distribution_label(character, mutation_catalog_kind)
+	var distribution_label := rules.mutations.mutation_distribution_label(character, mutation_catalog_kind)
 	_add_text(mutation_catalog_body, "Showing mutations that fit the selected distribution: %s." % distribution_label, 12, color_muted)
 	_add_text(mutation_catalog_body, "Costs use Player's Handbook Table P47. Advantage caps are three Ordinary, two Good, and one Amazing mutation. Source: Player's Handbook p. 214-216.", 12, color_muted)
 
@@ -2272,7 +2332,7 @@ func _refresh_mutation_catalog_panel() -> void:
 		var mutation: Dictionary = mutation_value
 		if not _mutation_matches_filter(mutation, filter):
 			continue
-		var check := rules.can_add_mutation_drawback(character, mutation) if is_drawback else rules.can_add_mutation_advantage(character, mutation)
+		var check := rules.mutations.can_add_mutation_drawback(character, mutation) if is_drawback else rules.mutations.can_add_mutation_advantage(character, mutation)
 		if not bool(check.get("allowed", false)):
 			hidden_by_rules += 1
 			continue
@@ -2323,13 +2383,13 @@ func _add_mutation_catalog_row(parent: VBoxContainer, mutation: Dictionary, kind
 	title.add_theme_font_size_override("font_size", 14)
 	top.add_child(title)
 
-	var check := rules.can_add_mutation_drawback(character, mutation) if kind == "drawback" else rules.can_add_mutation_advantage(character, mutation)
+	var check := rules.mutations.can_add_mutation_drawback(character, mutation) if kind == "drawback" else rules.mutations.can_add_mutation_advantage(character, mutation)
 	var add := Button.new()
 	add.text = "Add"
 	add.custom_minimum_size = Vector2(70, 34)
 	add.disabled = not bool(check.get("allowed", false))
 	add.pressed.connect(func():
-		var result := rules.add_mutation_drawback(character, String(mutation.get("id", ""))) if kind == "drawback" else rules.add_mutation_advantage(character, String(mutation.get("id", "")))
+		var result := rules.mutations.add_mutation_drawback(character, String(mutation.get("id", ""))) if kind == "drawback" else rules.mutations.add_mutation_advantage(character, String(mutation.get("id", "")))
 		if bool(result.get("ok", false)):
 			mutation_catalog_overlay.visible = false
 			_render()
@@ -2366,7 +2426,7 @@ func _show_equipment_catalog_modal() -> void:
 
 
 func _ensure_equipment_source_filter() -> void:
-	for source in rules.equipment_source_options():
+	for source in rules.equipment.equipment_source_options():
 		var source_id := String(source.get("id", ""))
 		if source_id.is_empty():
 			continue
@@ -2448,7 +2508,7 @@ func _add_equipment_filters(parent: VBoxContainer, modal := false) -> void:
 
 	var category_option := OptionButton.new()
 	category_option.add_item("All categories", 0)
-	var categories := rules.equipment_category_options()
+	var categories := rules.equipment.equipment_category_options()
 	for index in range(categories.size()):
 		category_option.add_item(String(categories[index]), index + 1)
 		if String(categories[index]) == equipment_filter_category:
@@ -2462,7 +2522,7 @@ func _add_equipment_filters(parent: VBoxContainer, modal := false) -> void:
 
 	var class_option := OptionButton.new()
 	class_option.add_item("All classes", 0)
-	var classes := rules.equipment_class_options(equipment_filter_category)
+	var classes := rules.equipment.equipment_class_options(equipment_filter_category)
 	for index in range(classes.size()):
 		class_option.add_item(String(classes[index]), index + 1)
 		if String(classes[index]) == equipment_filter_class:
@@ -2477,7 +2537,7 @@ func _add_equipment_filters(parent: VBoxContainer, modal := false) -> void:
 	sources_box.add_theme_constant_override("separation", 4)
 	parent.add_child(sources_box)
 	_add_text(sources_box, "Sources", 12, color_muted)
-	for source in rules.equipment_source_options():
+	for source in rules.equipment.equipment_source_options():
 		var source_id := String(source.get("id", ""))
 		var toggle := CheckBox.new()
 		toggle.text = String(source.get("name", source_id))
@@ -2495,7 +2555,7 @@ func _add_equipment_filters(parent: VBoxContainer, modal := false) -> void:
 
 
 func _add_equipment_catalog(parent: VBoxContainer, modal := false) -> void:
-	var items := rules.filtered_equipment(_equipment_filter_dictionary())
+	var items := rules.equipment.filtered_equipment(_equipment_filter_dictionary())
 	_add_text(parent, "%d matching items" % items.size(), 13, color_muted)
 	if items.is_empty():
 		_add_text(parent, "No equipment matches the current filters.", 14, color_muted)
@@ -2527,7 +2587,7 @@ func _add_equipment_catalog_row(parent: VBoxContainer, item: Dictionary, modal :
 	add_button.text = "Add"
 	add_button.custom_minimum_size = Vector2(70, 34)
 	add_button.pressed.connect(func():
-		rules.add_equipment_to_character(character, String(item.get("id", "")), 1)
+		rules.equipment.add_equipment_to_character(character, String(item.get("id", "")), 1)
 		if modal:
 			equipment_form_overlay.visible = false
 		_render()
@@ -2549,7 +2609,7 @@ func _add_equipment_catalog_row(parent: VBoxContainer, item: Dictionary, modal :
 
 func _add_carried_equipment_panel(parent: Container) -> void:
 	var box := _add_section_to(parent, "Carried Equipment")
-	var summary := rules.equipment_summary(character)
+	var summary := rules.equipment.equipment_summary(character)
 	_add_metric(box, "Total Mass", _format_number(rules._as_float(summary.get("total_mass", 0.0))))
 	_add_metric(box, "Total Cost", str(rules._as_int(summary.get("total_cost", 0))))
 
@@ -2576,7 +2636,7 @@ func _add_carried_equipment_panel(parent: Container) -> void:
 	custom_button.pressed.connect(_show_custom_equipment_form)
 	actions.add_child(custom_button)
 
-	var rows := rules.carried_equipment(character)
+	var rows := rules.equipment.carried_equipment(character)
 	if rows.is_empty():
 		_add_text(box, "No carried equipment yet.", 14, color_muted)
 		return
@@ -2618,7 +2678,7 @@ func _add_carried_equipment_row(parent: VBoxContainer, row: Dictionary) -> void:
 	remove.text = "Remove"
 	remove.custom_minimum_size = Vector2(80, 34)
 	remove.pressed.connect(func():
-		rules.remove_carried_equipment(character, String(row.get("line_id", "")))
+		rules.equipment.remove_carried_equipment(character, String(row.get("line_id", "")))
 		_render()
 	)
 	top.add_child(remove)
@@ -2667,7 +2727,7 @@ func _show_custom_equipment_form() -> void:
 
 
 func _show_edit_equipment_form(line_id: String) -> void:
-	for row in rules.carried_equipment(character):
+	for row in rules.equipment.carried_equipment(character):
 		if String(row.get("line_id", "")) != line_id:
 			continue
 		var item: Dictionary = row.get("item", {})
@@ -2802,14 +2862,14 @@ func _save_equipment_form() -> void:
 	var slot := String(equipment_form_state.get("slot", ""))
 	var notes := String(equipment_form_state.get("notes", ""))
 	if mode == "custom":
-		var line_id := rules.add_custom_equipment_to_character(character, equipment_form_state.get("item", {}), quantity)
+		var line_id := rules.equipment.add_custom_equipment_to_character(character, equipment_form_state.get("item", {}), quantity)
 		if not line_id.is_empty():
-			rules.update_carried_equipment(character, line_id, quantity, equipped, slot, notes)
+			rules.equipment.update_carried_equipment(character, line_id, quantity, equipped, slot, notes)
 	else:
 		var item_id := String(equipment_form_state.get("item_id", ""))
 		if bool(equipment_form_state.get("is_custom", false)):
-			rules.update_custom_equipment_item(character, item_id, equipment_form_state.get("item", {}))
-		rules.update_carried_equipment(character, String(equipment_form_state.get("line_id", "")), quantity, equipped, slot, notes)
+			rules.equipment.update_custom_equipment_item(character, item_id, equipment_form_state.get("item", {}))
+		rules.equipment.update_carried_equipment(character, String(equipment_form_state.get("line_id", "")), quantity, equipped, slot, notes)
 	equipment_form_overlay.visible = false
 	_render()
 
@@ -2845,7 +2905,7 @@ func _equipment_combat_line(item: Dictionary) -> String:
 	if typeof(combat) != TYPE_DICTIONARY:
 		return ""
 	var lines := []
-	if rules.equipment_has_combat_role(item, "weapon"):
+	if rules.equipment.equipment_has_combat_role(item, "weapon"):
 		lines.append("Weapon: %s  Acc %+d  Damage %s  Range %s  Mode %s  Actions %s  Clip %s" % [
 			String(combat.get("skill", "")),
 			rules._as_int(combat.get("accuracy", 0)),
@@ -2853,9 +2913,9 @@ func _equipment_combat_line(item: Dictionary) -> String:
 			String(combat.get("range", "")),
 			String(combat.get("mode", "")),
 			str(combat.get("actions", "")),
-			rules._dash_for_empty_or_zero(combat.get("clip_size", "")),
+			rules.equipment._dash_for_empty_or_zero(combat.get("clip_size", "")),
 		])
-	if rules.equipment_has_combat_role(item, "armor"):
+	if rules.equipment.equipment_has_combat_role(item, "armor"):
 		lines.append("Armor: %s  AP %+d  Toughness %s  LI %s  HI %s  En %s" % [
 			String(combat.get("skill", "")),
 			rules._as_int(combat.get("action_penalty", 0)),
@@ -3495,12 +3555,12 @@ func _render_summary() -> void:
 	var flaws_box := _add_section_to(right_parent, "Flaws")
 	_add_selected_flaws_summary(flaws_box)
 
-	if rules.mutations_enabled(character):
+	if rules.mutations.mutations_enabled(character):
 		var mutation_summary: Dictionary = summary.get("mutations", {})
 		var advantage_box := _add_section_to(right_parent, "Advantageous Mutations")
-		_add_mutation_summary_panel(advantage_box, rules.selected_mutation_advantages(character), "advantage", mutation_summary)
+		_add_mutation_summary_panel(advantage_box, rules.mutations.selected_mutation_advantages(character), "advantage", mutation_summary)
 		var drawback_box := _add_section_to(right_parent, "Mutation Drawbacks")
-		_add_mutation_summary_panel(drawback_box, rules.selected_mutation_drawbacks(character), "drawback", mutation_summary)
+		_add_mutation_summary_panel(drawback_box, rules.mutations.selected_mutation_drawbacks(character), "drawback", mutation_summary)
 
 	var achievements_box := _add_section_to(right_parent, "Achievements")
 	var selected_achievements: Array = summary.get("selected_achievements", [])

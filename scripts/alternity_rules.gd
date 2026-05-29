@@ -6,275 +6,15 @@ var mutations = preload('res://scripts/alternity_rules_mutations.gd').new(self)
 var equipment = preload('res://scripts/alternity_rules_equipment.gd').new(self)
 var achievements = preload('res://scripts/alternity_rules_achievements.gd').new(self)
 
-# Mutations Module Delegation
-func mutant_species_id() -> int:
-	return mutations.mutant_species_id()
+# Delegation wrappers removed. Sub-modules are exposed directly.
 
-func mutations_enabled(character: Dictionary) -> bool:
-	return mutations.mutations_enabled(character)
 
-func mutation_origin_options() -> Array:
-	return mutations.mutation_origin_options()
+var _cached_summary: Dictionary = {}
+var _last_character_hash: int = 0
 
-func mutation_uniqueness_options(origin_id: String) -> Array:
-	return mutations.mutation_uniqueness_options(origin_id)
-
-func get_mutation_origin_by_id(origin_id: String) -> Dictionary:
-	return mutations.get_mutation_origin_by_id(origin_id)
-
-func get_mutation_uniqueness_by_id(origin_id: String, uniqueness_id: String) -> Dictionary:
-	return mutations.get_mutation_uniqueness_by_id(origin_id, uniqueness_id)
-
-func set_mutation_generation_mode(character: Dictionary, mode: String) -> void:
-	mutations.set_mutation_generation_mode(character, mode)
-
-func set_mutation_origin(character: Dictionary, origin_id: String) -> void:
-	mutations.set_mutation_origin(character, origin_id)
-
-func set_mutation_uniqueness(character: Dictionary, uniqueness_id: String) -> void:
-	mutations.set_mutation_uniqueness(character, uniqueness_id)
-
-func set_mutation_points(character: Dictionary, advantage_points: int, drawback_points: int) -> void:
-	mutations.set_mutation_points(character, advantage_points, drawback_points)
-
-func set_mutation_point_total(character: Dictionary, kind: String, points: int) -> void:
-	mutations.set_mutation_point_total(character, kind, points)
-
-func roll_mutation_origin(character: Dictionary) -> Dictionary:
-	return mutations.roll_mutation_origin(character)
-
-func roll_mutation_origin_and_points(character: Dictionary) -> Dictionary:
-	return mutations.roll_mutation_origin_and_points(character)
-
-func roll_mutation_points(character: Dictionary) -> Dictionary:
-	return mutations.roll_mutation_points(character)
-
-func roll_mutation_point_total(character: Dictionary, kind: String) -> int:
-	return mutations.roll_mutation_point_total(character, kind)
-
-func mutation_distribution_options(kind: String, points: int) -> Array:
-	return mutations.mutation_distribution_options(kind, points)
-
-func mutation_distribution(character: Dictionary, kind: String) -> Dictionary:
-	return mutations.mutation_distribution(character, kind)
-
-func set_mutation_distribution(character: Dictionary, kind: String, distribution_id: String) -> void:
-	mutations.set_mutation_distribution(character, kind, distribution_id)
-
-func roll_mutation_distribution(character: Dictionary, kind: String) -> Dictionary:
-	return mutations.roll_mutation_distribution(character, kind)
-
-func mutation_distribution_id(character: Dictionary, kind: String) -> String:
-	return mutations.mutation_distribution_id(character, kind)
-
-func mutation_distribution_label(character: Dictionary, kind: String) -> String:
-	return mutations.mutation_distribution_label(character, kind)
-
-func selected_mutation_advantages(character: Dictionary) -> Array:
-	return mutations.selected_mutation_advantages(character)
-
-func selected_mutation_drawbacks(character: Dictionary) -> Array:
-	return mutations.selected_mutation_drawbacks(character)
-
-func mutation_advantage_points_used(character: Dictionary) -> int:
-	return mutations.mutation_advantage_points_used(character)
-
-func mutation_drawback_points_used(character: Dictionary) -> int:
-	return mutations.mutation_drawback_points_used(character)
-
-func mutation_advantage_points_remaining(character: Dictionary) -> int:
-	return mutations.mutation_advantage_points_remaining(character)
-
-func mutation_drawback_points_remaining(character: Dictionary) -> int:
-	return mutations.mutation_drawback_points_remaining(character)
-
-func can_add_mutation_advantage(character: Dictionary, mutation: Dictionary) -> Dictionary:
-	return mutations.can_add_mutation_advantage(character, mutation)
-
-func can_add_mutation_drawback(character: Dictionary, drawback: Dictionary) -> Dictionary:
-	return mutations.can_add_mutation_drawback(character, drawback)
-
-func add_mutation_advantage(character: Dictionary, mutation_id: String) -> Dictionary:
-	return mutations.add_mutation_advantage(character, mutation_id)
-
-func add_mutation_drawback(character: Dictionary, drawback_id: String) -> Dictionary:
-	return mutations.add_mutation_drawback(character, drawback_id)
-
-func remove_mutation_advantage(character: Dictionary, mutation_id: String) -> void:
-	mutations.remove_mutation_advantage(character, mutation_id)
-
-func remove_mutation_drawback(character: Dictionary, drawback_id: String) -> void:
-	mutations.remove_mutation_drawback(character, drawback_id)
-
-func roll_mutations_for_distribution(character: Dictionary, kind: String) -> Dictionary:
-	return mutations.roll_mutations_for_distribution(character, kind)
-
-func mutation_summary(character: Dictionary) -> Dictionary:
-	return mutations.mutation_summary(character)
-
-func mutation_ability_bonus(character: Dictionary, ability: String) -> int:
-	return mutations.mutation_ability_bonus(character, ability)
-
-func mutation_durability_bonus(character: Dictionary, track: String) -> int:
-	return mutations.mutation_durability_bonus(character, track)
-
-func mutation_action_check_step(character: Dictionary) -> int:
-	return mutations.mutation_action_check_step(character)
-
-func mutation_skill_step_bonus(character: Dictionary, skill_id: int) -> int:
-	return mutations.mutation_skill_step_bonus(character, skill_id)
-
-func mutation_movement_modes(character: Dictionary) -> Dictionary:
-	return mutations.mutation_movement_modes(character)
-
-func mutation_roll_notes_for_character(character: Dictionary) -> Array:
-	return mutations.mutation_roll_notes_for_character(character)
-
-func mutation_armor_rows(character: Dictionary) -> Array:
-	return mutations.mutation_armor_rows(character)
-
-func mutation_attack_forms(character: Dictionary) -> Array:
-	return mutations.mutation_attack_forms(character)
-
-func _normalize_mutations(character: Dictionary) -> void:
-	mutations._normalize_mutations(character)
-
-# Equipment Module Delegation
-func get_character_equipment_item(character: Dictionary, item_id: String) -> Dictionary:
-	return equipment.get_character_equipment_item(character, item_id)
-
-func equipment_source_options() -> Array:
-	return equipment.equipment_source_options()
-
-func equipment_category_options() -> Array:
-	return equipment.equipment_category_options()
-
-func equipment_class_options(category := "") -> Array:
-	return equipment.equipment_class_options(category)
-
-func filtered_equipment(filters: Dictionary) -> Array:
-	return equipment.filtered_equipment(filters)
-
-func add_equipment_to_character(character: Dictionary, item_id: String, quantity := 1) -> String:
-	return equipment.add_equipment_to_character(character, item_id, quantity)
-
-func add_custom_equipment_to_character(character: Dictionary, item: Dictionary, quantity := 1) -> String:
-	return equipment.add_custom_equipment_to_character(character, item, quantity)
-
-func update_carried_equipment(character: Dictionary, line_id: String, quantity: int, equipped: bool, slot: String, notes: String) -> void:
-	equipment.update_carried_equipment(character, line_id, quantity, equipped, slot, notes)
-
-func update_custom_equipment_item(character: Dictionary, item_id: String, item: Dictionary) -> void:
-	equipment.update_custom_equipment_item(character, item_id, item)
-
-func remove_carried_equipment(character: Dictionary, line_id: String) -> void:
-	equipment.remove_carried_equipment(character, line_id)
-
-func carried_equipment(character: Dictionary) -> Array:
-	return equipment.carried_equipment(character)
-
-func equipment_summary(character: Dictionary) -> Dictionary:
-	return equipment.equipment_summary(character)
-
-func attack_forms_for_character(character: Dictionary) -> Array:
-	return equipment.attack_forms_for_character(character)
-
-func equipment_has_combat_role(item: Dictionary, role: String) -> bool:
-	return equipment.equipment_has_combat_role(item, role)
-
-func _combat_skill_score(character: Dictionary, skill_id: int) -> Dictionary:
-	return equipment._combat_skill_score(character, skill_id)
-
-func _damage_with_bonus(damage: String, bonus: int) -> String:
-	return equipment._damage_with_bonus(damage, bonus)
-
-func strength_damage_bonus(score: int) -> int:
-	return equipment.strength_damage_bonus(score)
-
-func _score_text(score: Dictionary) -> String:
-	return equipment._score_text(score)
-
-func _normalize_equipment(character: Dictionary) -> void:
-	equipment._normalize_equipment(character)
-
-func _dash_for_empty_or_zero(value) -> String:
-	return equipment._dash_for_empty_or_zero(value)
-
-# Achievements Module Delegation
-func achievement_points_for_level(level: int) -> int:
-	return achievements.achievement_points_for_level(level)
-
-func achievement_level_for_points(points: int) -> int:
-	return achievements.achievement_level_for_points(points)
-
-func achievement_next_level_points(points: int) -> int:
-	return achievements.achievement_next_level_points(points)
-
-func set_achievement_points(character: Dictionary, points: int) -> void:
-	achievements.set_achievement_points(character, points)
-
-func achievement_points_used(character: Dictionary) -> int:
-	return achievements.achievement_points_used(character)
-
-func achievement_points_available(character: Dictionary) -> int:
-	return achievements.achievement_points_available(character)
-
-func achievement_skill_bonus(character: Dictionary) -> int:
-	return achievements.achievement_skill_bonus(character)
-
-func achievement_profile_key(character: Dictionary) -> String:
-	return achievements.achievement_profile_key(character)
-
-func achievement_profile_index(character: Dictionary) -> int:
-	return achievements.achievement_profile_index(character)
-
-func achievement_cost_entry(achievement: Dictionary, character: Dictionary) -> Dictionary:
-	return achievements.achievement_cost_entry(achievement, character)
-
-func achievement_purchase_cost(character: Dictionary, achievement: Dictionary, target_value := 0) -> int:
-	return achievements.achievement_purchase_cost(character, achievement, target_value)
-
-func selected_achievements(character: Dictionary) -> Array:
-	return achievements.selected_achievements(character)
-
-func achievement_purchase_count(character: Dictionary, achievement_id: String) -> int:
-	return achievements.achievement_purchase_count(character, achievement_id)
-
-func achievement_effect_total(character: Dictionary, effect_type: String) -> int:
-	return achievements.achievement_effect_total(character, effect_type)
-
-func achievement_durability_bonus(character: Dictionary, track: String) -> int:
-	return achievements.achievement_durability_bonus(character, track)
-
-func achievement_points_spent(character: Dictionary) -> int:
-	return achievements.achievement_points_spent(character)
-
-func achievement_granted_perk_ids(character: Dictionary) -> Array:
-	return achievements.achievement_granted_perk_ids(character)
-
-func is_perk_granted_by_achievement(character: Dictionary, perk_id: String) -> bool:
-	return achievements.is_perk_granted_by_achievement(character, perk_id)
-
-func achievement_granted_perks(character: Dictionary) -> Array:
-	return achievements.achievement_granted_perks(character)
-
-func can_purchase_achievement(character: Dictionary, achievement: Dictionary, target_id := "", target_value := 0) -> Dictionary:
-	return achievements.can_purchase_achievement(character, achievement, target_id, target_value)
-
-func achievement_ability_purchase_count(character: Dictionary, ability: String) -> int:
-	return achievements.achievement_ability_purchase_count(character, ability)
-
-func add_achievement_purchase(character: Dictionary, achievement_id: String, target_id := "", target_value := 0, notes := "") -> Dictionary:
-	return achievements.add_achievement_purchase(character, achievement_id, target_id, target_value, notes)
-
-func remove_achievement_purchase(character: Dictionary, line_id: String) -> void:
-	achievements.remove_achievement_purchase(character, line_id)
-
-func achievement_display_name(achievement: Dictionary, entry: Dictionary = {}) -> String:
-	return achievements.achievement_display_name(achievement, entry)
-
-func _normalize_selected_achievements(character: Dictionary) -> void:
-	achievements._normalize_selected_achievements(character)
+func clear_cache() -> void:
+	_cached_summary.clear()
+	_last_character_hash = 0
 
 var data: Dictionary = {}
 var species: Array = []
@@ -447,7 +187,7 @@ func default_character() -> Dictionary:
 		"setting": data.get("setting", "Core"),
 		"achievement_level": 1,
 		"achievement_points": 0,
-		"achievement_points_available": 0,
+		"achievements.achievement_points_available": 0,
 		"achievement_points_spent_other": 0,
 		"species_id": 0,
 		"profession_id": 0,
@@ -462,7 +202,7 @@ func default_character() -> Dictionary:
 		"selected_skills": {},
 		"selected_perks": {},
 		"selected_flaws": {},
-		"selected_achievements": [],
+		"achievements.selected_achievements": [],
 		"mutations": {
 			"generation_mode": "random",
 			"origin": "engineered",
@@ -512,13 +252,13 @@ func ensure_character_shape(character: Dictionary) -> Dictionary:
 		character["selected_flaws"] = {}
 	else:
 		_normalize_selected_character_options(character, "selected_flaws", FLAW_DEFINITIONS, "bonus_options")
-	if not character.has("selected_achievements"):
-		character["selected_achievements"] = []
+	if not character.has("achievements.selected_achievements"):
+		character["achievements.selected_achievements"] = []
 	else:
-		_normalize_selected_achievements(character)
+		achievements._normalize_selected_achievements(character)
 	if not character.has("mutations"):
 		character["mutations"] = {}
-	_normalize_mutations(character)
+	mutations._normalize_mutations(character)
 	if not character.has("optional_rules"):
 		character["optional_rules"] = {}
 	for rule in OPTIONAL_RULES:
@@ -537,13 +277,13 @@ func ensure_character_shape(character: Dictionary) -> Dictionary:
 	if not character.has("achievement_points"):
 		character["achievement_points"] = 0
 	character["achievement_points"] = max(0, _as_int(character.get("achievement_points", 0)))
-	character["achievement_level"] = achievement_level_for_points(_as_int(character.get("achievement_points", 0)))
-	if not character.has("achievement_points_available"):
-		character["achievement_points_available"] = 0
+	character["achievement_level"] = achievements.achievement_level_for_points(_as_int(character.get("achievement_points", 0)))
+	if not character.has("achievements.achievement_points_available"):
+		character["achievements.achievement_points_available"] = 0
 	if not character.has("achievement_points_spent_other"):
 		character["achievement_points_spent_other"] = 0
 	character["achievement_points_spent_other"] = max(0, _as_int(character.get("achievement_points_spent_other", 0)))
-	character["achievement_points_available"] = achievement_points_available(character)
+	character["achievements.achievement_points_available"] = achievements.achievement_points_available(character)
 	if not character.has("damage"):
 		character["damage"] = {}
 	for damage_type in ["stun", "wound", "mortal", "fatigue"]:
@@ -553,7 +293,7 @@ func ensure_character_shape(character: Dictionary) -> Dictionary:
 		character["last_resorts_used"] = 0
 	if not character.has("equipment"):
 		character["equipment"] = {}
-	_normalize_equipment(character)
+	equipment._normalize_equipment(character)
 	clamp_trackers(character)
 	return character
 
@@ -664,7 +404,7 @@ func achievement_adjusted_abilities(character: Dictionary) -> Dictionary:
 	var abilities: Dictionary = character.get("abilities", {})
 	for ability in ABILITIES:
 		result[ability] = _as_int(abilities.get(ability, 10))
-	for entry in selected_achievements(character):
+	for entry in achievements.selected_achievements(character):
 		var achievement: Dictionary = entry.get("achievement", {})
 		var effect: Dictionary = achievement.get("effect", {})
 		if String(effect.get("type", "")) != "ability":
@@ -680,7 +420,7 @@ func achievement_adjusted_abilities(character: Dictionary) -> Dictionary:
 func effective_abilities(character: Dictionary) -> Dictionary:
 	var result := achievement_adjusted_abilities(character)
 	for ability in ABILITIES:
-		result[ability] = max(1, _as_int(result.get(ability, 10)) + mutation_ability_bonus(character, ability))
+		result[ability] = max(1, _as_int(result.get(ability, 10)) + mutations.mutation_ability_bonus(character, ability))
 	return result
 
 
@@ -721,7 +461,7 @@ func ability_limits(character: Dictionary, ability: String) -> Array:
 
 func effective_ability_limits(character: Dictionary, ability: String) -> Array:
 	var limits := ability_limits(character, ability)
-	var bonus := mutation_ability_bonus(character, ability)
+	var bonus := mutations.mutation_ability_bonus(character, ability)
 	var maximum: int = _as_int(limits[1]) + maxi(0, bonus)
 	if bonus < 0:
 		maximum += bonus
@@ -761,10 +501,10 @@ func action_check(character: Dictionary) -> Dictionary:
 	var profession := get_profession_by_id(_as_int(character.get("profession_id", 0)))
 	var current_species := get_species_by_id(_as_int(character.get("species_id", 0)))
 	var base := int(floor((_as_int(abilities.get("DEX", 10)) + _as_int(abilities.get("INT", 10))) / 2.0))
-	var ordinary := base + _as_int(profession.get("action_bonus", 0)) + achievement_effect_total(character, "action_check_score")
+	var ordinary := base + _as_int(profession.get("action_bonus", 0)) + achievements.achievement_effect_total(character, "action_check_score")
 	var good := int(floor(ordinary / 2.0))
 	var amazing := int(floor(good / 2.0))
-	var action_step := _as_int(current_species.get("action_step", 0)) + achievement_effect_total(character, "action_check_step") + mutation_action_check_step(character)
+	var action_step := _as_int(current_species.get("action_step", 0)) + achievements.achievement_effect_total(character, "action_check_step") + mutations.mutation_action_check_step(character)
 	return {
 		"marginal": ordinary + 1,
 		"ordinary": ordinary,
@@ -782,10 +522,10 @@ func durability(character: Dictionary) -> Dictionary:
 	var multiplier := _as_float(current_species.get("durability_multiplier", 1.0))
 	var durability_base := int(floor(constitution * multiplier))
 	return {
-		"stun": durability_base + achievement_durability_bonus(character, "stun") + mutation_durability_bonus(character, "stun"),
-		"wound": durability_base + achievement_durability_bonus(character, "wound") + mutation_durability_bonus(character, "wound"),
-		"mortal": int(ceil(durability_base / 2.0)) + achievement_durability_bonus(character, "mortal") + mutation_durability_bonus(character, "mortal"),
-		"fatigue": int(ceil(durability_base / 2.0)) + achievement_durability_bonus(character, "fatigue") + mutation_durability_bonus(character, "fatigue"),
+		"stun": durability_base + achievements.achievement_durability_bonus(character, "stun") + mutations.mutation_durability_bonus(character, "stun"),
+		"wound": durability_base + achievements.achievement_durability_bonus(character, "wound") + mutations.mutation_durability_bonus(character, "wound"),
+		"mortal": int(ceil(durability_base / 2.0)) + achievements.achievement_durability_bonus(character, "mortal") + mutations.mutation_durability_bonus(character, "mortal"),
+		"fatigue": int(ceil(durability_base / 2.0)) + achievements.achievement_durability_bonus(character, "fatigue") + mutations.mutation_durability_bonus(character, "fatigue"),
 	}
 
 
@@ -798,7 +538,7 @@ func movement(character: Dictionary) -> Dictionary:
 		table_total -= 1
 	var sprint := table_total
 	var run := _as_int(MOVEMENT_RUN_BY_TOTAL.get(table_total, 12))
-	var mutation_movement := mutation_movement_modes(character)
+	var mutation_movement := mutations.mutation_movement_modes(character)
 	return {
 		"total": movement_total,
 		"sprint": sprint,
@@ -815,7 +555,7 @@ func movement(character: Dictionary) -> Dictionary:
 func actions_per_round(character: Dictionary) -> int:
 	var abilities := effective_abilities(character)
 	var total := _as_int(abilities.get("CON", 10)) + _as_int(abilities.get("WIL", 10))
-	var bonus := achievement_effect_total(character, "extra_action")
+	var bonus := achievements.achievement_effect_total(character, "extra_action")
 	var base := 1
 	if total <= 15:
 		base = 1
@@ -880,7 +620,7 @@ func starting_skill_budget(character: Dictionary) -> int:
 
 
 func skill_budget(character: Dictionary) -> int:
-	return starting_skill_budget(character) + _as_int(character.get("achievement_points", 0)) + achievement_skill_bonus(character)
+	return starting_skill_budget(character) + _as_int(character.get("achievement_points", 0)) + achievements.achievement_skill_bonus(character)
 
 
 func max_broad_skills(character: Dictionary) -> int:
@@ -1052,7 +792,7 @@ func flaw_bonus_selected(character: Dictionary, flaw_id: String) -> int:
 
 func selected_perks(character: Dictionary) -> Array:
 	var rows := _selected_character_options(character, "selected_perks", PERK_DEFINITIONS, "cost")
-	for granted in achievement_granted_perks(character):
+	for granted in achievements.achievement_granted_perks(character):
 		var granted_id := String(granted.get("id", ""))
 		var already_listed := false
 		for row in rows:
@@ -1101,7 +841,7 @@ func skill_purchase_points_used(character: Dictionary) -> int:
 
 
 func skill_points_used(character: Dictionary) -> int:
-	return skill_purchase_points_used(character) + perk_points_used(character) + achievement_points_spent(character)
+	return skill_purchase_points_used(character) + perk_points_used(character) + achievements.achievement_points_spent(character)
 
 
 func broad_skills_used(character: Dictionary) -> int:
@@ -1173,7 +913,7 @@ func skill_score(character: Dictionary, skill: Dictionary) -> Dictionary:
 	var good := int(floor(ordinary / 2.0))
 	var step := 1 if skill.get("type", "") == "broad" else 0
 	step += _species_skill_step_bonus(character, skill_id)
-	step += mutation_skill_step_bonus(character, skill_id)
+	step += mutations.mutation_skill_step_bonus(character, skill_id)
 	
 	# Mindwalker profession bonus (-1 step to focused broad skill and its specialties)
 	if _as_int(character.get("profession_id", 0)) == 6:
@@ -1247,9 +987,9 @@ func validate(character: Dictionary) -> Array:
 			var broad_skill := get_skill_by_id(broad_id)
 			messages.append("%s requires the %s broad skill." % [skill.get("name", "Specialty"), broad_skill.get("name", "parent")])
 
-	for entry in selected_achievements(character):
+	for entry in achievements.selected_achievements(character):
 		var achievement: Dictionary = entry.get("achievement", {})
-		var min_level := _as_int(achievement_cost_entry(achievement, character).get("min_level", 99))
+		var min_level := _as_int(achievements.achievement_cost_entry(achievement, character).get("min_level", 99))
 		var bought_level := _as_int(entry.get("level", 1))
 		if bought_level < min_level:
 			messages.append("%s requires hero level %d for the current profession." % [String(entry.get("name", achievement.get("name", "Achievement"))), min_level])
@@ -1257,28 +997,28 @@ func validate(character: Dictionary) -> Array:
 		if String(effect.get("type", "")) == "remove_flaw" and String(entry.get("target_id", "")).is_empty():
 			messages.append("Remove Flaw requires a selected flaw target.")
 
-	if mutations_enabled(character):
-		var advantages := selected_mutation_advantages(character)
-		var drawbacks := selected_mutation_drawbacks(character)
+	if mutations.mutations_enabled(character):
+		var advantages := mutations.selected_mutation_advantages(character)
+		var drawbacks := mutations.selected_mutation_drawbacks(character)
 		if advantages.is_empty():
 			messages.append("A mutant hero must have at least one advantageous mutation. Source: Player's Handbook p. 214.")
 		if drawbacks.is_empty():
 			messages.append("A mutant hero must have at least one mutation drawback. Source: Player's Handbook p. 214.")
-		if mutation_advantage_points_remaining(character) < 0:
-			messages.append("Advantageous mutation points are overspent by %d." % abs(mutation_advantage_points_remaining(character)))
-		if mutation_drawback_points_remaining(character) < 0:
-			messages.append("Mutation drawback points are overspent by %d." % abs(mutation_drawback_points_remaining(character)))
+		if mutations.mutation_advantage_points_remaining(character) < 0:
+			messages.append("Advantageous mutation points are overspent by %d." % abs(mutations.mutation_advantage_points_remaining(character)))
+		if mutations.mutation_drawback_points_remaining(character) < 0:
+			messages.append("Mutation drawback points are overspent by %d." % abs(mutations.mutation_drawback_points_remaining(character)))
 		for tier in ["Ordinary", "Good", "Amazing"]:
 			var cap := mutations._mutation_advantage_tier_cap(tier)
 			var count := mutations._mutation_tier_count(advantages, tier)
-			var allowed_count := _as_int(mutation_distribution(character, "advantage").get(tier, 0))
+			var allowed_count := _as_int(mutations.mutation_distribution(character, "advantage").get(tier, 0))
 			if count > allowed_count:
 				messages.append("Advantageous mutations exceed the selected point distribution for %s by %d." % [tier, count - allowed_count])
 			if cap > 0 and count > cap:
 				messages.append("A mutant can have no more than %d %s advantageous mutation%s. Source: Player's Handbook p. 216." % [cap, tier, "" if cap == 1 else "s"])
 		for tier in ["Slight", "Moderate", "Extreme"]:
 			var count := mutations._mutation_tier_count(drawbacks, tier)
-			var allowed_count := _as_int(mutation_distribution(character, "drawback").get(tier, 0))
+			var allowed_count := _as_int(mutations.mutation_distribution(character, "drawback").get(tier, 0))
 			if count > allowed_count:
 				messages.append("Mutation drawbacks exceed the selected point distribution for %s by %d." % [tier, count - allowed_count])
 
@@ -1287,25 +1027,29 @@ func validate(character: Dictionary) -> Array:
 
 func summary(character: Dictionary) -> Dictionary:
 	ensure_character_shape(character)
+	var current_hash := character.hash()
+	if current_hash == _last_character_hash and not _cached_summary.is_empty():
+		return _cached_summary
+
 	var used_points := skill_points_used(character)
 	var broad_used := broad_skills_used(character)
 	var additional_broad_used := additional_broad_skills_used(character)
 	var additional_broad_max := additional_broad_skill_limit(character)
 	var achievement_points := _as_int(character.get("achievement_points", 0))
-	var achievement_used := achievement_points_used(character)
-	var achievement_available := achievement_points_available(character)
+	var achievement_used := achievements.achievement_points_used(character)
+	var achievement_available := achievements.achievement_points_available(character)
 	var perk_points := perk_points_used(character)
 	var flaw_bonus := flaw_skill_points_bonus(character)
 	var skill_purchase_points := skill_purchase_points_used(character)
-	var achievement_spending := achievement_points_spent(character)
-	character["achievement_points_available"] = achievement_available
-	return {
-		"achievement_level": achievement_level_for_points(achievement_points),
+	var achievement_spending := achievements.achievement_points_spent(character)
+	character["achievements.achievement_points_available"] = achievement_available
+	_cached_summary = {
+		"achievement_level": achievements.achievement_level_for_points(achievement_points),
 		"achievement_points": achievement_points,
-		"achievement_points_used": achievement_used,
-		"achievement_points_available": achievement_available,
-		"achievement_next_level_points": achievement_next_level_points(achievement_points),
-		"achievement_skill_bonus": achievement_skill_bonus(character),
+		"achievements.achievement_points_used": achievement_used,
+		"achievements.achievement_points_available": achievement_available,
+		"achievements.achievement_next_level_points": achievements.achievement_next_level_points(achievement_points),
+		"achievements.achievement_skill_bonus": achievements.achievement_skill_bonus(character),
 		"starting_skill_budget": starting_skill_budget(character),
 		"ability_total": ability_total(character),
 		"ability_target": ability_point_total(),
@@ -1315,7 +1059,7 @@ func summary(character: Dictionary) -> Dictionary:
 		"skill_purchase_points_used": skill_purchase_points,
 		"skill_points_remaining": skill_budget(character) - used_points,
 		"achievement_benefit_points_used": achievement_spending,
-		"selected_achievements": selected_achievements(character),
+		"achievements.selected_achievements": achievements.selected_achievements(character),
 		"perk_points_used": perk_points,
 		"perk_count": selected_perk_count(character),
 		"flaw_skill_points_bonus": flaw_bonus,
@@ -1331,10 +1075,12 @@ func summary(character: Dictionary) -> Dictionary:
 		"durability": durability(character),
 		"movement": movement(character),
 		"last_resorts": last_resorts(character),
-		"equipment": equipment_summary(character),
-		"mutations": mutation_summary(character),
+		"equipment": equipment.equipment_summary(character),
+		"mutations": mutations.mutation_summary(character),
 		"validations": validate(character),
 	}
+	_last_character_hash = current_hash
+	return _cached_summary
 
 
 func skill_detail(skill: Dictionary, character: Dictionary = {}) -> Dictionary:
@@ -1400,7 +1146,7 @@ func skill_roll_notes_for_character(character: Dictionary) -> Array:
 
 	for note in species_roll_notes_for_character(character):
 		notes.append(String(note))
-	for note in mutation_roll_notes_for_character(character):
+	for note in mutations.mutation_roll_notes_for_character(character):
 		notes.append(String(note))
 	if selected.is_empty():
 		return _unique_strings(notes)
@@ -1795,17 +1541,21 @@ func _last_resort_base(personality: int) -> Dictionary:
 	return {"max": 4, "cost": 2}
 
 
-func _as_int(value, default_value := 0) -> int:
+func _as_int(value: Variant, default_value: int = 0) -> int:
+	if value == null:
+		return default_value
+		
 	match typeof(value):
 		TYPE_INT:
-			return value
+			return value as int
 		TYPE_FLOAT:
-			return int(value)
+			return int(value as float)
 		TYPE_STRING:
-			if String(value).is_valid_int():
-				return int(value)
-			if String(value).is_valid_float():
-				return int(float(value))
+			var str_val = value as String
+			if str_val.is_valid_int():
+				return str_val.to_int()
+			if str_val.is_valid_float():
+				return int(str_val.to_float())
 	return default_value
 
 
