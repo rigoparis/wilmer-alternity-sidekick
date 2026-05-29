@@ -181,6 +181,10 @@ const BROAD_SKILL_SUMMARIES := {
 	150: "Perform as an actor, dancer, musician, singer, or similar entertainer.",
 	155: "Negotiate, charm, interview, intimidate, seduce, taunt, and bargain.",
 	162: "Lead others through command and inspiration.",
+	900: "Control the body's life processes, metabolism, and structure.",
+	901: "This skill allows a character to open his mind to the thoughts of others or send his own thoughts into the minds of others.",
+	902: "This skill allows a hero to manipulate his physical environment with only the power of his mind.",
+	903: "This skill allows a character to experience his environment through an agency beyond the normal senses, using the power of his mind."
 }
 
 const SPECIALTY_SUMMARIES := {
@@ -265,6 +269,35 @@ const SPECIALTY_SUMMARIES := {
 	161: "Provoke or distract an opponent.",
 	163: "Direct others in a structured chain of command.",
 	164: "Encourage others and improve morale; this skill cannot be used untrained.",
+	90001: "Generates a staff or club of biokinetic energy that extends from the hero's hand and can be used as a melee weapon. Requires Melee Attack-bludgeon to wield.",
+	90002: "This skill allows a character to regulate his metabolic processes, enabling him to survive longer without food and water, in extreme climates, and other hostile conditions.",
+	90003: "By concentrating, a character using this skill can heal himself of wound damage or disease.",
+	90004: "This skill allows a character to alter his physical features to do something he wouldn't be able to do in his normal form.",
+	90005: "When using this skill, a character can offset fatigue or stun damage that he has suffered.",
+	90006: "By laying hands upon another character, the hero alleviates that character's damage or disease by absorbing it into himself.",
+	90101: "With this skill, a character can send and receive thoughts to and from another character, usually for the purpose of exchanging information.",
+	90102: "This skill is the ability to link one's mind with a computer or cybernetic machine without using a physical connection of any kind.",
+	90103: "This skill enables a character to fool a target's mind by projecting an illusion of sight or sound into it.",
+	90104: "This skill allows the user to direct a powerful blast of pure mental energy at another mind.",
+	90105: "This skill allows a character to establish mental defense against psionic powers.",
+	90106: "This specialty skill allows a character to mesmerize another character, planting a thought into their mind and convincing them that it is their own.",
+	90107: "This skill inflicts fatigue damage upon a target, perhaps prompting that character to decide that he is in need of rest.",
+	90201: "With this skill, a character can cause an electrical charge to build up in the air around him, and direct that charge to shock a target.",
+	90202: "This skill allows a character to create an invisible defensive barrier that moves with him and provides protection from physical attacks.",
+	90203: "This skill allows a character, with only the power of his mind, to lift himself into the air and propel himself as though he were flying.",
+	90204: "With this skill, a character can excite the molecules in an object so that they give off illumination.",
+	90205: "This skill is the ability to move objects using the power of the mind.",
+	90206: "This skill allows a character to excite molecules within an object or even in the air until enough heat is generated to cause the object or area to burst into flame.",
+	90301: "To use this skill, a hero focuses on the battle at hand and makes a skill check to receive a bonus to his action checks.",
+	90302: "With this skill, a hero selects a location and projects his mind to that spot, hearing sounds as though he was physically there.",
+	90303: "To employ this skill, a hero selects a location and projects his mind to that spot, allowing him to see everything going on around it as though he was physically there.",
+	90304: "This skill allows a hero to \"read\" the surface emotions of another character, assisting the user in encounter situations.",
+	90305: "This skill enables a hero to \"read\" the surface thoughts of another character with whom the user is in visual contact.",
+	90306: "A character who uses this skill can instinctively determine his present location and mentally plot a course to a distant location.",
+	90307: "With this skill, a character can sense the mood of an area and even \"see\" events that happened there in the recent past.",
+	90308: "This skill is the ability to receive impressions about possible future events.",
+	90309: "This skill gives a hero the ability to read psychic impressions from inanimate objects by touching them.",
+	90310: "This skill enables a hero to realize when a psionic skill is being used in his or her vicinity."
 }
 
 const COMPLEX_SKILL_NOTES := {
@@ -659,6 +692,26 @@ const RANK_BENEFIT_NOTES := {
 		8: "Leadership skill-check bonus improves to -2 steps; Command and Inspire benefits do not stack with each other. Source: Player's Handbook p. 101.",
 		12: "Leadership skill-check bonus improves to -3 steps; Command and Inspire benefits do not stack with each other. Source: Player's Handbook p. 101.",
 	},
+	90004: {
+		1: "Select one of these forms: Elongate fingers, adding one-half meter to reach. Elongate arms, adding 1 meter to reach. Elongate legs, adding 1 meter to height. Source: Player's Handbook Chapter 14: Psionics.",
+		3: "Select one of these forms: Elongate fingers, adding one-half meter to reach. Elongate arms, adding 1 meter to reach. Elongate legs, adding 1 meter to height. Source: Player's Handbook Chapter 14: Psionics.",
+		5: "Choose one of these forms: Disguise; alter one's facial features to hide identity (+2 penalty to Awareness checks involving an attempt to recognize the character). Elongate arms and legs simultaneously. Elongate entire body and alter bone construction to allow passage through small openings (as small as one-half meter wide). Source: Player's Handbook Chapter 14: Psionics.",
+		7: "Choose one of these forms: Disguise; alter one's facial features to hide identity (+2 penalty to Awareness checks involving an attempt to recognize the character). Elongate arms and legs simultaneously. Elongate entire body and alter bone construction to allow passage through small openings (as small as one-half meter wide). Source: Player's Handbook Chapter 14: Psionics.",
+		10: "Choose one of these forms: Improved disguise; alter facial and body features to hide identity (+4 penalty to Awareness checks). Lessen damage; body becomes so flexible and malleable as to reduce the effects of low impact damage. A skill check is made (at no psionic energy cost) to determine how much damage is reduced: Ordinary, d4; Good, d4+2; Amazing, d6+2. Note that this benefit isn't received if the character is wearing armor. Morph control; activate any two forms simultaneously. Source: Player's Handbook Chapter 14: Psionics.",
+		12: "Choose one of these forms: Improved disguise; alter facial and body features to hide identity (+4 penalty to Awareness checks). Lessen damage; body becomes so flexible and malleable as to reduce the effects of low impact damage. A skill check is made (at no psionic energy cost) to determine how much damage is reduced: Ordinary, d4; Good, d4+2; Amazing, d6+2. Note that this benefit isn't received if the character is wearing armor. Morph control; activate any two forms simultaneously. Source: Player's Handbook Chapter 14: Psionics."
+	},
+	90104: {
+		5: "Damage becomes d4+2s/d6+2s/d8+2s. Source: Player's Handbook Chapter 14: Psionics.",
+		9: "Damage caused by the skill goes to 2d4+2s/2d6+2s/2d8+2s. Source: Player's Handbook Chapter 14: Psionics."
+	},
+	90201: {
+		5: "Damage becomes d6+2s/d4w/d4+2w. Source: Player's Handbook Chapter 14: Psionics.",
+		9: "Damage caused by the skill goes to d4+2w/d6+2w/d8+2w. Source: Player's Handbook Chapter 14: Psionics."
+	},
+	90206: {
+		5: "Damage becomes d6+2w/d8+2w/d4m. Source: Player's Handbook Chapter 14: Psionics.",
+		9: "Damage caused by the skill goes to d8+2w/d4m/d4+2m. Source: Player's Handbook Chapter 14: Psionics."
+	}
 }
 
 const SKILL_SOURCE_REFERENCES := {
@@ -1240,6 +1293,7 @@ func load_core_data(path := "res://data/rules/alternity_core.json") -> void:
 	data = parsed
 	species = data.get("species", [])
 	skills = data.get("skills", [])
+	_load_psionics_catalog()
 	_index_skills()
 	_load_equipment_catalog()
 	_load_achievement_catalog()
@@ -1346,6 +1400,21 @@ func _load_mutation_catalog(path := "res://data/rules/mutations_core.json") -> v
 		var item_id := String(item.get("id", ""))
 		if not item_id.is_empty():
 			mutation_drawbacks_by_id[item_id] = item
+
+
+func _load_psionics_catalog(path := "res://data/rules/psionics_core.json") -> void:
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		push_error("Unable to load Alternity psionics data: %s" % path)
+		return
+
+	var parsed = JSON.parse_string(file.get_as_text())
+	if typeof(parsed) != TYPE_DICTIONARY:
+		push_error("Alternity psionics data is not valid JSON: %s" % path)
+		return
+
+	var psionics_skills: Array = parsed.get("skills", [])
+	skills.append_array(psionics_skills)
 
 
 func default_character() -> Dictionary:
@@ -2181,6 +2250,9 @@ func equipment_summary(character: Dictionary) -> Dictionary:
 	for mutation_armor in mutation_armor_rows(character):
 		combat_armor.append(mutation_armor)
 		equipped_armor.append(mutation_armor)
+	for psionic_armor in psionic_armor_rows(character):
+		combat_armor.append(psionic_armor)
+		equipped_armor.append(psionic_armor)
 	return {
 		"carried_count": rows.size(),
 		"total_mass": total_mass,
@@ -2206,6 +2278,46 @@ func attack_forms_for_character(character: Dictionary) -> Array:
 		forms.append(form)
 	for form in mutation_attack_forms(character):
 		forms.append(form)
+	for form in psionic_attack_forms(character):
+		forms.append(form)
+	return forms
+
+func psionic_attack_forms(character: Dictionary) -> Array:
+	var forms := []
+	if is_skill_selected(character, 90001): # Bioweapon
+		var score := _combat_skill_score(character, 90001)
+		var abilities := effective_abilities(character)
+		var strength_bonus := strength_damage_bonus(_as_int(abilities.get("STR", 10)))
+		forms.append({
+			"name": "Bioweapon",
+			"score": _score_text(score),
+			"base_die": action_step_die(_as_int(score.get("step", 1))),
+			"type": "LI/O",
+			"range": "Personal",
+			"damage": _damage_with_bonus("d4s/d4+2w/d6+2m", strength_bonus), # Ordinary: stun, Good: wound, Amazing: mortal
+			"hide": "-",
+			"clip_size": "-",
+			"mass": "",
+		})
+	if is_skill_selected(character, 90104): # Mind Blast
+		var score := _combat_skill_score(character, 90104)
+		var rank := skill_rank(character, 90104)
+		var dmg := "d4+1s/d4+2s/d6+2s"
+		if rank >= 9:
+			dmg = "2d4+2s/2d6+2s/2d8+2s"
+		elif rank >= 5:
+			dmg = "d4+2s/d6+2s/d8+2s"
+		forms.append({
+			"name": "Mind Blast",
+			"score": _score_text(score),
+			"base_die": action_step_die(_as_int(score.get("step", 1))),
+			"type": "En/O",
+			"range": "10/20/40",
+			"damage": dmg,
+			"hide": "-",
+			"clip_size": "-",
+			"mass": "",
+		})
 	return forms
 
 
@@ -3559,7 +3671,12 @@ func _skill_sources(skill: Dictionary) -> Array:
 	elif SKILL_SOURCE_REFERENCES.has(broad_id):
 		sources.append_array(SKILL_SOURCE_REFERENCES[broad_id])
 	else:
-		sources.append("Player's Handbook Chapter 4.")
+		if skill.get("source", "") == "psionics":
+			sources.append("Player's Handbook Chapter 14: Psionics.")
+		elif skill.get("source", "") == "mutations":
+			sources.append("Player's Handbook Chapter 13: Mutants.")
+		else:
+			sources.append("Player's Handbook Chapter 4.")
 	return _unique_strings(sources)
 
 
@@ -4384,3 +4501,38 @@ func _as_float(value, default_value := 0.0) -> float:
 			if String(value).is_valid_float():
 				return float(value)
 	return default_value
+
+
+func psionic_armor_rows(character: Dictionary) -> Array:
+	var rows := []
+	if is_skill_selected(character, 90202): # Kinetic Shield
+		var item := {
+			"id": "psionic_90202",
+			"kind": "armor",
+			"name": "Kinetic Shield",
+			"source": "Psionics",
+			"source_code": "psionics",
+			"reference": "Player's Handbook Chapter 14: Psionics.",
+			"category": "Psionic Power",
+			"class": "Energy Shield",
+			"availability": "-",
+			"mass": 0,
+			"cost": 0,
+			"combat": {
+				"role": "armor",
+				"action_penalty": 1,
+				"toughness": "O",
+				"li": "+2",
+				"hi": "+1",
+				"en": "",
+			},
+		}
+		rows.append({
+			"line_id": "psionic_90202",
+			"item_id": "psionic_90202",
+			"quantity": 1,
+			"equipped": true,
+			"slot": "Psionic",
+			"item": item,
+		})
+	return rows

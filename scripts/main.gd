@@ -1,7 +1,7 @@
 extends Control
 
 const AlternityRules := preload("res://scripts/alternity_rules.gd")
-const TABS := ["Basics", "Skills", "Perks/Flaws", "Equipment", "Achievements", "Mutations", "Summary"]
+const TABS := ["Basics", "Skills", "Perks/Flaws", "Equipment", "Cybertech", "FX / Psionics", "Achievements", "Mutations", "Summary"]
 const COMPACT_WIDTH := 520.0
 const WIDE_WIDTH := 900.0
 const DESKTOP_MAX_WIDTH := 1120.0
@@ -16,7 +16,7 @@ var shell: VBoxContainer
 var header: BoxContainer
 var title_label: Label
 var optional_rules_button: Button
-var tabs: GridContainer
+var tabs: HBoxContainer
 var content_scroll: ScrollContainer
 var content: VBoxContainer
 var status_label: Label
@@ -72,14 +72,14 @@ var mutation_catalog_kind := "advantage"
 var search_refocus_target := ""
 var search_refocus_caret := -1
 
-var color_background := Color(0.957, 0.953, 0.929)
-var color_surface := Color(1.0, 0.992, 0.965)
-var color_surface_soft := Color(0.902, 0.933, 0.914)
-var color_text := Color(0.102, 0.118, 0.125)
-var color_muted := Color(0.376, 0.424, 0.431)
-var color_accent := Color(0.0, 0.45, 0.49)
-var color_warning := Color(0.72, 0.23, 0.16)
-var color_border := Color(0.80, 0.79, 0.72)
+var color_background := Color(0.05, 0.07, 0.10)
+var color_surface := Color(0.10, 0.12, 0.16)
+var color_surface_soft := Color(0.15, 0.18, 0.22)
+var color_text := Color(0.90, 0.92, 0.95)
+var color_muted := Color(0.50, 0.55, 0.60)
+var color_accent := Color(0.00, 0.80, 0.80)
+var color_warning := Color(0.90, 0.30, 0.20)
+var color_border := Color(0.20, 0.25, 0.30)
 
 
 func _ready() -> void:
@@ -145,10 +145,17 @@ func _build_shell() -> void:
 	optional_rules_button.pressed.connect(_show_optional_rules)
 	header.add_child(optional_rules_button)
 
-	tabs = GridContainer.new()
-	tabs.columns = 4
+	var tabs_scroll := ScrollContainer.new()
+	tabs_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	tabs_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	tabs_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tabs_scroll.custom_minimum_size = Vector2(0, 52)
+	shell.add_child(tabs_scroll)
+
+	tabs = HBoxContainer.new()
+	tabs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	tabs.add_theme_constant_override("separation", 6)
-	shell.add_child(tabs)
+	tabs_scroll.add_child(tabs)
 
 	for tab in TABS:
 		var button := Button.new()
@@ -156,12 +163,12 @@ func _build_shell() -> void:
 		button.toggle_mode = true
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.custom_minimum_size = Vector2(0, 42)
-		button.add_theme_stylebox_override("normal", _flat_style(Color(0.88, 0.90, 0.87), Color(0, 0, 0, 0), 8))
-		button.add_theme_stylebox_override("hover", _flat_style(Color(0.82, 0.89, 0.86), Color(0, 0, 0, 0), 8))
+		button.add_theme_stylebox_override("normal", _flat_style(color_surface, Color(0, 0, 0, 0), 8))
+		button.add_theme_stylebox_override("hover", _flat_style(color_surface_soft, Color(0, 0, 0, 0), 8))
 		button.add_theme_stylebox_override("pressed", _flat_style(color_accent, Color(0, 0, 0, 0), 8))
-		button.add_theme_stylebox_override("focus", _flat_style(Color(0.82, 0.89, 0.86), color_accent, 8))
+		button.add_theme_stylebox_override("focus", _flat_style(color_surface_soft, color_accent, 8))
 		button.add_theme_color_override("font_color", color_text)
-		button.add_theme_color_override("font_pressed_color", Color.WHITE)
+		button.add_theme_color_override("font_pressed_color", color_background)
 		button.pressed.connect(func(): _set_tab(tab))
 		tabs.add_child(button)
 		tab_buttons[tab] = button
@@ -201,7 +208,6 @@ func _apply_responsive_layout() -> void:
 
 	var available_width: float = maxf(280.0, viewport_width - float(outer_margin * 2))
 	shell.custom_minimum_size.x = minf(available_width, DESKTOP_MAX_WIDTH)
-	tabs.columns = 2 if compact else _visible_tab_count()
 	_update_header_layout(compact)
 	if status_label != null and rules != null and not character.is_empty():
 		_refresh_status()
@@ -930,7 +936,6 @@ func _refresh_tab_visibility() -> void:
 	for tab in tab_buttons.keys():
 		var button: Button = tab_buttons[tab]
 		button.visible = _tab_visible(String(tab))
-	tabs.columns = 2 if get_viewport_rect().size.x < COMPACT_WIDTH else _visible_tab_count()
 
 
 func _set_tab(tab: String) -> void:
@@ -964,6 +969,10 @@ func _render() -> void:
 			_render_perks_flaws()
 		"Equipment":
 			_render_equipment()
+		"Cybertech":
+			_render_cybertech()
+		"FX / Psionics":
+			_render_fx_psionics()
 		"Achievements":
 			_render_achievements()
 		"Mutations":
@@ -1252,12 +1261,12 @@ func _render_skills() -> void:
 	var summary := rules.summary(character)
 	if is_wide_layout and sticky_skills_panel != null:
 		var picker_box := _add_section("Skill Budget")
-		_render_skill_picker(picker_box, summary)
+		_render_skill_picker(picker_box, summary, false)
 		_render_selected_skill_panel(sticky_skills_panel)
 		return
 
 	var box := _add_section("Skill Budget")
-	_render_skill_picker(box, summary)
+	_render_skill_picker(box, summary, false)
 
 
 func _render_perks_flaws() -> void:
@@ -2942,29 +2951,19 @@ func _add_table_label(parent: GridContainer, text: String, header_cell: bool) ->
 	return label
 
 
-func _render_skill_picker(box: VBoxContainer, summary: Dictionary) -> void:
-	_add_metric(box, "Maximum Skill Points", str(summary["skill_budget"]))
-	_add_metric(box, "Skill Points Used/Available", "%d/%d" % [
-		summary["skill_points_used"],
-		summary["skill_points_remaining"],
-	])
+func _render_skill_picker(box: VBoxContainer, summary: Dictionary, is_psionics := false) -> void:
+	_add_progress_metric(box, "Skill Points Used/Available", summary["skill_points_used"], summary["skill_budget"], "%d / %d" % [summary["skill_points_used"], summary["skill_points_remaining"]])
 	if rules._as_int(summary.get("perk_points_used", 0)) > 0 or rules._as_int(summary.get("flaw_skill_points_bonus", 0)) > 0:
 		_add_metric(box, "Skill Purchases / Perks", "%d / %d SP" % [
 			rules._as_int(summary.get("skill_purchase_points_used", 0)),
 			rules._as_int(summary.get("perk_points_used", 0)),
 		])
 		_add_metric(box, "Flaw Skill Point Bonus", "+%d SP" % rules._as_int(summary.get("flaw_skill_points_bonus", 0)))
-	_add_metric(box, "Maximum Broad Skills", str(summary["max_broad_skills"]))
+	
 	if rules.optional_rule_enabled(character, "2b"):
-		_add_metric(box, "Additional Broad Used/Available", "%d/%d" % [
-			summary["additional_broad_skills_used"],
-			summary["additional_broad_skills_remaining"],
-		])
+		_add_progress_metric(box, "Additional Broad Used/Available", summary["additional_broad_skills_used"], summary["additional_broad_skills_used"] + summary["additional_broad_skills_remaining"], "%d / %d" % [summary["additional_broad_skills_used"], summary["additional_broad_skills_remaining"]])
 	else:
-		_add_metric(box, "Broad Skills Used/Available", "%d/%d" % [
-			summary["broad_skills_used"],
-			summary["broad_skills_remaining"],
-		])
+		_add_progress_metric(box, "Broad Skills Used/Available", summary["broad_skills_used"], summary["max_broad_skills"], "%d / %d" % [summary["broad_skills_used"], summary["broad_skills_remaining"]])
 	var budget_note := "Starting %d + achievement %d" % [
 		rules._as_int(summary.get("starting_skill_budget", 0)),
 		rules._as_int(summary.get("achievement_points", 0)),
@@ -2997,9 +2996,9 @@ func _render_skill_picker(box: VBoxContainer, summary: Dictionary) -> void:
 
 	search.text_changed.connect(func(value):
 		skill_filter = value
-		_refresh_skill_rows(list)
+		_refresh_skill_rows(list, is_psionics)
 	)
-	_refresh_skill_rows(list)
+	_refresh_skill_rows(list, is_psionics)
 
 
 func _render_selected_skill_panel(parent: Container) -> void:
@@ -3057,7 +3056,7 @@ func _add_selected_skill_cell(parent: GridContainer, text: String, header_cell: 
 	return label
 
 
-func _refresh_skill_rows(list: VBoxContainer) -> void:
+func _refresh_skill_rows(list: VBoxContainer, is_psionics := false) -> void:
 	for child in list.get_children():
 		child.queue_free()
 
@@ -3066,6 +3065,8 @@ func _refresh_skill_rows(list: VBoxContainer) -> void:
 		var rows_for_ability := []
 		for broad in rules.broad_skills:
 			if String(broad.get("stat", "")) != ability:
+				continue
+			if (broad.get("source", "") == "psionics") != is_psionics:
 				continue
 
 			var broad_id := rules._as_int(broad.get("id", -1))
@@ -3171,10 +3172,18 @@ func _add_skill_row(parent: VBoxContainer, skill: Dictionary, indented: bool) ->
 		)
 
 	if is_specialty:
+		var controls_container: Container
+		if is_wide_layout:
+			controls_container = HBoxContainer.new()
+		else:
+			controls_container = VBoxContainer.new()
+		controls_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row_box.add_child(controls_container)
+
 		var controls := HBoxContainer.new()
 		controls.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		controls.add_theme_constant_override("separation", 6)
-		row_box.add_child(controls)
+		controls_container.add_child(controls)
 
 		var control_spacer := Control.new()
 		control_spacer.custom_minimum_size = Vector2(56, 1) if indented else Vector2(38, 1)
@@ -3183,7 +3192,7 @@ func _add_skill_row(parent: VBoxContainer, skill: Dictionary, indented: bool) ->
 		var minus := Button.new()
 		minus.text = "-"
 		minus.disabled = rank <= free_rank
-		minus.custom_minimum_size = Vector2(36, 34)
+		minus.custom_minimum_size = Vector2(36, 34) if is_wide_layout else Vector2(44, 44)
 		minus.pressed.connect(func():
 			rules.change_skill_rank(character, skill_id, -1)
 			_render()
@@ -3194,7 +3203,7 @@ func _add_skill_row(parent: VBoxContainer, skill: Dictionary, indented: bool) ->
 		rank_label.text = "Rank %d" % rank
 		rank_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		rank_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		rank_label.custom_minimum_size = Vector2(62, 34)
+		rank_label.custom_minimum_size = Vector2(62, 34) if is_wide_layout else Vector2(62, 44)
 		rank_label.add_theme_color_override("font_color", color_text if rank > 0 else color_muted)
 		rank_label.add_theme_font_size_override("font_size", 13)
 		controls.add_child(rank_label)
@@ -3202,7 +3211,7 @@ func _add_skill_row(parent: VBoxContainer, skill: Dictionary, indented: bool) ->
 		var plus := Button.new()
 		plus.text = "+"
 		plus.disabled = rank >= AlternityRules.MAX_SPECIALTY_RANK
-		plus.custom_minimum_size = Vector2(36, 34)
+		plus.custom_minimum_size = Vector2(36, 34) if is_wide_layout else Vector2(44, 44)
 		plus.pressed.connect(func():
 			rules.change_skill_rank(character, skill_id, 1)
 			_render()
@@ -3224,8 +3233,47 @@ func _add_skill_row(parent: VBoxContainer, skill: Dictionary, indented: bool) ->
 		cost_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		cost_note.add_theme_color_override("font_color", color_muted)
 		cost_note.add_theme_font_size_override("font_size", 12)
-		controls.add_child(cost_note)
+		
+		if is_wide_layout:
+			controls.add_child(cost_note)
+		else:
+			var cost_box := HBoxContainer.new()
+			var cost_spacer := Control.new()
+			cost_spacer.custom_minimum_size = Vector2(56, 1) if indented else Vector2(38, 1)
+			cost_box.add_child(cost_spacer)
+			cost_box.add_child(cost_note)
+			controls_container.add_child(cost_box)
 
+
+func _render_cybertech() -> void:
+	_add_text(content, "Cybertech implementations coming soon...", 14, color_muted)
+
+func _render_fx_psionics() -> void:
+	var overview := _add_section("Psionic Energy & Mindwalker Status")
+	
+	var is_psionic: bool = rules._as_int(character.get("species_id", 0)) == 1 or character.get("profession_id", 0) == 6 # Fraal or Mindwalker
+	var summary := rules.summary(character)
+	if is_psionic:
+		var base_wil := rules._as_int(rules.effective_abilities(character).get("WIL", 10))
+		var is_fraal: bool = rules._as_int(character.get("species_id", 0)) == 1
+		var is_mindwalker: bool = character.get("profession_id", 0) == 6
+		
+		var energy_points := base_wil / 2
+		if is_fraal and is_mindwalker:
+			energy_points = int(base_wil * 1.5)
+		elif is_fraal or is_mindwalker:
+			energy_points = base_wil
+			
+		_add_progress_metric(overview, "Psionic Energy Points", energy_points, energy_points, "%d / %d" % [energy_points, energy_points])
+		_add_text(overview, "Your Psionic Energy is derived from your Will score. Use these points to power psionic abilities.", 12, color_muted)
+	else:
+		_add_text(overview, "You do not currently possess psionic potential. Only Fraal or heroes with the Mindwalker profession/perk can access these powers.", 13, color_warning)
+
+	var skills_box := _add_section("Psionic Skills")
+	if is_psionic:
+		_render_skill_picker(skills_box, summary, true)
+	else:
+		_add_text(skills_box, "Psionic skills are locked.", 13, color_muted)
 
 func _render_summary() -> void:
 	var summary := rules.summary(character)
@@ -3329,12 +3377,24 @@ func _render_summary() -> void:
 		for message in summary["validations"]:
 			_add_text(validation_box, String(message), 14, color_warning)
 
+	var all_selected := rules.selected_skills(character)
+	var standard_skills := []
+	var psionic_skills := []
+	for s in all_selected:
+		if s.get("source", "") == "psionics":
+			psionic_skills.append(s)
+		else:
+			standard_skills.append(s)
+
 	var skill_box := _add_section_to(right_parent, "Selected Skills")
-	var selected := rules.selected_skills(character)
-	if selected.is_empty():
+	if standard_skills.is_empty():
 		_add_text(skill_box, "No purchased skills beyond species free broad skills.", 14, color_muted)
 	else:
-		_add_selected_skill_table(skill_box, selected)
+		_add_selected_skill_table(skill_box, standard_skills)
+
+	if not psionic_skills.is_empty():
+		var psionics_box := _add_section_to(right_parent, "Selected Psionics")
+		_add_selected_skill_table(psionics_box, psionic_skills)
 
 	var perks_box := _add_section_to(right_parent, "Perks")
 	_add_selected_perks_summary(perks_box)
@@ -3658,7 +3718,7 @@ func _add_section(title: String) -> VBoxContainer:
 func _add_section_to(parent: Container, title: String) -> VBoxContainer:
 	var panel := PanelContainer.new()
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.add_theme_stylebox_override("panel", _flat_style(color_surface, color_border, 8))
+	panel.add_theme_stylebox_override("panel", _flat_style(color_surface, color_border, 8, true))
 	parent.add_child(panel)
 
 	var margin := MarginContainer.new()
@@ -3986,6 +4046,45 @@ func _add_metric(parent: VBoxContainer, name: String, value: String) -> void:
 	row.add_child(value_label)
 
 
+func _add_progress_metric(parent: VBoxContainer, name: String, current: float, maximum: float, value_text: String) -> void:
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 4)
+	parent.add_child(box)
+
+	var label_row := HBoxContainer.new()
+	label_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	box.add_child(label_row)
+
+	var name_label := Label.new()
+	name_label.text = name
+	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_label.add_theme_color_override("font_color", color_muted)
+	name_label.add_theme_font_size_override("font_size", 13)
+	label_row.add_child(name_label)
+
+	var value_label := Label.new()
+	value_label.text = value_text
+	value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	value_label.add_theme_color_override("font_color", color_text)
+	value_label.add_theme_font_size_override("font_size", 14)
+	label_row.add_child(value_label)
+
+	var progress := ProgressBar.new()
+	progress.max_value = maximum
+	progress.value = current
+	progress.show_percentage = false
+	progress.custom_minimum_size = Vector2(0, 6)
+	progress.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = color_accent
+	sb.set_corner_radius_all(3)
+	var bg := StyleBoxFlat.new()
+	bg.bg_color = color_border
+	bg.set_corner_radius_all(3)
+	progress.add_theme_stylebox_override("fill", sb)
+	progress.add_theme_stylebox_override("background", bg)
+	box.add_child(progress)
+
 func _add_compact_abilities(parent: VBoxContainer) -> void:
 	var title := Label.new()
 	title.text = "Abilities"
@@ -4057,8 +4156,8 @@ func _add_tracker_row(parent: VBoxContainer, name: String, total: int, used: int
 		button.text = ""
 		button.tooltip_text = "%s box %d" % [name, box_number]
 		button.custom_minimum_size = Vector2(24, 24)
-		button.add_theme_stylebox_override("normal", _flat_style(Color(0.90, 0.91, 0.87), color_border, 4))
-		button.add_theme_stylebox_override("hover", _flat_style(Color(0.84, 0.88, 0.84), color_border, 4))
+		button.add_theme_stylebox_override("normal", _flat_style(color_surface, color_border, 4))
+		button.add_theme_stylebox_override("hover", _flat_style(color_surface_soft, color_border, 4))
 		button.add_theme_stylebox_override("pressed", _flat_style(color_warning, color_warning, 4))
 		button.pressed.connect(func():
 			var next_used := box_number
@@ -4069,7 +4168,7 @@ func _add_tracker_row(parent: VBoxContainer, name: String, total: int, used: int
 		grid.add_child(button)
 
 
-func _flat_style(background: Color, border: Color, radius: int) -> StyleBoxFlat:
+func _flat_style(background: Color, border: Color, radius: int, shadow: bool = false) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = background
 	style.set_corner_radius_all(radius)
@@ -4078,4 +4177,8 @@ func _flat_style(background: Color, border: Color, radius: int) -> StyleBoxFlat:
 		style.set_border_width_all(1)
 	else:
 		style.set_border_width_all(0)
+	if shadow:
+		style.shadow_color = Color(0, 0, 0, 0.4)
+		style.shadow_size = 8
+		style.shadow_offset = Vector2(0, 4)
 	return style
