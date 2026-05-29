@@ -181,10 +181,10 @@ const BROAD_SKILL_SUMMARIES := {
 	150: "Perform as an actor, dancer, musician, singer, or similar entertainer.",
 	155: "Negotiate, charm, interview, intimidate, seduce, taunt, and bargain.",
 	162: "Lead others through command and inspiration.",
-	900: "Control the body's life processes, metabolism, and structure.",
-	901: "This skill allows a character to open his mind to the thoughts of others or send his own thoughts into the minds of others.",
-	902: "This skill allows a hero to manipulate his physical environment with only the power of his mind.",
-	903: "This skill allows a character to experience his environment through an agency beyond the normal senses, using the power of his mind."
+	900: "The following psionic broad skill and its specialty skills are connected to a character's Constitution score. The broad skill has a base situation die of +d4; each of the specialty skills has a base die of +d0. This skill can't be used untrained. This skill allows a character to harness the power of his mind to enhance his body's functions. With just the broad skill, a character can attempt to use any of the related specialty skills except those that can't be used untrained. The difficulty of such an action is reflected in the increased psionic energy cost and the higher base situation die for using just the broad skill.",
+	901: "The following psionic broad skill and its specialty skills are connected to a character's Personality score. The broad skill has a base situation die of +d4; each of the specialty skills has a base die of +d0. This skill can't be used untrained. This skill allows a character to open his mind to the thoughts of others or send his own thoughts into the minds of others. With just the broad skill, a character can attempt to use any of the related specialty skills except those that can't be used untrained. The difficulty of such an action is reflected in the increased psionic energy cost and the higher base situation die for using just the broad skill.",
+	902: "The following psionic broad skill and its specialty skills are connected to a character's Will score. The broad skill has a base situation die of +d4; each of the specialty skills has a base die of +d0. This skill can't be used untrained. This skill allows a hero to manipulate his physical environment with only the power of his mind. With just the broad skill, a character can attempt to use any of the related specialty skills except those that can't be used untrained. The difficulty of such an action is reflected in the increased psionic energy cost and the higher base situation die for using just the broad skill.",
+	903: "The following psionic broad skill and its specialty skills are connected to a character's Intelligence score. The broad skill has a base situation die of +d4; each of the specialty skills has a base die of +d0. This skill can't be used untrained. This skill allows a character to experience his environment through an agency beyond the normal senses, using the power of his mind. With just the broad skill, a character can attempt to use any of the related specialty skills except those that can't be used untrained. The difficulty of such an action is reflected in the increased psionic energy cost and the higher base situation die for using just the broad skill."
 }
 
 const SPECIALTY_SUMMARIES := {
@@ -269,35 +269,35 @@ const SPECIALTY_SUMMARIES := {
 	161: "Provoke or distract an opponent.",
 	163: "Direct others in a structured chain of command.",
 	164: "Encourage others and improve morale; this skill cannot be used untrained.",
-	90001: "Generates a staff or club of biokinetic energy that extends from the hero's hand and can be used as a melee weapon. Requires Melee Attack-bludgeon to wield.",
-	90002: "This skill allows a character to regulate his metabolic processes, enabling him to survive longer without food and water, in extreme climates, and other hostile conditions.",
-	90003: "By concentrating, a character using this skill can heal himself of wound damage or disease.",
-	90004: "This skill allows a character to alter his physical features to do something he wouldn't be able to do in his normal form.",
-	90005: "When using this skill, a character can offset fatigue or stun damage that he has suffered.",
-	90006: "By laying hands upon another character, the hero alleviates that character's damage or disease by absorbing it into himself.",
-	90101: "With this skill, a character can send and receive thoughts to and from another character, usually for the purpose of exchanging information.",
-	90102: "This skill is the ability to link one's mind with a computer or cybernetic machine without using a physical connection of any kind.",
-	90103: "This skill enables a character to fool a target's mind by projecting an illusion of sight or sound into it.",
-	90104: "This skill allows the user to direct a powerful blast of pure mental energy at another mind.",
-	90105: "This skill allows a character to establish mental defense against psionic powers.",
-	90106: "This specialty skill allows a character to mesmerize another character, planting a thought into their mind and convincing them that it is their own.",
-	90107: "This skill inflicts fatigue damage upon a target, perhaps prompting that character to decide that he is in need of rest.",
-	90201: "With this skill, a character can cause an electrical charge to build up in the air around him, and direct that charge to shock a target.",
-	90202: "This skill allows a character to create an invisible defensive barrier that moves with him and provides protection from physical attacks.",
-	90203: "This skill allows a character, with only the power of his mind, to lift himself into the air and propel himself as though he were flying.",
-	90204: "With this skill, a character can excite the molecules in an object so that they give off illumination.",
-	90205: "This skill is the ability to move objects using the power of the mind.",
-	90206: "This skill allows a character to excite molecules within an object or even in the air until enough heat is generated to cause the object or area to burst into flame.",
-	90301: "To use this skill, a hero focuses on the battle at hand and makes a skill check to receive a bonus to his action checks.",
-	90302: "With this skill, a hero selects a location and projects his mind to that spot, hearing sounds as though he was physically there.",
-	90303: "To employ this skill, a hero selects a location and projects his mind to that spot, allowing him to see everything going on around it as though he was physically there.",
-	90304: "This skill allows a hero to \"read\" the surface emotions of another character, assisting the user in encounter situations.",
-	90305: "This skill enables a hero to \"read\" the surface thoughts of another character with whom the user is in visual contact.",
-	90306: "A character who uses this skill can instinctively determine his present location and mentally plot a course to a distant location.",
-	90307: "With this skill, a character can sense the mood of an area and even \"see\" events that happened there in the recent past.",
-	90308: "This skill is the ability to receive impressions about possible future events.",
-	90309: "This skill gives a hero the ability to read psychic impressions from inanimate objects by touching them.",
-	90310: "This skill enables a hero to realize when a psionic skill is being used in his or her vicinity."
+	90001: "Extended duration. When employing this skill, a character generates a staff or club of bio-kinetic energy that extends from his hand and can be used as a melee weapon. The bioweapon requires the Melee Attack-bludgeon skill to be wielded effectively. The bioweapon has a damage rating of d4/d4+2/d6+2 (plus any adjustment for Strength, if applicable), depending on the result of each Melee Attack-bludgeon skill check. The initial skill check used to generate the weapon determines the type of damage the weapon does for as long as the current weapon is maintained: Ordinary, stun; Good, wound; Amazing, mortal.",
+	90002: "Extended duration. Through the use of this skill, a character can regulate his metabolic processes. This allows him to survive longer without food and water, in extreme climates, and in other hostile conditions. He can also slow his bodily functions to a point where he can pretend to be dead, should he need to fool others in some situation. A check is made when a character enters a hostile environment or otherwise wants to employ this skill. In the case of a hostile environment, the result of a skill check determines the type of protection a character can simulate by manipulating his own body: Ordinary, vacuum mask; Good, jumpsuit; Amazing, soft e-suit. After the initial use of the skill, the level of protection can be maintained every hour thereafter at a cost of 1 psionic energy point.",
+	90003: "This skill can't be used untrained. By concentrating, a character using this skill can heal himself of wound damage or disease. How much damage can be healed depends on the result of a skill check: Ordinary, 1 wound point; Good, 2 points; Amazing, 3 points. For disease, the following results apply: Ordinary, reduce the degree of illness by one grade; Good, reduce by two grades; Amazing, reduce by three grades. Psionic healing requires time. The results are immediate, but the body's reaction to the use of the skill lasts one hour. For this reason, the heal skill can't be attempted more than once per hour, even if the check result is a Failure. Healing Mortal Damage: At rank 6, a character becomes able to heal mortal damage. Skill check results change to: Ordinary, 2 wounds; Good, 3 wounds or 1 mortal; Amazing, 4 wounds or 2 mortals.",
+	90004: "This skill can't be used untrained. By using this skill, a character can alter his features so as to disguise himself or to accomplish something he wouldn't be able to do in his normal form, such as squeeze into a small hole, reach higher than his height or arm length normally allows, or shift his body mass to slip loose of bonds. Morphing requires an entire round (4 phases) to complete, from the moment the alteration starts to when it is finished. The character can do nothing else while this process is taking place. The initial check determines how long the morphed form lasts: Ordinary, 1 round; Good, 2 rounds; Amazing, 3 rounds. Extendable at 1 psionic energy point per round. Volume can be expanded/compressed, but mass cannot change. Original characteristics are retained; no game statistics change except those directly related to the morphing (e.g. elongated fingers can grant a -1 bonus to Manipulation-pickpocket checks). Has no effect on clothing/possessions.",
+	90005: "When using this skill, a character can offset fatigue or stun damage, or some of each, that he has suffered. The skill does nothing to alleviate psionic energy loss. A successful skill check provides the character with a certain number of \"rejuvenation points.\" It costs 2 of these points to restore 1 point of fatigue damage, and 1 of these points to restore 1 point of stun damage. On an Ordinary success, the character receives 2 \"rejuvenation points\"; on a Good success, 4 points; and on an Amazing success, 6 points. The character can use these points in any combination to restore stun points, fatigue points, or some of each. \"Rejuvenation points\" that can't be used immediately are lost. Psionic rejuvenation requires time. The results are immediate, but the body's reaction to the use of the skill lasts one hour. For this reason, the rejuvenate skill can't be attempted more than once per hour.",
+	90006: "By laying hands upon another character and making a successful skill check, the hero alleviates that character's damage or disease by absorbing it into himself. The damage that can be absorbed is tied to the result of a skill check: Critical Failure, character suffers 1 wound; Failure, no effect; Ordinary, hero absorbs 1 wound; Good, hero absorbs 2 wounds; Amazing, hero absorbs 3 wounds or 1 mortal. An Ordinary result reduces the patient's illness by one grade, simultaneously infecting the hero with that one grade of disease; a Good result reduces the patient's disease by two grades, transferring the ailment into the hero; and an Amazing result transfers any illness from the patient into the hero. Once the hero absorbs the damage or disease, he must either use the heal specialty skill, heal naturally, or receive medical or psionic attention.",
+	90101: "Extended duration. With this skill, a character can send and receive thoughts to and from another character, usually for the purpose of exchanging information. Modifiers may apply, depending on the range, familiarity, and willingness of the target mind to be contacted. The type of thoughts that can be exchanged depends on the result of a skill check: On an Ordinary success, simple concepts (brief questions and one-word answers) can be exchanged. On a Good success, moderate discussion (pass notes back and forth, one note per 2 phases) can occur. On an Amazing success, the communicating characters can have a detailed discussion, as though they were conversing vocally. If the target mind is unwilling to communicate, its Will resistance modifier is applied as a penalty. If contact is established anyway, the unwilling mind can expel the user by making a successful Will feat check or Resolve-mental resolve check with a +1/+2/+3 penalty.",
+	90102: "Extended duration. This skill can't be used untrained. This skill is the ability to link one's mind with a computer or a cybernetic machine without using a physical connection of any kind. The datalink skill can be used to operate computers with mental commands, to project one's mind into the datastream, or to examine computer data by mentally scanning the storage unit. To initiate the link, the user must be within 6 meters of the point of entry (+1 penalty if >2m, +2 if >4m). A computer's normal defenses provide a penalty to the psionics-user's skill check. Otherwise, datalink can be used to accomplish any task that can be performed with the use of any computer.",
+	90103: "Extended duration. This skill enables a character to fool a target's mind by projecting an illusion into it. An illusion can be a sight or a sound, but no other senses can be affected. An illusion is not capable of directly causing damage. The skill is usable only against targets the character can see, and it has a maximum range of 5 meters per skill rank of the user. Any actions the user attempts while maintaining an illusion receive a +1 penalty. The result of the character's skill check determines how powerful the illusion is, which provides a penalty to the target's Awareness-intuition skill check to realize he's seeing an illusion: Ordinary, +1; Good, +2; Amazing, +3. Multiple targets provide a cumulative +1 penalty per extra target.",
+	90104: "This skill can't be used untrained. This skill allows the user to direct a powerful blast of pure mental energy at another mind. The target must be within visual contact and no more than 40 meters away (range 10/20/40). Penalties for medium and long range are +1 and +2 respectively. Damage depends on the result of a skill check and the user's rank in the skill. Armor doesn't protect against a mind blast. When a character first acquires this skill, he is able to cause damage of d4+1s/d4+2s/d6+2s. Increased Damage: At rank 5, damage becomes d4+2s/d6+2s/d8+2s. At rank 9, the damage caused by the skill goes to 2d4+2s/2d6+2s/2d8+2s.",
+	90105: "This skill allows a character to establish a mental defense against psionic powers: contact, empathy, illusion, mind reading, mind blast, suggest, and tire. A mind shield provides a penalty to the skill check of another psionic character attempting to use any of these skills: Ordinary, +1; Good, +2; Amazing, +3. These penalties are cumulative with any other resistances. The shield remains in place for d4+4 hours or until it fails to stop a psionic power directed against it.",
+	90106: "This specialty skill allows a character to mesmerize another character, planting a thought into their mind and convincing them that the thought is her own. No suggestion can have a permanent or immediately detrimental effect. A suggestion lasts for as long as 1, 2, or 3 hours (Ordinary, Good, or Amazing). The GM assigns a bonus or a penalty based on extremity (+3 or more penalty for opposed to nature, -1 or -2 bonus for inclined acts). The target is entitled to a Will check after suggest wears off to realize they were suggesting, with a modifier that is the reverse of the situation die used for the skill check.",
+	90107: "This skill inflicts fatigue damage upon a target. The target must be within visual contact and no more than 30 meters away (range 10/20/30). Penalties for medium and long range are +1 and +2 respectively. The amount of damage inflicted depends on the result of a skill check: Ordinary, 1 fatigue point; Good, 2 points; Amazing, 3 points.",
+	90201: "This skill can't be used untrained. With this skill, a character can cause an electrical charge to build up in the air around him, and he can direct that charge up to 16 meters away (range 4/8/16), delivering a shock to a single target. During the phase in which the character makes a successful skill check, the charge builds up. It can be released (for no added point cost) in any phase after that during the current round or the next one, but discharging the energy requires an additional skill check. If the charge is not released, it simply dissipates. The character can't initiate any other psionic skill while the charge is present around his body. The amount of energy damage caused by the shock depends on the result of the skill check made when it is discharged and the character's rank in the skill. When a character first acquires this skill, he is able to cause damage of d4+2s/d6+2s/d4w. Increased Damage: At rank 5, damage becomes d6+2s/d4w/d4+2w. At rank 9, the damage caused by the skill goes to d4+2w/d6+2w/d8+2w.",
+	90202: "Extended duration. This skill can't be used untrained. This skill allows a character to create an invisible defensive barrier that moves with him and provides protection from physical attacks (high impact or low impact damage) by manipulating the air molecules around him. The barrier is so close to his body that it doesn't hinder other actions the hero might take. The quality of the shield depends on the result of a skill check: Ordinary, HI +1/LI +2; Good, HI +2/LI +3; Amazing, HI +3/LI +4. If the shielded character wants to perform other actions while maintaining the shield, those actions receive a +1 penalty due to the character's need to concentrate on maintaining the shield.",
+	90203: "Extended duration. This skill allows a character, with only the power of his mind, to lift himself into the air and propel himself as though he were flying. How high and how fast a character can move while levitating depends on the result of a skill check, as shown below. The first entry is how many meters he can ascend or descend per phase, the second is the speed at which he can fly. These figures are doubled in gravity conditions lighter than Earth normal and halved in gravity conditions heavier than Earth normal: Ordinary: 2 meters/walk x 1; Good: 4 meters/walk x 1.5; Amazing: 6 meters/walk x 2. If a character chooses to stop levitating or runs out of psionic energy points while he's out of touch with the ground, he suffers damage from a fall as indicated on TABLE P15: IMPACT DAMAGE. Performing an additional action while levitating provides a +1 penalty to that action.",
+	90204: "With this skill, a character can excite the molecules in an object so that they give off illumination. It takes one phase for the object to reach maximum luminosity, and the molecules remain excited for the rest of the current round and all of the next round. The object provides Ordinary light (roughly the same as normal daylight) that illuminates an area of up to 6 meters in diameter, depending on the result of a skill check: Ordinary, 2 meters; Good, 4 meters; Amazing, 6 meters.",
+	90205: "Extended duration. This skill is the ability to move objects using the power of the mind. A character can lift objects that weigh a number of kilograms equal to his Will score x 10, or push objects that weigh his Will score x 20 in kilograms. How high and how fast an object can move while being influenced by psychokinetics depends on the result of a skill check. The first entry is how many meters an object can be lifted, the second is the speed at which it can be pushed, both in meters per phase (doubled in light gravity, halved in heavy gravity): Ordinary: Lift 1 / Push 2; Good: Lift 2 / Push 4; Amazing: Lift 3 / Push 6. If a character chooses to stop using psychokinetics or runs out of psionic energy points while the object he's manipulating is out of touch with the ground, the object immediately falls and suffers damage as indicated on TABLE P15: IMPACT DAMAGE.",
+	90206: "This skill can't be used untrained. This skill allows a character to excite molecules within an object or even in the air until enough heat is generated to cause the object or area to burst into flame. In the phase following a successful skill check, the target catches fire and sustains energy damage (range 10/20/30). Armor provides protection against this attack form. If the user targets the air around a character or object, the result is a flash fire storm that has an effect similar to that of an incendiary grenade. Objects and characters up to 6 meters away from the blast can be hurt, but the fire is less intense. The primary and secondary damage from this use of pyrokinetics, as indicated by the psionics-user's rank and skill check, is reduced by 2 points for targets within 2 meters of the blast, by 3 points for targets out to 4 meters away, and by 4 points for targets out to 6 meters away. If a character or object is targeted, the result is an intense burn from the initial damage and the possibility of the character or object catching fire and taking more damage in every phase thereafter until the fire goes out or is extinguished. The intensity of the fire depends on the result of a skill check and the character's rank in the skill. When a character first acquires this skill, he is able to cause damage of d4+2w/d6+2w/d8+2w. Increased Damage: At rank 5, damage becomes d6+2w/d8+2w/d4m. At rank 9, the damage caused by the skill goes to d8+2w/d4m/d4+2m.",
+	90301: "Extended duration. This skill can't be used untrained. To use this skill, a hero focuses on the battle at hand and makes a skill check. The success achieved indicates the benefit he receives while the current application of the skill remains active. A successful skill check gives the hero a bonus to his action checks: Ordinary, -1; Good, -2; Amazing, -3.",
+	90302: "With this skill, a hero selects a location and projects his mind to that spot, hearing sounds as though he was physically there. Clairaudience doesn't screen out noise around the user, so he might have trouble hearing what's going on at a distance. It provides no help in interpreting unknown languages or recognizing unfamiliar sounds, and the mental ear can't move from the location it's projected to. Because the user remains conscious within his body, he is aware of what's happening around his body. The better the result of the skill check, the longer the ability lasts: Ordinary, 1 round; Good, 2 rounds; Amazing, 3 rounds. This duration can be extended by spending 1 psionic energy point for every additional round. Situation modifiers apply.",
+	90303: "To employ this skill, a hero selects a location and projects his mind to that spot. He can then see everything going on around that spot as though he was physically there. This projection must be to an unobstructed location, not to a place inside a solid object. The use of the skill doesn't block the user's normal vision, so he sees double images unless he closes his eyes. It also provides no help in seeing through obscuring elements, such as walls, closed doors, or darkness, and the mental eye can't move from the selected spot. Because the user remains conscious within his body, he is aware of what's happening around his body. The better the result of the skill check, the longer the ability lasts: Ordinary, 1 round; Good, 2 rounds; Amazing, 3 rounds. This duration can be extended by spending 1 psionic energy point for every additional round. Situation modifiers apply.",
+	90304: "This skill allows a hero to \"read\" the surface emotions of another character. This ability assists the user in encounter situations. The skill user must be in visual contact with the target. A successful use of empathy provides a character with an understanding of the target's emotional state (Combative, Hostile, Neutral, Friendly, Charmed, or Fanatic) and provides a bonus when using encounter skills upon that target character (-1, -2, or -3 steps, depending on the degree of success achieved).",
+	90305: "This skill enables a hero to \"read\" the surface thoughts of another character with whom the user is in visual contact. The mental contact remains in effect for a limited time and can't be extended by the use of psionic energy points. The better the degree of success achieved, the longer the contact lasts and the clearer the impressions of the thoughts being read: On an Ordinary success, the contact lasts for 1 phase after the skill check is made. Only random and disjointed thoughts are perceived, such as the target's name or the identity of someone or something he is thinking about or looking at. On a Good success, the contact lasts for 2 phases after the skill check is made. In addition to random thoughts, more detail and more coherence is received, such as why the target is thinking about someone or something, or why the target is in his present location. On an Amazing success, the contact lasts for 3 phases after the skill check is made. Complete surface thoughts can be read—the sort of information that's recovered on an Ordinary or Good success, plus some key fact that's related to what the psionics-user hoped to discover.",
+	90306: "This skill can't be used untrained. A character who uses this skill can instinctively determine his present location and mentally plot a course to a distant location. This can be accomplished on a planetary surface, in normal space, and even through drivespace, depending on how the character applies this skill. This mental ability replaces the use of the Navigation skill (if the character has it) whenever the character decides to spend psionic energy points. All the modifiers that pertain to the use of the Navigation skill apply, except the character doesn't make use of charts, instruments, or computers to determine his location and plot courses. At rank 1, the character selects one specialty of the Navigation skill to which to apply this mental ability, either surface navigation, system astrogation, or drivespace astrogation. Extra Specialty Skills: At rank 5, a second Navigation specialty can be selected. At rank 9, the remaining specialty becomes available.",
+	90307: "With this skill, a character can sense the mood of an area and even \"see\" events that happened there in the recent past. What a character senses depends on the result of a skill check: On an Ordinary success, the character senses general emotions that have been left in an area. On a Good success, he also receives brief flashes of events that may or may not make sense to him. On an Amazing success, he actually experiences a brief encounter as though he were at the scene when the events occurred. One successful skill check can be made in an area, and only recent events can be revealed. In general, a character can see a number of time units (usually hours or days) into the past equal to his skill rank. (With just the broad skill, less than one time unit is available to the character.) This skill can be used by a player to gain clues for his hero, or it can be used by the Gamemaster to provide clues or direct story elements in a certain direction. The Gamemaster can automatically activate this skill (no psionic energy point cost) to provide clues.",
+	90308: "This skill is the ability to receive impressions about possible future events—what the psionics-user sees will probably happen if he takes no action to change it. A character usually doesn't consciously employ this skill. Instead, the Gamemaster calls for a character to make a skill check whenever a precognitive flash might occur. If the character is not willing to spend psionic energy points to make the skill check, nothing happens and the scene continues. What a character senses depends on the result of a skill check: On an Ordinary success, the character perceives vague images of a future event. On a Good success, he receives brief flashes of coming events that may or may not make sense to him. On an Amazing success, he actually experiences a brief encounter as though he is at the scene when the events transpire. In general, a character can see a number of hours or days into the future equal to his skill rank. (With the broad skill, less than one hour or day is available to the character.) If a character wants to force a precognitive flash, the cost in psionic energy points is doubled—2 points to use the specialty skill, 4 points if he has only the broad skill, and 6 points if the check results in a Critical Failure. In addition, a +3 penalty is applied, and whether the check succeeds or not, the skill can't be used again consciously for 2d6 days.",
+	90309: "This skill gives a hero the ability to read psychic impressions from inanimate objects. The character must touch the object to gain insight into who has used it and in what context. What a character senses depends on the result of a skill check: On an Ordinary success, the character receives simple emotions associated with the object. On a Good success, he receives simple images associated with the object. On an Amazing success, he experiences a brief encounter as though he is the person using the object or its owner. To be affected by this skill, an object must be an item that the character can hold and manipulate to pick up psionic impressions. Dirt, the ground, dust, or other casually encountered objects aren't affected because people don't make the sorts of connections with these objects that result in psionic residue being left behind (though postcognition picks up impressions left in an area). The Gamemaster can automatically activate this skill (no psionic energy point cost) to provide a clue or otherwise direct a story.",
+	90310: "This skill enables a hero to realize when a psionic skill is being used in his or her vicinity. Unlike the Psionic Awareness perk, the sensitivity specialty is consciously invoked by the hero whenever he or she desires to do so, and the check to determine success is made by the player of the hero, not by the Gamemaster. Activating the skill requires the hero to use 2 psionic energy points. The sensitivity persists for 1 minute, and can be kept active in subsequent minutes by expending 1 psionic energy point per minute thereafter. The skill check made when the specialty is first invoked determines the extent of what the hero learns during all the time when the specialty remains in use: On an Ordinary success, the hero becomes aware that one or more psionic skills are being employed within a range of 20 meters, and can tell which character(s) the psionic energy is emanating from. A Good success also enables the hero to identify the broad skill(s) being used, and an Amazing success tells the hero the exact specialty skill(s) being used. (The use of sensitivity can itself be detected by another character who successfully employs the skill.)"
 }
 
 const COMPLEX_SKILL_NOTES := {
@@ -692,27 +692,36 @@ const RANK_BENEFIT_NOTES := {
 		8: "Leadership skill-check bonus improves to -2 steps; Command and Inspire benefits do not stack with each other. Source: Player's Handbook p. 101.",
 		12: "Leadership skill-check bonus improves to -3 steps; Command and Inspire benefits do not stack with each other. Source: Player's Handbook p. 101.",
 	},
+	90003: {
+		6: "Can heal mortal damage. Skill check results change to: Ordinary, 2 wounds; Good, 3 wounds or 1 mortal; Amazing, 4 wounds or 2 mortals. Source: Player's Handbook p. 229."
+	},
 	90004: {
-		1: "Select one of these forms: Elongate fingers, adding one-half meter to reach. Elongate arms, adding 1 meter to reach. Elongate legs, adding 1 meter to height. Source: Player's Handbook Chapter 14: Psionics.",
-		3: "Select one of these forms: Elongate fingers, adding one-half meter to reach. Elongate arms, adding 1 meter to reach. Elongate legs, adding 1 meter to height. Source: Player's Handbook Chapter 14: Psionics.",
-		5: "Choose one of these forms: Disguise; alter one's facial features to hide identity (+2 penalty to Awareness checks involving an attempt to recognize the character). Elongate arms and legs simultaneously. Elongate entire body and alter bone construction to allow passage through small openings (as small as one-half meter wide). Source: Player's Handbook Chapter 14: Psionics.",
-		7: "Choose one of these forms: Disguise; alter one's facial features to hide identity (+2 penalty to Awareness checks involving an attempt to recognize the character). Elongate arms and legs simultaneously. Elongate entire body and alter bone construction to allow passage through small openings (as small as one-half meter wide). Source: Player's Handbook Chapter 14: Psionics.",
-		10: "Choose one of these forms: Improved disguise; alter facial and body features to hide identity (+4 penalty to Awareness checks). Lessen damage; body becomes so flexible and malleable as to reduce the effects of low impact damage. A skill check is made (at no psionic energy cost) to determine how much damage is reduced: Ordinary, d4; Good, d4+2; Amazing, d6+2. Note that this benefit isn't received if the character is wearing armor. Morph control; activate any two forms simultaneously. Source: Player's Handbook Chapter 14: Psionics.",
-		12: "Choose one of these forms: Improved disguise; alter facial and body features to hide identity (+4 penalty to Awareness checks). Lessen damage; body becomes so flexible and malleable as to reduce the effects of low impact damage. A skill check is made (at no psionic energy cost) to determine how much damage is reduced: Ordinary, d4; Good, d4+2; Amazing, d6+2. Note that this benefit isn't received if the character is wearing armor. Morph control; activate any two forms simultaneously. Source: Player's Handbook Chapter 14: Psionics."
+		1: "Select one of these forms: Elongate fingers, adding one-half meter to reach. Elongate arms, adding 1 meter to reach. Elongate legs, adding 1 meter to height. Source: Player's Handbook p. 229-230.",
+		3: "Select one of these forms: Elongate fingers, adding one-half meter to reach. Elongate arms, adding 1 meter to reach. Elongate legs, adding 1 meter to height. Source: Player's Handbook p. 229-230.",
+		5: "Choose one of these forms: Disguise; alter one's facial features to hide identity (+2 penalty to Awareness checks involving an attempt to recognize the character). Elongate arms and legs simultaneously. Elongate entire body and alter bone construction to allow passage through small openings (as small as one-half meter wide). Source: Player's Handbook p. 229-230.",
+		7: "Choose one of these forms: Disguise; alter one's facial features to hide identity (+2 penalty to Awareness checks involving an attempt to recognize the character). Elongate arms and legs simultaneously. Elongate entire body and alter bone construction to allow passage through small openings (as small as one-half meter wide). Source: Player's Handbook p. 229-230.",
+		10: "Choose one of these forms: Improved disguise; alter facial and body features to hide identity (+4 penalty to Awareness checks). Lessen damage; body becomes so flexible and malleable as to reduce the effects of low impact damage. A skill check is made (at no psionic energy cost) to determine how much damage is reduced: Ordinary, d4; Good, d4+2; Amazing, d6+2. Note that this benefit isn't received if the character is wearing armor. Morph control; activate any two forms simultaneously. Source: Player's Handbook p. 229-230.",
+		12: "Choose one of these forms: Improved disguise; alter facial and body features to hide identity (+4 penalty to Awareness checks). Lessen damage; body becomes so flexible and malleable as to reduce the effects of low impact damage. A skill check is made (at no psionic energy cost) to determine how much damage is reduced: Ordinary, d4; Good, d4+2; Amazing, d6+2. Note that this benefit isn't received if the character is wearing armor. Morph control; activate any two forms simultaneously. Source: Player's Handbook p. 229-230."
 	},
 	90104: {
-		5: "Damage becomes d4+2s/d6+2s/d8+2s. Source: Player's Handbook Chapter 14: Psionics.",
-		9: "Damage caused by the skill goes to 2d4+2s/2d6+2s/2d8+2s. Source: Player's Handbook Chapter 14: Psionics."
+		5: "Damage becomes d4+2s/d6+2s/d8+2s. Source: Player's Handbook p. 236.",
+		9: "Damage caused by the skill goes to 2d4+2s/2d6+2s/2d8+2s. Source: Player's Handbook p. 236."
 	},
 	90201: {
-		5: "Damage becomes d6+2s/d4w/d4+2w. Source: Player's Handbook Chapter 14: Psionics.",
-		9: "Damage caused by the skill goes to d4+2w/d6+2w/d8+2w. Source: Player's Handbook Chapter 14: Psionics."
+		5: "Damage becomes d6+2s/d4w/d4+2w. Source: Player's Handbook p. 233.",
+		9: "Damage caused by the skill goes to d4+2w/d6+2w/d8+2w. Source: Player's Handbook p. 233."
 	},
 	90206: {
-		5: "Damage becomes d6+2w/d8+2w/d4m. Source: Player's Handbook Chapter 14: Psionics.",
-		9: "Damage caused by the skill goes to d8+2w/d4m/d4+2m. Source: Player's Handbook Chapter 14: Psionics."
+		5: "Damage becomes d6+2w/d8+2w/d4m. Source: Player's Handbook p. 234.",
+		9: "Damage caused by the skill goes to d8+2w/d4m/d4+2m. Source: Player's Handbook p. 234."
+	},
+	90306: {
+		1: "Select one Navigation specialty (surface, system astrogation, or drivespace astrogation) to apply this mental ability. Source: Player's Handbook p. 232.",
+		5: "A second Navigation specialty becomes available. Source: Player's Handbook p. 232.",
+		9: "The remaining Navigation specialty becomes available. Source: Player's Handbook p. 232."
 	}
 }
+
 
 const SKILL_SOURCE_REFERENCES := {
 	0: ["Player's Handbook p. 66."],
@@ -762,7 +771,41 @@ const SKILL_SOURCE_REFERENCES := {
 	150: ["Player's Handbook p. 99-100."],
 	155: ["Player's Handbook p. 100-101."],
 	162: ["Player's Handbook p. 101."],
+	900: ["Player's Handbook p. 229."],
+	90001: ["Player's Handbook p. 229."],
+	90002: ["Player's Handbook p. 229."],
+	90003: ["Player's Handbook p. 229."],
+	90004: ["Player's Handbook p. 229-230."],
+	90005: ["Player's Handbook p. 230."],
+	90006: ["Player's Handbook p. 230."],
+	901: ["Player's Handbook p. 234."],
+	90101: ["Player's Handbook p. 235."],
+	90102: ["Player's Handbook p. 235."],
+	90103: ["Player's Handbook p. 235-236."],
+	90104: ["Player's Handbook p. 236."],
+	90105: ["Player's Handbook p. 236."],
+	90106: ["Player's Handbook p. 236."],
+	90107: ["Player's Handbook p. 236."],
+	902: ["Player's Handbook p. 233."],
+	90201: ["Player's Handbook p. 233."],
+	90202: ["Player's Handbook p. 233-234."],
+	90203: ["Player's Handbook p. 234."],
+	90204: ["Player's Handbook p. 234."],
+	90205: ["Player's Handbook p. 234."],
+	90206: ["Player's Handbook p. 234."],
+	903: ["Player's Handbook p. 230."],
+	90301: ["Player's Handbook p. 230."],
+	90302: ["Player's Handbook p. 230."],
+	90303: ["Player's Handbook p. 230-231."],
+	90304: ["Player's Handbook p. 231."],
+	90305: ["Player's Handbook p. 231-232."],
+	90306: ["Player's Handbook p. 232."],
+	90307: ["Player's Handbook p. 232."],
+	90308: ["Player's Handbook p. 232."],
+	90309: ["Player's Handbook p. 232."],
+	90310: ["Player's Handbook p. 233."]
 }
+
 
 const PERK_DEFINITIONS := [
 	{
@@ -2318,7 +2361,59 @@ func psionic_attack_forms(character: Dictionary) -> Array:
 			"clip_size": "-",
 			"mass": "",
 		})
+	if is_skill_selected(character, 90201): # Electrokinetics
+		var score := _combat_skill_score(character, 90201)
+		var rank := skill_rank(character, 90201)
+		var dmg := "d4+2s/d6+2s/d4w"
+		if rank >= 9:
+			dmg = "d4+2w/d6+2w/d8+2w"
+		elif rank >= 5:
+			dmg = "d6+2s/d4w/d4+2w"
+		forms.append({
+			"name": "Electrokinetics",
+			"score": _score_text(score),
+			"base_die": action_step_die(_as_int(score.get("step", 1))),
+			"type": "En/O",
+			"range": "4/8/16",
+			"damage": dmg,
+			"hide": "-",
+			"clip_size": "-",
+			"mass": "",
+		})
+	if is_skill_selected(character, 90206): # Pyrokinetics
+		var score := _combat_skill_score(character, 90206)
+		var rank := skill_rank(character, 90206)
+		var dmg := "d4+2w/d6+2w/d8+2w"
+		if rank >= 9:
+			dmg = "d8+2w/d4m/d4+2m"
+		elif rank >= 5:
+			dmg = "d6+2w/d8+2w/d4m"
+		forms.append({
+			"name": "Pyrokinetics",
+			"score": _score_text(score),
+			"base_die": action_step_die(_as_int(score.get("step", 1))),
+			"type": "En/O",
+			"range": "10/20/30",
+			"damage": dmg,
+			"hide": "-",
+			"clip_size": "-",
+			"mass": "",
+		})
+	if is_skill_selected(character, 90107): # Tire
+		var score := _combat_skill_score(character, 90107)
+		forms.append({
+			"name": "Tire",
+			"score": _score_text(score),
+			"base_die": action_step_die(_as_int(score.get("step", 1))),
+			"type": "-",
+			"range": "10/20/30",
+			"damage": "1f/2f/3f",
+			"hide": "-",
+			"clip_size": "-",
+			"mass": "",
+		})
 	return forms
+
 
 
 func equipment_has_combat_role(item: Dictionary, role: String) -> bool:
@@ -2401,6 +2496,13 @@ func _combat_skill_score(character: Dictionary, skill_id: int) -> Dictionary:
 	var step := 1 if String(use_skill.get("type", "")) == "broad" else 0
 	step += _species_skill_step_bonus(character, selected_skill_id)
 	step += mutation_skill_step_bonus(character, selected_skill_id)
+	
+	# Mindwalker profession bonus (-1 step to focused broad skill and its specialties)
+	if _as_int(character.get("profession_id", 0)) == 6:
+		var broad_id := selected_skill_id if String(use_skill.get("type", "")) == "broad" else _as_int(use_skill.get("broad_id", -1))
+		if _as_int(character.get("mindwalker_psionic_focus", -1)) == broad_id:
+			step -= 1
+			
 	return _combat_score_from_ordinary(ordinary, step)
 
 
@@ -3471,6 +3573,13 @@ func skill_score(character: Dictionary, skill: Dictionary) -> Dictionary:
 	var step := 1 if skill.get("type", "") == "broad" else 0
 	step += _species_skill_step_bonus(character, skill_id)
 	step += mutation_skill_step_bonus(character, skill_id)
+	
+	# Mindwalker profession bonus (-1 step to focused broad skill and its specialties)
+	if _as_int(character.get("profession_id", 0)) == 6:
+		var broad_id := skill_id if skill.get("type", "") == "broad" else _as_int(skill.get("broad_id", -1))
+		if _as_int(character.get("mindwalker_psionic_focus", -1)) == broad_id:
+			step -= 1
+			
 	return {
 		"ordinary": ordinary,
 		"good": good,
@@ -4423,6 +4532,39 @@ func _skill_summary_roll_notes(skill: Dictionary) -> Array:
 		146: ["Deception is often resisted by a target's judgment or resistance modifiers."],
 		155: ["Interaction skills often change attitudes, extract information, or impose social pressure."],
 		162: ["Leadership affects other characters; exact benefits depend on the scene and GM judgment."],
+		900: ["Allows attempting related specialty skills (except untrained-only ones) at broad score with +1 energy point cost and +d4 situation die."],
+		90001: ["Generates biokinetic melee weapon (requires Melee Attack-bludgeon to wield). Initial check determines damage type: Ordinary=stun, Good=wound, Amazing=mortal. Wielder STR bonus modifies damage (d4/d4+2/d6+2)."],
+		90002: ["Simulates environmental protection: Ordinary=vacuum mask, Good=jumpsuit, Amazing=soft e-suit. Maintenance costs 1 energy point per hour. Can slow bodily functions to fake death."],
+		90003: ["Heals wound damage (Ordinary=1, Good=2, Amazing=3 points) or disease (reduces severity by 1/2/3 grades). Max once per hour. Rank 6 allows healing mortal damage (results change to Ordinary=2 wounds, Good=3 wounds or 1 mortal, Amazing=4 wounds or 2 mortals)."],
+		90004: ["Squeeze, stretch, or disguise. Take 1 round (4 phases) to morph. Lasts 1/2/3 rounds (Ordinary/Good/Amazing); extendable at 1 point/round. Morphed elongated fingers can grant a -1 step bonus to Manipulation-pickpocket checks."],
+		90005: ["Offset fatigue/stun damage. Restores 1 stun per point, 1 fatigue per 2 points. Ordinary/Good/Amazing success grants 2/4/6 rejuvenation points. Max once per hour."],
+		90006: ["Lay hands to absorb patient's wounds or disease. Critical Failure: hero takes 1 wound. Success absorbs 1/2/3 wounds or 1 mortal. Reduces disease by 1/2/all grades (transfers disease to hero)."],
+		901: ["Allows sending or reading thoughts. Untrained-only specialty skills cannot be attempted with broad skill alone."],
+		90101: ["Send/receive thoughts. Ordinary=simple concepts, Good=moderate discussion (notes back and forth), Amazing=detailed discussion. Targets apply Will resistance; unwilling target can expel user via Will or Resolve check with a +1/+2/+3 penalty."],
+		90102: ["Link mind to operate computers/cybernetics within 6 meters (+1 penalty if >2m, +2 if >4m). Normal defenses apply as check penalties."],
+		90103: ["Fool target's sight/sound. Range 5m/rank. Maintains at +1 penalty to other actions. Target's Awareness-intuition check has +1/+2/+3 penalty. Additional targets add a cumulative +1 penalty."],
+		90104: ["Pure mental energy blast at another mind up to 40 meters. Penetrates armor. Damage depends on success and rank (Rank < 5: d4+1s/d4+2s/d6+2s, Rank 5-8: d4+2s/d6+2s/d8+2s, Rank >= 9: 2d4+2s/2d6+2s/2d8+2s)."],
+		90105: ["Defense against contact, empathy, illusion, mind reading, mind blast, suggest, and tire. Imposes +1/+2/+3 penalty to attacker. Collapses after failing to stop a power or after d4+4 hours."],
+		90106: ["Mesmerize target to plant suggestion lasting 1/2/3 hours. GM sets situation modifier based on extremity (+3 or worse penalty for opposed to nature, -1/-2 bonus for inclined acts). Target gets Will check after suggest wears off to realize they were suggested, with reverse modifier."],
+		90107: ["Inflicts 1/2/3 fatigue points on target within 30 meters."],
+		902: ["Allows manipulating physical environment. Untrained-only specialty skills cannot be attempted with broad skill alone."],
+		90201: ["Direct electrical shock up to 16 meters. Building charge takes a check; discharging in same/next round takes another check. Prevent other psionics while charged. Damage depends on check and rank (Rank < 5: d4+2s/d6+2s/d4w, Rank 5-8: d6+2s/d4w/d4+2w, Rank >= 9: d4+2w/d6+2w/d8+2w)."],
+		90202: ["Defensive barrier: Ordinary=HI +1/LI +2, Good=HI +2/LI +3, Amazing=HI +3/LI +4. Action checks while maintaining the shield receive a +1 penalty."],
+		90203: ["Fly/hover. Ascend/descend speed: Ordinary=2m, Good=4m, Amazing=6m. Speed doubled in light gravity, halved in heavy. Mid-air collapse causes impact damage. Active actions while levitating receive a +1 penalty."],
+		90204: ["Illuminate object for 2 rounds. Daylight radius: Ordinary=2m, Good=4m, Amazing=6m."],
+		90205: ["Move objects using mind. Lift weight is Will x 10 kg, push is Will x 20 kg. Lift/push speed: Ordinary=1/2m, Good=2/4m, Amazing=3/6m (doubled in light gravity, halved in heavy). Dropped objects suffer impact damage."],
+		90206: ["Ignite target up to 30 meters. Targets air for flash fire storm (grenade-like 6m area fire, damage reduced by 2/3/4 points at 2/4/6 meters). Targets object/character for intense burn (may continue burning). Damage depends on check and rank (Rank < 5: d4+2w/d6+2w/d8+2w, Rank 5-8: d6+2w/d8+2w/d4m, Rank >= 9: d8+2w/d4m/d4+2m)."],
+		903: ["Experience environment beyond normal senses. Untrained-only specialty skills cannot be attempted with broad skill alone."],
+		90301: ["Bonus to action checks: Ordinary -1, Good -2, Amazing -3 steps/points."],
+		90302: ["Hear sounds at projected location for 1/2/3 rounds. Distance and familiarity modifiers apply."],
+		90303: ["See around projected location for 1/2/3 rounds. Double vision if eyes are open. Distance and familiarity modifiers apply."],
+		90304: ["Read surface emotions in visual contact. Identifies emotional state and provides a step bonus of -1/-2/-3 to subsequent encounter skills."],
+		90305: ["Read surface thoughts in visual contact. Cannot be extended. Ordinary=random thoughts (names/identity) for 1 phase, Good=reasons/location for 2 phases, Amazing=complete surface thoughts and key facts for 3 phases."],
+		90306: ["Instinctive navigation, replacing Navigation skill by spending energy. Rank 1 chooses one Navigation specialty; rank 5 chooses a second; rank 9 makes the last specialty available."],
+		90307: ["Sense mood or see events in an area up to (rank) hours/days into past. Ordinary=general emotions, Good=brief flashes, Amazing=experience brief encounter."],
+		90308: ["Receive unconscious future impressions up to (rank) hours/days. Ordinary=vague images, Good=brief flashes, Amazing=experience brief encounter. Forcing a flash doubles cost, applies a +3 penalty, and blocks use for 2d6 days."],
+		90309: ["Touch object to read OWNER'S psychic impressions. Ordinary=simple emotions, Good=simple images, Amazing=experience ownership/use encounter."],
+		90310: ["Detect psionic use within 20 meters. Persists for 1 minute (extendable at 1 point/minute). Ordinary=tells who, Good=identifies broad skill, Amazing=identifies exact specialty skill."]
 	}
 	var sourced_notes := []
 	var source_text := _source_text_for_skill(skill)
