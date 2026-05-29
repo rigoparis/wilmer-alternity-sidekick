@@ -1964,10 +1964,13 @@ func get_character_equipment_item(character: Dictionary, item_id: String) -> Dic
 	if not catalog_item.is_empty():
 		return catalog_item
 	var equipment: Dictionary = character.get("equipment", {})
-	for item in equipment.get("custom_items", []):
-		if typeof(item) == TYPE_DICTIONARY and String(item.get("id", "")) == item_id:
-			return item
-	return {}
+	if not equipment.has("_custom_items_by_id"):
+		var cache := {}
+		for item in equipment.get("custom_items", []):
+			if typeof(item) == TYPE_DICTIONARY:
+				cache[String(item.get("id", ""))] = item
+		equipment["_custom_items_by_id"] = cache
+	return equipment.get("_custom_items_by_id", {}).get(item_id, {})
 
 
 func equipment_source_options() -> Array:
@@ -2073,6 +2076,7 @@ func add_custom_equipment_to_character(character: Dictionary, item: Dictionary, 
 	var custom_item := _normalize_equipment_item(item.duplicate(true), _next_custom_equipment_id(character))
 	custom_items.append(custom_item)
 	equipment["custom_items"] = custom_items
+	equipment.erase("_custom_items_by_id")
 	character["equipment"] = equipment
 	return add_equipment_to_character(character, String(custom_item.get("id", "")), quantity)
 
@@ -2112,6 +2116,7 @@ func update_custom_equipment_item(character: Dictionary, item_id: String, item: 
 		custom_items[index] = normalized
 		break
 	equipment["custom_items"] = custom_items
+	equipment.erase("_custom_items_by_id")
 	character["equipment"] = equipment
 
 
@@ -4009,6 +4014,7 @@ func _normalize_equipment(character: Dictionary) -> void:
 		var normalized := _normalize_equipment_item(custom_item.duplicate(true), _next_custom_equipment_id_from_list(custom_items))
 		custom_items.append(normalized)
 	equipment["custom_items"] = custom_items
+	equipment.erase("_custom_items_by_id")
 
 	var carried := []
 	for carried_item in equipment.get("carried", []):
@@ -4139,6 +4145,7 @@ func _remove_unused_custom_equipment(character: Dictionary, item_id: String) -> 
 			continue
 		custom_items.append(item)
 	equipment["custom_items"] = custom_items
+	equipment.erase("_custom_items_by_id")
 	character["equipment"] = equipment
 
 
