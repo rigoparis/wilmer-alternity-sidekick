@@ -1,1206 +1,280 @@
 class_name AlternityRules
-extends RefCounted
+extends "res://scripts/alternity_rules_constants.gd"
 
-const ABILITIES := ["STR", "DEX", "CON", "INT", "WIL", "PER"]
-const MAX_SPECIALTY_RANK := 12
-const ABILITY_NAMES := {
-	"STR": "Strength",
-	"DEX": "Dexterity",
-	"CON": "Constitution",
-	"INT": "Intelligence",
-	"WIL": "Will",
-	"PER": "Personality",
-}
+# Sub-modules
+var mutations = preload('res://scripts/alternity_rules_mutations.gd').new(self)
+var equipment = preload('res://scripts/alternity_rules_equipment.gd').new(self)
+var achievements = preload('res://scripts/alternity_rules_achievements.gd').new(self)
 
-const OPTIONAL_RULES := [
-	{
-		"id": "2a",
-		"name": "Optional Rule 2A",
-		"summary": "Alternate starting skill points",
-		"description": "New characters have skill points equal to 30 plus 3 times their INT score. Human heroes receive 5 additional skill points at character creation.",
-	},
-	{
-		"id": "2b",
-		"name": "Optional Rule 2B",
-		"summary": "Alternate broad skill limit",
-		"description": "During initial skill purchase, a character may not learn more than six additional broad skills, not counting racial broad skills. Modify this number by the hero's INT resistance modifier.",
-	},
-	{
-		"id": "2c",
-		"name": "Optional Rule 2C",
-		"summary": "Flat specialty advancement cost",
-		"description": "The cost to purchase rank 2 or higher in a specialty skill is either the list price or list price -1. Current ranks do not increase the cost of advancing that skill.",
-	},
-]
+# Mutations Module Delegation
+func mutant_species_id() -> int:
+	return mutations.mutant_species_id()
 
-const COMPLEX_CHECK_RULES := {
-	"summary": "Complex skill checks are used for tasks that take more than one roll or where the GM wants tension over time.",
-	"successes": "Ordinary success counts as 1 success, Good as 2, and Amazing as 3.",
-	"failures": "A Failure adds no progress. Three Failures ruin the attempt until conditions change; one Critical Failure can ruin it immediately.",
-	"complexity": "Typical complexity: Marginal 2 successes, Ordinary 3-4, Good 5-7, Amazing 8-10. The GM chooses the exact target.",
-}
-const MUTATION_ADVANTAGE_TIERS := ["Ordinary", "Good", "Amazing"]
-const MUTATION_DRAWBACK_TIERS := ["Slight", "Moderate", "Extreme"]
-const MUTATION_ADVANTAGE_LABEL_ORDER := ["Amazing", "Good", "Ordinary"]
-const MUTATION_DRAWBACK_LABEL_ORDER := ["Extreme", "Moderate", "Slight"]
-const CORE_SKILL_ROLL_SOURCE := "Source: Player's Handbook p. 61-63."
-const COMPLEX_CHECK_SOURCE := "Source: Player's Handbook p. 62."
+func mutations_enabled(character: Dictionary) -> bool:
+	return mutations.mutations_enabled(character)
 
-const SPECIES_FREE_SPECIALTY_IDS := {
-	3: [24],
-}
+func mutation_origin_options() -> Array:
+	return mutations.mutation_origin_options()
 
-const MISSING_SKILL_LABELS := {
-	525: "Telepathy",
-}
+func mutation_uniqueness_options(origin_id: String) -> Array:
+	return mutations.mutation_uniqueness_options(origin_id)
 
-const SPECIES_RULE_NOTES := {
-	0: [
-		"Skill Bonus: Humans begin with 5 more skill points than other species and may start with one more broad skill. Applied to skill budget and broad-skill limit. Source: Player's Handbook p. 30; Table P5 p. 34.",
-	],
-	1: [
-		"Psionic Powers: Fraal use the optional psionics rules when fraal are present in a campaign. Source: Player's Handbook p. 21-22.",
-		"Psionic Energy: Fraal talents or Diplomats with Mindwalker as secondary profession use WIL for psionic energy points instead of one-half WIL. Source: Player's Handbook p. 22.",
-		"Mindwalkers: Fraal Mindwalkers use WIL x 1.5 for psionic energy points instead of WIL x 1. Source: Player's Handbook p. 22.",
-		"Telepathy: Telepathy is one of every fraal hero's free broad skills. Source: Player's Handbook p. 22; Table P4 p. 34.",
-	],
-	2: [
-		"Computer Operation Skill Bonus: Mechalus receive a -1 step bonus when using Knowledge-computer operation or Computer Science-hacking while merged with a computer; merging or disengaging takes one round. Applied to those skill dice. Source: Player's Handbook p. 24.",
-		"Cybernetic Enhancements: Mechalus begin with two neural data slots, an internal processor equivalent to a Good nanocomputer, and bio-organic circuitry similar to a reflex device. Source: Player's Handbook p. 24.",
-		"Cybergear Tolerance: Mechalus are not subject to cybernetic rejection, and their cybergear limit is CON +4 instead of CON. Source: Player's Handbook p. 24.",
-	],
-	3: [
-		"Flight: Sesheyans can fly in atmospheres at least half Earth pressure and gravity no higher than Earth-normal. Applied to glide and fly movement rates. Source: Player's Handbook p. 26.",
-		"Flight Checks: Sesheyans use the Acrobatics broad skill for flying checks and may buy the flight specialty. Source: Player's Handbook p. 26.",
-		"Zero-G Training: Sesheyans function as if they have Acrobatics-zero-g training rank 1. Applied as a free specialty rank. Source: Player's Handbook p. 26.",
-		"Falling: A conscious sesheyan able to use wings suffers no impact damage from a fall and glides safely; otherwise normal impact damage applies. Source: Player's Handbook p. 26; impact damage p. 58.",
-		"Night Vision: Sesheyans ignore low-illumination penalties except in total darkness, unless wearing protective goggles against light sensitivity. Source: Player's Handbook p. 26.",
-		"Light Sensitivity: Ordinary, Good, and Amazing illumination impose +1, +2, and +3 step penalties; protective goggles negate this. Source: Player's Handbook p. 26.",
-	],
-	4: [
-		"Action Check Bonus: T'sa receive a -1 step situation die bonus to action checks. Applied to action check die. Source: Player's Handbook p. 27.",
-		"Juryrig Bonus: T'sa receive a -1 step situation die bonus on Technical Science-juryrig checks. Applied to the juryrig skill die. Source: Player's Handbook p. 27.",
-		"Body Armor: T'sa natural armor is d4+1 low impact, d4 high impact, and d4-1 energy. Source: Player's Handbook p. 27.",
-	],
-	5: [
-		"Superior Durability: Weren durability scores use CON x 1.5, rounded down. Applied to durability. Source: Player's Handbook p. 28.",
-		"Natural Weapon: On a successful Unarmed Attack-brawl or power martial arts check, weren claws deal d4w/d4+2w/d4m low-impact damage plus Strength bonuses. Source: Player's Handbook p. 28.",
-		"Camouflage: In natural terrain, ranged weapon attacks aimed at a weren suffer a +1 step penalty. Source: Player's Handbook p. 28.",
-		"Primitive Culture: Weren suffer a +2 step penalty when using PL4 or higher items; this can be reduced by paying 4 skill points, then removed at 6th level or higher by paying 4 more. Source: Player's Handbook p. 28-29.",
-	],
-	6: [
-		"Mutants use the Chapter 13 mutation rules. Mutant heroes are derived from human stock, have the human free broad skills, do not receive the human skill point or broad skill bonus, and must have at least one advantageous mutation and one drawback. Source: Player's Handbook p. 213-214.",
-	],
-}
+func get_mutation_origin_by_id(origin_id: String) -> Dictionary:
+	return mutations.get_mutation_origin_by_id(origin_id)
 
-const SPECIES_ROLL_NOTES := {
-	2: [
-		"Mechalus: Knowledge-computer operation and Computer Science-hacking receive a -1 step bonus while merged with a computer. Source: Player's Handbook p. 24.",
-	],
-	3: [
-		"Sesheyan: Acrobatics-zero-g training is treated as rank 1 before purchased ranks. Source: Player's Handbook p. 26.",
-		"Sesheyan: Light sensitivity imposes +1/+2/+3 step penalties in Ordinary/Good/Amazing illumination unless protective goggles are worn. Source: Player's Handbook p. 26.",
-	],
-	4: [
-		"T'sa: Action checks use a -d4 base situation die from the racial action check bonus. Source: Player's Handbook p. 27.",
-		"T'sa: Technical Science-juryrig receives a -1 step situation die bonus. Source: Player's Handbook p. 27.",
-	],
-	5: [
-		"Weren: Ranged weapon attacks against a weren in natural terrain suffer a +1 step penalty. Source: Player's Handbook p. 28.",
-		"Weren: PL4 or higher item use suffers a +2 step penalty until the primitive culture penalty is bought down. Source: Player's Handbook p. 28-29.",
-		"Weren: Claw attacks after successful Unarmed Attack-brawl or power martial arts checks deal d4w/d4+2w/d4m low-impact damage plus Strength bonuses. Source: Player's Handbook p. 28.",
-	],
-}
+func get_mutation_uniqueness_by_id(origin_id: String, uniqueness_id: String) -> Dictionary:
+	return mutations.get_mutation_uniqueness_by_id(origin_id, uniqueness_id)
 
-const MOVEMENT_EFFECTS := [
-	{"mode": "Walk", "effect": "No penalty when moving and acting in the same phase."},
-	{"mode": "Run", "effect": "+2 step penalty to another action in the same phase."},
-	{"mode": "Sprint", "effect": "+3 step penalty to another action in the same phase."},
-	{"mode": "Easy Swim", "effect": "+2 step penalty to another action in the same phase."},
-	{"mode": "Swim", "effect": "No other actions in the same phase."},
-	{"mode": "Glide", "effect": "+1 step penalty to another action in the same phase."},
-	{"mode": "Fly", "effect": "+2 step penalty to another action in the same phase."},
-	{"mode": "All-out", "effect": "Movement only; after stopping, no other action for the rest of the round."},
-]
+func set_mutation_generation_mode(character: Dictionary, mode: String) -> void:
+	mutations.set_mutation_generation_mode(character, mode)
 
-const MOVEMENT_RUN_BY_TOTAL := {
-	6: 4,
-	8: 6,
-	10: 6,
-	12: 8,
-	14: 10,
-	16: 10,
-	18: 12,
-	20: 12,
-	22: 14,
-	24: 16,
-	26: 16,
-	28: 18,
-	30: 20,
-	32: 20,
-}
+func set_mutation_origin(character: Dictionary, origin_id: String) -> void:
+	mutations.set_mutation_origin(character, origin_id)
 
-const BROAD_SKILL_SUMMARIES := {
-	0: "Operate armor effectively and reduce armor-related action check and Dexterity resistance penalties.",
-	3: "Handle athletic feats of strength such as climbing, jumping, and throwing.",
-	8: "Use heavy personal and crew-served weapons, including direct-fire and indirect-fire weapons.",
-	11: "Fight with hand weapons and use melee defenses such as parrying when appropriate.",
-	15: "Fight without weapons, brawl, use martial arts, and attempt overpowering holds.",
-	18: "Perform agile movement, stunts, dodges, controlled falls, and zero-g or flight maneuvers.",
-	26: "Perform fine manual actions such as opening locks, picking pockets, and sleight of hand.",
-	30: "Use modern firearms such as pistols, rifles, and submachine guns.",
-	34: "Use older ranged weapons such as bows, crossbows, flintlocks, and slings.",
-	39: "Avoid notice through hiding, shadowing, and silent movement.",
-	43: "Operate common vehicles and specialized vehicle classes.",
-	48: "Handle long-distance or demanding movement such as racing, swimming, and trailblazing.",
-	52: "Endure fatigue, pain, harsh activity, and injury-related checks.",
-	55: "Survive hostile environments by finding necessities and avoiding environmental danger.",
-	57: "Understand commercial organizations, trade, and legal or illegal business practices.",
-	61: "Work with computer systems, hardware, hacking, and programming.",
-	65: "Use, build, place, and disarm explosives.",
-	69: "Apply general education, languages, deduction, basic computer operation, and first aid.",
-	75: "Understand law, court procedure, law enforcement practice, and legal specialties.",
-	79: "Apply biological sciences such as biology, botany, genetics, xenology, and zoology.",
-	85: "Apply medical sciences, diagnosis, psychology, surgery, treatment, and xenomedicine.",
-	92: "Navigate by surface, system, or drivespace methods.",
-	96: "Apply astronomy, chemistry, physics, and planetology.",
-	101: "Understand security procedures, devices, and protection protocols.",
-	104: "Operate ship, station, or installation systems such as sensors, defenses, engines, and weapons.",
-	110: "Apply battlefield and operational planning for infantry, vehicle, and space combat.",
-	114: "Build, invent, juryrig, repair, and understand technical systems.",
-	119: "Navigate organizations through bureaucracy and management.",
-	122: "Ride, train, and work with animals.",
-	125: "Notice danger, read intuition, and perceive hidden details.",
-	128: "Produce creative work in a chosen field.",
-	130: "Interrogate, search, and track as part of formal investigation.",
-	134: "Resist mental and physical pressure.",
-	137: "Understand street-level contacts, rumors, and criminal elements.",
-	140: "Teach a specific field to another character.",
-	142: "Understand cultures and manage diplomacy, etiquette, and first-contact situations.",
-	146: "Mislead, bluff, bribe, and gamble.",
-	150: "Perform as an actor, dancer, musician, singer, or similar entertainer.",
-	155: "Negotiate, charm, interview, intimidate, seduce, taunt, and bargain.",
-	162: "Lead others through command and inspiration.",
-}
+func set_mutation_uniqueness(character: Dictionary, uniqueness_id: String) -> void:
+	mutations.set_mutation_uniqueness(character, uniqueness_id)
 
-const SPECIALTY_SUMMARIES := {
-	1: "Specialized operation of standard combat armor, including reducing armor penalties and shield parries.",
-	2: "Specialized operation of powered armor; this skill cannot be used untrained.",
-	4: "Climb walls, mountains, lines, and similar obstacles.",
-	5: "Jump horizontally or vertically; distance depends on the result of the skill check.",
-	6: "Throw objects accurately or for distance.",
-	9: "Fire direct-fire heavy weapons at visible targets.",
-	10: "Use indirect-fire heavy weapons such as mortars or launchers against areas or concealed targets.",
-	12: "Use knives, swords, axes, and similar bladed weapons.",
-	13: "Use clubs, maces, staffs, and similar blunt weapons.",
-	14: "Use powered melee weapons.",
-	16: "Use unarmed street fighting, boxing, wrestling, and similar close combat.",
-	17: "Use offensive martial arts focused on strikes and power; this skill cannot be used untrained.",
-	19: "Perform dangerous activities such as parachuting, diving, surfing, and other high-risk stunts.",
-	20: "Use defensive martial arts focused on redirection, throws, sweeps, holds, and blocks.",
-	21: "Use tumbling, rolling, cover, and evasive movement as a combat defense.",
-	22: "Reduce harm from falling through controlled movement and landing technique.",
-	23: "Perform difficult maneuvers while flying or gliding.",
-	24: "Function in zero-g or low-g environments; this skill cannot be used untrained.",
-	27: "Open locks and defeat mechanical locking systems.",
-	28: "Steal small objects from another character without being noticed.",
-	29: "Perform sleight of hand, palming, and stage-magic style manipulation.",
-	31: "Use pistols.",
-	32: "Use rifles.",
-	33: "Use submachine guns.",
-	35: "Use bows.",
-	36: "Use crossbows.",
-	37: "Use flintlock firearms.",
-	38: "Use slings.",
-	40: "Remain unnoticed by using cover, quiet, and stillness.",
-	41: "Follow a target without being noticed.",
-	42: "Move silently and avoid observation while moving.",
-	44: "Operate a chosen air vehicle class; this skill cannot be used untrained.",
-	45: "Operate a chosen land vehicle class.",
-	46: "Operate a chosen space vehicle class; this skill cannot be used untrained.",
-	47: "Operate a chosen water vehicle class.",
-	49: "Run faster and sustain competitive ground movement; this skill cannot be used untrained.",
-	50: "Swim effectively; this skill cannot be used untrained.",
-	51: "Plan and maintain overland movement through difficult routes.",
-	53: "Resist fatigue and the worsening of mortal damage.",
-	54: "Resist pain and keep functioning under injury; this skill cannot be used untrained.",
-	56: "Survive in a chosen environment or terrain type.",
-	62: "Break into, bypass, or exploit computer systems; this skill cannot be used untrained.",
-	63: "Work with computer hardware.",
-	64: "Write, modify, and understand software.",
-	66: "Disarm explosive devices.",
-	67: "Build explosive devices from available materials; this skill cannot be used untrained.",
-	68: "Place explosives for intended effect.",
-	70: "Use everyday computer systems; this skill cannot be used untrained.",
-	71: "Reach conclusions from evidence and logic.",
-	72: "Provide immediate medical aid; this skill cannot be used untrained.",
-	73: "Speak, read, or understand a specific language; this skill cannot be used untrained.",
-	74: "Know facts about a specific field.",
-	89: "Perform surgery; this skill cannot be used untrained.",
-	90: "Treat injuries and illness; this skill cannot be used untrained.",
-	91: "Practice medicine on a specific nonhuman species; this skill cannot be used untrained.",
-	93: "Plot drivespace courses; this skill cannot be used untrained.",
-	94: "Navigate within a star system.",
-	95: "Navigate on or near a planetary surface.",
-	102: "Understand protective procedures and security protocols.",
-	103: "Find, bypass, or operate security devices.",
-	115: "Design or create new technical solutions.",
-	116: "Make quick field repairs or improvised technical fixes.",
-	117: "Repair damaged devices and systems.",
-	118: "Know technical facts and principles.",
-	124: "Train a chosen animal type.",
-	126: "Sense motives, danger, or the direction of a situation.",
-	127: "Notice hidden or subtle physical details.",
-	131: "Question a subject under pressure.",
-	132: "Search an area or object for hidden information.",
-	133: "Follow tracks and signs of passage.",
-	135: "Resist mental pressure, fear, or psychic strain.",
-	136: "Resist physical pressure, exhaustion, and bodily stress.",
-	145: "Handle first contact with an unfamiliar culture or species; this skill cannot be used untrained.",
-	156: "Negotiate price, exchange, or terms.",
-	157: "Win friendly reactions through personal appeal.",
-	158: "Draw information from a subject through conversation.",
-	159: "Pressure another character through threat or presence.",
-	160: "Use attraction and social pressure to influence another character.",
-	161: "Provoke or distract an opponent.",
-	163: "Direct others in a structured chain of command.",
-	164: "Encourage others and improve morale; this skill cannot be used untrained.",
-}
+func set_mutation_points(character: Dictionary, advantage_points: int, drawback_points: int) -> void:
+	mutations.set_mutation_points(character, advantage_points, drawback_points)
 
-const COMPLEX_SKILL_NOTES := {
-	4: "Long climbs and challenge-scene climbing can be run as complex checks.",
-	27: "Opening difficult locks can require a complex check; complexity depends on the lock and conditions.",
-	62: "Hacking commonly uses a complex check against the target system's security.",
-	64: "Writing or modifying software can use a complex check over time.",
-	66: "Disarming explosives can use a complex check when the device is complicated or dangerous.",
-	67: "Scratch-built explosives can require multiple successes to assemble safely.",
-	89: "Surgery is normally handled as a complex medical task.",
-	90: "Treatment can require a complex check for serious injuries or extended care.",
-	115: "Invention is a complex technical task whose successes represent progress toward a working design.",
-	117: "Major repairs can use complex checks; time and required successes depend on damage and equipment.",
-	124: "Animal training uses complex checks; harder training takes more successes and more time.",
-	133: "Tracking a long or difficult trail can use complex checks; failures can lose the trail.",
-	145: "First encounter scenes can use complex checks to build understanding and avoid offense.",
-	156: "Important bargaining can be run as a social complex check.",
-	157: "Extended attempts to win trust can use complex social checks.",
-	158: "Interviews can use complex checks when the information is hard to draw out.",
-	160: "Extended seduction or influence attempts can use complex social checks.",
-}
+func set_mutation_point_total(character: Dictionary, kind: String, points: int) -> void:
+	mutations.set_mutation_point_total(character, kind, points)
 
-const RANK_BENEFIT_NOTES := {
-	1: {
-		1: "Armor penalties for the appropriate armor type are reduced by 1 additional step beyond the broad skill reduction. Source: Player's Handbook p. 66.",
-		2: "Stun damage suffered while wearing the appropriate armor type is reduced by 1 point. Source: Player's Handbook p. 66.",
-		4: "Armor penalty reduction improves to 2 additional steps, and armor-worn stun reduction improves to 2 points. These reductions never create a bonus. Source: Player's Handbook p. 66.",
-		6: "Armor-worn stun reduction improves to 3 points. Source: Player's Handbook p. 66.",
-		7: "Armor penalty reduction improves to 3 additional steps. These reductions never create a bonus. Source: Player's Handbook p. 66.",
-		8: "Armor-worn stun reduction improves to 4 points. Source: Player's Handbook p. 66.",
-		10: "Armor penalty reduction improves to 4 additional steps, and armor-worn stun reduction improves to 5 points. Source: Player's Handbook p. 66.",
-		12: "Armor-worn stun reduction reaches 6 points. Source: Player's Handbook p. 66.",
-	},
-	2: {
-		1: "Armor penalties for the appropriate armor type are reduced by 1 additional step beyond the broad skill reduction. Source: Player's Handbook p. 66.",
-		2: "Stun damage suffered while wearing the appropriate armor type is reduced by 1 point. Source: Player's Handbook p. 66.",
-		4: "Armor penalty reduction improves to 2 additional steps, and armor-worn stun reduction improves to 2 points. These reductions never create a bonus. Source: Player's Handbook p. 66.",
-		6: "Armor-worn stun reduction improves to 3 points. Source: Player's Handbook p. 66.",
-		7: "Armor penalty reduction improves to 3 additional steps. These reductions never create a bonus. Source: Player's Handbook p. 66.",
-		8: "Armor-worn stun reduction improves to 4 points. Source: Player's Handbook p. 66.",
-		10: "Armor penalty reduction improves to 4 additional steps, and armor-worn stun reduction improves to 5 points. Source: Player's Handbook p. 66.",
-		12: "Armor-worn stun reduction reaches 6 points. Source: Player's Handbook p. 66.",
-	},
-	5: {
-		3: "Running jump distance increases by 1 meter. Source: Player's Handbook p. 67.",
-		4: "Standing jump distance increases by 1 meter. Source: Player's Handbook p. 67.",
-		5: "Vertical jump distance increases by 0.5 meter. Source: Player's Handbook p. 67.",
-		6: "Running jump distance increases by another 1 meter. Source: Player's Handbook p. 67.",
-		7: "Standing jump distance increases by another 1 meter. Source: Player's Handbook p. 67.",
-		8: "Vertical jump distance increases by another 0.5 meter. Source: Player's Handbook p. 67.",
-		9: "Running jump distance increases by another 1 meter. Source: Player's Handbook p. 67.",
-		10: "Standing jump distance increases by another 1 meter. Source: Player's Handbook p. 67.",
-		11: "Vertical jump distance increases by another 0.5 meter. Source: Player's Handbook p. 67.",
-		12: "Running jump distance increases by another 1 meter. Source: Player's Handbook p. 67.",
-	},
-	12: {
-		4: "Strength resistance modifier improves by +1 for close-combat defense, and reaction parry becomes available. Source: Player's Handbook p. 68.",
-		6: "Double-strike becomes available: two attacks in one phase with one control die and two situation dice at +1 and +2 step penalties. Source: Player's Handbook p. 68.",
-		8: "Strength resistance modifier improves by another +1 for close-combat defense. Source: Player's Handbook p. 68.",
-		9: "Multistrike becomes available: three attacks in one phase, with +1, +2, and +3 step penalties on the situation dice. Source: Player's Handbook p. 68.",
-		12: "Strength resistance modifier improves by another +1 for close-combat defense. Source: Player's Handbook p. 68.",
-	},
-	13: {
-		4: "Strength resistance modifier improves by +1 for close-combat defense, and reaction parry becomes available. Source: Player's Handbook p. 68.",
-		6: "Double-strike becomes available: two attacks in one phase with one control die and two situation dice at +1 and +2 step penalties. Source: Player's Handbook p. 68.",
-		8: "Strength resistance modifier improves by another +1 for close-combat defense. Source: Player's Handbook p. 68.",
-		9: "Multistrike becomes available: three attacks in one phase, with +1, +2, and +3 step penalties on the situation dice. Source: Player's Handbook p. 68.",
-		12: "Strength resistance modifier improves by another +1 for close-combat defense. Source: Player's Handbook p. 68.",
-	},
-	14: {
-		4: "Strength resistance modifier improves by +1 for close-combat defense, and reaction parry becomes available. Source: Player's Handbook p. 68.",
-		6: "Double-strike becomes available: two attacks in one phase with one control die and two situation dice at +1 and +2 step penalties. Source: Player's Handbook p. 68.",
-		8: "Strength resistance modifier improves by another +1 for close-combat defense. Source: Player's Handbook p. 68.",
-		9: "Multistrike becomes available: three attacks in one phase, with +1, +2, and +3 step penalties on the situation dice. Source: Player's Handbook p. 68.",
-		12: "Strength resistance modifier improves by another +1 for close-combat defense. Source: Player's Handbook p. 68.",
-	},
-	16: {
-		4: "Knockout attempts impose a +1 step penalty on the opponent's Stamina-endurance check after an Amazing success. Source: Player's Handbook p. 69.",
-		8: "Knockout penalty improves to +2 steps, and unarmed damage improves to d6s/d6+2s/d4w before Strength bonuses. Source: Player's Handbook p. 69.",
-		12: "Knockout penalty improves to +3 steps. Source: Player's Handbook p. 69.",
-	},
-	17: {
-		3: "Knockout attempts impose a +1 step penalty on the opponent's Stamina-endurance check after an Amazing success. Source: Player's Handbook p. 69.",
-		4: "Strength resistance modifier improves by +1 for close-combat defense. Source: Player's Handbook p. 70.",
-		5: "Can make Unarmed Attack checks even when hands are bound, cuffed, or unusable. Source: Player's Handbook p. 69.",
-		6: "Knockout penalty improves to +2 steps. Source: Player's Handbook p. 69.",
-		7: "Unarmed damage improves to d6+2s/d4w/d4+2w before Strength bonuses. Source: Player's Handbook p. 69.",
-		8: "Strength resistance modifier improves by another +1 for close-combat defense. Source: Player's Handbook p. 70.",
-		9: "Knockout penalty improves to +3 steps. Source: Player's Handbook p. 69.",
-		12: "Strength resistance modifier improves by another +1 for close-combat defense, and knockout penalty improves to +4 steps. Source: Player's Handbook p. 69-70.",
-	},
-	20: {
-		2: "Can block or counter unarmed attacks with Defensive Martial Arts. Source: Player's Handbook p. 71.",
-		4: "Can attempt a reaction block against unarmed attacks, using the next available action; Strength resistance modifier improves by +1 for close-combat defense. Source: Player's Handbook p. 71.",
-		8: "Strength resistance modifier improves by another +1 for close-combat defense. Source: Player's Handbook p. 71.",
-		12: "Strength resistance modifier improves by another +1 for close-combat defense. Source: Player's Handbook p. 71.",
-	},
-	21: {
-		3: "Can dodge and still take an action in the same phase; the action carries a +2 step penalty. Source: Player's Handbook p. 71.",
-		4: "Dexterity resistance modifier improves by +1 against ranged combat. Source: Player's Handbook p. 71.",
-		7: "Can perform a reaction dodge immediately, but gives up other actions for the round. Source: Player's Handbook p. 71.",
-		8: "Dexterity resistance modifier improves by another +1 against ranged combat. Source: Player's Handbook p. 71.",
-		12: "Dexterity resistance modifier improves by another +1 against ranged combat. Source: Player's Handbook p. 71.",
-	},
-	23: {
-		3: "Glide movement improves by +2 meters. Source: Player's Handbook p. 71.",
-		4: "Fly movement improves by +3 meters. Source: Player's Handbook p. 71.",
-		7: "Glide movement improves by another +2 meters. Source: Player's Handbook p. 71.",
-		8: "Fly movement improves by another +3 meters. Source: Player's Handbook p. 71.",
-		11: "Glide movement improves by another +2 meters. Source: Player's Handbook p. 71.",
-		12: "Fly movement improves by another +3 meters. Source: Player's Handbook p. 71.",
-	},
-	24: {
-		1: "Zero-g penalty is reduced to +2 steps, and light-gravity penalties are eliminated. Source: Player's Handbook p. 72.",
-		4: "Zero-g penalty is reduced to +1 step, and light-gravity physical actions gain a -1 step bonus. Source: Player's Handbook p. 72.",
-		7: "Zero-g penalty is eliminated. Source: Player's Handbook p. 72.",
-		10: "Zero-g physical actions gain a -1 step bonus. Source: Player's Handbook p. 72.",
-	},
-	28: {
-		3: "Targets suffer a +1 step penalty to notice a pickpocket attempt. Source: Player's Handbook p. 72.",
-		6: "Targets suffer a +2 step penalty to notice a pickpocket attempt. Source: Player's Handbook p. 72.",
-		9: "Targets suffer a +3 step penalty to notice a pickpocket attempt. Source: Player's Handbook p. 72.",
-		12: "Targets suffer a +4 step penalty to notice a pickpocket attempt. Source: Player's Handbook p. 72.",
-	},
-	31: {
-		3: "Quick Draw removes the usual +1 step penalty for drawing and firing a pistol in the same phase. Source: Player's Handbook p. 73.",
-		6: "Double-Shot allows two pistol shots in one action; the first shot uses a +1 step penalty and the second uses a +2 step penalty. Source: Player's Handbook p. 75.",
-	},
-	32: {
-		3: "Improved Aim grants a -1 step bonus to rifle attacks. Source: Player's Handbook p. 73.",
-		5: "Distance Precision removes the medium-range penalty and reduces the long-range penalty by 1 step for rifle attacks. Source: Player's Handbook p. 75.",
-		6: "Precision Shooting reduces autofire attack penalties to 0, +1, and +2 steps. Source: Player's Handbook p. 73.",
-	},
-	33: {
-		3: "Rock-n-Roll reduces the penalty for changing a clip and firing an SMG in the same action to +1 step. Source: Player's Handbook p. 73.",
-		6: "Precision Shooting reduces autofire attack penalties to 0, +1, and +2 steps. Source: Player's Handbook p. 73.",
-		9: "Extra Burst allows four bursts on autofire; the fourth situation die has a +3 step penalty and uses one additional burst. Source: Player's Handbook p. 73.",
-	},
-	35: {
-		3: "Distance Precision removes the medium-range penalty and reduces the long-range penalty by 1 step for bow attacks. Source: Player's Handbook p. 75.",
-		6: "Double-Shot allows two bow shots in one action; the first shot uses a +1 step penalty and the second uses a +2 step penalty. Source: Player's Handbook p. 75.",
-	},
-	36: {
-		3: "Distance Precision removes the medium-range penalty and reduces the long-range penalty by 1 step for crossbow attacks. Source: Player's Handbook p. 75.",
-		6: "Rate of Fire Increase lets a crossbow be loaded and fired in the same action. Source: Player's Handbook p. 75.",
-	},
-	37: {
-		3: "Distance Precision removes the medium-range penalty and reduces the long-range penalty by 1 step for flintlock attacks. Source: Player's Handbook p. 75.",
-		6: "Rate of Fire Increase lets a flintlock pistol be loaded and fired in the same action, and lets a flintlock rifle be loaded in one action. Source: Player's Handbook p. 75.",
-		12: "Rate of Fire Increase lets a flintlock rifle be loaded and fired in the same action. Source: Player's Handbook p. 75.",
-	},
-	38: {
-		3: "Distance Precision removes the medium-range penalty and reduces the long-range penalty by 1 step for sling attacks. Source: Player's Handbook p. 75.",
-		6: "Double-Shot allows two sling shots at a single target in one action; the shots use +1 and +2 step penalties. Source: Player's Handbook p. 75.",
-	},
-	40: {
-		4: "Stealth Increased Effect applies to Hide: Marginal/Ordinary/Good/Amazing results impose +1/+2/+3/+4 step observer penalties. Source: Player's Handbook p. 75.",
-	},
-	41: {
-		5: "Stealth Increased Effect applies to Shadow: Marginal/Ordinary/Good/Amazing results impose +1/+2/+3/+4 step observer penalties. Source: Player's Handbook p. 75.",
-	},
-	42: {
-		6: "Stealth Increased Effect applies to Sneak: Marginal/Ordinary/Good/Amazing results impose +1/+2/+3/+4 step observer penalties. Source: Player's Handbook p. 75.",
-	},
-	49: {
-		1: "Run movement improves by +2 meters. Source: Player's Handbook p. 77.",
-		4: "Sprint movement improves by +2 meters. Source: Player's Handbook p. 77.",
-		5: "Run movement improves by another +2 meters. Source: Player's Handbook p. 77.",
-		7: "Sprint movement improves by another +2 meters. Source: Player's Handbook p. 77.",
-		9: "Run movement improves by another +2 meters. Source: Player's Handbook p. 77.",
-		12: "Sprint movement improves by another +2 meters. Source: Player's Handbook p. 77.",
-	},
-	50: {
-		1: "Stamina-endurance checks for holding breath or avoiding underwater stun damage gain a -1 step bonus. Source: Player's Handbook p. 77.",
-		4: "Breath-holding bonus improves to -2 steps, and swim/easy swim movement each increase by 1 meter. Source: Player's Handbook p. 77.",
-		8: "Breath-holding bonus improves to -3 steps, and swim/easy swim movement each increase by another 1 meter. Source: Player's Handbook p. 77.",
-		12: "Breath-holding bonus improves to -4 steps, and swim/easy swim movement each increase by another 1 meter. Source: Player's Handbook p. 77.",
-	},
-	59: {
-		1: "Illegal-transaction penalties are reduced by 1 step; this can eliminate but never create a bonus. Source: Player's Handbook p. 79.",
-		4: "Illegal-transaction penalty reduction improves to 2 steps. Source: Player's Handbook p. 79.",
-		7: "Illegal-transaction penalty reduction improves to 3 steps. Source: Player's Handbook p. 79.",
-		10: "Illegal-transaction penalty reduction improves to 4 steps. Source: Player's Handbook p. 79.",
-	},
-	60: {
-		1: "Small-business deals, haggling, and small-business finances gain a -1 step bonus. Source: Player's Handbook p. 79.",
-		4: "Small-business bonus improves to -2 steps. Source: Player's Handbook p. 79.",
-		8: "Small-business bonus improves to -3 steps. Source: Player's Handbook p. 79.",
-		12: "Small-business bonus improves to -4 steps. Source: Player's Handbook p. 79.",
-	},
-	62: {
-		4: "Hacking checks gain a -1 step bonus. Source: Player's Handbook p. 80.",
-		8: "Hacking checks gain a -2 step bonus. Source: Player's Handbook p. 80.",
-		12: "Hacking checks gain a -3 step bonus. Source: Player's Handbook p. 80.",
-	},
-	63: {
-		4: "Hardware checks gain a -1 step bonus. Source: Player's Handbook p. 80.",
-		8: "Hardware checks gain a -2 step bonus. Source: Player's Handbook p. 80.",
-		12: "Hardware checks gain a -3 step bonus. Source: Player's Handbook p. 80.",
-	},
-	64: {
-		1: "Can modify source code of Ordinary quality and Ordinary complexity. Source: Player's Handbook p. 80.",
-		3: "Can modify existing programs of Good quality/complexity and create new programs of Marginal quality/complexity. Source: Player's Handbook p. 80.",
-		6: "Can modify any existing program and create Ordinary quality/complexity programs. Source: Player's Handbook p. 80.",
-		9: "Can create Good quality/complexity programs. Source: Player's Handbook p. 80.",
-		12: "Can create Amazing quality/complexity programs. Source: Player's Handbook p. 80.",
-	},
-	71: {
-		4: "Intelligence resistance modifier improves by +1. Source: Player's Handbook p. 82.",
-		8: "Intelligence resistance modifier improves by another +1. Source: Player's Handbook p. 82.",
-		12: "Intelligence resistance modifier improves by another +1. Source: Player's Handbook p. 82.",
-	},
-	72: {
-		4: "First-aid situation penalties are reduced by 1 step; this can eliminate but never create a bonus. Source: Player's Handbook p. 82.",
-		8: "First-aid situation penalty reduction improves to 2 steps. Source: Player's Handbook p. 82.",
-		12: "First-aid situation penalty reduction improves to 3 steps. Source: Player's Handbook p. 82.",
-	},
-	73: {
-		1: "Communication in the language carries a +3 step penalty. Source: Player's Handbook p. 83.",
-		2: "Communication penalty improves to +1 step. Source: Player's Handbook p. 83.",
-		3: "Communication has no language-rank modifier. Source: Player's Handbook p. 83.",
-		6: "Communication in the language gains a -1 step bonus. Source: Player's Handbook p. 83.",
-		9: "Communication in the language gains a -2 step bonus. Source: Player's Handbook p. 83.",
-		12: "Communication in the language gains a -3 step bonus. Source: Player's Handbook p. 83.",
-	},
-	78: {
-		3: "Checks involving this legal system gain a -1 step bonus when using Law, court procedures, or law enforcement as appropriate. Source: Player's Handbook p. 84.",
-		6: "Legal-system bonus improves to -2 steps. Source: Player's Handbook p. 84.",
-		9: "Legal-system bonus improves to -3 steps. Source: Player's Handbook p. 84.",
-		12: "Legal-system bonus improves to -4 steps. Source: Player's Handbook p. 84.",
-	},
-	80: {
-		3: "Checks assisted by Biology gain a -1 step bonus. Source: Player's Handbook p. 84.",
-		6: "Biology-assisted bonus improves to -2 steps. Source: Player's Handbook p. 84.",
-		9: "Biology-assisted bonus improves to -3 steps. Source: Player's Handbook p. 84.",
-		12: "Biology-assisted bonus improves to -4 steps. Source: Player's Handbook p. 84.",
-	},
-	81: {
-		3: "Checks assisted by Botany gain a -1 step bonus. Source: Player's Handbook p. 84.",
-		6: "Botany-assisted bonus improves to -2 steps. Source: Player's Handbook p. 84.",
-		9: "Botany-assisted bonus improves to -3 steps. Source: Player's Handbook p. 84.",
-		12: "Botany-assisted bonus improves to -4 steps. Source: Player's Handbook p. 84.",
-	},
-	82: {
-		3: "Checks assisted by Genetics gain a -1 step bonus. Source: Player's Handbook p. 84.",
-		6: "Genetics-assisted bonus improves to -2 steps. Source: Player's Handbook p. 84.",
-		9: "Genetics-assisted bonus improves to -3 steps. Source: Player's Handbook p. 84.",
-		12: "Genetics-assisted bonus improves to -4 steps. Source: Player's Handbook p. 84.",
-	},
-	83: {
-		3: "Checks assisted by Xenology gain a -1 step bonus. Source: Player's Handbook p. 84.",
-		6: "Xenology-assisted bonus improves to -2 steps. Source: Player's Handbook p. 84.",
-		9: "Xenology-assisted bonus improves to -3 steps. Source: Player's Handbook p. 84.",
-		12: "Xenology-assisted bonus improves to -4 steps. Source: Player's Handbook p. 84.",
-	},
-	84: {
-		3: "Checks assisted by Zoology gain a -1 step bonus. Source: Player's Handbook p. 84.",
-		6: "Zoology-assisted bonus improves to -2 steps. Source: Player's Handbook p. 84.",
-		9: "Zoology-assisted bonus improves to -3 steps. Source: Player's Handbook p. 84.",
-		12: "Zoology-assisted bonus improves to -4 steps. Source: Player's Handbook p. 84.",
-	},
-	86: {
-		3: "Checks assisted by Forensics gain a -1 step bonus. Source: Player's Handbook p. 85.",
-		6: "Forensics-assisted bonus improves to -2 steps. Source: Player's Handbook p. 85.",
-		9: "Forensics-assisted bonus improves to -3 steps. Source: Player's Handbook p. 85.",
-		12: "Forensics-assisted bonus improves to -4 steps. Source: Player's Handbook p. 85.",
-	},
-	87: {
-		2: "Medical Science-treatment checks gain a -1 step bonus. Source: Player's Handbook p. 85.",
-		5: "Treatment-support bonus improves to -2 steps. Source: Player's Handbook p. 85.",
-		8: "Treatment-support bonus improves to -3 steps. Source: Player's Handbook p. 85.",
-		12: "Treatment-support bonus improves to -4 steps. Source: Player's Handbook p. 85.",
-	},
-	88: {
-		3: "Checks assisted by Psychology gain a -1 step bonus. Source: Player's Handbook p. 85.",
-		6: "Psychology-assisted bonus improves to -2 steps. Source: Player's Handbook p. 85.",
-		9: "Psychology-assisted bonus improves to -3 steps. Source: Player's Handbook p. 85.",
-		12: "Psychology-assisted bonus improves to -4 steps. Source: Player's Handbook p. 85.",
-	},
-	89: {
-		3: "Cybernetic Surgery allows repair or healing of organisms with existing cybernetic implants when the campaign includes cybertech. Source: Player's Handbook p. 86.",
-		6: "Cybernetic Surgery allows installation of cybernetic implants when the campaign includes cybertech. Source: Player's Handbook p. 86.",
-	},
-	90: {
-		3: "Treatment situation penalties are reduced by 1 step; this can eliminate but never create a bonus. Source: Player's Handbook p. 86.",
-		6: "Treatment penalty reduction improves to 2 steps. Source: Player's Handbook p. 86.",
-		9: "Treatment penalty reduction improves to 3 steps. Source: Player's Handbook p. 86.",
-		12: "Treatment penalty reduction improves to 4 steps. Source: Player's Handbook p. 86.",
-	},
-	91: {
-		3: "Alien-patient penalty is reduced from +3 steps to +2 steps for the selected species. Source: Player's Handbook p. 86.",
-		6: "Alien-patient penalty is reduced to +1 step for the selected species. Source: Player's Handbook p. 86.",
-		9: "Alien-patient penalty is eliminated for the selected species. Source: Player's Handbook p. 86.",
-		12: "Treating the selected species gains a -1 step bonus. Source: Player's Handbook p. 86.",
-	},
-	97: {
-		3: "Checks assisted by Astronomy gain a -1 step bonus. Source: Player's Handbook p. 88.",
-		6: "Astronomy-assisted bonus improves to -2 steps. Source: Player's Handbook p. 88.",
-		9: "Astronomy-assisted bonus improves to -3 steps. Source: Player's Handbook p. 88.",
-		12: "Astronomy-assisted bonus improves to -4 steps. Source: Player's Handbook p. 88.",
-	},
-	98: {
-		3: "Checks assisted by Chemistry gain a -1 step bonus. Source: Player's Handbook p. 88.",
-		6: "Chemistry-assisted bonus improves to -2 steps. Source: Player's Handbook p. 88.",
-		9: "Chemistry-assisted bonus improves to -3 steps. Source: Player's Handbook p. 88.",
-		12: "Chemistry-assisted bonus improves to -4 steps. Source: Player's Handbook p. 88.",
-	},
-	99: {
-		3: "Checks assisted by Physics gain a -1 step bonus. Source: Player's Handbook p. 88.",
-		6: "Physics-assisted bonus improves to -2 steps. Source: Player's Handbook p. 88.",
-		9: "Physics-assisted bonus improves to -3 steps. Source: Player's Handbook p. 88.",
-		12: "Physics-assisted bonus improves to -4 steps. Source: Player's Handbook p. 88.",
-	},
-	100: {
-		3: "Checks assisted by Planetology gain a -1 step bonus. Source: Player's Handbook p. 88.",
-		6: "Planetology-assisted bonus improves to -2 steps. Source: Player's Handbook p. 88.",
-		9: "Planetology-assisted bonus improves to -3 steps. Source: Player's Handbook p. 88.",
-		12: "Planetology-assisted bonus improves to -4 steps. Source: Player's Handbook p. 88.",
-	},
-	111: {
-		4: "Tactics checks against opposing infantry gain a -1 step bonus. Source: Player's Handbook p. 89.",
-		8: "Infantry tactics bonus improves to -2 steps. Source: Player's Handbook p. 89.",
-		12: "Infantry tactics bonus improves to -3 steps. Source: Player's Handbook p. 89.",
-	},
-	112: {
-		4: "Tactics checks against opposing spaceships gain a -1 step bonus. Source: Player's Handbook p. 89.",
-		8: "Space tactics bonus improves to -2 steps. Source: Player's Handbook p. 89.",
-		12: "Space tactics bonus improves to -3 steps. Source: Player's Handbook p. 89.",
-	},
-	113: {
-		4: "Tactics checks against opposing vehicles gain a -1 step bonus. Source: Player's Handbook p. 89.",
-		8: "Vehicle tactics bonus improves to -2 steps. Source: Player's Handbook p. 89.",
-		12: "Vehicle tactics bonus improves to -3 steps. Source: Player's Handbook p. 89.",
-	},
-	116: {
-		6: "Improved Juryrig upgrades success quality: Ordinary functions as Good, Good as Amazing, and Amazing counts as a regular repair. Source: Player's Handbook p. 90.",
-	},
-	118: {
-		3: "Checks involving Technical Science or its specialties gain a -1 step bonus. Source: Player's Handbook p. 90.",
-		6: "Technical Science support bonus improves to -2 steps. Source: Player's Handbook p. 90.",
-		9: "Technical Science support bonus improves to -3 steps. Source: Player's Handbook p. 90.",
-		12: "Technical Science support bonus improves to -4 steps. Source: Player's Handbook p. 90.",
-	},
-	123: {
-		3: "Trick Riding becomes available; mounted cover can impose opponent attack penalties of +1/+2/+3 steps on Ordinary/Good/Amazing riding results. Source: Player's Handbook p. 91-92.",
-	},
-	133: {
-		1: "Select one terrain type when buying Track and one additional terrain type at each new rank; tracking in a selected terrain gains a -1 step bonus, while unselected terrain carries a +1 step penalty. Source: Player's Handbook p. 94.",
-	},
-	135: {
-		4: "Will resistance modifier improves by +1 against encounter skills, mental powers, and similar influence. Source: Player's Handbook p. 94.",
-		8: "Will resistance modifier improves by another +1 against encounter skills, mental powers, and similar influence. Source: Player's Handbook p. 94.",
-		12: "Will resistance modifier improves by another +1 against encounter skills, mental powers, and similar influence. Source: Player's Handbook p. 94.",
-	},
-	144: {
-		3: "Culture-diplomacy checks with the selected culture gain a -1 step bonus. Source: Player's Handbook p. 97.",
-		6: "Selected-culture diplomacy bonus improves to -2 steps. Source: Player's Handbook p. 97.",
-		9: "Selected-culture diplomacy bonus improves to -3 steps. Source: Player's Handbook p. 97.",
-		12: "Selected-culture diplomacy bonus improves to -4 steps. Source: Player's Handbook p. 97.",
-	},
-	151: {
-		1: "Can enhance an appropriate paired skill with a -1 step bonus when the GM agrees the Act performance applies. Source: Player's Handbook p. 99.",
-		4: "Paired-skill enhancement improves to -2 steps, and Disguise becomes available as a complex Act check; observers suffer +1/+2/+3 step penalties on Ordinary/Good/Amazing disguises. Source: Player's Handbook p. 99.",
-		8: "Paired-skill enhancement improves to -3 steps. Source: Player's Handbook p. 99.",
-		12: "Paired-skill enhancement improves to -4 steps. Source: Player's Handbook p. 99.",
-	},
-	152: {
-		1: "Can enhance an appropriate paired skill with a -1 step bonus when the GM agrees the Dance performance applies. Source: Player's Handbook p. 99.",
-		4: "Paired-skill enhancement improves to -2 steps. Source: Player's Handbook p. 99.",
-		8: "Paired-skill enhancement improves to -3 steps. Source: Player's Handbook p. 99.",
-		12: "Paired-skill enhancement improves to -4 steps. Source: Player's Handbook p. 99.",
-	},
-	153: {
-		1: "Can enhance an appropriate paired skill with a -1 step bonus when the GM agrees the Musical Instrument performance applies. Source: Player's Handbook p. 99.",
-		4: "Paired-skill enhancement improves to -2 steps. Source: Player's Handbook p. 99.",
-		8: "Paired-skill enhancement improves to -3 steps. Source: Player's Handbook p. 99.",
-		12: "Paired-skill enhancement improves to -4 steps. Source: Player's Handbook p. 99.",
-	},
-	154: {
-		1: "Can enhance an appropriate paired skill with a -1 step bonus when the GM agrees the Sing performance applies. Source: Player's Handbook p. 99.",
-		4: "Paired-skill enhancement improves to -2 steps. Source: Player's Handbook p. 99.",
-		8: "Paired-skill enhancement improves to -3 steps. Source: Player's Handbook p. 99.",
-		12: "Paired-skill enhancement improves to -4 steps. Source: Player's Handbook p. 99.",
-	},
-	163: {
-		4: "Leadership skill checks gain a -1 step bonus; Command and Inspire benefits do not stack with each other. Source: Player's Handbook p. 101.",
-		8: "Leadership skill-check bonus improves to -2 steps; Command and Inspire benefits do not stack with each other. Source: Player's Handbook p. 101.",
-		12: "Leadership skill-check bonus improves to -3 steps; Command and Inspire benefits do not stack with each other. Source: Player's Handbook p. 101.",
-	},
-	164: {
-		4: "Leadership skill checks gain a -1 step bonus; Command and Inspire benefits do not stack with each other. Source: Player's Handbook p. 101.",
-		8: "Leadership skill-check bonus improves to -2 steps; Command and Inspire benefits do not stack with each other. Source: Player's Handbook p. 101.",
-		12: "Leadership skill-check bonus improves to -3 steps; Command and Inspire benefits do not stack with each other. Source: Player's Handbook p. 101.",
-	},
-}
+func roll_mutation_origin(character: Dictionary) -> Dictionary:
+	return mutations.roll_mutation_origin(character)
 
-const SKILL_SOURCE_REFERENCES := {
-	0: ["Player's Handbook p. 66."],
-	1: ["Player's Handbook p. 66."],
-	2: ["Player's Handbook p. 66."],
-	3: ["Player's Handbook p. 66-67."],
-	8: ["Player's Handbook p. 68."],
-	11: ["Player's Handbook p. 68-69."],
-	12: ["Player's Handbook p. 68-69."],
-	13: ["Player's Handbook p. 68-69."],
-	14: ["Player's Handbook p. 68-69."],
-	15: ["Player's Handbook p. 69-70.", "Gamemaster Guide, overpowering rules."],
-	16: ["Player's Handbook p. 69."],
-	17: ["Player's Handbook p. 69-70."],
-	18: ["Player's Handbook p. 70-72."],
-	26: ["Player's Handbook p. 72-73."],
-	30: ["Player's Handbook p. 73-75."],
-	34: ["Player's Handbook p. 74-75."],
-	39: ["Player's Handbook p. 75."],
-	43: ["Player's Handbook p. 76."],
-	48: ["Player's Handbook p. 76-77."],
-	52: ["Player's Handbook p. 77-78."],
-	55: ["Player's Handbook p. 78."],
-	57: ["Player's Handbook p. 79-80."],
-	61: ["Player's Handbook p. 80-81.", "Gamemaster Guide p. 124-125 for computer challenges."],
-	65: ["Player's Handbook p. 81."],
-	69: ["Player's Handbook p. 81-83."],
-	75: ["Player's Handbook p. 83-84."],
-	79: ["Player's Handbook p. 84-85."],
-	85: ["Player's Handbook p. 85-87."],
-	92: ["Player's Handbook p. 87-88."],
-	96: ["Player's Handbook p. 88."],
-	101: ["Player's Handbook p. 89."],
-	104: ["Player's Handbook p. 88-89."],
-	110: ["Player's Handbook p. 89."],
-	114: ["Player's Handbook p. 89-90."],
-	119: ["Player's Handbook p. 90-91."],
-	122: ["Player's Handbook p. 91-92."],
-	125: ["Player's Handbook p. 92-93."],
-	128: ["Player's Handbook p. 93."],
-	130: ["Player's Handbook p. 93-94."],
-	134: ["Player's Handbook p. 94-95."],
-	137: ["Player's Handbook p. 95-96."],
-	140: ["Player's Handbook p. 96."],
-	142: ["Player's Handbook p. 97-98."],
-	146: ["Player's Handbook p. 98-99."],
-	150: ["Player's Handbook p. 99-100."],
-	155: ["Player's Handbook p. 100-101."],
-	162: ["Player's Handbook p. 101."],
-}
+func roll_mutation_origin_and_points(character: Dictionary) -> Dictionary:
+	return mutations.roll_mutation_origin_and_points(character)
 
-const PERK_DEFINITIONS := [
-	{
-		"id": "alien_artifact",
-		"name": "Alien Artifact",
-		"cost_options": [8],
-		"ability": "Special",
-		"activation": "Special",
-		"summary": "A GM-designed alien item, experiment, or process gives the hero a useful benefit, but it is rare, coveted, and carries a downside.",
-		"source": "Player's Handbook p. 103-104; Table P26.",
-	},
-	{
-		"id": "ambidextrous",
-		"name": "Ambidextrous",
-		"cost_options": [4],
-		"ability": "DEX",
-		"activation": "Active",
-		"summary": "Reduces off-hand or two-weapon penalties: the primary hand has no penalty and the off-hand action has a +2 step penalty.",
-		"source": "Player's Handbook p. 103-104; Table P26.",
-	},
-	{
-		"id": "animal_friend",
-		"name": "Animal Friend",
-		"cost_options": [4],
-		"ability": "WIL",
-		"activation": "Conscious",
-		"summary": "Normal animals trust the hero. Animal encounter rolls gain a -2 step bonus, and Animal Handling checks gain a -1 step bonus.",
-		"source": "Player's Handbook p. 104; Table P26.",
-	},
-	{
-		"id": "celebrity",
-		"name": "Celebrity",
-		"cost_options": [3],
-		"ability": "PER",
-		"activation": "Conscious",
-		"summary": "The hero is famous in an agreed circle. A perk check can modify Personality-based checks in a scene from a penalty on bad results to bonuses on success; the base check improves at achievement levels 5, 10, and 15.",
-		"source": "Player's Handbook p. 104-105; Table P26.",
-	},
-	{
-		"id": "concentration",
-		"name": "Concentration",
-		"cost_options": [3],
-		"ability": "INT",
-		"activation": "Conscious",
-		"summary": "The hero spends an action concentrating on a stated next task. Success grants a -1, -2, or -3 step bonus; interruption loses the bonus.",
-		"source": "Player's Handbook p. 105; Table P26.",
-	},
-	{
-		"id": "danger_sense",
-		"name": "Danger Sense",
-		"cost_options": [4],
-		"ability": "WIL",
-		"activation": "Active",
-		"summary": "The hero anticipates danger and receives a -2 step bonus to Awareness-intuition checks.",
-		"source": "Player's Handbook p. 105; Table P26.",
-	},
-	{
-		"id": "faith",
-		"name": "Faith",
-		"cost_options": [5],
-		"ability": "WIL",
-		"activation": "Conscious",
-		"summary": "The hero has deep faith in a belief, power, nation, or similar tenet. A qualifying Faith check can improve the degree of success of a later skill check; repeated use in an adventure becomes harder.",
-		"source": "Player's Handbook p. 105; Table P26.",
-	},
-	{
-		"id": "filthy_rich",
-		"name": "Filthy Rich",
-		"cost_options": [6],
-		"ability": "PER",
-		"activation": "Conscious",
-		"summary": "The hero starts wealthy and may gain access to funds with a perk check. Revealing status can modify Personality-based checks, but the GM can invert the effect where wealth is a liability.",
-		"source": "Player's Handbook p. 105-106; Table P26.",
-	},
-	{
-		"id": "fists_of_iron",
-		"name": "Fists of Iron",
-		"cost_options": [2, 5],
-		"ability": "STR",
-		"activation": "Active",
-		"summary": "Adds +1 damage to successful Unarmed Attack checks. The 5-point improved version requires power martial arts and can increase damage further based on a perk check.",
-		"source": "Player's Handbook p. 106; Table P26.",
-	},
-	{
-		"id": "fortitude",
-		"name": "Fortitude",
-		"cost_options": [4],
-		"ability": "CON",
-		"activation": "Active",
-		"summary": "The hero receives a -1 step bonus to Stamina-endurance checks.",
-		"source": "Player's Handbook p. 106; Table P26.",
-	},
-	{
-		"id": "good_luck",
-		"name": "Good Luck",
-		"cost_options": [3],
-		"ability": "WIL",
-		"activation": "Conscious",
-		"summary": "Once per scene before another action, a Good Luck check modifies that next activity. Poor results can impose bad luck; better results grant bonuses.",
-		"source": "Player's Handbook p. 106; Table P26.",
-	},
-	{
-		"id": "great_looks",
-		"name": "Great Looks",
-		"cost_options": [3],
-		"ability": "PER",
-		"activation": "Active",
-		"summary": "When appearance helps an encounter, the hero gains a -1 step bonus to Personality-based skill checks, subject to GM and cultural context.",
-		"source": "Player's Handbook p. 106; Table P26.",
-	},
-	{
-		"id": "heightened_ability",
-		"name": "Heightened Ability",
-		"cost_options": [10],
-		"ability": "Special",
-		"activation": "Active",
-		"summary": "Raises one Ability Score by 1, without exceeding the species maximum; update derived values as needed.",
-		"source": "Player's Handbook p. 106; Table P26.",
-	},
-	{
-		"id": "observant",
-		"name": "Observant",
-		"cost_options": [3],
-		"ability": "WIL",
-		"activation": "Active",
-		"summary": "The hero gains a -1 step bonus to Awareness-perception checks.",
-		"source": "Player's Handbook p. 106; Table P26.",
-	},
-	{
-		"id": "photo_memory",
-		"name": "Photo Memory",
-		"cost_options": [3],
-		"ability": "INT",
-		"activation": "Conscious",
-		"summary": "A perk check can let the hero recall details such as names, faces, documents, or other remembered information; the GM sets the situation die.",
-		"source": "Player's Handbook p. 106; Table P26.",
-	},
-	{
-		"id": "powerful_ally",
-		"name": "Powerful Ally",
-		"cost_options": [4],
-		"ability": "PER",
-		"activation": "Conscious",
-		"summary": "The hero has an agreed ally. A perk check determines the quality of aid if the hero can contact the ally and the ally can respond.",
-		"source": "Player's Handbook p. 106; Table P26.",
-	},
-	{
-		"id": "psionic_awareness",
-		"name": "Psionic Awareness",
-		"cost_options": [3],
-		"ability": "INT",
-		"activation": "Active",
-		"summary": "If psionics are allowed, the hero may receive an Intelligence feat check to notice psionic power use nearby.",
-		"source": "Player's Handbook p. 106; Table P26.",
-	},
-	{
-		"id": "reflexes",
-		"name": "Reflexes",
-		"cost_options": [4],
-		"ability": "DEX",
-		"activation": "Active",
-		"summary": "The hero's Dexterity resistance modifier improves by 1 step.",
-		"source": "Player's Handbook p. 107; Table P26.",
-	},
-	{
-		"id": "reputation",
-		"name": "Reputation",
-		"cost_options": [3],
-		"ability": "WIL",
-		"activation": "Active",
-		"summary": "A known reputation can grant a situation die bonus to agreed encounter skills. The base check improves at achievement levels 5, 10, and 15.",
-		"source": "Player's Handbook p. 107; Table P26.",
-	},
-	{
-		"id": "tough_as_nails",
-		"name": "Tough as Nails",
-		"cost_options": [4],
-		"ability": "STR",
-		"activation": "Active",
-		"summary": "The hero's Strength resistance modifier improves by 1 step.",
-		"source": "Player's Handbook p. 107; Table P26.",
-	},
-	{
-		"id": "vigor",
-		"name": "Vigor",
-		"cost_options": [2, 3, 4],
-		"ability": "CON",
-		"activation": "Active",
-		"summary": "Raises a durability rating: 2 points for +1 stun, 3 points for +1 wound, or 4 points for +1 mortal and +1 fatigue. Each listed benefit can be bought once.",
-		"source": "Player's Handbook p. 107; Table P26.",
-	},
-	{
-		"id": "willpower",
-		"name": "Willpower",
-		"cost_options": [4],
-		"ability": "WIL",
-		"activation": "Active",
-		"summary": "The hero's Will resistance modifier improves by 1 step.",
-		"source": "Player's Handbook p. 108; Table P26.",
-	},
-]
+func roll_mutation_points(character: Dictionary) -> Dictionary:
+	return mutations.roll_mutation_points(character)
 
-const FLAW_DEFINITIONS := [
-	{
-		"id": "alien_artifact_flaw",
-		"name": "Alien Artifact",
-		"bonus_options": [5],
-		"ability": "Special",
-		"summary": "A GM-designed alien item, experiment, or process is mostly a disadvantage, though it also has an unrelated positive side.",
-		"source": "Player's Handbook p. 108-109; Table P27.",
-	},
-	{
-		"id": "bad_luck",
-		"name": "Bad Luck",
-		"bonus_options": [6],
-		"ability": "WIL",
-		"summary": "The hero suffers a Critical Failure when the control die shows 19 or 20.",
-		"source": "Player's Handbook p. 108; Table P27.",
-	},
-	{
-		"id": "clueless",
-		"name": "Clueless",
-		"bonus_options": [2, 4, 6],
-		"ability": "INT",
-		"summary": "The GM secretly chooses a non-profession specialty skill the hero overestimates. The bonus option sets a +1, +2, or +3 step penalty to that skill.",
-		"source": "Player's Handbook p. 108; Table P27.",
-	},
-	{
-		"id": "clumsy",
-		"name": "Clumsy",
-		"bonus_options": [5],
-		"ability": "DEX",
-		"summary": "The hero has poor coordination and takes a +1 step penalty to Dexterity-based skill checks.",
-		"source": "Player's Handbook p. 108; Table P27.",
-	},
-	{
-		"id": "code_of_honor",
-		"name": "Code of Honor",
-		"bonus_options": [3],
-		"ability": "WIL",
-		"summary": "The hero follows a binding code agreed with the GM. Achievement awards can be reduced if the flaw is not roleplayed.",
-		"source": "Player's Handbook p. 108-109; Table P27.",
-	},
-	{
-		"id": "delicate",
-		"name": "Delicate",
-		"bonus_options": [3],
-		"ability": "STR",
-		"summary": "Successful Unarmed Attack checks inflict 1 stun on the hero. If current stun drops below half, the hero cannot use Unarmed Attack until recovering enough stun.",
-		"source": "Player's Handbook p. 109; Table P27.",
-	},
-	{
-		"id": "dirt_poor",
-		"name": "Dirt Poor",
-		"bonus_options": [5],
-		"ability": "PER",
-		"summary": "The hero starts impoverished, has a creditor or obligation set by the GM, and takes a +1 step penalty to Personality-based checks when dealing upward socially or financially.",
-		"source": "Player's Handbook p. 109; Table P27.",
-	},
-	{
-		"id": "forgetful",
-		"name": "Forgetful",
-		"bonus_options": [5],
-		"ability": "INT",
-		"summary": "The hero has trouble recalling details and takes a +1 step penalty to Intelligence-based skill checks.",
-		"source": "Player's Handbook p. 109; Table P27.",
-	},
-	{
-		"id": "fragile",
-		"name": "Fragile",
-		"bonus_options": [3],
-		"ability": "CON",
-		"summary": "Damage hampers the hero, imposing a +1 step penalty to Stamina-endurance checks.",
-		"source": "Player's Handbook p. 109; Table P27.",
-	},
-	{
-		"id": "infamy",
-		"name": "Infamy",
-		"bonus_options": [2, 4, 6],
-		"ability": "PER",
-		"summary": "The hero is known for a criminal or evil act. When triggered, the bonus option sets a +1, +2, or +3 step penalty to Personality-based skill checks.",
-		"source": "Player's Handbook p. 109; Table P27.",
-	},
-	{
-		"id": "oblivious",
-		"name": "Oblivious",
-		"bonus_options": [4],
-		"ability": "WIL",
-		"summary": "The hero has trouble noticing details and takes a +1 step penalty to Awareness-perception checks.",
-		"source": "Player's Handbook p. 109; Table P27.",
-	},
-	{
-		"id": "obsessed",
-		"name": "Obsessed",
-		"bonus_options": [2, 4, 6],
-		"ability": "INT",
-		"summary": "An agreed trigger distracts the hero. The bonus option sets a +1, +2, or +3 step penalty to actions not related to the obsession.",
-		"source": "Player's Handbook p. 109; Table P27.",
-	},
-	{
-		"id": "old_injury",
-		"name": "Old Injury",
-		"bonus_options": [2, 4, 6],
-		"ability": "STR",
-		"summary": "An agreed physical trigger can flare once per scene. The bonus option sets wound damage of 1, 2 plus 1 stun, or 3 plus 1 stun; armor does not reduce it.",
-		"source": "Player's Handbook p. 109; Table P27.",
-	},
-	{
-		"id": "phobia",
-		"name": "Phobia",
-		"bonus_options": [2, 4, 6],
-		"ability": "WIL",
-		"summary": "An agreed broad fear hampers the hero. The bonus option sets a +1 or +2 step penalty to all actions, or freezing/fleeing for the highest option.",
-		"source": "Player's Handbook p. 109-110; Table P27.",
-	},
-	{
-		"id": "poor_looks",
-		"name": "Poor Looks",
-		"bonus_options": [3],
-		"ability": "PER",
-		"summary": "When appearance hurts an encounter, the hero takes a +1 step penalty to Personality-based skill checks, subject to GM and cultural context.",
-		"source": "Player's Handbook p. 110; Table P27.",
-	},
-	{
-		"id": "powerful_enemy",
-		"name": "Powerful Enemy",
-		"bonus_options": [2, 4, 6],
-		"ability": "PER",
-		"summary": "The hero has a far-reaching enemy. The bonus option determines how often and how broadly that enemy can affect the hero.",
-		"source": "Player's Handbook p. 110; Table P27.",
-	},
-	{
-		"id": "primitive",
-		"name": "Primitive",
-		"bonus_options": [2, 4, 6],
-		"ability": "INT",
-		"summary": "The hero struggles with modern technology. The bonus option sets a +1, +2, or +3 step penalty when using it, with possible awe or terror at the highest option.",
-		"source": "Player's Handbook p. 110; Table P27.",
-	},
-	{
-		"id": "slow",
-		"name": "Slow",
-		"bonus_options": [6],
-		"ability": "DEX",
-		"summary": "The hero has reduced reaction time and takes a +1 step penalty to action checks.",
-		"source": "Player's Handbook p. 110; Table P27.",
-	},
-	{
-		"id": "spineless",
-		"name": "Spineless",
-		"bonus_options": [2, 4, 6],
-		"ability": "WIL",
-		"summary": "The hero's Will resistance modifier is reduced by 1, 2, or 3 steps based on the selected bonus option.",
-		"source": "Player's Handbook p. 110; Table P27.",
-	},
-	{
-		"id": "temper",
-		"name": "Temper",
-		"bonus_options": [2, 4, 6],
-		"ability": "WIL",
-		"summary": "An agreed trigger sets off the hero. The bonus option imposes a +1, +2, or +3 step penalty to actions until the trigger ends and the hero calms down.",
-		"source": "Player's Handbook p. 110; Table P27.",
-	},
-]
+func roll_mutation_point_total(character: Dictionary, kind: String) -> int:
+	return mutations.roll_mutation_point_total(character, kind)
 
-const PROFESSION_DEFINITIONS := [
-	{
-		"id": 0,
-		"name": "Combat Spec",
-		"code": "C",
-		"secondary_code": "",
-		"action_bonus": 3,
-		"last_resort_bonus": 0,
-		"ability_minimums": {
-			"STR": 11,
-			"CON": 9,
-		},
-		"notes": [
-			"Action check score increased by 3.",
-			"Choose one combat specialty for a -1 step situation bonus.",
-			"Profession requirements: STR 11, CON 9. Source: Player's Handbook Table P1 p. 30.",
-		],
-	},
-	{
-		"id": 1,
-		"name": "Diplomat (Combat Spec)",
-		"code": "D",
-		"secondary_code": "C",
-		"action_bonus": 1,
-		"last_resort_bonus": 0,
-		"ability_minimums": {
-			"WIL": 9,
-			"PER": 11,
-		},
-		"notes": [
-			"Action check score increased by 1.",
-			"Starts with either Contacts or Resources.",
-			"Secondary profession receives the skill cost bonus.",
-			"Profession requirements: WIL 9, PER 11. Source: Player's Handbook Table P1 p. 30.",
-		],
-	},
-	{
-		"id": 2,
-		"name": "Diplomat (Free Agent)",
-		"code": "D",
-		"secondary_code": "F",
-		"action_bonus": 1,
-		"last_resort_bonus": 0,
-		"ability_minimums": {
-			"WIL": 9,
-			"PER": 11,
-		},
-		"notes": [
-			"Action check score increased by 1.",
-			"Starts with either Contacts or Resources.",
-			"Secondary profession receives the skill cost bonus.",
-			"Profession requirements: WIL 9, PER 11. Source: Player's Handbook Table P1 p. 30.",
-		],
-	},
-	{
-		"id": 3,
-		"name": "Diplomat (Tech Op)",
-		"code": "D",
-		"secondary_code": "T",
-		"action_bonus": 1,
-		"last_resort_bonus": 0,
-		"ability_minimums": {
-			"WIL": 9,
-			"PER": 11,
-		},
-		"notes": [
-			"Action check score increased by 1.",
-			"Starts with either Contacts or Resources.",
-			"Secondary profession receives the skill cost bonus.",
-			"Profession requirements: WIL 9, PER 11. Source: Player's Handbook Table P1 p. 30.",
-		],
-	},
-	{
-		"id": 4,
-		"name": "Free Agent",
-		"code": "F",
-		"secondary_code": "",
-		"action_bonus": 2,
-		"last_resort_bonus": 1,
-		"ability_minimums": {
-			"DEX": 11,
-			"WIL": 9,
-		},
-		"notes": [
-			"Action check score increased by 2.",
-			"Maximum last resorts increased by 1.",
-			"Choose one resistance modifier for the Free Agent bonus.",
-			"Profession requirements: DEX 11, WIL 9. Source: Player's Handbook Table P1 p. 30.",
-		],
-	},
-	{
-		"id": 5,
-		"name": "Tech Op",
-		"code": "T",
-		"secondary_code": "",
-		"action_bonus": 1,
-		"last_resort_bonus": 0,
-		"ability_minimums": {
-			"DEX": 9,
-			"INT": 11,
-		},
-		"notes": [
-			"Action check score increased by 1.",
-			"Uses Accelerated Learning when advancing.",
-			"Profession requirements: DEX 9, INT 11. Source: Player's Handbook Table P1 p. 30.",
-		],
-	},
-	{
-		"id": 6,
-		"name": "Mindwalker",
-		"code": "",
-		"secondary_code": "",
-		"action_bonus": 1,
-		"last_resort_bonus": 0,
-		"ability_minimums": {
-			"CON": 9,
-			"INT": 9,
-			"WIL": 11,
-		},
-		"notes": [
-			"Action check score increased by 1.",
-			"Choose one psionic broad skill and its specialties for a -1 step bonus.",
-			"Profession requirements: CON 9, INT 9, WIL 11. Source: Player's Handbook Table P1 p. 30.",
-		],
-	},
-]
+func mutation_distribution_options(kind: String, points: int) -> Array:
+	return mutations.mutation_distribution_options(kind, points)
+
+func mutation_distribution(character: Dictionary, kind: String) -> Dictionary:
+	return mutations.mutation_distribution(character, kind)
+
+func set_mutation_distribution(character: Dictionary, kind: String, distribution_id: String) -> void:
+	mutations.set_mutation_distribution(character, kind, distribution_id)
+
+func roll_mutation_distribution(character: Dictionary, kind: String) -> Dictionary:
+	return mutations.roll_mutation_distribution(character, kind)
+
+func mutation_distribution_id(character: Dictionary, kind: String) -> String:
+	return mutations.mutation_distribution_id(character, kind)
+
+func mutation_distribution_label(character: Dictionary, kind: String) -> String:
+	return mutations.mutation_distribution_label(character, kind)
+
+func selected_mutation_advantages(character: Dictionary) -> Array:
+	return mutations.selected_mutation_advantages(character)
+
+func selected_mutation_drawbacks(character: Dictionary) -> Array:
+	return mutations.selected_mutation_drawbacks(character)
+
+func mutation_advantage_points_used(character: Dictionary) -> int:
+	return mutations.mutation_advantage_points_used(character)
+
+func mutation_drawback_points_used(character: Dictionary) -> int:
+	return mutations.mutation_drawback_points_used(character)
+
+func mutation_advantage_points_remaining(character: Dictionary) -> int:
+	return mutations.mutation_advantage_points_remaining(character)
+
+func mutation_drawback_points_remaining(character: Dictionary) -> int:
+	return mutations.mutation_drawback_points_remaining(character)
+
+func can_add_mutation_advantage(character: Dictionary, mutation: Dictionary) -> Dictionary:
+	return mutations.can_add_mutation_advantage(character, mutation)
+
+func can_add_mutation_drawback(character: Dictionary, drawback: Dictionary) -> Dictionary:
+	return mutations.can_add_mutation_drawback(character, drawback)
+
+func add_mutation_advantage(character: Dictionary, mutation_id: String) -> Dictionary:
+	return mutations.add_mutation_advantage(character, mutation_id)
+
+func add_mutation_drawback(character: Dictionary, drawback_id: String) -> Dictionary:
+	return mutations.add_mutation_drawback(character, drawback_id)
+
+func remove_mutation_advantage(character: Dictionary, mutation_id: String) -> void:
+	mutations.remove_mutation_advantage(character, mutation_id)
+
+func remove_mutation_drawback(character: Dictionary, drawback_id: String) -> void:
+	mutations.remove_mutation_drawback(character, drawback_id)
+
+func roll_mutations_for_distribution(character: Dictionary, kind: String) -> Dictionary:
+	return mutations.roll_mutations_for_distribution(character, kind)
+
+func mutation_summary(character: Dictionary) -> Dictionary:
+	return mutations.mutation_summary(character)
+
+func mutation_ability_bonus(character: Dictionary, ability: String) -> int:
+	return mutations.mutation_ability_bonus(character, ability)
+
+func mutation_durability_bonus(character: Dictionary, track: String) -> int:
+	return mutations.mutation_durability_bonus(character, track)
+
+func mutation_action_check_step(character: Dictionary) -> int:
+	return mutations.mutation_action_check_step(character)
+
+func mutation_skill_step_bonus(character: Dictionary, skill_id: int) -> int:
+	return mutations.mutation_skill_step_bonus(character, skill_id)
+
+func mutation_movement_modes(character: Dictionary) -> Dictionary:
+	return mutations.mutation_movement_modes(character)
+
+func mutation_roll_notes_for_character(character: Dictionary) -> Array:
+	return mutations.mutation_roll_notes_for_character(character)
+
+func mutation_armor_rows(character: Dictionary) -> Array:
+	return mutations.mutation_armor_rows(character)
+
+func mutation_attack_forms(character: Dictionary) -> Array:
+	return mutations.mutation_attack_forms(character)
+
+func _normalize_mutations(character: Dictionary) -> void:
+	mutations._normalize_mutations(character)
+
+# Equipment Module Delegation
+func get_character_equipment_item(character: Dictionary, item_id: String) -> Dictionary:
+	return equipment.get_character_equipment_item(character, item_id)
+
+func equipment_source_options() -> Array:
+	return equipment.equipment_source_options()
+
+func equipment_category_options() -> Array:
+	return equipment.equipment_category_options()
+
+func equipment_class_options(category := "") -> Array:
+	return equipment.equipment_class_options(category)
+
+func filtered_equipment(filters: Dictionary) -> Array:
+	return equipment.filtered_equipment(filters)
+
+func add_equipment_to_character(character: Dictionary, item_id: String, quantity := 1) -> String:
+	return equipment.add_equipment_to_character(character, item_id, quantity)
+
+func add_custom_equipment_to_character(character: Dictionary, item: Dictionary, quantity := 1) -> String:
+	return equipment.add_custom_equipment_to_character(character, item, quantity)
+
+func update_carried_equipment(character: Dictionary, line_id: String, quantity: int, equipped: bool, slot: String, notes: String) -> void:
+	equipment.update_carried_equipment(character, line_id, quantity, equipped, slot, notes)
+
+func update_custom_equipment_item(character: Dictionary, item_id: String, item: Dictionary) -> void:
+	equipment.update_custom_equipment_item(character, item_id, item)
+
+func remove_carried_equipment(character: Dictionary, line_id: String) -> void:
+	equipment.remove_carried_equipment(character, line_id)
+
+func carried_equipment(character: Dictionary) -> Array:
+	return equipment.carried_equipment(character)
+
+func equipment_summary(character: Dictionary) -> Dictionary:
+	return equipment.equipment_summary(character)
+
+func attack_forms_for_character(character: Dictionary) -> Array:
+	return equipment.attack_forms_for_character(character)
+
+func equipment_has_combat_role(item: Dictionary, role: String) -> bool:
+	return equipment.equipment_has_combat_role(item, role)
+
+func _combat_skill_score(character: Dictionary, skill_id: int) -> Dictionary:
+	return equipment._combat_skill_score(character, skill_id)
+
+func _damage_with_bonus(damage: String, bonus: int) -> String:
+	return equipment._damage_with_bonus(damage, bonus)
+
+func strength_damage_bonus(score: int) -> int:
+	return equipment.strength_damage_bonus(score)
+
+func _score_text(score: Dictionary) -> String:
+	return equipment._score_text(score)
+
+func _normalize_equipment(character: Dictionary) -> void:
+	equipment._normalize_equipment(character)
+
+func _dash_for_empty_or_zero(value) -> String:
+	return equipment._dash_for_empty_or_zero(value)
+
+# Achievements Module Delegation
+func achievement_points_for_level(level: int) -> int:
+	return achievements.achievement_points_for_level(level)
+
+func achievement_level_for_points(points: int) -> int:
+	return achievements.achievement_level_for_points(points)
+
+func achievement_next_level_points(points: int) -> int:
+	return achievements.achievement_next_level_points(points)
+
+func set_achievement_points(character: Dictionary, points: int) -> void:
+	achievements.set_achievement_points(character, points)
+
+func achievement_points_used(character: Dictionary) -> int:
+	return achievements.achievement_points_used(character)
+
+func achievement_points_available(character: Dictionary) -> int:
+	return achievements.achievement_points_available(character)
+
+func achievement_skill_bonus(character: Dictionary) -> int:
+	return achievements.achievement_skill_bonus(character)
+
+func achievement_profile_key(character: Dictionary) -> String:
+	return achievements.achievement_profile_key(character)
+
+func achievement_profile_index(character: Dictionary) -> int:
+	return achievements.achievement_profile_index(character)
+
+func achievement_cost_entry(achievement: Dictionary, character: Dictionary) -> Dictionary:
+	return achievements.achievement_cost_entry(achievement, character)
+
+func achievement_purchase_cost(character: Dictionary, achievement: Dictionary, target_value := 0) -> int:
+	return achievements.achievement_purchase_cost(character, achievement, target_value)
+
+func selected_achievements(character: Dictionary) -> Array:
+	return achievements.selected_achievements(character)
+
+func achievement_purchase_count(character: Dictionary, achievement_id: String) -> int:
+	return achievements.achievement_purchase_count(character, achievement_id)
+
+func achievement_effect_total(character: Dictionary, effect_type: String) -> int:
+	return achievements.achievement_effect_total(character, effect_type)
+
+func achievement_durability_bonus(character: Dictionary, track: String) -> int:
+	return achievements.achievement_durability_bonus(character, track)
+
+func achievement_points_spent(character: Dictionary) -> int:
+	return achievements.achievement_points_spent(character)
+
+func achievement_granted_perk_ids(character: Dictionary) -> Array:
+	return achievements.achievement_granted_perk_ids(character)
+
+func is_perk_granted_by_achievement(character: Dictionary, perk_id: String) -> bool:
+	return achievements.is_perk_granted_by_achievement(character, perk_id)
+
+func achievement_granted_perks(character: Dictionary) -> Array:
+	return achievements.achievement_granted_perks(character)
+
+func can_purchase_achievement(character: Dictionary, achievement: Dictionary, target_id := "", target_value := 0) -> Dictionary:
+	return achievements.can_purchase_achievement(character, achievement, target_id, target_value)
+
+func achievement_ability_purchase_count(character: Dictionary, ability: String) -> int:
+	return achievements.achievement_ability_purchase_count(character, ability)
+
+func add_achievement_purchase(character: Dictionary, achievement_id: String, target_id := "", target_value := 0, notes := "") -> Dictionary:
+	return achievements.add_achievement_purchase(character, achievement_id, target_id, target_value, notes)
+
+func remove_achievement_purchase(character: Dictionary, line_id: String) -> void:
+	achievements.remove_achievement_purchase(character, line_id)
+
+func achievement_display_name(achievement: Dictionary, entry: Dictionary = {}) -> String:
+	return achievements.achievement_display_name(achievement, entry)
+
+func _normalize_selected_achievements(character: Dictionary) -> void:
+	achievements._normalize_selected_achievements(character)
 
 var data: Dictionary = {}
 var species: Array = []
@@ -1240,6 +314,7 @@ func load_core_data(path := "res://data/rules/alternity_core.json") -> void:
 	data = parsed
 	species = data.get("species", [])
 	skills = data.get("skills", [])
+	_load_psionics_catalog()
 	_index_skills()
 	_load_equipment_catalog()
 	_load_achievement_catalog()
@@ -1346,6 +421,21 @@ func _load_mutation_catalog(path := "res://data/rules/mutations_core.json") -> v
 		var item_id := String(item.get("id", ""))
 		if not item_id.is_empty():
 			mutation_drawbacks_by_id[item_id] = item
+
+
+func _load_psionics_catalog(path := "res://data/rules/psionics_core.json") -> void:
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		push_error("Unable to load Alternity psionics data: %s" % path)
+		return
+
+	var parsed = JSON.parse_string(file.get_as_text())
+	if typeof(parsed) != TYPE_DICTIONARY:
+		push_error("Alternity psionics data is not valid JSON: %s" % path)
+		return
+
+	var psionics_skills: Array = parsed.get("skills", [])
+	skills.append_array(psionics_skills)
 
 
 func default_character() -> Dictionary:
@@ -1468,59 +558,6 @@ func ensure_character_shape(character: Dictionary) -> Dictionary:
 	return character
 
 
-func achievement_points_for_level(level: int) -> int:
-	var safe_level: int = max(1, level)
-	return int(((safe_level * safe_level) + (9 * safe_level) - 10) / 2.0)
-
-
-func achievement_level_for_points(points: int) -> int:
-	var safe_points: int = max(0, points)
-	var level := 1
-	while safe_points >= achievement_points_for_level(level + 1):
-		level += 1
-	return level
-
-
-func achievement_next_level_points(points: int) -> int:
-	return achievement_points_for_level(achievement_level_for_points(points) + 1)
-
-
-func set_achievement_points(character: Dictionary, points: int) -> void:
-	character["achievement_points"] = max(0, points)
-	character["achievement_level"] = achievement_level_for_points(_as_int(character["achievement_points"]))
-	character["achievement_points_available"] = achievement_points_available(character)
-
-
-func achievement_points_used(character: Dictionary) -> int:
-	var skill_points_from_achievements: int = max(0, skill_points_used(character) - starting_skill_budget(character) - achievement_skill_bonus(character))
-	var other_spending: int = max(0, _as_int(character.get("achievement_points_spent_other", 0)))
-	return skill_points_from_achievements + other_spending
-
-
-func achievement_points_available(character: Dictionary) -> int:
-	return _as_int(character.get("achievement_points", 0)) - achievement_points_used(character)
-
-
-func achievement_skill_bonus(character: Dictionary) -> int:
-	var profession := get_profession_by_id(_as_int(character.get("profession_id", 0)))
-	if String(profession.get("name", "")) != "Tech Op":
-		return 0
-
-	var bonus := 0
-	var current_level := achievement_level_for_points(_as_int(character.get("achievement_points", 0)))
-	for level in range(2, current_level + 1):
-		if level <= 5:
-			bonus += 1
-		elif level <= 10:
-			bonus += 2
-		elif level <= 15:
-			bonus += 3
-		elif level <= 20:
-			bonus += 4
-		else:
-			bonus += 5
-	return bonus
-
 
 func get_species_by_id(species_id: int) -> Dictionary:
 	for item in species:
@@ -1555,836 +592,6 @@ func get_mutation_advantage_by_id(mutation_id: String) -> Dictionary:
 func get_mutation_drawback_by_id(drawback_id: String) -> Dictionary:
 	return mutation_drawbacks_by_id.get(drawback_id, {})
 
-
-func mutant_species_id() -> int:
-	for item in species:
-		if String(item.get("name", "")) == "Mutant":
-			return _as_int(item.get("id", -1))
-	return 6
-
-
-func mutations_enabled(character: Dictionary) -> bool:
-	return _as_int(character.get("species_id", -1)) == mutant_species_id()
-
-
-func mutation_origin_options() -> Array:
-	return mutation_origins
-
-
-func mutation_uniqueness_options(origin_id: String) -> Array:
-	var origin := get_mutation_origin_by_id(origin_id)
-	if origin.is_empty():
-		return []
-	var rows: Array = origin.get("uniqueness", [])
-	return rows
-
-
-func get_mutation_origin_by_id(origin_id: String) -> Dictionary:
-	return mutation_origins_by_id.get(origin_id, {})
-
-
-func get_mutation_uniqueness_by_id(origin_id: String, uniqueness_id: String) -> Dictionary:
-	var origin_uniqueness: Dictionary = mutation_uniqueness_by_id.get(origin_id, {})
-	return origin_uniqueness.get(uniqueness_id, {})
-
-
-func set_mutation_generation_mode(character: Dictionary, mode: String) -> void:
-	var mutations := _mutation_data(character)
-	mutations["generation_mode"] = "player" if mode == "player" else "random"
-	character["mutations"] = mutations
-
-
-func set_mutation_origin(character: Dictionary, origin_id: String) -> void:
-	var mutations := _mutation_data(character)
-	var origin := get_mutation_origin_by_id(origin_id)
-	if origin.is_empty():
-		return
-	mutations["origin"] = origin_id
-	if get_mutation_uniqueness_by_id(origin_id, String(mutations.get("uniqueness", ""))).is_empty():
-		var uniqueness_rows: Array = origin.get("uniqueness", [])
-		if not uniqueness_rows.is_empty() and typeof(uniqueness_rows[0]) == TYPE_DICTIONARY:
-			mutations["uniqueness"] = String(uniqueness_rows[0].get("id", ""))
-	character["mutations"] = mutations
-
-
-func set_mutation_uniqueness(character: Dictionary, uniqueness_id: String) -> void:
-	var mutations := _mutation_data(character)
-	var origin_id := String(mutations.get("origin", "engineered"))
-	if get_mutation_uniqueness_by_id(origin_id, uniqueness_id).is_empty():
-		return
-	mutations["uniqueness"] = uniqueness_id
-	character["mutations"] = mutations
-
-
-func set_mutation_points(character: Dictionary, advantage_points: int, drawback_points: int) -> void:
-	var mutations := _mutation_data(character)
-	mutations["advantage_points"] = max(0, advantage_points)
-	mutations["drawback_points"] = max(0, drawback_points)
-	character["mutations"] = mutations
-	_ensure_mutation_distributions(character)
-
-
-func set_mutation_point_total(character: Dictionary, kind: String, points: int) -> void:
-	var mutations := _mutation_data(character)
-	if kind == "drawback":
-		mutations["drawback_points"] = max(0, points)
-	else:
-		mutations["advantage_points"] = max(0, points)
-	character["mutations"] = mutations
-	_ensure_mutation_distribution(character, kind)
-
-
-func roll_mutation_origin(character: Dictionary) -> Dictionary:
-	var origin_roll := randi_range(1, 8)
-	var origin_id := "engineered" if origin_roll <= 5 else "natural"
-	var uniqueness_roll := randi_range(1, 8)
-	var uniqueness_id := ""
-	if origin_id == "engineered":
-		uniqueness_id = "engineered_community" if uniqueness_roll <= 5 else "engineered_unique"
-	else:
-		uniqueness_id = "natural_community" if uniqueness_roll <= 3 else "natural_unique"
-
-	var mutations := _mutation_data(character)
-	mutations["origin"] = origin_id
-	mutations["uniqueness"] = uniqueness_id
-	character["mutations"] = mutations
-	return {
-		"origin_roll": origin_roll,
-		"uniqueness_roll": uniqueness_roll,
-		"origin": get_mutation_origin_by_id(origin_id),
-		"uniqueness": get_mutation_uniqueness_by_id(origin_id, uniqueness_id),
-	}
-
-
-func roll_mutation_origin_and_points(character: Dictionary) -> Dictionary:
-	var origin_result := roll_mutation_origin(character)
-	var points_result := roll_mutation_points(character)
-	origin_result["points"] = points_result
-	return origin_result
-
-
-func roll_mutation_points(character: Dictionary) -> Dictionary:
-	var mutations := _mutation_data(character)
-	var uniqueness := get_mutation_uniqueness_by_id(String(mutations.get("origin", "engineered")), String(mutations.get("uniqueness", "engineered_community")))
-	if uniqueness.is_empty():
-		return {}
-	var advantage_points := _roll_mutation_formula(String(uniqueness.get("advantage_points", "0")))
-	var drawback_points := _roll_mutation_formula(String(uniqueness.get("drawback_points", "0")))
-	mutations["advantage_points"] = advantage_points
-	mutations["drawback_points"] = drawback_points
-	character["mutations"] = mutations
-	_ensure_mutation_distributions(character)
-	return {
-		"advantage_points": advantage_points,
-		"drawback_points": drawback_points,
-		"uniqueness": uniqueness,
-	}
-
-
-func roll_mutation_point_total(character: Dictionary, kind: String) -> int:
-	var mutations := _mutation_data(character)
-	var uniqueness := get_mutation_uniqueness_by_id(String(mutations.get("origin", "engineered")), String(mutations.get("uniqueness", "engineered_community")))
-	if uniqueness.is_empty():
-		return 0
-	var formula_key := "drawback_points" if kind == "drawback" else "advantage_points"
-	var points := _roll_mutation_formula(String(uniqueness.get(formula_key, "0")))
-	set_mutation_point_total(character, kind, points)
-	return points
-
-
-func mutation_distribution_options(kind: String, points: int) -> Array:
-	var safe_points: int = max(0, points)
-	if kind == "drawback":
-		return _mutation_drawback_distribution_options(safe_points)
-	return _mutation_advantage_distribution_options(safe_points)
-
-
-func mutation_distribution(character: Dictionary, kind: String) -> Dictionary:
-	var mutations := _mutation_data(character)
-	_ensure_mutation_distribution(character, kind)
-	var distribution_key := "drawback_distribution" if kind == "drawback" else "advantage_distribution"
-	var value = mutations.get(distribution_key, {})
-	return value if typeof(value) == TYPE_DICTIONARY else {}
-
-
-func set_mutation_distribution(character: Dictionary, kind: String, distribution_id: String) -> void:
-	var mutations := _mutation_data(character)
-	var points_key := "drawback_points" if kind == "drawback" else "advantage_points"
-	var distribution_key := "drawback_distribution" if kind == "drawback" else "advantage_distribution"
-	var options := mutation_distribution_options(kind, _as_int(mutations.get(points_key, 0)))
-	for option_value in options:
-		if typeof(option_value) != TYPE_DICTIONARY:
-			continue
-		var option: Dictionary = option_value
-		if String(option.get("id", "")) == distribution_id:
-			mutations[distribution_key] = option.get("counts", {}).duplicate(true)
-			character["mutations"] = mutations
-			return
-
-
-func roll_mutation_distribution(character: Dictionary, kind: String) -> Dictionary:
-	var mutations := _mutation_data(character)
-	var points_key := "drawback_points" if kind == "drawback" else "advantage_points"
-	var options := mutation_distribution_options(kind, _as_int(mutations.get(points_key, 0)))
-	if options.is_empty():
-		return {}
-	var option: Dictionary = options[randi_range(0, options.size() - 1)]
-	set_mutation_distribution(character, kind, String(option.get("id", "")))
-	return option
-
-
-func mutation_distribution_id(character: Dictionary, kind: String) -> String:
-	var distribution := mutation_distribution(character, kind)
-	var order := MUTATION_DRAWBACK_TIERS if kind == "drawback" else MUTATION_ADVANTAGE_TIERS
-	return _mutation_distribution_id(distribution, order)
-
-
-func mutation_distribution_label(character: Dictionary, kind: String) -> String:
-	var distribution := mutation_distribution(character, kind)
-	var order := MUTATION_DRAWBACK_LABEL_ORDER if kind == "drawback" else MUTATION_ADVANTAGE_LABEL_ORDER
-	return _mutation_distribution_label(distribution, order)
-
-
-func selected_mutation_advantages(character: Dictionary) -> Array:
-	var rows := []
-	var mutations := _mutation_data(character)
-	for mutation_id_value in mutations.get("advantages", []):
-		var mutation_id := String(mutation_id_value)
-		var mutation := get_mutation_advantage_by_id(mutation_id)
-		if mutation.is_empty():
-			continue
-		rows.append(mutation.duplicate(true))
-	return rows
-
-
-func selected_mutation_drawbacks(character: Dictionary) -> Array:
-	var rows := []
-	var mutations := _mutation_data(character)
-	for drawback_id_value in mutations.get("drawbacks", []):
-		var drawback_id := String(drawback_id_value)
-		var drawback := get_mutation_drawback_by_id(drawback_id)
-		if drawback.is_empty():
-			continue
-		rows.append(drawback.duplicate(true))
-	return rows
-
-
-func mutation_advantage_points_used(character: Dictionary) -> int:
-	var total := 0
-	for mutation in selected_mutation_advantages(character):
-		total += _as_int(mutation.get("points", 0))
-	return total
-
-
-func mutation_drawback_points_used(character: Dictionary) -> int:
-	var total := 0
-	for drawback in selected_mutation_drawbacks(character):
-		total += _as_int(drawback.get("points", 0))
-	return total
-
-
-func mutation_advantage_points_remaining(character: Dictionary) -> int:
-	var mutations := _mutation_data(character)
-	return _as_int(mutations.get("advantage_points", 0)) - mutation_advantage_points_used(character)
-
-
-func mutation_drawback_points_remaining(character: Dictionary) -> int:
-	var mutations := _mutation_data(character)
-	return _as_int(mutations.get("drawback_points", 0)) - mutation_drawback_points_used(character)
-
-
-func can_add_mutation_advantage(character: Dictionary, mutation: Dictionary) -> Dictionary:
-	if not mutations_enabled(character):
-		return {"allowed": false, "reason": "Only Mutant heroes use mutation rules."}
-	var mutation_id := String(mutation.get("id", ""))
-	if mutation_id.is_empty() or get_mutation_advantage_by_id(mutation_id).is_empty():
-		return {"allowed": false, "reason": "Unknown mutation."}
-	if _mutation_selected(character, "advantages", mutation_id):
-		return {"allowed": false, "reason": "Already selected."}
-	var remaining := mutation_advantage_points_remaining(character)
-	var points := _as_int(mutation.get("points", 0))
-	if remaining < points:
-		return {"allowed": false, "reason": "Requires %d available advantageous mutation points." % points}
-	var tier := String(mutation.get("tier", "Ordinary"))
-	var distribution := mutation_distribution(character, "advantage")
-	var allowed_count := _as_int(distribution.get(tier, 0))
-	if allowed_count <= 0:
-		return {"allowed": false, "reason": "The point distribution has no %s mutation slot." % tier}
-	if _mutation_tier_count(selected_mutation_advantages(character), tier) >= allowed_count:
-		return {"allowed": false, "reason": "The selected point distribution has no remaining %s mutation slot." % tier}
-	var cap := _mutation_advantage_tier_cap(tier)
-	if cap > 0 and _mutation_tier_count(selected_mutation_advantages(character), tier) >= cap:
-		return {"allowed": false, "reason": "A mutant can have no more than %d %s advantageous mutation%s." % [cap, tier, "" if cap == 1 else "s"]}
-	return {"allowed": true, "reason": ""}
-
-
-func can_add_mutation_drawback(character: Dictionary, drawback: Dictionary) -> Dictionary:
-	if not mutations_enabled(character):
-		return {"allowed": false, "reason": "Only Mutant heroes use mutation rules."}
-	var drawback_id := String(drawback.get("id", ""))
-	if drawback_id.is_empty() or get_mutation_drawback_by_id(drawback_id).is_empty():
-		return {"allowed": false, "reason": "Unknown drawback."}
-	if _mutation_selected(character, "drawbacks", drawback_id):
-		return {"allowed": false, "reason": "Already selected."}
-	var remaining := mutation_drawback_points_remaining(character)
-	var points := _as_int(drawback.get("points", 0))
-	if remaining < points:
-		return {"allowed": false, "reason": "Requires %d available drawback mutation points." % points}
-	var tier := String(drawback.get("tier", "Slight"))
-	var distribution := mutation_distribution(character, "drawback")
-	var allowed_count := _as_int(distribution.get(tier, 0))
-	if allowed_count <= 0:
-		return {"allowed": false, "reason": "The point distribution has no %s drawback slot." % tier}
-	if _mutation_tier_count(selected_mutation_drawbacks(character), tier) >= allowed_count:
-		return {"allowed": false, "reason": "The selected point distribution has no remaining %s drawback slot." % tier}
-	return {"allowed": true, "reason": ""}
-
-
-func add_mutation_advantage(character: Dictionary, mutation_id: String) -> Dictionary:
-	var mutation := get_mutation_advantage_by_id(mutation_id)
-	var check := can_add_mutation_advantage(character, mutation)
-	if not bool(check.get("allowed", false)):
-		return {"ok": false, "reason": String(check.get("reason", ""))}
-	var mutations := _mutation_data(character)
-	var selected: Array = mutations.get("advantages", [])
-	selected.append(mutation_id)
-	mutations["advantages"] = selected
-	character["mutations"] = mutations
-	clamp_trackers(character)
-	return {"ok": true}
-
-
-func add_mutation_drawback(character: Dictionary, drawback_id: String) -> Dictionary:
-	var drawback := get_mutation_drawback_by_id(drawback_id)
-	var check := can_add_mutation_drawback(character, drawback)
-	if not bool(check.get("allowed", false)):
-		return {"ok": false, "reason": String(check.get("reason", ""))}
-	var mutations := _mutation_data(character)
-	var selected: Array = mutations.get("drawbacks", [])
-	selected.append(drawback_id)
-	mutations["drawbacks"] = selected
-	character["mutations"] = mutations
-	clamp_trackers(character)
-	return {"ok": true}
-
-
-func remove_mutation_advantage(character: Dictionary, mutation_id: String) -> void:
-	_remove_mutation_selection(character, "advantages", mutation_id)
-	clamp_trackers(character)
-
-
-func remove_mutation_drawback(character: Dictionary, drawback_id: String) -> void:
-	_remove_mutation_selection(character, "drawbacks", drawback_id)
-	clamp_trackers(character)
-
-
-func roll_mutations_for_distribution(character: Dictionary, kind: String) -> Dictionary:
-	if kind == "drawback":
-		return _roll_mutation_selection(character, "drawbacks", mutation_drawbacks, "drawback")
-	return _roll_mutation_selection(character, "advantages", mutation_advantages, "advantage")
-
-
-func mutation_summary(character: Dictionary) -> Dictionary:
-	var mutations := _mutation_data(character)
-	var origin_id := String(mutations.get("origin", "engineered"))
-	var uniqueness_id := String(mutations.get("uniqueness", "engineered_community"))
-	return {
-		"enabled": mutations_enabled(character),
-		"rules": mutation_rules,
-		"generation_mode": String(mutations.get("generation_mode", "random")),
-		"origin": get_mutation_origin_by_id(origin_id),
-		"uniqueness": get_mutation_uniqueness_by_id(origin_id, uniqueness_id),
-		"advantage_points": _as_int(mutations.get("advantage_points", 0)),
-		"drawback_points": _as_int(mutations.get("drawback_points", 0)),
-		"advantage_points_used": mutation_advantage_points_used(character),
-		"drawback_points_used": mutation_drawback_points_used(character),
-		"advantage_points_remaining": mutation_advantage_points_remaining(character),
-		"drawback_points_remaining": mutation_drawback_points_remaining(character),
-		"advantage_distribution": mutation_distribution(character, "advantage"),
-		"drawback_distribution": mutation_distribution(character, "drawback"),
-		"advantage_distribution_label": mutation_distribution_label(character, "advantage"),
-		"drawback_distribution_label": mutation_distribution_label(character, "drawback"),
-		"advantages": selected_mutation_advantages(character),
-		"drawbacks": selected_mutation_drawbacks(character),
-	}
-
-
-func achievement_profile_key(character: Dictionary) -> String:
-	var profession := get_profession_by_id(_as_int(character.get("profession_id", 0)))
-	var profession_name := String(profession.get("name", ""))
-	if profession_name.begins_with("Diplomat"):
-		return "diplomat"
-	if profession_name == "Combat Spec":
-		return "combat_spec"
-	if profession_name == "Free Agent":
-		return "free_agent"
-	if profession_name == "Tech Op":
-		return "tech_op"
-	if profession_name == "Mindwalker":
-		return "mindwalker"
-	return "combat_spec"
-
-
-func achievement_profile_index(character: Dictionary) -> int:
-	var key := achievement_profile_key(character)
-	for index in range(achievement_profiles.size()):
-		if String(achievement_profiles[index]) == key:
-			return index
-	return 0
-
-
-func achievement_cost_entry(achievement: Dictionary, character: Dictionary) -> Dictionary:
-	var costs: Array = achievement.get("costs", [])
-	var index := achievement_profile_index(character)
-	if index < 0 or index >= costs.size():
-		return {"cost": 0, "min_level": 99}
-	var row = costs[index]
-	if typeof(row) != TYPE_ARRAY or row.size() < 2:
-		return {"cost": 0, "min_level": 99}
-	var cost := _as_int(row[0])
-	var min_level := _as_int(row[1])
-	var effect: Dictionary = achievement.get("effect", {})
-	if String(effect.get("type", "")) == "remove_flaw":
-		cost = 0
-	return {
-		"cost": cost,
-		"min_level": min_level,
-	}
-
-
-func achievement_purchase_cost(character: Dictionary, achievement: Dictionary, target_value := 0) -> int:
-	var effect: Dictionary = achievement.get("effect", {})
-	if String(effect.get("type", "")) == "remove_flaw":
-		return max(0, _as_int(target_value)) * max(1, _as_int(effect.get("cost_multiplier", 2)))
-	return _as_int(achievement_cost_entry(achievement, character).get("cost", 0))
-
-
-func get_character_equipment_item(character: Dictionary, item_id: String) -> Dictionary:
-	var catalog_item := get_equipment_item_by_id(item_id)
-	if not catalog_item.is_empty():
-		return catalog_item
-	var equipment: Dictionary = character.get("equipment", {})
-	if not equipment.has("_custom_items_by_id"):
-		var cache := {}
-		for item in equipment.get("custom_items", []):
-			if typeof(item) == TYPE_DICTIONARY:
-				cache[String(item.get("id", ""))] = item
-		equipment["_custom_items_by_id"] = cache
-	return equipment.get("_custom_items_by_id", {}).get(item_id, {})
-
-
-func equipment_source_options() -> Array:
-	var result := []
-	var seen := {}
-	for source in equipment_sources:
-		if typeof(source) != TYPE_DICTIONARY:
-			continue
-		var source_id := String(source.get("id", source.get("name", ""))).to_lower()
-		if source_id.is_empty() or seen.has(source_id):
-			continue
-		seen[source_id] = true
-		result.append({
-			"id": source_id,
-			"name": String(source.get("name", source_id.capitalize())),
-			"reference": String(source.get("reference", "")),
-		})
-	return result
-
-
-func equipment_category_options() -> Array:
-	return _equipment_string_options("category")
-
-
-func equipment_class_options(category := "") -> Array:
-	var options := []
-	var seen := {}
-	var category_filter := String(category)
-	for item in equipment_catalog:
-		if typeof(item) != TYPE_DICTIONARY:
-			continue
-		if not category_filter.is_empty() and String(item.get("category", "")) != category_filter:
-			continue
-		var value := String(item.get("class", ""))
-		if value.is_empty() or seen.has(value):
-			continue
-		seen[value] = true
-		options.append(value)
-	options.sort()
-	return options
-
-
-func filtered_equipment(filters: Dictionary) -> Array:
-	var search := String(filters.get("search", "")).strip_edges().to_lower()
-	var pl_min := _as_int(filters.get("pl_min", 0))
-	var pl_max := _as_int(filters.get("pl_max", 8))
-	if pl_min > pl_max:
-		var swap := pl_min
-		pl_min = pl_max
-		pl_max = swap
-	var category := String(filters.get("category", ""))
-	var class_filter := String(filters.get("class", ""))
-	var kind := String(filters.get("kind", ""))
-	var source_filter: Dictionary = filters.get("sources", {})
-	var use_source_filter := not source_filter.is_empty()
-	var result := []
-
-	for item in equipment_catalog:
-		if typeof(item) != TYPE_DICTIONARY:
-			continue
-		var item_pl := _as_int(item.get("pl", 0))
-		if item_pl < pl_min or item_pl > pl_max:
-			continue
-		var source_id := String(item.get("source_code", item.get("source", ""))).to_lower()
-		if use_source_filter and not bool(source_filter.get(source_id, false)):
-			continue
-		if not kind.is_empty() and String(item.get("kind", "")) != kind:
-			continue
-		if not category.is_empty() and String(item.get("category", "")) != category:
-			continue
-		if not class_filter.is_empty() and String(item.get("class", "")) != class_filter:
-			continue
-		if not search.is_empty() and not _equipment_matches_search(item, search):
-			continue
-		result.append(item)
-	return result
-
-
-func add_equipment_to_character(character: Dictionary, item_id: String, quantity := 1) -> String:
-	_normalize_equipment(character)
-	if get_character_equipment_item(character, item_id).is_empty():
-		return ""
-	var equipment: Dictionary = character.get("equipment", {})
-	var carried: Array = equipment.get("carried", [])
-	var line_id := _next_equipment_line_id(character)
-	carried.append({
-		"line_id": line_id,
-		"item_id": item_id,
-		"quantity": max(1, quantity),
-		"equipped": false,
-		"slot": "",
-		"notes": "",
-	})
-	equipment["carried"] = carried
-	character["equipment"] = equipment
-	return line_id
-
-
-func add_custom_equipment_to_character(character: Dictionary, item: Dictionary, quantity := 1) -> String:
-	_normalize_equipment(character)
-	var equipment: Dictionary = character.get("equipment", {})
-	var custom_items: Array = equipment.get("custom_items", [])
-	var custom_item := _normalize_equipment_item(item.duplicate(true), _next_custom_equipment_id(character))
-	custom_items.append(custom_item)
-	equipment["custom_items"] = custom_items
-	equipment.erase("_custom_items_by_id")
-	character["equipment"] = equipment
-	return add_equipment_to_character(character, String(custom_item.get("id", "")), quantity)
-
-
-func update_carried_equipment(character: Dictionary, line_id: String, quantity: int, equipped: bool, slot: String, notes: String) -> void:
-	_normalize_equipment(character)
-	var equipment: Dictionary = character.get("equipment", {})
-	var carried: Array = equipment.get("carried", [])
-	for index in range(carried.size()):
-		if typeof(carried[index]) != TYPE_DICTIONARY:
-			continue
-		var row: Dictionary = carried[index]
-		if String(row.get("line_id", "")) != line_id:
-			continue
-		row["quantity"] = max(1, quantity)
-		row["equipped"] = equipped
-		row["slot"] = slot
-		row["notes"] = notes
-		carried[index] = row
-		break
-	equipment["carried"] = carried
-	character["equipment"] = equipment
-
-
-func update_custom_equipment_item(character: Dictionary, item_id: String, item: Dictionary) -> void:
-	_normalize_equipment(character)
-	var equipment: Dictionary = character.get("equipment", {})
-	var custom_items: Array = equipment.get("custom_items", [])
-	for index in range(custom_items.size()):
-		if typeof(custom_items[index]) != TYPE_DICTIONARY:
-			continue
-		var current: Dictionary = custom_items[index]
-		if String(current.get("id", "")) != item_id:
-			continue
-		var normalized := _normalize_equipment_item(item.duplicate(true), item_id)
-		normalized["id"] = item_id
-		custom_items[index] = normalized
-		break
-	equipment["custom_items"] = custom_items
-	equipment.erase("_custom_items_by_id")
-	character["equipment"] = equipment
-
-
-func remove_carried_equipment(character: Dictionary, line_id: String) -> void:
-	_normalize_equipment(character)
-	var equipment: Dictionary = character.get("equipment", {})
-	var carried: Array = equipment.get("carried", [])
-	var next_carried := []
-	var removed_item_id := ""
-	for row in carried:
-		if typeof(row) != TYPE_DICTIONARY:
-			continue
-		if String(row.get("line_id", "")) == line_id:
-			removed_item_id = String(row.get("item_id", ""))
-			continue
-		next_carried.append(row)
-	equipment["carried"] = next_carried
-	character["equipment"] = equipment
-	_remove_unused_custom_equipment(character, removed_item_id)
-
-
-func carried_equipment(character: Dictionary) -> Array:
-	_normalize_equipment(character)
-	var equipment: Dictionary = character.get("equipment", {})
-	var rows: Array = []
-	for row in equipment.get("carried", []):
-		if typeof(row) != TYPE_DICTIONARY:
-			continue
-		var item: Dictionary = get_character_equipment_item(character, String(row.get("item_id", "")))
-		if item.is_empty():
-			continue
-		var quantity: int = max(1, _as_int(row.get("quantity", 1)))
-		var result: Dictionary = row.duplicate(true)
-		result["item"] = item
-		result["quantity"] = quantity
-		result["total_mass"] = _as_float(item.get("mass", 0.0)) * float(quantity)
-		result["total_cost"] = _as_int(item.get("cost", 0)) * quantity
-		rows.append(result)
-	return rows
-
-
-func equipment_summary(character: Dictionary) -> Dictionary:
-	var rows := carried_equipment(character)
-	var total_mass := 0.0
-	var total_cost := 0
-	var combat_weapons := []
-	var combat_armor := []
-	var equipped_weapons := []
-	var equipped_armor := []
-	for row in rows:
-		total_mass += _as_float(row.get("total_mass", 0.0))
-		total_cost += _as_int(row.get("total_cost", 0))
-		var item: Dictionary = row.get("item", {})
-		if equipment_has_combat_role(item, "weapon"):
-			combat_weapons.append(row)
-			if bool(row.get("equipped", false)):
-				equipped_weapons.append(row)
-		if equipment_has_combat_role(item, "armor"):
-			combat_armor.append(row)
-			if bool(row.get("equipped", false)):
-				equipped_armor.append(row)
-	for mutation_armor in mutation_armor_rows(character):
-		combat_armor.append(mutation_armor)
-		equipped_armor.append(mutation_armor)
-	return {
-		"carried_count": rows.size(),
-		"total_mass": total_mass,
-		"total_cost": total_cost,
-		"combat_weapons": combat_weapons,
-		"combat_armor": combat_armor,
-		"equipped_weapons": equipped_weapons,
-		"equipped_armor": equipped_armor,
-		"attack_forms": attack_forms_for_character(character),
-	}
-
-
-func attack_forms_for_character(character: Dictionary) -> Array:
-	var forms := [_unarmed_attack_form(character)]
-	for row in carried_equipment(character):
-		var item: Dictionary = row.get("item", {})
-		if not equipment_has_combat_role(item, "weapon"):
-			continue
-		var form := _weapon_attack_form(character, item)
-		form["quantity"] = _as_int(row.get("quantity", 1))
-		form["equipped"] = bool(row.get("equipped", false))
-		form["slot"] = String(row.get("slot", ""))
-		forms.append(form)
-	for form in mutation_attack_forms(character):
-		forms.append(form)
-	return forms
-
-
-func equipment_has_combat_role(item: Dictionary, role: String) -> bool:
-	var normalized_role := role.to_lower()
-	if String(item.get("kind", "")).to_lower() == normalized_role:
-		return true
-	if String(item.get("combat_role", "")).to_lower() == normalized_role:
-		return true
-	var combat = item.get("combat", null)
-	if typeof(combat) == TYPE_DICTIONARY and String(combat.get("role", "")).to_lower() == normalized_role:
-		return true
-	var roles = item.get("combat_roles", [])
-	if typeof(roles) != TYPE_ARRAY:
-		return false
-	for entry in roles:
-		if String(entry).to_lower() == normalized_role:
-			return true
-	return false
-
-
-func _unarmed_attack_form(character: Dictionary) -> Dictionary:
-	var score := _combat_skill_score(character, 15)
-	var abilities := effective_abilities(character)
-	var strength_bonus := strength_damage_bonus(_as_int(abilities.get("STR", 10)))
-	return {
-		"name": "Unarmed",
-		"score": _score_text(score),
-		"base_die": action_step_die(_as_int(score.get("step", 1))),
-		"type": "LI/O",
-		"range": "Personal",
-		"damage": _damage_with_bonus("d4s/d4+1s/d4+2s", strength_bonus),
-		"hide": "3",
-		"clip_size": "-",
-		"mass": "",
-	}
-
-
-func _weapon_attack_form(character: Dictionary, item: Dictionary) -> Dictionary:
-	var combat_value = item.get("combat", {})
-	var combat: Dictionary = combat_value if typeof(combat_value) == TYPE_DICTIONARY else {}
-	var score := _combat_skill_score(character, _as_int(combat.get("skill_id", -1)))
-	var accuracy := _as_int(combat.get("accuracy", 0))
-	score["step"] = _as_int(score.get("step", 1)) + accuracy
-	var damage := String(combat.get("damage", ""))
-	if bool(combat.get("strength_based", false)):
-		var abilities := effective_abilities(character)
-		damage = _damage_with_bonus(damage, strength_damage_bonus(_as_int(abilities.get("STR", 10))))
-	return {
-		"name": String(item.get("name", "Weapon")),
-		"score": _score_text(score),
-		"base_die": action_step_die(_as_int(score.get("step", 0))),
-		"type": String(combat.get("damage_type", combat.get("type", ""))),
-		"range": String(combat.get("range", "")),
-		"damage": damage,
-		"hide": _dash_for_empty_or_hidden(combat.get("hide", "")),
-		"clip_size": _dash_for_empty_or_zero(combat.get("clip_size", "")),
-		"mass": _format_rules_number(_as_float(item.get("mass", 0.0))),
-	}
-
-
-func _combat_skill_score(character: Dictionary, skill_id: int) -> Dictionary:
-	var skill := get_skill_by_id(skill_id)
-	if skill.is_empty():
-		return _untrained_combat_score(character, "STR", 1)
-
-	var use_skill := skill
-	var rank := skill_rank(character, skill_id)
-	if rank <= 0:
-		var broad_id := _as_int(skill.get("broad_id", skill_id))
-		var broad := get_skill_by_id(broad_id)
-		if String(skill.get("type", "")) == "specialty" and not broad.is_empty() and skill_rank(character, broad_id) > 0 and bool(skill.get("untrained", true)):
-			use_skill = broad
-		else:
-			return _untrained_combat_score(character, String(skill.get("stat", "STR")), 1)
-
-	var abilities := effective_abilities(character)
-	var selected_skill_id := _as_int(use_skill.get("id", skill_id))
-	var rank_bonus := 0 if String(use_skill.get("type", "")) == "broad" else skill_rank(character, selected_skill_id)
-	var ordinary := _as_int(abilities.get(String(use_skill.get("stat", "STR")), 10)) + rank_bonus
-	var step := 1 if String(use_skill.get("type", "")) == "broad" else 0
-	step += _species_skill_step_bonus(character, selected_skill_id)
-	step += mutation_skill_step_bonus(character, selected_skill_id)
-	return _combat_score_from_ordinary(ordinary, step)
-
-
-func _untrained_combat_score(character: Dictionary, ability: String, step: int) -> Dictionary:
-	var abilities := effective_abilities(character)
-	return _combat_score_from_ordinary(untrained_score(_as_int(abilities.get(ability, 10))), step)
-
-
-func _combat_score_from_ordinary(ordinary: int, step: int) -> Dictionary:
-	var good := int(floor(ordinary / 2.0))
-	return {
-		"ordinary": ordinary,
-		"good": good,
-		"amazing": int(floor(good / 2.0)),
-		"step": step,
-	}
-
-
-func _score_text(score: Dictionary) -> String:
-	return "%d/%d/%d" % [
-		_as_int(score.get("ordinary", 0)),
-		_as_int(score.get("good", 0)),
-		_as_int(score.get("amazing", 0)),
-	]
-
-
-func strength_damage_bonus(score: int) -> int:
-	if score <= 4:
-		return -2
-	if score <= 8:
-		return -1
-	if score <= 12:
-		return 0
-	if score <= 16:
-		return 1
-	return 2
-
-
-func _damage_with_bonus(damage: String, bonus: int) -> String:
-	if bonus == 0 or damage.strip_edges().is_empty():
-		return damage
-	var adjusted := []
-	for segment in damage.split("/"):
-		adjusted.append(_damage_segment_with_bonus(String(segment).strip_edges(), bonus))
-	return "/".join(adjusted)
-
-
-func _damage_segment_with_bonus(segment: String, bonus: int) -> String:
-	if segment.length() < 2:
-		return segment
-	var suffix := segment.right(1)
-	if not ["s", "w", "m"].has(suffix):
-		return segment
-	var core := segment.left(segment.length() - 1)
-	var die_index := core.find("d")
-	if die_index < 0:
-		return segment
-	var modifier_index := -1
-	for index in range(die_index + 1, core.length()):
-		var character := core.substr(index, 1)
-		if character == "+" or character == "-":
-			modifier_index = index
-	var base := core
-	var current_modifier := 0
-	if modifier_index >= 0:
-		base = core.left(modifier_index)
-		current_modifier = _as_int(core.substr(modifier_index), 0)
-	var next_modifier := current_modifier + bonus
-	if next_modifier == 0:
-		return "%s%s" % [base, suffix]
-	var sign := "+" if next_modifier > 0 else ""
-	return "%s%s%d%s" % [base, sign, next_modifier, suffix]
-
-
-func _dash_for_empty_or_zero(value) -> String:
-	if typeof(value) == TYPE_STRING:
-		var text := String(value).strip_edges()
-		if text.is_empty() or text == "0":
-			return "-"
-		if not text.is_valid_int() and not text.is_valid_float():
-			return text
-	if _as_int(value, 0) <= 0:
-		return "-"
-	return str(_as_int(value, 0))
-
-
-func _dash_for_empty_or_hidden(value) -> String:
-	if _as_int(value, -1000) <= -1000:
-		return "-"
-	return str(_as_int(value, 0))
-
-
-func _format_rules_number(value: float) -> String:
-	if is_equal_approx(value, float(int(value))):
-		return str(int(value))
-	return "%.2f" % value
 
 
 func skill_name_for_id(skill_id: int) -> String:
@@ -2827,398 +1034,6 @@ func set_flaw_selected(character: Dictionary, flaw_id: String, bonus: int) -> vo
 	_set_character_option_selected(character, "selected_flaws", FLAW_DEFINITIONS, "bonus_options", flaw_id, bonus)
 
 
-func selected_achievements(character: Dictionary) -> Array:
-	var rows := []
-	var selected: Array = character.get("selected_achievements", [])
-	for entry_value in selected:
-		if typeof(entry_value) != TYPE_DICTIONARY:
-			continue
-		var entry: Dictionary = entry_value
-		var achievement_id := String(entry.get("achievement_id", ""))
-		var achievement := get_achievement_by_id(achievement_id)
-		if achievement.is_empty():
-			continue
-		var row := entry.duplicate(true)
-		row["achievement"] = achievement
-		row["cost"] = _as_int(row.get("cost", achievement_purchase_cost(character, achievement, row.get("target_value", 0))))
-		row["name"] = achievement_display_name(achievement, row)
-		row["summary"] = achievement_effect_summary(achievement, row)
-		rows.append(row)
-	return rows
-
-
-func achievement_purchase_count(character: Dictionary, achievement_id: String) -> int:
-	var count := 0
-	for entry in selected_achievements(character):
-		if String(entry.get("achievement_id", "")) == achievement_id:
-			count += 1
-	return count
-
-
-func achievement_effect_total(character: Dictionary, effect_type: String) -> int:
-	var total := 0
-	for entry in selected_achievements(character):
-		var achievement: Dictionary = entry.get("achievement", {})
-		var effect: Dictionary = achievement.get("effect", {})
-		if String(effect.get("type", "")) == effect_type:
-			total += _as_int(effect.get("amount", 1))
-	return total
-
-
-func achievement_durability_bonus(character: Dictionary, track: String) -> int:
-	var total := 0
-	for entry in selected_achievements(character):
-		var achievement: Dictionary = entry.get("achievement", {})
-		var effect: Dictionary = achievement.get("effect", {})
-		if String(effect.get("type", "")) == "durability" and String(effect.get("track", "")) == track:
-			total += _as_int(effect.get("amount", 1))
-	return total
-
-
-func achievement_points_spent(character: Dictionary) -> int:
-	var total := 0
-	for entry in selected_achievements(character):
-		total += _as_int(entry.get("cost", 0))
-	return total
-
-
-func achievement_granted_perk_ids(character: Dictionary) -> Array:
-	var ids := []
-	for entry in selected_achievements(character):
-		var achievement: Dictionary = entry.get("achievement", {})
-		var effect: Dictionary = achievement.get("effect", {})
-		if String(effect.get("type", "")) != "new_perk":
-			continue
-		var perk_id := String(effect.get("perk_id", ""))
-		if not perk_id.is_empty() and not ids.has(perk_id):
-			ids.append(perk_id)
-	return ids
-
-
-func is_perk_granted_by_achievement(character: Dictionary, perk_id: String) -> bool:
-	return achievement_granted_perk_ids(character).has(perk_id)
-
-
-func achievement_granted_perks(character: Dictionary) -> Array:
-	var rows := []
-	for entry in selected_achievements(character):
-		var achievement: Dictionary = entry.get("achievement", {})
-		var effect: Dictionary = achievement.get("effect", {})
-		if String(effect.get("type", "")) != "new_perk":
-			continue
-		var perk := get_perk_by_id(String(effect.get("perk_id", "")))
-		if perk.is_empty():
-			continue
-		var row := perk.duplicate(true)
-		row["cost"] = 0
-		row["granted_by_achievement"] = true
-		row["achievement_name"] = String(achievement.get("name", "Achievement"))
-		row["perk_value"] = _as_int(effect.get("perk_value", 0))
-		rows.append(row)
-	return rows
-
-
-func can_purchase_achievement(character: Dictionary, achievement: Dictionary, target_id := "", target_value := 0) -> Dictionary:
-	var achievement_id := String(achievement.get("id", ""))
-	var cost_info := achievement_cost_entry(achievement, character)
-	var min_level := _as_int(cost_info.get("min_level", 99))
-	var current_level := achievement_level_for_points(_as_int(character.get("achievement_points", 0)))
-	if current_level < min_level:
-		return {"allowed": false, "reason": "Requires hero level %d." % min_level}
-
-	var effect: Dictionary = achievement.get("effect", {})
-	var effect_type := String(effect.get("type", ""))
-	var max_purchases := _as_int(achievement.get("max", 1))
-	if effect_type == "monetary":
-		var eligible_levels: Array = effect.get("levels", [])
-		var eligible_count := 0
-		for level_value in eligible_levels:
-			if current_level >= _as_int(level_value):
-				eligible_count += 1
-		max_purchases = eligible_count
-	if effect_type != "remove_flaw" and max_purchases >= 0 and achievement_purchase_count(character, achievement_id) >= max_purchases:
-		return {"allowed": false, "reason": "Maximum purchases reached."}
-
-	if effect_type == "ability":
-		var ability := String(effect.get("ability", ""))
-		var tier := _as_int(effect.get("tier", 1))
-		if tier > 1 and achievement_ability_purchase_count(character, ability) < tier - 1:
-			return {"allowed": false, "reason": "%s Increase %d requires the previous increase first." % [ability, tier]}
-		var abilities := achievement_adjusted_abilities(character)
-		var limits := ability_limits(character, ability)
-		if _as_int(abilities.get(ability, 10)) >= _as_int(limits[1]):
-			return {"allowed": false, "reason": "%s is already at the species maximum." % ability}
-	if effect_type == "extra_action" and actions_per_round(character) >= 4:
-		return {"allowed": false, "reason": "Actions per round are already at the maximum of 4."}
-	if effect_type == "new_perk":
-		var perk_id := String(effect.get("perk_id", ""))
-		if is_perk_selected(character, perk_id):
-			return {"allowed": false, "reason": "That perk is already selected."}
-		if selected_perk_count(character) >= 3:
-			return {"allowed": false, "reason": "The hero already has three perks."}
-	if effect_type == "remove_flaw":
-		if String(target_id).is_empty():
-			return {"allowed": false, "reason": "Choose a flaw to remove."}
-		if not is_flaw_selected(character, String(target_id)):
-			return {"allowed": false, "reason": "That flaw is not currently selected."}
-		for entry in selected_achievements(character):
-			var prior_achievement: Dictionary = entry.get("achievement", {})
-			var prior_effect: Dictionary = prior_achievement.get("effect", {})
-			if String(prior_effect.get("type", "")) == "remove_flaw" and String(entry.get("target_id", "")) == String(target_id):
-				return {"allowed": false, "reason": "That flaw has already been removed."}
-
-	var cost := achievement_purchase_cost(character, achievement, target_value)
-	var available_points := skill_budget(character) - skill_points_used(character)
-	if effect_type == "remove_flaw":
-		available_points -= max(0, _as_int(target_value))
-	if available_points < cost:
-		return {"allowed": false, "reason": "Requires %d available skill points." % cost}
-	return {"allowed": true, "reason": "", "cost": cost, "min_level": min_level}
-
-
-func achievement_ability_purchase_count(character: Dictionary, ability: String) -> int:
-	var count := 0
-	for entry in selected_achievements(character):
-		var achievement: Dictionary = entry.get("achievement", {})
-		var effect: Dictionary = achievement.get("effect", {})
-		if String(effect.get("type", "")) == "ability" and String(effect.get("ability", "")) == ability:
-			count += 1
-	return count
-
-
-func add_achievement_purchase(character: Dictionary, achievement_id: String, target_id := "", target_value := 0, notes := "") -> Dictionary:
-	var achievement := get_achievement_by_id(achievement_id)
-	if achievement.is_empty():
-		return {"ok": false, "reason": "Unknown achievement."}
-	var cost := achievement_purchase_cost(character, achievement, target_value)
-	var check := can_purchase_achievement(character, achievement, target_id, target_value)
-	if not bool(check.get("allowed", false)):
-		return {"ok": false, "reason": String(check.get("reason", ""))}
-
-	var selected: Array = character.get("selected_achievements", [])
-	var line_id := _next_achievement_line_id_from_list(selected)
-	var entry := {
-		"line_id": line_id,
-		"achievement_id": achievement_id,
-		"cost": cost,
-		"level": achievement_level_for_points(_as_int(character.get("achievement_points", 0))),
-		"target_id": String(target_id),
-		"target_value": _as_int(target_value),
-		"notes": String(notes),
-	}
-	selected.append(entry)
-	character["selected_achievements"] = selected
-
-	var effect: Dictionary = achievement.get("effect", {})
-	if String(effect.get("type", "")) == "remove_flaw" and not String(target_id).is_empty():
-		var flaws: Dictionary = character.get("selected_flaws", {})
-		flaws.erase(String(target_id))
-		character["selected_flaws"] = flaws
-	clamp_trackers(character)
-	return {"ok": true, "line_id": line_id}
-
-
-func remove_achievement_purchase(character: Dictionary, line_id: String) -> void:
-	var selected: Array = character.get("selected_achievements", [])
-	var next := []
-	for entry_value in selected:
-		if typeof(entry_value) != TYPE_DICTIONARY:
-			continue
-		var entry: Dictionary = entry_value
-		if String(entry.get("line_id", "")) == line_id:
-			var achievement := get_achievement_by_id(String(entry.get("achievement_id", "")))
-			var effect: Dictionary = achievement.get("effect", {})
-			if String(effect.get("type", "")) == "remove_flaw":
-				var target_id := String(entry.get("target_id", ""))
-				var target_value := _as_int(entry.get("target_value", 0))
-				if not target_id.is_empty() and target_value > 0:
-					var flaws: Dictionary = character.get("selected_flaws", {})
-					flaws[target_id] = target_value
-					character["selected_flaws"] = flaws
-			continue
-		next.append(entry)
-	character["selected_achievements"] = next
-	clamp_trackers(character)
-
-
-func achievement_display_name(achievement: Dictionary, entry: Dictionary = {}) -> String:
-	var effect: Dictionary = achievement.get("effect", {})
-	var effect_type := String(effect.get("type", ""))
-	if effect_type == "remove_flaw":
-		var flaw := get_flaw_by_id(String(entry.get("target_id", "")))
-		if not flaw.is_empty():
-			return "Remove Flaw: %s" % String(flaw.get("name", "Flaw"))
-	if effect_type == "contact" and not String(entry.get("notes", "")).strip_edges().is_empty():
-		return "%s: %s" % [String(achievement.get("name", "")), String(entry.get("notes", "")).strip_edges()]
-	return String(achievement.get("name", "Achievement"))
-
-
-func achievement_effect_summary(achievement: Dictionary, entry: Dictionary = {}) -> String:
-	var effect: Dictionary = achievement.get("effect", {})
-	var effect_type := String(effect.get("type", ""))
-	if effect_type == "new_perk":
-		var perk := get_perk_by_id(String(effect.get("perk_id", "")))
-		if not perk.is_empty():
-			return "Grants %s as a %d-point perk without charging the normal perk cost." % [
-				String(perk.get("name", "Perk")),
-				_as_int(effect.get("perk_value", 0)),
-			]
-	if effect_type == "remove_flaw":
-		var flaw := get_flaw_by_id(String(entry.get("target_id", "")))
-		if not flaw.is_empty():
-			return "Removes %s and its +%d skill point flaw bonus." % [
-				String(flaw.get("name", "Flaw")),
-				_as_int(entry.get("target_value", 0)),
-			]
-	if effect_type == "contact":
-		return "Adds one campaign contact. Contacts provide information, resources, or expert help when the GM agrees."
-	return String(achievement.get("summary", ""))
-
-
-func mutation_ability_bonus(character: Dictionary, ability: String) -> int:
-	var total := 0
-	for mutation in _selected_mutation_effect_sources(character):
-		for effect in _mutation_effects(mutation, "ability"):
-			if String(effect.get("ability", "")) == ability:
-				total += _as_int(effect.get("amount", 0))
-	return total
-
-
-func mutation_durability_bonus(character: Dictionary, track: String) -> int:
-	var total := 0
-	for mutation in _selected_mutation_effect_sources(character):
-		for effect in _mutation_effects(mutation, "durability"):
-			if String(effect.get("track", "")) == track:
-				total += _as_int(effect.get("amount", 0))
-	return total
-
-
-func mutation_action_check_step(character: Dictionary) -> int:
-	var total := 0
-	for mutation in _selected_mutation_effect_sources(character):
-		for effect in _mutation_effects(mutation, "action_check_step"):
-			total += _as_int(effect.get("amount", 0))
-	return total
-
-
-func mutation_skill_step_bonus(character: Dictionary, skill_id: int) -> int:
-	var total := 0
-	for mutation in _selected_mutation_effect_sources(character):
-		for effect in _mutation_effects(mutation, "skill_step"):
-			var skill_ids: Array = effect.get("skill_ids", [])
-			for effect_skill_id in skill_ids:
-				if _as_int(effect_skill_id) == skill_id:
-					total += _as_int(effect.get("step", 0))
-	return total
-
-
-func mutation_movement_modes(character: Dictionary) -> Dictionary:
-	var result := {}
-	for mutation in _selected_mutation_effect_sources(character):
-		for effect in _mutation_effects(mutation, "movement"):
-			var modes: Array = effect.get("modes", [])
-			for mode in modes:
-				result[String(mode)] = true
-			if bool(effect.get("glide", false)):
-				result["glide"] = true
-			if bool(effect.get("fly", false)):
-				result["fly"] = true
-	return result
-
-
-func mutation_roll_notes_for_character(character: Dictionary) -> Array:
-	var notes := []
-	if not mutations_enabled(character):
-		return notes
-	for mutation in _selected_mutation_effect_sources(character):
-		for effect_type in ["roll_note", "damage_note"]:
-			for effect in _mutation_effects(mutation, effect_type):
-				var text := String(effect.get("text", "")).strip_edges()
-				if text.is_empty():
-					continue
-				notes.append("%s: %s Source: %s" % [
-					String(mutation.get("name", "Mutation")),
-					text,
-					String(mutation.get("reference", "")),
-				])
-	return _unique_strings(notes)
-
-
-func mutation_armor_rows(character: Dictionary) -> Array:
-	var rows := []
-	if not mutations_enabled(character):
-		return rows
-	for mutation in selected_mutation_advantages(character):
-		for effect in _mutation_effects(mutation, "armor"):
-			var item := {
-				"id": "mutation_%s" % String(mutation.get("id", "")),
-				"kind": "armor",
-				"name": String(mutation.get("name", "Mutation Armor")),
-				"source": "Mutation",
-				"source_code": "mutation",
-				"reference": String(mutation.get("reference", "")),
-				"category": "Mutation",
-				"class": "Natural Armor",
-				"availability": "-",
-				"mass": 0,
-				"cost": 0,
-				"combat": {
-					"role": "armor",
-					"action_penalty": _as_int(effect.get("ap", 0)),
-					"toughness": String(effect.get("toughness", "O")),
-					"li": String(effect.get("li", "")),
-					"hi": String(effect.get("hi", "")),
-					"en": String(effect.get("en", "")),
-				},
-			}
-			rows.append({
-				"line_id": "mutation_%s" % String(mutation.get("id", "")),
-				"item_id": String(item.get("id", "")),
-				"quantity": 1,
-				"equipped": true,
-				"slot": "Mutation",
-				"notes": String(mutation.get("summary", "")),
-				"item": item,
-				"total_mass": 0,
-				"total_cost": 0,
-			})
-	return rows
-
-
-func mutation_attack_forms(character: Dictionary) -> Array:
-	var forms := []
-	if not mutations_enabled(character):
-		return forms
-	for mutation in selected_mutation_advantages(character):
-		for effect in _mutation_effects(mutation, "attack"):
-			var skill_id := _as_int(effect.get("skill_id", 16))
-			var score := _combat_skill_score(character, skill_id)
-			score["step"] = _as_int(score.get("step", 0)) + _as_int(effect.get("step", 0))
-			var damage := String(effect.get("damage", ""))
-			if bool(effect.get("strength_bonus", false)):
-				var abilities := effective_abilities(character)
-				damage = _damage_with_bonus(damage, strength_damage_bonus(_as_int(abilities.get("STR", 10))))
-			var form := {
-				"name": String(effect.get("name", mutation.get("name", "Mutation Attack"))),
-				"score": _score_text(score),
-				"base_die": action_step_die(_as_int(score.get("step", 0))),
-				"type": String(effect.get("damage_type", "")),
-				"range": String(effect.get("range", "Personal")),
-				"damage": damage,
-				"hide": String(effect.get("hide", "-")),
-				"clip_size": String(effect.get("clip_size", "-")),
-				"mass": "",
-				"mutation": String(mutation.get("name", "")),
-				"note": String(effect.get("note", "")),
-			}
-			forms.append(form)
-	return forms
-
-
-func is_perk_selected(character: Dictionary, perk_id: String) -> bool:
-	var selected: Dictionary = character.get("selected_perks", {})
-	return selected.has(perk_id) or is_perk_granted_by_achievement(character, perk_id)
-
 
 func is_flaw_selected(character: Dictionary, flaw_id: String) -> bool:
 	var selected: Dictionary = character.get("selected_flaws", {})
@@ -3359,6 +1174,13 @@ func skill_score(character: Dictionary, skill: Dictionary) -> Dictionary:
 	var step := 1 if skill.get("type", "") == "broad" else 0
 	step += _species_skill_step_bonus(character, skill_id)
 	step += mutation_skill_step_bonus(character, skill_id)
+	
+	# Mindwalker profession bonus (-1 step to focused broad skill and its specialties)
+	if _as_int(character.get("profession_id", 0)) == 6:
+		var broad_id := skill_id if skill.get("type", "") == "broad" else _as_int(skill.get("broad_id", -1))
+		if _as_int(character.get("mindwalker_psionic_focus", -1)) == broad_id:
+			step -= 1
+			
 	return {
 		"ordinary": ordinary,
 		"good": good,
@@ -3447,15 +1269,15 @@ func validate(character: Dictionary) -> Array:
 		if mutation_drawback_points_remaining(character) < 0:
 			messages.append("Mutation drawback points are overspent by %d." % abs(mutation_drawback_points_remaining(character)))
 		for tier in ["Ordinary", "Good", "Amazing"]:
-			var cap := _mutation_advantage_tier_cap(tier)
-			var count := _mutation_tier_count(advantages, tier)
+			var cap := mutations._mutation_advantage_tier_cap(tier)
+			var count := mutations._mutation_tier_count(advantages, tier)
 			var allowed_count := _as_int(mutation_distribution(character, "advantage").get(tier, 0))
 			if count > allowed_count:
 				messages.append("Advantageous mutations exceed the selected point distribution for %s by %d." % [tier, count - allowed_count])
 			if cap > 0 and count > cap:
 				messages.append("A mutant can have no more than %d %s advantageous mutation%s. Source: Player's Handbook p. 216." % [cap, tier, "" if cap == 1 else "s"])
 		for tier in ["Slight", "Moderate", "Extreme"]:
-			var count := _mutation_tier_count(drawbacks, tier)
+			var count := mutations._mutation_tier_count(drawbacks, tier)
 			var allowed_count := _as_int(mutation_distribution(character, "drawback").get(tier, 0))
 			if count > allowed_count:
 				messages.append("Mutation drawbacks exceed the selected point distribution for %s by %d." % [tier, count - allowed_count])
@@ -3559,7 +1381,12 @@ func _skill_sources(skill: Dictionary) -> Array:
 	elif SKILL_SOURCE_REFERENCES.has(broad_id):
 		sources.append_array(SKILL_SOURCE_REFERENCES[broad_id])
 	else:
-		sources.append("Player's Handbook Chapter 4.")
+		if skill.get("source", "") == "psionics":
+			sources.append("Player's Handbook Chapter 14: Psionics.")
+		elif skill.get("source", "") == "mutations":
+			sources.append("Player's Handbook Chapter 13: Mutants.")
+		else:
+			sources.append("Player's Handbook Chapter 4.")
 	return _unique_strings(sources)
 
 
@@ -3703,431 +1530,6 @@ func _index_achievements() -> void:
 		achievements_by_id[item_id] = item
 
 
-func _normalize_selected_achievements(character: Dictionary) -> void:
-	var selected_value = character.get("selected_achievements", [])
-	var selected: Array = selected_value if typeof(selected_value) == TYPE_ARRAY else []
-	var normalized := []
-	for entry_value in selected:
-		if typeof(entry_value) != TYPE_DICTIONARY:
-			continue
-		var entry: Dictionary = entry_value
-		var achievement_id := String(entry.get("achievement_id", ""))
-		var achievement := get_achievement_by_id(achievement_id)
-		if achievement.is_empty():
-			continue
-		normalized.append({
-			"line_id": String(entry.get("line_id", _next_achievement_line_id_from_list(normalized))),
-			"achievement_id": achievement_id,
-			"cost": max(0, _as_int(entry.get("cost", achievement_purchase_cost(character, achievement, entry.get("target_value", 0))))),
-			"level": max(1, _as_int(entry.get("level", achievement_level_for_points(_as_int(character.get("achievement_points", 0)))))),
-			"target_id": String(entry.get("target_id", "")),
-			"target_value": max(0, _as_int(entry.get("target_value", 0))),
-			"notes": String(entry.get("notes", "")),
-		})
-	character["selected_achievements"] = normalized
-
-
-func _normalize_mutations(character: Dictionary) -> void:
-	var mutation_value = character.get("mutations", {})
-	var mutations: Dictionary = mutation_value if typeof(mutation_value) == TYPE_DICTIONARY else {}
-	var origin_id := String(mutations.get("origin", "engineered"))
-	if get_mutation_origin_by_id(origin_id).is_empty():
-		origin_id = "engineered"
-	var uniqueness_id := String(mutations.get("uniqueness", ""))
-	if get_mutation_uniqueness_by_id(origin_id, uniqueness_id).is_empty():
-		var uniqueness_rows := mutation_uniqueness_options(origin_id)
-		if not uniqueness_rows.is_empty() and typeof(uniqueness_rows[0]) == TYPE_DICTIONARY:
-			var first_uniqueness: Dictionary = uniqueness_rows[0]
-			uniqueness_id = String(first_uniqueness.get("id", "engineered_community"))
-		else:
-			uniqueness_id = "engineered_community"
-
-	character["mutations"] = {
-		"generation_mode": "player" if String(mutations.get("generation_mode", "random")) == "player" else "random",
-		"origin": origin_id,
-		"uniqueness": uniqueness_id,
-		"advantage_points": max(0, _as_int(mutations.get("advantage_points", 0))),
-		"drawback_points": max(0, _as_int(mutations.get("drawback_points", 0))),
-		"advantage_distribution": _normalized_mutation_distribution(mutations.get("advantage_distribution", {}), "advantage", max(0, _as_int(mutations.get("advantage_points", 0)))),
-		"drawback_distribution": _normalized_mutation_distribution(mutations.get("drawback_distribution", {}), "drawback", max(0, _as_int(mutations.get("drawback_points", 0)))),
-		"advantages": _normalized_mutation_id_list(mutations.get("advantages", []), mutation_advantages_by_id),
-		"drawbacks": _normalized_mutation_id_list(mutations.get("drawbacks", []), mutation_drawbacks_by_id),
-	}
-	_ensure_mutation_distributions(character)
-
-
-func _mutation_data(character: Dictionary) -> Dictionary:
-	if not character.has("mutations") or typeof(character.get("mutations")) != TYPE_DICTIONARY:
-		character["mutations"] = {}
-	_normalize_mutations(character)
-	return character.get("mutations", {})
-
-
-func _normalized_mutation_id_list(value, catalog: Dictionary) -> Array:
-	var raw: Array = value if typeof(value) == TYPE_ARRAY else []
-	var result := []
-	var seen := {}
-	for entry_value in raw:
-		var mutation_id := ""
-		if typeof(entry_value) == TYPE_DICTIONARY:
-			mutation_id = String(entry_value.get("id", entry_value.get("mutation_id", "")))
-		else:
-			mutation_id = String(entry_value)
-		if mutation_id.is_empty() or seen.has(mutation_id) or not catalog.has(mutation_id):
-			continue
-		seen[mutation_id] = true
-		result.append(mutation_id)
-	return result
-
-
-func _normalized_mutation_distribution(value, kind: String, points: int) -> Dictionary:
-	var order := MUTATION_DRAWBACK_TIERS if kind == "drawback" else MUTATION_ADVANTAGE_TIERS
-	var raw: Dictionary = value if typeof(value) == TYPE_DICTIONARY else {}
-	var result := {}
-	for tier in order:
-		result[tier] = max(0, _as_int(raw.get(tier, 0)))
-	var options := mutation_distribution_options(kind, points)
-	var id := _mutation_distribution_id(result, order)
-	for option_value in options:
-		if typeof(option_value) == TYPE_DICTIONARY and String(option_value.get("id", "")) == id:
-			return result
-	if options.is_empty():
-		return _empty_mutation_distribution(order)
-	var first: Dictionary = options[0]
-	return first.get("counts", {}).duplicate(true)
-
-
-func _ensure_mutation_distributions(character: Dictionary) -> void:
-	_ensure_mutation_distribution(character, "advantage")
-	_ensure_mutation_distribution(character, "drawback")
-
-
-func _ensure_mutation_distribution(character: Dictionary, kind: String) -> void:
-	var mutations: Dictionary = character.get("mutations", {})
-	var points_key := "drawback_points" if kind == "drawback" else "advantage_points"
-	var distribution_key := "drawback_distribution" if kind == "drawback" else "advantage_distribution"
-	mutations[distribution_key] = _normalized_mutation_distribution(mutations.get(distribution_key, {}), kind, _as_int(mutations.get(points_key, 0)))
-	character["mutations"] = mutations
-
-
-func _mutation_advantage_distribution_options(points: int) -> Array:
-	var rows := []
-	for amazing in range(mini(1, int(floor(points / 4.0))), -1, -1):
-		for good in range(mini(2, int(floor((points - (4 * amazing)) / 2.0))), -1, -1):
-			for ordinary in range(mini(3, points - (4 * amazing) - (2 * good)), -1, -1):
-				if ordinary + (2 * good) + (4 * amazing) != points:
-					continue
-				var counts := {
-					"Ordinary": ordinary,
-					"Good": good,
-					"Amazing": amazing,
-				}
-				rows.append(_mutation_distribution_option(counts, MUTATION_ADVANTAGE_TIERS, MUTATION_ADVANTAGE_LABEL_ORDER))
-	return rows
-
-
-func _mutation_drawback_distribution_options(points: int) -> Array:
-	var rows := []
-	for moderate in range(mini(8, int(floor(points / 2.0))), -1, -1):
-		for extreme in range(mini(8, int(floor((points - (2 * moderate)) / 4.0))), -1, -1):
-			for slight in range(mini(8, points - (2 * moderate) - (4 * extreme)), -1, -1):
-				if slight + (2 * moderate) + (4 * extreme) != points:
-					continue
-				var counts := {
-					"Slight": slight,
-					"Moderate": moderate,
-					"Extreme": extreme,
-				}
-				rows.append(_mutation_distribution_option(counts, MUTATION_DRAWBACK_TIERS, MUTATION_DRAWBACK_LABEL_ORDER))
-	return rows
-
-
-func _mutation_distribution_option(counts: Dictionary, id_order: Array, label_order: Array) -> Dictionary:
-	return {
-		"id": _mutation_distribution_id(counts, id_order),
-		"label": _mutation_distribution_label(counts, label_order),
-		"counts": counts.duplicate(true),
-	}
-
-
-func _mutation_distribution_id(counts: Dictionary, order: Array) -> String:
-	var parts := []
-	for tier_value in order:
-		var tier := String(tier_value)
-		parts.append("%s:%d" % [tier, _as_int(counts.get(tier, 0))])
-	return "|".join(parts)
-
-
-func _mutation_distribution_label(counts: Dictionary, order: Array) -> String:
-	var parts := []
-	for tier_value in order:
-		var tier := String(tier_value)
-		var count := _as_int(counts.get(tier, 0))
-		if count <= 0:
-			continue
-		parts.append("%d %s" % [count, tier])
-	return "None" if parts.is_empty() else " + ".join(parts)
-
-
-func _empty_mutation_distribution(order: Array) -> Dictionary:
-	var result := {}
-	for tier in order:
-		result[String(tier)] = 0
-	return result
-
-
-func _mutation_selected(character: Dictionary, selected_key: String, mutation_id: String) -> bool:
-	var mutations := _mutation_data(character)
-	for selected_id in mutations.get(selected_key, []):
-		if String(selected_id) == mutation_id:
-			return true
-	return false
-
-
-func _remove_mutation_selection(character: Dictionary, selected_key: String, mutation_id: String) -> void:
-	var mutations := _mutation_data(character)
-	var next := []
-	for selected_id in mutations.get(selected_key, []):
-		if String(selected_id) == mutation_id:
-			continue
-		next.append(String(selected_id))
-	mutations[selected_key] = next
-	character["mutations"] = mutations
-
-
-func _mutation_advantage_tier_cap(tier: String) -> int:
-	match tier:
-		"Ordinary":
-			return 3
-		"Good":
-			return 2
-		"Amazing":
-			return 1
-	return 0
-
-
-func _mutation_tier_count(rows: Array, tier: String) -> int:
-	var count := 0
-	for row_value in rows:
-		if typeof(row_value) == TYPE_DICTIONARY and String(row_value.get("tier", "")) == tier:
-			count += 1
-	return count
-
-
-func _roll_mutation_selection(character: Dictionary, selected_key: String, catalog: Array, kind: String) -> Dictionary:
-	var mutations := _mutation_data(character)
-	mutations[selected_key] = []
-	character["mutations"] = mutations
-
-	var distribution := mutation_distribution(character, kind)
-	var order := MUTATION_DRAWBACK_TIERS if kind == "drawback" else MUTATION_ADVANTAGE_TIERS
-	var selected := []
-	var failed := []
-	for tier_value in order:
-		var tier := String(tier_value)
-		var needed := _as_int(distribution.get(tier, 0))
-		for _index in range(needed):
-			var mutation := _random_mutation_from_tier(catalog, tier, selected)
-			if mutation.is_empty():
-				failed.append(tier)
-				continue
-			var mutation_id := String(mutation.get("id", ""))
-			var result := add_mutation_drawback(character, mutation_id) if kind == "drawback" else add_mutation_advantage(character, mutation_id)
-			if bool(result.get("ok", false)):
-				selected.append(mutation_id)
-			else:
-				failed.append("%s: %s" % [tier, String(result.get("reason", ""))])
-	return {
-		"selected": selected,
-		"failed": failed,
-	}
-
-
-func _random_mutation_from_tier(catalog: Array, tier: String, excluded: Array) -> Dictionary:
-	var candidates := []
-	for mutation_value in catalog:
-		if typeof(mutation_value) != TYPE_DICTIONARY:
-			continue
-		var mutation: Dictionary = mutation_value
-		var mutation_id := String(mutation.get("id", ""))
-		if String(mutation.get("tier", "")) == tier and not excluded.has(mutation_id):
-			candidates.append(mutation)
-	if candidates.is_empty():
-		return {}
-	return candidates[randi_range(0, candidates.size() - 1)]
-
-
-func _selected_mutation_effect_sources(character: Dictionary) -> Array:
-	var rows := []
-	if not mutations_enabled(character):
-		return rows
-	for mutation in selected_mutation_advantages(character):
-		rows.append(mutation)
-	for drawback in selected_mutation_drawbacks(character):
-		rows.append(drawback)
-	return rows
-
-
-func _mutation_effects(mutation: Dictionary, effect_type: String) -> Array:
-	var result := []
-	var effects: Array = mutation.get("effects", [])
-	for effect_value in effects:
-		if typeof(effect_value) != TYPE_DICTIONARY:
-			continue
-		var effect: Dictionary = effect_value
-		if String(effect.get("type", "")) == effect_type:
-			result.append(effect)
-	return result
-
-
-func _roll_mutation_formula(formula: String) -> int:
-	var clean := formula.strip_edges().to_lower()
-	if clean.is_empty():
-		return 0
-	var sign_index := clean.find("+")
-	var sign := 1
-	if sign_index < 0:
-		sign_index = clean.find("-")
-		sign = -1
-	if clean.begins_with("d"):
-		var die_length := sign_index - 1 if sign_index > 0 else clean.length() - 1
-		var die_text := clean.substr(1, die_length)
-		var die_size: int = max(1, _as_int(die_text, 1))
-		var modifier := 0
-		if sign_index > 0:
-			modifier = sign * _as_int(clean.substr(sign_index + 1), 0)
-		return max(0, randi_range(1, die_size) + modifier)
-	return max(0, _as_int(clean, 0))
-
-
-func _normalize_equipment(character: Dictionary) -> void:
-	var equipment: Dictionary = character.get("equipment", {})
-	if not equipment.has("custom_items"):
-		equipment["custom_items"] = []
-	if not equipment.has("carried"):
-		equipment["carried"] = []
-
-	var custom_items := []
-	for custom_item in equipment.get("custom_items", []):
-		if typeof(custom_item) != TYPE_DICTIONARY:
-			continue
-		var normalized := _normalize_equipment_item(custom_item.duplicate(true), _next_custom_equipment_id_from_list(custom_items))
-		custom_items.append(normalized)
-	equipment["custom_items"] = custom_items
-	equipment.erase("_custom_items_by_id")
-
-	var carried := []
-	for carried_item in equipment.get("carried", []):
-		if typeof(carried_item) != TYPE_DICTIONARY:
-			continue
-		var row: Dictionary = carried_item
-		var item_id := String(row.get("item_id", ""))
-		if item_id.is_empty():
-			continue
-		var normalized_row := {
-			"line_id": String(row.get("line_id", _next_equipment_line_id_from_list(carried))),
-			"item_id": item_id,
-			"quantity": max(1, _as_int(row.get("quantity", 1))),
-			"equipped": bool(row.get("equipped", false)),
-			"slot": String(row.get("slot", "")),
-			"notes": String(row.get("notes", "")),
-		}
-		carried.append(normalized_row)
-	equipment["carried"] = carried
-	character["equipment"] = equipment
-
-
-func _normalize_equipment_item(item: Dictionary, fallback_id: String) -> Dictionary:
-	var combat = item.get("combat", null)
-	if typeof(combat) != TYPE_DICTIONARY:
-		combat = null
-	var normalized := {
-		"id": String(item.get("id", fallback_id)),
-		"kind": String(item.get("kind", "equipment")),
-		"name": String(item.get("name", "Custom Item")),
-		"source": String(item.get("source", "Custom")),
-		"source_code": String(item.get("source_code", "custom")),
-		"reference": String(item.get("reference", "Character custom equipment.")),
-		"page": String(item.get("page", "")),
-		"table": String(item.get("table", "")),
-		"pl": clampi(_as_int(item.get("pl", 0)), 0, 9),
-		"category": String(item.get("category", "Custom")),
-		"class": String(item.get("class", "Custom")),
-		"availability": String(item.get("availability", "Com")),
-		"mass": max(0.0, _as_float(item.get("mass", 0.0))),
-		"cost": max(0, _as_int(item.get("cost", 0))),
-		"combat": combat,
-	}
-	return normalized
-
-
-func _equipment_string_options(key: String) -> Array:
-	var options := []
-	var seen := {}
-	for item in equipment_catalog:
-		if typeof(item) != TYPE_DICTIONARY:
-			continue
-		var value := String(item.get(key, ""))
-		if value.is_empty() or seen.has(value):
-			continue
-		seen[value] = true
-		options.append(value)
-	options.sort()
-	return options
-
-
-func _equipment_matches_search(item: Dictionary, search: String) -> bool:
-	var haystack := "%s %s %s %s %s" % [
-		String(item.get("name", "")),
-		String(item.get("category", "")),
-		String(item.get("class", "")),
-		String(item.get("source", "")),
-		String(item.get("availability", "")),
-	]
-	return haystack.to_lower().contains(search)
-
-
-func _next_equipment_line_id(character: Dictionary) -> String:
-	var equipment: Dictionary = character.get("equipment", {})
-	return _next_equipment_line_id_from_list(equipment.get("carried", []))
-
-
-func _next_equipment_line_id_from_list(carried: Array) -> String:
-	var max_id := 0
-	for row in carried:
-		if typeof(row) != TYPE_DICTIONARY:
-			continue
-		var line_id := String(row.get("line_id", ""))
-		if line_id.begins_with("line_"):
-			max_id = maxi(max_id, _as_int(line_id.substr(5), 0))
-	return "line_%04d" % (max_id + 1)
-
-
-func _next_custom_equipment_id(character: Dictionary) -> String:
-	var equipment: Dictionary = character.get("equipment", {})
-	return _next_custom_equipment_id_from_list(equipment.get("custom_items", []))
-
-
-func _next_custom_equipment_id_from_list(custom_items: Array) -> String:
-	var max_id := 0
-	for item in custom_items:
-		if typeof(item) != TYPE_DICTIONARY:
-			continue
-		var item_id := String(item.get("id", ""))
-		if item_id.begins_with("custom_"):
-			max_id = maxi(max_id, _as_int(item_id.substr(7), 0))
-	return "custom_%04d" % (max_id + 1)
-
-
-func _next_achievement_line_id_from_list(selected: Array) -> String:
-	var max_id := 0
-	for item in selected:
-		if typeof(item) != TYPE_DICTIONARY:
-			continue
-		var line_id := String(item.get("line_id", ""))
-		if line_id.begins_with("ach_"):
-			max_id = maxi(max_id, _as_int(line_id.substr(4), 0))
-	return "ach_%04d" % (max_id + 1)
 
 
 func _remove_unused_custom_equipment(character: Dictionary, item_id: String) -> void:
@@ -4306,6 +1708,39 @@ func _skill_summary_roll_notes(skill: Dictionary) -> Array:
 		146: ["Deception is often resisted by a target's judgment or resistance modifiers."],
 		155: ["Interaction skills often change attitudes, extract information, or impose social pressure."],
 		162: ["Leadership affects other characters; exact benefits depend on the scene and GM judgment."],
+		900: ["Allows attempting related specialty skills (except untrained-only ones) at broad score with +1 energy point cost and +d4 situation die."],
+		90001: ["Generates biokinetic melee weapon (requires Melee Attack-bludgeon to wield). Initial check determines damage type: Ordinary=stun, Good=wound, Amazing=mortal. Wielder STR bonus modifies damage (d4/d4+2/d6+2)."],
+		90002: ["Simulates environmental protection: Ordinary=vacuum mask, Good=jumpsuit, Amazing=soft e-suit. Maintenance costs 1 energy point per hour. Can slow bodily functions to fake death."],
+		90003: ["Heals wound damage (Ordinary=1, Good=2, Amazing=3 points) or disease (reduces severity by 1/2/3 grades). Max once per hour. Rank 6 allows healing mortal damage (results change to Ordinary=2 wounds, Good=3 wounds or 1 mortal, Amazing=4 wounds or 2 mortals)."],
+		90004: ["Squeeze, stretch, or disguise. Take 1 round (4 phases) to morph. Lasts 1/2/3 rounds (Ordinary/Good/Amazing); extendable at 1 point/round. Morphed elongated fingers can grant a -1 step bonus to Manipulation-pickpocket checks."],
+		90005: ["Offset fatigue/stun damage. Restores 1 stun per point, 1 fatigue per 2 points. Ordinary/Good/Amazing success grants 2/4/6 rejuvenation points. Max once per hour."],
+		90006: ["Lay hands to absorb patient's wounds or disease. Critical Failure: hero takes 1 wound. Success absorbs 1/2/3 wounds or 1 mortal. Reduces disease by 1/2/all grades (transfers disease to hero)."],
+		901: ["Allows sending or reading thoughts. Untrained-only specialty skills cannot be attempted with broad skill alone."],
+		90101: ["Send/receive thoughts. Ordinary=simple concepts, Good=moderate discussion (notes back and forth), Amazing=detailed discussion. Targets apply Will resistance; unwilling target can expel user via Will or Resolve check with a +1/+2/+3 penalty."],
+		90102: ["Link mind to operate computers/cybernetics within 6 meters (+1 penalty if >2m, +2 if >4m). Normal defenses apply as check penalties."],
+		90103: ["Fool target's sight/sound. Range 5m/rank. Maintains at +1 penalty to other actions. Target's Awareness-intuition check has +1/+2/+3 penalty. Additional targets add a cumulative +1 penalty."],
+		90104: ["Pure mental energy blast at another mind up to 40 meters. Penetrates armor. Damage depends on success and rank (Rank < 5: d4+1s/d4+2s/d6+2s, Rank 5-8: d4+2s/d6+2s/d8+2s, Rank >= 9: 2d4+2s/2d6+2s/2d8+2s)."],
+		90105: ["Defense against contact, empathy, illusion, mind reading, mind blast, suggest, and tire. Imposes +1/+2/+3 penalty to attacker. Collapses after failing to stop a power or after d4+4 hours."],
+		90106: ["Mesmerize target to plant suggestion lasting 1/2/3 hours. GM sets situation modifier based on extremity (+3 or worse penalty for opposed to nature, -1/-2 bonus for inclined acts). Target gets Will check after suggest wears off to realize they were suggested, with reverse modifier."],
+		90107: ["Inflicts 1/2/3 fatigue points on target within 30 meters."],
+		902: ["Allows manipulating physical environment. Untrained-only specialty skills cannot be attempted with broad skill alone."],
+		90201: ["Direct electrical shock up to 16 meters. Building charge takes a check; discharging in same/next round takes another check. Prevent other psionics while charged. Damage depends on check and rank (Rank < 5: d4+2s/d6+2s/d4w, Rank 5-8: d6+2s/d4w/d4+2w, Rank >= 9: d4+2w/d6+2w/d8+2w)."],
+		90202: ["Defensive barrier: Ordinary=HI +1/LI +2, Good=HI +2/LI +3, Amazing=HI +3/LI +4. Action checks while maintaining the shield receive a +1 penalty."],
+		90203: ["Fly/hover. Ascend/descend speed: Ordinary=2m, Good=4m, Amazing=6m. Speed doubled in light gravity, halved in heavy. Mid-air collapse causes impact damage. Active actions while levitating receive a +1 penalty."],
+		90204: ["Illuminate object for 2 rounds. Daylight radius: Ordinary=2m, Good=4m, Amazing=6m."],
+		90205: ["Move objects using mind. Lift weight is Will x 10 kg, push is Will x 20 kg. Lift/push speed: Ordinary=1/2m, Good=2/4m, Amazing=3/6m (doubled in light gravity, halved in heavy). Dropped objects suffer impact damage."],
+		90206: ["Ignite target up to 30 meters. Targets air for flash fire storm (grenade-like 6m area fire, damage reduced by 2/3/4 points at 2/4/6 meters). Targets object/character for intense burn (may continue burning). Damage depends on check and rank (Rank < 5: d4+2w/d6+2w/d8+2w, Rank 5-8: d6+2w/d8+2w/d4m, Rank >= 9: d8+2w/d4m/d4+2m)."],
+		903: ["Experience environment beyond normal senses. Untrained-only specialty skills cannot be attempted with broad skill alone."],
+		90301: ["Bonus to action checks: Ordinary -1, Good -2, Amazing -3 steps/points."],
+		90302: ["Hear sounds at projected location for 1/2/3 rounds. Distance and familiarity modifiers apply."],
+		90303: ["See around projected location for 1/2/3 rounds. Double vision if eyes are open. Distance and familiarity modifiers apply."],
+		90304: ["Read surface emotions in visual contact. Identifies emotional state and provides a step bonus of -1/-2/-3 to subsequent encounter skills."],
+		90305: ["Read surface thoughts in visual contact. Cannot be extended. Ordinary=random thoughts (names/identity) for 1 phase, Good=reasons/location for 2 phases, Amazing=complete surface thoughts and key facts for 3 phases."],
+		90306: ["Instinctive navigation, replacing Navigation skill by spending energy. Rank 1 chooses one Navigation specialty; rank 5 chooses a second; rank 9 makes the last specialty available."],
+		90307: ["Sense mood or see events in an area up to (rank) hours/days into past. Ordinary=general emotions, Good=brief flashes, Amazing=experience brief encounter."],
+		90308: ["Receive unconscious future impressions up to (rank) hours/days. Ordinary=vague images, Good=brief flashes, Amazing=experience brief encounter. Forcing a flash doubles cost, applies a +3 penalty, and blocks use for 2d6 days."],
+		90309: ["Touch object to read OWNER'S psychic impressions. Ordinary=simple emotions, Good=simple images, Amazing=experience ownership/use encounter."],
+		90310: ["Detect psionic use within 20 meters. Persists for 1 minute (extendable at 1 point/minute). Ordinary=tells who, Good=identifies broad skill, Amazing=identifies exact specialty skill."]
 	}
 	var sourced_notes := []
 	var source_text := _source_text_for_skill(skill)
@@ -4384,3 +1819,38 @@ func _as_float(value, default_value := 0.0) -> float:
 			if String(value).is_valid_float():
 				return float(value)
 	return default_value
+
+
+func psionic_armor_rows(character: Dictionary) -> Array:
+	var rows := []
+	if is_skill_selected(character, 90202): # Kinetic Shield
+		var item := {
+			"id": "psionic_90202",
+			"kind": "armor",
+			"name": "Kinetic Shield",
+			"source": "Psionics",
+			"source_code": "psionics",
+			"reference": "Player's Handbook Chapter 14: Psionics.",
+			"category": "Psionic Power",
+			"class": "Energy Shield",
+			"availability": "-",
+			"mass": 0,
+			"cost": 0,
+			"combat": {
+				"role": "armor",
+				"action_penalty": 1,
+				"toughness": "O",
+				"li": "+2",
+				"hi": "+1",
+				"en": "",
+			},
+		}
+		rows.append({
+			"line_id": "psionic_90202",
+			"item_id": "psionic_90202",
+			"quantity": 1,
+			"equipped": true,
+			"slot": "Psionic",
+			"item": item,
+		})
+	return rows

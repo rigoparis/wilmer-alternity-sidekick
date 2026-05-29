@@ -5,3 +5,8 @@
 
 # Local cached manual OCR/page extracts generated during rule research.
 /manuals/_extracts/
+/manuals/
+
+# Antigravity agent & CLI ignores
+.antigravity/
+.antigravitycli/

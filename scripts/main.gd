@@ -1,7 +1,7 @@
 extends Control
 
 const AlternityRules := preload("res://scripts/alternity_rules.gd")
-const TABS := ["Basics", "Skills", "Perks/Flaws", "Equipment", "Achievements", "Mutations", "Summary"]
+const TABS := ["Basics", "Skills", "Perks/Flaws", "Equipment", "Cybertech", "Psionics", "Achievements", "Mutations", "Summary"]
 const COMPACT_WIDTH := 520.0
 const WIDE_WIDTH := 900.0
 const DESKTOP_MAX_WIDTH := 1120.0
@@ -10,13 +10,18 @@ var rules: AlternityRules
 var character: Dictionary = {}
 var active_tab := "Basics"
 var skill_filter := ""
+var psionic_filter := ""
+var active_character_file := ""
+var deleting_files: Dictionary = {}
+var close_char_button: Button
+
 
 var root_margin: MarginContainer
 var shell: VBoxContainer
 var header: BoxContainer
 var title_label: Label
 var optional_rules_button: Button
-var tabs: GridContainer
+var tabs: HBoxContainer
 var content_scroll: ScrollContainer
 var content: VBoxContainer
 var status_label: Label
@@ -72,24 +77,60 @@ var mutation_catalog_kind := "advantage"
 var search_refocus_target := ""
 var search_refocus_caret := -1
 
-var color_background := Color(0.957, 0.953, 0.929)
-var color_surface := Color(1.0, 0.992, 0.965)
-var color_surface_soft := Color(0.902, 0.933, 0.914)
-var color_text := Color(0.102, 0.118, 0.125)
-var color_muted := Color(0.376, 0.424, 0.431)
-var color_accent := Color(0.0, 0.45, 0.49)
-var color_warning := Color(0.72, 0.23, 0.16)
-var color_border := Color(0.80, 0.79, 0.72)
+var color_background := Color(0.05, 0.07, 0.10)
+var color_surface := Color(0.10, 0.12, 0.16)
+var color_surface_soft := Color(0.15, 0.18, 0.22)
+var color_text := Color(0.90, 0.92, 0.95)
+var color_muted := Color(0.50, 0.55, 0.60)
+var color_accent := Color(0.00, 0.80, 0.80)
+var color_warning := Color(0.90, 0.30, 0.20)
+var color_border := Color(0.20, 0.25, 0.30)
 
 
 func _ready() -> void:
 	rules = AlternityRules.new()
 	rules.load_core_data()
-	character = rules.default_character()
-	rules.ensure_character_shape(character)
 	_build_shell()
 	_apply_responsive_layout()
+
+	# Check for last active character to autoload
+	var last_char_path := "user://last_character.txt"
+	var loaded := false
+	if FileAccess.file_exists(last_char_path):
+		var last_file := FileAccess.open(last_char_path, FileAccess.READ)
+		if last_file != null:
+			var last_name := last_file.get_as_text().strip_edges()
+			if not last_name.is_empty():
+				loaded = _load_character_from_file(last_name)
+
+	if not loaded:
+		# Boot directly to character selection menu (State 1)
+		active_character_file = ""
+		character = rules.default_character()
+		rules.ensure_character_shape(character)
+
 	_render()
+
+
+func _load_character_from_file(file_name: String) -> bool:
+	var path := "user://" + file_name
+	if not FileAccess.file_exists(path):
+		return false
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		return false
+	var content_str := file.get_as_text()
+	var json := JSON.new()
+	var err := json.parse(content_str)
+	if err != OK:
+		return false
+	var data_parsed = json.get_data()
+	if typeof(data_parsed) == TYPE_DICTIONARY:
+		character = data_parsed
+		rules.ensure_character_shape(character)
+		active_character_file = file_name
+		return true
+	return false
 
 
 func _notification(what: int) -> void:
@@ -145,10 +186,24 @@ func _build_shell() -> void:
 	optional_rules_button.pressed.connect(_show_optional_rules)
 	header.add_child(optional_rules_button)
 
-	tabs = GridContainer.new()
-	tabs.columns = 4
+	close_char_button = Button.new()
+	close_char_button.text = "Close Character"
+	close_char_button.custom_minimum_size = Vector2(120, 36)
+	close_char_button.add_theme_font_size_override("font_size", 12)
+	close_char_button.pressed.connect(_close_character)
+	header.add_child(close_char_button)
+
+	var tabs_scroll := ScrollContainer.new()
+	tabs_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	tabs_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	tabs_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tabs_scroll.custom_minimum_size = Vector2(0, 52)
+	shell.add_child(tabs_scroll)
+
+	tabs = HBoxContainer.new()
+	tabs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	tabs.add_theme_constant_override("separation", 6)
-	shell.add_child(tabs)
+	tabs_scroll.add_child(tabs)
 
 	for tab in TABS:
 		var button := Button.new()
@@ -156,12 +211,12 @@ func _build_shell() -> void:
 		button.toggle_mode = true
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.custom_minimum_size = Vector2(0, 42)
-		button.add_theme_stylebox_override("normal", _flat_style(Color(0.88, 0.90, 0.87), Color(0, 0, 0, 0), 8))
-		button.add_theme_stylebox_override("hover", _flat_style(Color(0.82, 0.89, 0.86), Color(0, 0, 0, 0), 8))
+		button.add_theme_stylebox_override("normal", _flat_style(color_surface, Color(0, 0, 0, 0), 8))
+		button.add_theme_stylebox_override("hover", _flat_style(color_surface_soft, Color(0, 0, 0, 0), 8))
 		button.add_theme_stylebox_override("pressed", _flat_style(color_accent, Color(0, 0, 0, 0), 8))
-		button.add_theme_stylebox_override("focus", _flat_style(Color(0.82, 0.89, 0.86), color_accent, 8))
+		button.add_theme_stylebox_override("focus", _flat_style(color_surface_soft, color_accent, 8))
 		button.add_theme_color_override("font_color", color_text)
-		button.add_theme_color_override("font_pressed_color", Color.WHITE)
+		button.add_theme_color_override("font_pressed_color", color_background)
 		button.pressed.connect(func(): _set_tab(tab))
 		tabs.add_child(button)
 		tab_buttons[tab] = button
@@ -172,10 +227,19 @@ func _build_shell() -> void:
 	content_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	shell.add_child(content_scroll)
 
+	var content_margin := MarginContainer.new()
+	content_margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	content_margin.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	content_margin.add_theme_constant_override("margin_right", 12)
+	content_margin.add_theme_constant_override("margin_left", 4)
+	content_margin.add_theme_constant_override("margin_top", 4)
+	content_margin.add_theme_constant_override("margin_bottom", 4)
+	content_scroll.add_child(content_margin)
+
 	content = VBoxContainer.new()
 	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	content.add_theme_constant_override("separation", 10)
-	content_scroll.add_child(content)
+	content_margin.add_child(content)
 
 	_build_optional_rules_overlay()
 	_build_skill_details_overlay()
@@ -201,7 +265,6 @@ func _apply_responsive_layout() -> void:
 
 	var available_width: float = maxf(280.0, viewport_width - float(outer_margin * 2))
 	shell.custom_minimum_size.x = minf(available_width, DESKTOP_MAX_WIDTH)
-	tabs.columns = 2 if compact else _visible_tab_count()
 	_update_header_layout(compact)
 	if status_label != null and rules != null and not character.is_empty():
 		_refresh_status()
@@ -258,13 +321,17 @@ func _update_header_layout(compact: bool) -> void:
 	optional_rules_button.text = "Optional Rules"
 	optional_rules_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL if compact else Control.SIZE_SHRINK_END
 	optional_rules_button.custom_minimum_size = Vector2(0 if compact else 118, 38 if compact else 36)
+	if close_char_button != null:
+		close_char_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL if compact else Control.SIZE_SHRINK_END
+		close_char_button.custom_minimum_size = Vector2(0 if compact else 120, 38 if compact else 36)
 
 
 func _reparent_header_children() -> void:
-	for node in [title_label, status_label, optional_rules_button]:
-		if node.get_parent() != null:
-			node.get_parent().remove_child(node)
-		header.add_child(node)
+	for node in [title_label, status_label, optional_rules_button, close_char_button]:
+		if node != null:
+			if node.get_parent() != null:
+				node.get_parent().remove_child(node)
+			header.add_child(node)
 
 
 func _build_optional_rules_overlay() -> void:
@@ -896,6 +963,8 @@ func _add_optional_rule_row(rule: Dictionary) -> void:
 	toggle.custom_minimum_size = Vector2(24, 32)
 	toggle.toggled.connect(func(pressed):
 		rules.set_optional_rule(character, rule_id, pressed)
+		if not active_character_file.is_empty():
+			_save_character()
 		_render()
 		_refresh_optional_rules_panel()
 	)
@@ -930,17 +999,43 @@ func _refresh_tab_visibility() -> void:
 	for tab in tab_buttons.keys():
 		var button: Button = tab_buttons[tab]
 		button.visible = _tab_visible(String(tab))
-	tabs.columns = 2 if get_viewport_rect().size.x < COMPACT_WIDTH else _visible_tab_count()
 
 
 func _set_tab(tab: String) -> void:
 	if not _tab_visible(tab):
 		return
+	if not active_character_file.is_empty():
+		_save_character()
 	active_tab = tab
 	_render()
 
 
 func _render() -> void:
+	# State 1: Standalone Character Select (no active character)
+	if active_character_file.is_empty():
+		if tabs != null and tabs.get_parent() != null:
+			tabs.get_parent().visible = false
+		if close_char_button != null:
+			close_char_button.visible = false
+		_set_sticky_skills_layout(false)
+
+		# Clear content containers
+		for child in content.get_children():
+			child.queue_free()
+		if sticky_skills_panel != null:
+			for child in sticky_skills_panel.get_children():
+				child.queue_free()
+
+		_render_character_select()
+		_refresh_status()
+		return
+
+	# State 2: Character Sheet Editor (active character loaded)
+	if tabs != null and tabs.get_parent() != null:
+		tabs.get_parent().visible = true
+	if close_char_button != null:
+		close_char_button.visible = true
+
 	rules.ensure_character_shape(character)
 	if not _tab_visible(active_tab):
 		active_tab = "Basics"
@@ -964,6 +1059,10 @@ func _render() -> void:
 			_render_perks_flaws()
 		"Equipment":
 			_render_equipment()
+		"Cybertech":
+			_render_cybertech()
+		"Psionics":
+			_render_fx_psionics()
 		"Achievements":
 			_render_achievements()
 		"Mutations":
@@ -1252,12 +1351,12 @@ func _render_skills() -> void:
 	var summary := rules.summary(character)
 	if is_wide_layout and sticky_skills_panel != null:
 		var picker_box := _add_section("Skill Budget")
-		_render_skill_picker(picker_box, summary)
+		_render_skill_picker(picker_box, summary, false)
 		_render_selected_skill_panel(sticky_skills_panel)
 		return
 
 	var box := _add_section("Skill Budget")
-	_render_skill_picker(box, summary)
+	_render_skill_picker(box, summary, false)
 
 
 func _render_perks_flaws() -> void:
@@ -2942,29 +3041,19 @@ func _add_table_label(parent: GridContainer, text: String, header_cell: bool) ->
 	return label
 
 
-func _render_skill_picker(box: VBoxContainer, summary: Dictionary) -> void:
-	_add_metric(box, "Maximum Skill Points", str(summary["skill_budget"]))
-	_add_metric(box, "Skill Points Used/Available", "%d/%d" % [
-		summary["skill_points_used"],
-		summary["skill_points_remaining"],
-	])
+func _render_skill_picker(box: VBoxContainer, summary: Dictionary, is_psionics := false) -> void:
+	_add_progress_metric(box, "Skill Points Used/Available", summary["skill_points_used"], summary["skill_budget"], "%d / %d" % [summary["skill_points_used"], summary["skill_points_remaining"]])
 	if rules._as_int(summary.get("perk_points_used", 0)) > 0 or rules._as_int(summary.get("flaw_skill_points_bonus", 0)) > 0:
 		_add_metric(box, "Skill Purchases / Perks", "%d / %d SP" % [
 			rules._as_int(summary.get("skill_purchase_points_used", 0)),
 			rules._as_int(summary.get("perk_points_used", 0)),
 		])
 		_add_metric(box, "Flaw Skill Point Bonus", "+%d SP" % rules._as_int(summary.get("flaw_skill_points_bonus", 0)))
-	_add_metric(box, "Maximum Broad Skills", str(summary["max_broad_skills"]))
+	
 	if rules.optional_rule_enabled(character, "2b"):
-		_add_metric(box, "Additional Broad Used/Available", "%d/%d" % [
-			summary["additional_broad_skills_used"],
-			summary["additional_broad_skills_remaining"],
-		])
+		_add_progress_metric(box, "Additional Broad Used/Available", summary["additional_broad_skills_used"], summary["additional_broad_skills_used"] + summary["additional_broad_skills_remaining"], "%d / %d" % [summary["additional_broad_skills_used"], summary["additional_broad_skills_remaining"]])
 	else:
-		_add_metric(box, "Broad Skills Used/Available", "%d/%d" % [
-			summary["broad_skills_used"],
-			summary["broad_skills_remaining"],
-		])
+		_add_progress_metric(box, "Broad Skills Used/Available", summary["broad_skills_used"], summary["max_broad_skills"], "%d / %d" % [summary["broad_skills_used"], summary["broad_skills_remaining"]])
 	var budget_note := "Starting %d + achievement %d" % [
 		rules._as_int(summary.get("starting_skill_budget", 0)),
 		rules._as_int(summary.get("achievement_points", 0)),
@@ -2986,8 +3075,8 @@ func _render_skill_picker(box: VBoxContainer, summary: Dictionary) -> void:
 		_add_text(box, "Racial broad skills do not count against this limit: %d." % summary["racial_broad_skills"], 13, color_muted)
 
 	var search := LineEdit.new()
-	search.text = skill_filter
-	search.placeholder_text = "Search core skills"
+	search.text = psionic_filter if is_psionics else skill_filter
+	search.placeholder_text = "Search psionic skills" if is_psionics else "Search core skills"
 	search.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	box.add_child(search)
 
@@ -2996,10 +3085,13 @@ func _render_skill_picker(box: VBoxContainer, summary: Dictionary) -> void:
 	box.add_child(list)
 
 	search.text_changed.connect(func(value):
-		skill_filter = value
-		_refresh_skill_rows(list)
+		if is_psionics:
+			psionic_filter = value
+		else:
+			skill_filter = value
+		_refresh_skill_rows(list, is_psionics)
 	)
-	_refresh_skill_rows(list)
+	_refresh_skill_rows(list, is_psionics)
 
 
 func _render_selected_skill_panel(parent: Container) -> void:
@@ -3057,15 +3149,17 @@ func _add_selected_skill_cell(parent: GridContainer, text: String, header_cell: 
 	return label
 
 
-func _refresh_skill_rows(list: VBoxContainer) -> void:
+func _refresh_skill_rows(list: VBoxContainer, is_psionics := false) -> void:
 	for child in list.get_children():
 		child.queue_free()
 
-	var filter := skill_filter.strip_edges().to_lower()
+	var filter := (psionic_filter if is_psionics else skill_filter).strip_edges().to_lower()
 	for ability in AlternityRules.ABILITIES:
 		var rows_for_ability := []
 		for broad in rules.broad_skills:
 			if String(broad.get("stat", "")) != ability:
+				continue
+			if (broad.get("source", "") == "psionics") != is_psionics:
 				continue
 
 			var broad_id := rules._as_int(broad.get("id", -1))
@@ -3171,10 +3265,18 @@ func _add_skill_row(parent: VBoxContainer, skill: Dictionary, indented: bool) ->
 		)
 
 	if is_specialty:
+		var controls_container: Container
+		if is_wide_layout:
+			controls_container = HBoxContainer.new()
+		else:
+			controls_container = VBoxContainer.new()
+		controls_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row_box.add_child(controls_container)
+
 		var controls := HBoxContainer.new()
 		controls.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		controls.add_theme_constant_override("separation", 6)
-		row_box.add_child(controls)
+		controls_container.add_child(controls)
 
 		var control_spacer := Control.new()
 		control_spacer.custom_minimum_size = Vector2(56, 1) if indented else Vector2(38, 1)
@@ -3183,7 +3285,7 @@ func _add_skill_row(parent: VBoxContainer, skill: Dictionary, indented: bool) ->
 		var minus := Button.new()
 		minus.text = "-"
 		minus.disabled = rank <= free_rank
-		minus.custom_minimum_size = Vector2(36, 34)
+		minus.custom_minimum_size = Vector2(36, 34) if is_wide_layout else Vector2(44, 44)
 		minus.pressed.connect(func():
 			rules.change_skill_rank(character, skill_id, -1)
 			_render()
@@ -3194,7 +3296,7 @@ func _add_skill_row(parent: VBoxContainer, skill: Dictionary, indented: bool) ->
 		rank_label.text = "Rank %d" % rank
 		rank_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		rank_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		rank_label.custom_minimum_size = Vector2(62, 34)
+		rank_label.custom_minimum_size = Vector2(62, 34) if is_wide_layout else Vector2(62, 44)
 		rank_label.add_theme_color_override("font_color", color_text if rank > 0 else color_muted)
 		rank_label.add_theme_font_size_override("font_size", 13)
 		controls.add_child(rank_label)
@@ -3202,7 +3304,7 @@ func _add_skill_row(parent: VBoxContainer, skill: Dictionary, indented: bool) ->
 		var plus := Button.new()
 		plus.text = "+"
 		plus.disabled = rank >= AlternityRules.MAX_SPECIALTY_RANK
-		plus.custom_minimum_size = Vector2(36, 34)
+		plus.custom_minimum_size = Vector2(36, 34) if is_wide_layout else Vector2(44, 44)
 		plus.pressed.connect(func():
 			rules.change_skill_rank(character, skill_id, 1)
 			_render()
@@ -3224,8 +3326,47 @@ func _add_skill_row(parent: VBoxContainer, skill: Dictionary, indented: bool) ->
 		cost_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		cost_note.add_theme_color_override("font_color", color_muted)
 		cost_note.add_theme_font_size_override("font_size", 12)
-		controls.add_child(cost_note)
+		
+		if is_wide_layout:
+			controls.add_child(cost_note)
+		else:
+			var cost_box := HBoxContainer.new()
+			var cost_spacer := Control.new()
+			cost_spacer.custom_minimum_size = Vector2(56, 1) if indented else Vector2(38, 1)
+			cost_box.add_child(cost_spacer)
+			cost_box.add_child(cost_note)
+			controls_container.add_child(cost_box)
 
+
+func _render_cybertech() -> void:
+	_add_text(content, "Cybertech implementations coming soon...", 14, color_muted)
+
+func _render_fx_psionics() -> void:
+	var overview := _add_section("Psionic Energy & Mindwalker Status")
+	
+	var is_psionic: bool = rules._as_int(character.get("species_id", 0)) == 1 or character.get("profession_id", 0) == 6 # Fraal or Mindwalker
+	var summary := rules.summary(character)
+	if is_psionic:
+		var base_wil := rules._as_int(rules.effective_abilities(character).get("WIL", 10))
+		var is_fraal: bool = rules._as_int(character.get("species_id", 0)) == 1
+		var is_mindwalker: bool = character.get("profession_id", 0) == 6
+		
+		var energy_points := base_wil / 2
+		if is_fraal and is_mindwalker:
+			energy_points = int(base_wil * 1.5)
+		elif is_fraal or is_mindwalker:
+			energy_points = base_wil
+			
+		_add_progress_metric(overview, "Psionic Energy Points", energy_points, energy_points, "%d / %d" % [energy_points, energy_points])
+		_add_text(overview, "Your Psionic Energy is derived from your Will score. Use these points to power psionic abilities.", 12, color_muted)
+	else:
+		_add_text(overview, "You do not currently possess psionic potential. Only Fraal or heroes with the Mindwalker profession/perk can access these powers.", 13, color_warning)
+
+	var skills_box := _add_section("Psionic Skills")
+	if is_psionic:
+		_render_skill_picker(skills_box, summary, true)
+	else:
+		_add_text(skills_box, "Psionic skills are locked.", 13, color_muted)
 
 func _render_summary() -> void:
 	var summary := rules.summary(character)
@@ -3329,12 +3470,24 @@ func _render_summary() -> void:
 		for message in summary["validations"]:
 			_add_text(validation_box, String(message), 14, color_warning)
 
+	var all_selected := rules.selected_skills(character)
+	var standard_skills := []
+	var psionic_skills := []
+	for s in all_selected:
+		if s.get("source", "") == "psionics":
+			psionic_skills.append(s)
+		else:
+			standard_skills.append(s)
+
 	var skill_box := _add_section_to(right_parent, "Selected Skills")
-	var selected := rules.selected_skills(character)
-	if selected.is_empty():
+	if standard_skills.is_empty():
 		_add_text(skill_box, "No purchased skills beyond species free broad skills.", 14, color_muted)
 	else:
-		_add_selected_skill_table(skill_box, selected)
+		_add_selected_skill_table(skill_box, standard_skills)
+
+	if not psionic_skills.is_empty():
+		var psionics_box := _add_section_to(right_parent, "Selected Psionics")
+		_add_selected_skill_table(psionics_box, psionic_skills)
 
 	var perks_box := _add_section_to(right_parent, "Perks")
 	_add_selected_perks_summary(perks_box)
@@ -3610,17 +3763,338 @@ func _save_character() -> void:
 	var safe_name := _safe_filename(String(character.get("hero_name", "hero")))
 	if safe_name.is_empty():
 		safe_name = "hero"
-	var path := "user://%s.json" % safe_name
+	
+	var filename := safe_name + ".json"
+	var path := "user://" + filename
+	
+	# If active character name changed, delete the old file to avoid duplicates
+	if not active_character_file.is_empty() and active_character_file != filename:
+		var old_path := "user://" + active_character_file
+		if FileAccess.file_exists(old_path) and old_path != path:
+			DirAccess.remove_absolute(old_path)
+			
+	active_character_file = filename
+	
+	# Persist last active character reference
+	var tracker := FileAccess.open("user://last_character.txt", FileAccess.WRITE)
+	if tracker != null:
+		tracker.store_string(filename)
+		
 	var payload := character.duplicate(true)
 	payload["summary"] = rules.summary(character)
 	var file := FileAccess.open(path, FileAccess.WRITE)
 	if file == null:
-		save_status_label.text = "Save failed."
-		save_status_label.add_theme_color_override("font_color", color_warning)
+		if is_instance_valid(save_status_label):
+			save_status_label.text = "Save failed."
+			save_status_label.add_theme_color_override("font_color", color_warning)
 		return
 	file.store_string(JSON.stringify(payload, "\t"))
-	save_status_label.text = ProjectSettings.globalize_path(path)
-	save_status_label.add_theme_color_override("font_color", color_accent)
+	if is_instance_valid(save_status_label):
+		save_status_label.text = ProjectSettings.globalize_path(path)
+		save_status_label.add_theme_color_override("font_color", color_accent)
+
+
+func _close_character() -> void:
+	if not active_character_file.is_empty():
+		_save_character()
+	active_character_file = ""
+	
+	var last_char_path := "user://last_character.txt"
+	if FileAccess.file_exists(last_char_path):
+		DirAccess.remove_absolute(last_char_path)
+		
+	active_tab = "Basics"
+	_render()
+
+
+func _create_new_character() -> void:
+	character = rules.default_character()
+	rules.ensure_character_shape(character)
+	
+	var base_name := "New Hero"
+	var safe_name := _safe_filename(base_name)
+	var final_filename := safe_name + ".json"
+	
+	var counter := 1
+	while FileAccess.file_exists("user://" + final_filename):
+		counter += 1
+		final_filename = "%s_%d.json" % [safe_name, counter]
+		
+	var display_name := base_name
+	if counter > 1:
+		display_name = "%s %d" % [base_name, counter]
+	character["hero_name"] = display_name
+	
+	active_character_file = final_filename
+	_save_character()
+	active_tab = "Basics"
+	_render()
+
+
+func _get_saved_characters() -> Array:
+	var saved := []
+	var dir := DirAccess.open("user://")
+	if dir:
+		dir.list_dir_begin()
+		var file_name := dir.get_next()
+		while file_name != "":
+			if not dir.current_is_dir() and file_name.ends_with(".json") and file_name != "last_character.txt":
+				var path := "user://" + file_name
+				var file := FileAccess.open(path, FileAccess.READ)
+				if file != null:
+					var content_str := file.get_as_text()
+					var json := JSON.new()
+					var err := json.parse(content_str)
+					if err == OK:
+						var data_parsed = json.get_data()
+						if typeof(data_parsed) == TYPE_DICTIONARY:
+							var hero_name := String(data_parsed.get("hero_name", "New Hero"))
+							var species_id := rules._as_int(data_parsed.get("species_id", 0))
+							var profession_id := rules._as_int(data_parsed.get("profession_id", 0))
+							var summary: Dictionary = data_parsed.get("summary", {})
+							var level := rules._as_int(summary.get("achievement_level", 1))
+							if level == 1:
+								level = rules._as_int(data_parsed.get("achievement_level", 1))
+							
+							var mod_time := FileAccess.get_modified_time(path)
+							saved.append({
+								"file_name": file_name,
+								"hero_name": hero_name,
+								"species_id": species_id,
+								"profession_id": profession_id,
+								"level": level,
+								"mod_time": mod_time
+							})
+			file_name = dir.get_next()
+	saved.sort_custom(func(a, b): return a["mod_time"] > b["mod_time"])
+	return saved
+
+
+func _render_character_select() -> void:
+	var main_box := VBoxContainer.new()
+	main_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	main_box.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	main_box.add_theme_constant_override("separation", 20)
+	content.add_child(main_box)
+
+	var banner := PanelContainer.new()
+	banner.add_theme_stylebox_override("panel", _flat_style(color_surface, Color(0, 0, 0, 0), 8))
+	banner.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	main_box.add_child(banner)
+
+	var banner_margin := MarginContainer.new()
+	banner_margin.add_theme_constant_override("margin_top", 16)
+	banner_margin.add_theme_constant_override("margin_bottom", 16)
+	banner_margin.add_theme_constant_override("margin_left", 16)
+	banner_margin.add_theme_constant_override("margin_right", 16)
+	banner.add_child(banner_margin)
+
+	var banner_box := VBoxContainer.new()
+	banner_box.add_theme_constant_override("separation", 6)
+	banner_margin.add_child(banner_box)
+
+	var welcome_label := Label.new()
+	welcome_label.text = "Character Selection"
+	welcome_label.add_theme_font_size_override("font_size", 20)
+	welcome_label.add_theme_color_override("font_color", color_accent)
+	banner_box.add_child(welcome_label)
+
+	var welcome_desc := Label.new()
+	welcome_desc.text = "Manage your saved Alternity heroes or create a new one to begin your adventure."
+	welcome_desc.add_theme_font_size_override("font_size", 13)
+	welcome_desc.add_theme_color_override("font_color", color_muted)
+	welcome_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	banner_box.add_child(welcome_desc)
+
+	var actions_bar := HBoxContainer.new()
+	actions_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	actions_bar.alignment = BoxContainer.ALIGNMENT_CENTER
+	main_box.add_child(actions_bar)
+
+	var create_btn := Button.new()
+	create_btn.text = "Create New Hero"
+	create_btn.custom_minimum_size = Vector2(200, 44)
+	create_btn.add_theme_font_size_override("font_size", 14)
+	create_btn.add_theme_stylebox_override("normal", _flat_style(color_accent, Color(0, 0, 0, 0), 8))
+	create_btn.add_theme_stylebox_override("hover", _flat_style(color_accent.lightened(0.15), Color(0, 0, 0, 0), 8))
+	create_btn.add_theme_stylebox_override("pressed", _flat_style(color_accent.darkened(0.15), Color(0, 0, 0, 0), 8))
+	create_btn.add_theme_color_override("font_color", color_background)
+	create_btn.add_theme_color_override("font_hover_color", color_background)
+	create_btn.add_theme_color_override("font_pressed_color", color_background)
+	create_btn.pressed.connect(_create_new_character)
+	actions_bar.add_child(create_btn)
+
+	var saved_heroes := _get_saved_characters()
+
+	var list_header := Label.new()
+	list_header.text = "Saved Heroes" if not saved_heroes.is_empty() else ""
+	list_header.add_theme_font_size_override("font_size", 15)
+	list_header.add_theme_color_override("font_color", color_text)
+	main_box.add_child(list_header)
+
+	if saved_heroes.is_empty():
+		var empty_panel := PanelContainer.new()
+		empty_panel.add_theme_stylebox_override("panel", _flat_style(Color(0, 0, 0, 0), color_border, 8))
+		empty_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		main_box.add_child(empty_panel)
+
+		var empty_margin := MarginContainer.new()
+		empty_margin.add_theme_constant_override("margin_top", 32)
+		empty_margin.add_theme_constant_override("margin_bottom", 32)
+		empty_panel.add_child(empty_margin)
+
+		var empty_label := Label.new()
+		empty_label.text = "No saved heroes found. Click the button above to create one!"
+		empty_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		empty_label.add_theme_font_size_override("font_size", 14)
+		empty_label.add_theme_color_override("font_color", color_muted)
+		empty_margin.add_child(empty_label)
+		return
+
+	var grid := GridContainer.new()
+	grid.columns = 2 if is_wide_layout else 1
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid.add_theme_constant_override("h_separation", 14)
+	grid.add_theme_constant_override("v_separation", 14)
+	main_box.add_child(grid)
+
+	for hero in saved_heroes:
+		var card := PanelContainer.new()
+		card.add_theme_stylebox_override("panel", _flat_style(color_surface, color_border, 8, true))
+		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		grid.add_child(card)
+
+		var card_margin := MarginContainer.new()
+		card_margin.add_theme_constant_override("margin_top", 12)
+		card_margin.add_theme_constant_override("margin_bottom", 12)
+		card_margin.add_theme_constant_override("margin_left", 14)
+		card_margin.add_theme_constant_override("margin_right", 14)
+		card.add_child(card_margin)
+
+		var card_box := VBoxContainer.new()
+		card_box.add_theme_constant_override("separation", 6)
+		card_margin.add_child(card_box)
+
+		var name_label := Label.new()
+		name_label.text = hero["hero_name"]
+		name_label.add_theme_font_size_override("font_size", 17)
+		name_label.add_theme_color_override("font_color", color_text)
+		card_box.add_child(name_label)
+
+		var species := rules.get_species_by_id(hero["species_id"])
+		var profession := rules.get_profession_by_id(hero["profession_id"])
+		var spec_label := Label.new()
+		spec_label.text = "Level %d  |  %s %s" % [
+			hero["level"],
+			String(species.get("name", "Unknown Species")),
+			String(profession.get("name", "Unknown Profession"))
+		]
+		spec_label.add_theme_font_size_override("font_size", 12)
+		spec_label.add_theme_color_override("font_color", color_muted)
+		card_box.add_child(spec_label)
+
+		var time_str := Time.get_datetime_string_from_unix_time(hero["mod_time"], true)
+		var time_parts := time_str.split(":")
+		if time_parts.size() >= 2:
+			time_str = time_parts[0] + ":" + time_parts[1]
+
+		var date_label := Label.new()
+		date_label.text = "Saved: " + time_str
+		date_label.add_theme_font_size_override("font_size", 11)
+		date_label.add_theme_color_override("font_color", color_muted)
+		card_box.add_child(date_label)
+
+		var btn_spacer := Control.new()
+		btn_spacer.custom_minimum_size = Vector2(1, 4)
+		card_box.add_child(btn_spacer)
+
+		var file_name: String = hero["file_name"]
+		if deleting_files.has(file_name):
+			var conf_row := HBoxContainer.new()
+			conf_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			conf_row.add_theme_constant_override("separation", 10)
+			card_box.add_child(conf_row)
+
+			var warning_lbl := Label.new()
+			warning_lbl.text = "Delete? "
+			warning_lbl.add_theme_font_size_override("font_size", 12)
+			warning_lbl.add_theme_color_override("font_color", color_warning)
+			conf_row.add_child(warning_lbl)
+
+			var yes_btn := Button.new()
+			yes_btn.text = "Yes"
+			yes_btn.custom_minimum_size = Vector2(56, 32)
+			yes_btn.add_theme_font_size_override("font_size", 12)
+			yes_btn.add_theme_stylebox_override("normal", _flat_style(color_warning, Color(0, 0, 0, 0), 6))
+			yes_btn.add_theme_stylebox_override("hover", _flat_style(color_warning.lightened(0.15), Color(0, 0, 0, 0), 6))
+			yes_btn.add_theme_stylebox_override("pressed", _flat_style(color_warning.darkened(0.15), Color(0, 0, 0, 0), 6))
+			yes_btn.add_theme_color_override("font_color", color_text)
+			yes_btn.pressed.connect(func():
+				var path := "user://" + file_name
+				if FileAccess.file_exists(path):
+					DirAccess.remove_absolute(path)
+				if active_character_file == file_name:
+					active_character_file = ""
+					var tracker_path := "user://last_character.txt"
+					if FileAccess.file_exists(tracker_path):
+						DirAccess.remove_absolute(tracker_path)
+				deleting_files.erase(file_name)
+				_render()
+			)
+			conf_row.add_child(yes_btn)
+
+			var cancel_btn := Button.new()
+			cancel_btn.text = "Cancel"
+			cancel_btn.custom_minimum_size = Vector2(70, 32)
+			cancel_btn.add_theme_font_size_override("font_size", 12)
+			cancel_btn.add_theme_stylebox_override("normal", _flat_style(color_surface_soft, Color(0, 0, 0, 0), 6))
+			cancel_btn.add_theme_stylebox_override("hover", _flat_style(color_surface_soft.lightened(0.1), Color(0, 0, 0, 0), 6))
+			cancel_btn.add_theme_stylebox_override("pressed", _flat_style(color_surface_soft.darkened(0.1), Color(0, 0, 0, 0), 6))
+			cancel_btn.add_theme_color_override("font_color", color_text)
+			cancel_btn.pressed.connect(func():
+				deleting_files.erase(file_name)
+				_render()
+			)
+			conf_row.add_child(cancel_btn)
+		else:
+			var act_row := HBoxContainer.new()
+			act_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			act_row.add_theme_constant_override("separation", 10)
+			card_box.add_child(act_row)
+
+			var load_btn := Button.new()
+			load_btn.text = "Load Hero"
+			load_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			load_btn.custom_minimum_size = Vector2(0, 32)
+			load_btn.add_theme_font_size_override("font_size", 12)
+			load_btn.add_theme_stylebox_override("normal", _flat_style(color_surface_soft, color_accent, 6))
+			load_btn.add_theme_stylebox_override("hover", _flat_style(color_surface_soft.lightened(0.1), color_accent, 6))
+			load_btn.add_theme_stylebox_override("pressed", _flat_style(color_accent, Color(0,0,0,0), 6))
+			load_btn.add_theme_color_override("font_color", color_text)
+			load_btn.add_theme_color_override("font_pressed_color", color_background)
+			load_btn.pressed.connect(func():
+				if _load_character_from_file(file_name):
+					var tracker := FileAccess.open("user://last_character.txt", FileAccess.WRITE)
+					if tracker != null:
+						tracker.store_string(file_name)
+					active_tab = "Basics"
+					_render()
+			)
+			act_row.add_child(load_btn)
+
+			var del_btn := Button.new()
+			del_btn.text = "Delete"
+			del_btn.custom_minimum_size = Vector2(70, 32)
+			del_btn.add_theme_font_size_override("font_size", 12)
+			del_btn.add_theme_stylebox_override("normal", _flat_style(color_surface_soft, color_warning, 6))
+			del_btn.add_theme_stylebox_override("hover", _flat_style(color_surface_soft.lightened(0.1), color_warning, 6))
+			del_btn.add_theme_stylebox_override("pressed", _flat_style(color_warning, Color(0,0,0,0), 6))
+			del_btn.add_theme_color_override("font_color", color_text)
+			del_btn.pressed.connect(func():
+				deleting_files[file_name] = true
+				_render()
+			)
+			act_row.add_child(del_btn)
 
 
 func _safe_filename(value: String) -> String:
@@ -3658,7 +4132,7 @@ func _add_section(title: String) -> VBoxContainer:
 func _add_section_to(parent: Container, title: String) -> VBoxContainer:
 	var panel := PanelContainer.new()
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.add_theme_stylebox_override("panel", _flat_style(color_surface, color_border, 8))
+	panel.add_theme_stylebox_override("panel", _flat_style(color_surface, color_border, 8, true))
 	parent.add_child(panel)
 
 	var margin := MarginContainer.new()
@@ -3986,6 +4460,45 @@ func _add_metric(parent: VBoxContainer, name: String, value: String) -> void:
 	row.add_child(value_label)
 
 
+func _add_progress_metric(parent: VBoxContainer, name: String, current: float, maximum: float, value_text: String) -> void:
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 4)
+	parent.add_child(box)
+
+	var label_row := HBoxContainer.new()
+	label_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	box.add_child(label_row)
+
+	var name_label := Label.new()
+	name_label.text = name
+	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_label.add_theme_color_override("font_color", color_muted)
+	name_label.add_theme_font_size_override("font_size", 13)
+	label_row.add_child(name_label)
+
+	var value_label := Label.new()
+	value_label.text = value_text
+	value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	value_label.add_theme_color_override("font_color", color_text)
+	value_label.add_theme_font_size_override("font_size", 14)
+	label_row.add_child(value_label)
+
+	var progress := ProgressBar.new()
+	progress.max_value = maximum
+	progress.value = current
+	progress.show_percentage = false
+	progress.custom_minimum_size = Vector2(0, 6)
+	progress.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = color_accent
+	sb.set_corner_radius_all(3)
+	var bg := StyleBoxFlat.new()
+	bg.bg_color = color_border
+	bg.set_corner_radius_all(3)
+	progress.add_theme_stylebox_override("fill", sb)
+	progress.add_theme_stylebox_override("background", bg)
+	box.add_child(progress)
+
 func _add_compact_abilities(parent: VBoxContainer) -> void:
 	var title := Label.new()
 	title.text = "Abilities"
@@ -4057,8 +4570,8 @@ func _add_tracker_row(parent: VBoxContainer, name: String, total: int, used: int
 		button.text = ""
 		button.tooltip_text = "%s box %d" % [name, box_number]
 		button.custom_minimum_size = Vector2(24, 24)
-		button.add_theme_stylebox_override("normal", _flat_style(Color(0.90, 0.91, 0.87), color_border, 4))
-		button.add_theme_stylebox_override("hover", _flat_style(Color(0.84, 0.88, 0.84), color_border, 4))
+		button.add_theme_stylebox_override("normal", _flat_style(color_surface, color_border, 4))
+		button.add_theme_stylebox_override("hover", _flat_style(color_surface_soft, color_border, 4))
 		button.add_theme_stylebox_override("pressed", _flat_style(color_warning, color_warning, 4))
 		button.pressed.connect(func():
 			var next_used := box_number
@@ -4069,7 +4582,7 @@ func _add_tracker_row(parent: VBoxContainer, name: String, total: int, used: int
 		grid.add_child(button)
 
 
-func _flat_style(background: Color, border: Color, radius: int) -> StyleBoxFlat:
+func _flat_style(background: Color, border: Color, radius: int, shadow: bool = false) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = background
 	style.set_corner_radius_all(radius)
@@ -4078,4 +4591,8 @@ func _flat_style(background: Color, border: Color, radius: int) -> StyleBoxFlat:
 		style.set_border_width_all(1)
 	else:
 		style.set_border_width_all(0)
+	if shadow:
+		style.shadow_color = Color(0, 0, 0, 0.4)
+		style.shadow_size = 8
+		style.shadow_offset = Vector2(0, 4)
 	return style
