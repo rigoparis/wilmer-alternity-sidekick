@@ -14,6 +14,7 @@ var psionic_filter := ""
 var active_character_file := ""
 var deleting_files: Dictionary = {}
 var close_char_button: Button
+var background_rect: ColorRect
 
 
 var root_margin: MarginContainer
@@ -150,10 +151,10 @@ func _notification(what: int) -> void:
 
 
 func _build_shell() -> void:
-	var background := ColorRect.new()
-	background.color = color_background
-	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(background)
+	background_rect = ColorRect.new()
+	background_rect.color = color_background
+	background_rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(background_rect)
 
 	root_margin = MarginContainer.new()
 	root_margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -174,6 +175,7 @@ func _build_shell() -> void:
 	title_label.text = "Wilmer Alternity Sidekick"
 	title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	title_label.custom_minimum_size = Vector2(1, 0)
 	title_label.add_theme_color_override("font_color", color_text)
 	title_label.add_theme_font_size_override("font_size", 24)
 	header.add_child(title_label)
@@ -187,7 +189,7 @@ func _build_shell() -> void:
 
 
 	theme_btn = Button.new()
-	theme_btn.text = "DECK SETTINGS"
+	theme_btn.text = "Theme Settings"
 	theme_btn.custom_minimum_size = Vector2(118, 36)
 	theme_btn.add_theme_font_size_override("font_size", 12)
 	theme_btn.pressed.connect(_show_theme_selector)
@@ -209,7 +211,7 @@ func _build_shell() -> void:
 
 	var tabs_scroll := ScrollContainer.new()
 	tabs_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	tabs_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	tabs_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
 	tabs_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	tabs_scroll.custom_minimum_size = Vector2(0, 52)
 	shell.add_child(tabs_scroll)
@@ -223,12 +225,13 @@ func _build_shell() -> void:
 		var button := Button.new()
 		button.text = tab
 		button.toggle_mode = true
+		button.mouse_filter = Control.MOUSE_FILTER_PASS
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.custom_minimum_size = Vector2(0, 42)
-		button.add_theme_stylebox_override("normal", _flat_style(color_surface, Color(0, 0, 0, 0), 8))
-		button.add_theme_stylebox_override("hover", _flat_style(color_surface_soft, Color(0, 0, 0, 0), 8))
-		button.add_theme_stylebox_override("pressed", _flat_style(color_accent, Color(0, 0, 0, 0), 8))
-		button.add_theme_stylebox_override("focus", _flat_style(color_surface_soft, color_accent, 8))
+		button.add_theme_stylebox_override("normal", _tab_style(color_surface, Color(0, 0, 0, 0), 8))
+		button.add_theme_stylebox_override("hover", _tab_style(color_surface_soft, Color(0, 0, 0, 0), 8))
+		button.add_theme_stylebox_override("pressed", _tab_style(color_accent, Color(0, 0, 0, 0), 8))
+		button.add_theme_stylebox_override("focus", _tab_style(color_surface_soft, color_accent, 8))
 		button.add_theme_color_override("font_color", color_text)
 		button.add_theme_color_override("font_pressed_color", color_background)
 		button.pressed.connect(func(): _set_tab(tab))
@@ -262,6 +265,7 @@ func _build_shell() -> void:
 	_build_achievement_form_overlay()
 	_build_perk_flaw_catalog_overlay()
 	_build_mutation_catalog_overlay()
+	_build_theme_overlay()
 
 
 func _resize_modal_panel(panel: Control, available_width: float, max_width: float, height_updater: Callable) -> void:
@@ -299,6 +303,7 @@ func _apply_responsive_layout() -> void:
 	_resize_modal_panel(achievement_form_panel, available_width, 820.0, _update_achievement_form_modal_height)
 	_resize_modal_panel(perk_flaw_catalog_panel, available_width, 820.0, _update_perk_flaw_catalog_modal_height)
 	_resize_modal_panel(mutation_catalog_panel, available_width, 820.0, _update_mutation_catalog_modal_height)
+	_resize_modal_panel(theme_panel, available_width, 360.0, _update_theme_modal_height)
 
 
 func _update_header_layout(compact: bool) -> void:
@@ -327,13 +332,16 @@ func _update_header_layout(compact: bool) -> void:
 	optional_rules_button.text = "Optional Rules"
 	optional_rules_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL if compact else Control.SIZE_SHRINK_END
 	optional_rules_button.custom_minimum_size = Vector2(0 if compact else 118, 38 if compact else 36)
+	if theme_btn != null:
+		theme_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL if compact else Control.SIZE_SHRINK_END
+		theme_btn.custom_minimum_size = Vector2(0 if compact else 118, 38 if compact else 36)
 	if close_char_button != null:
 		close_char_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL if compact else Control.SIZE_SHRINK_END
 		close_char_button.custom_minimum_size = Vector2(0 if compact else 120, 38 if compact else 36)
 
 
 func _reparent_header_children() -> void:
-	for node in [title_label, status_label, optional_rules_button, close_char_button]:
+	for node in [title_label, status_label, theme_btn, optional_rules_button, close_char_button]:
 		if node != null:
 			if node.get_parent() != null:
 				node.get_parent().remove_child(node)
@@ -792,6 +800,112 @@ func _build_mutation_catalog_overlay() -> void:
 	scroll_margin.add_child(mutation_catalog_body)
 
 
+func _build_theme_overlay() -> void:
+	theme_overlay = Control.new()
+	theme_overlay.visible = false
+	theme_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	theme_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(theme_overlay)
+
+	var shade := ColorRect.new()
+	shade.color = Color(0.0, 0.0, 0.0, 0.42)
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	theme_overlay.add_child(shade)
+
+	var overlay_margin := MarginContainer.new()
+	overlay_margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	overlay_margin.add_theme_constant_override("margin_left", 12)
+	overlay_margin.add_theme_constant_override("margin_right", 12)
+	overlay_margin.add_theme_constant_override("margin_top", 12)
+	overlay_margin.add_theme_constant_override("margin_bottom", 12)
+	theme_overlay.add_child(overlay_margin)
+
+	var center := CenterContainer.new()
+	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	center.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	overlay_margin.add_child(center)
+
+	theme_panel = PanelContainer.new()
+	theme_panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	theme_panel.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	theme_panel.add_theme_stylebox_override("panel", _flat_style(color_surface, color_border, 8))
+	center.add_child(theme_panel)
+
+	var panel_margin := MarginContainer.new()
+	panel_margin.add_theme_constant_override("margin_left", 14)
+	panel_margin.add_theme_constant_override("margin_right", 14)
+	panel_margin.add_theme_constant_override("margin_top", 14)
+	panel_margin.add_theme_constant_override("margin_bottom", 14)
+	theme_panel.add_child(panel_margin)
+
+	var panel_content := VBoxContainer.new()
+	panel_content.add_theme_constant_override("separation", 12)
+	panel_margin.add_child(panel_content)
+
+	var header_box := HBoxContainer.new()
+	header_box.add_theme_constant_override("separation", 8)
+	panel_content.add_child(header_box)
+
+	var title := Label.new()
+	title.text = "Theme Settings"
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title.add_theme_color_override("font_color", color_text)
+	title.add_theme_font_size_override("font_size", 20)
+	header_box.add_child(title)
+
+	var close_button := Button.new()
+	close_button.text = "Close"
+	close_button.custom_minimum_size = Vector2(76, 36)
+	close_button.pressed.connect(func(): theme_overlay.visible = false)
+	header_box.add_child(close_button)
+
+	theme_body = VBoxContainer.new()
+	theme_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	theme_body.add_theme_constant_override("separation", 8)
+	panel_content.add_child(theme_body)
+
+
+func _update_theme_modal_height() -> void:
+	pass
+
+
+func _refresh_theme_panel() -> void:
+	if theme_body == null or not has_node("/root/ThemeManager"):
+		return
+	for child in theme_body.get_children():
+		child.queue_free()
+
+	var tm = get_node("/root/ThemeManager")
+	for index in range(tm.theme_names.size()):
+		var name = tm.theme_names[index]
+		var is_selected = index == tm.current_theme_index
+
+		var btn := Button.new()
+		btn.text = name
+		btn.custom_minimum_size = Vector2(0, 42)
+		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+		if is_selected:
+			btn.add_theme_stylebox_override("normal", _flat_style(color_accent, Color(0, 0, 0, 0), 6))
+			btn.add_theme_stylebox_override("hover", _flat_style(color_accent.lightened(0.1), Color(0, 0, 0, 0), 6))
+			btn.add_theme_stylebox_override("pressed", _flat_style(color_accent.darkened(0.1), Color(0, 0, 0, 0), 6))
+			btn.add_theme_color_override("font_color", color_background)
+			btn.add_theme_color_override("font_hover_color", color_background)
+			btn.add_theme_color_override("font_pressed_color", color_background)
+		else:
+			btn.add_theme_stylebox_override("normal", _flat_style(color_surface_soft, Color(0, 0, 0, 0), 6))
+			btn.add_theme_stylebox_override("hover", _flat_style(color_surface_soft.lightened(0.1), Color(0, 0, 0, 0), 6))
+			btn.add_theme_stylebox_override("pressed", _flat_style(color_surface_soft.darkened(0.1), Color(0, 0, 0, 0), 6))
+			btn.add_theme_color_override("font_color", color_text)
+			btn.add_theme_color_override("font_hover_color", color_text.lightened(0.1))
+			btn.add_theme_color_override("font_pressed_color", color_text)
+
+		btn.pressed.connect(func():
+			tm.set_theme(index)
+		)
+		theme_body.add_child(btn)
+
+
 func _show_optional_rules() -> void:
 	_refresh_optional_rules_panel()
 	optional_rules_overlay.visible = true
@@ -1040,6 +1154,9 @@ func _mark_tabs_dirty() -> void:
 
 
 func _render() -> void:
+	if content_scroll != null and not _is_tab_changing and not active_tab.is_empty():
+		_tab_scroll_positions[active_tab] = content_scroll.scroll_vertical
+
 	# State 1: Standalone Character Select (no active character)
 	if active_character_file.is_empty():
 		content = main_content
@@ -1235,12 +1352,17 @@ func _render_basics() -> void:
 	var achievement_points := rules._as_int(character.get("achievement_points", 0))
 	var level_label := _add_text(basics, _achievement_level_label(achievement_points), 15, color_text)
 	var next_level_label := _add_text(basics, _achievement_next_level_label(achievement_points), 12, color_muted)
-	var achievement_input := _add_number_input(basics, "Achievement Points", achievement_points, 0, 9999, func(value):
+	var achievement_hbox := HBoxContainer.new()
+	achievement_hbox.add_theme_constant_override("separation", 12)
+	basics.add_child(achievement_hbox)
+	var achievement_input := _add_number_input(achievement_hbox, "Achievement Points", achievement_points, 0, 9999, func(value):
 		rules.achievements.set_achievement_points(character, value)
 		level_label.text = _achievement_level_label(value)
 		next_level_label.text = _achievement_next_level_label(value)
 		_refresh_status()
 	)
+	achievement_input.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	achievement_input.custom_minimum_size = Vector2(120, 42)
 	var achievement_summary := rules.summary(character)
 	var achievement_usage_label := _add_text(
 		basics,
@@ -3084,6 +3206,7 @@ func _add_labeled_value_to(parent: Container, label_text: String, value_text: St
 	var value := Label.new()
 	value.text = value_text
 	value.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	value.custom_minimum_size = Vector2(1, 0)
 	value.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	value.add_theme_color_override("font_color", color_text)
 	value.add_theme_font_size_override("font_size", 12)
@@ -3101,6 +3224,7 @@ func _add_table_label(parent: GridContainer, text: String, header_cell: bool) ->
 	var label := Label.new()
 	label.text = text
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.custom_minimum_size = Vector2(1, 0)
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	label.add_theme_color_override("font_color", color_text if header_cell else color_muted)
 	label.add_theme_font_size_override("font_size", 11 if header_cell else 10)
@@ -3182,11 +3306,11 @@ func _add_selected_skill_table(parent: VBoxContainer, selected: Array) -> void:
 	grid.add_theme_constant_override("v_separation", 6)
 	parent.add_child(grid)
 
-	_add_selected_skill_cell(grid, "Cost", true, HORIZONTAL_ALIGNMENT_LEFT, 44 if compact else 62)
-	_add_selected_skill_cell(grid, "Rank", true, HORIZONTAL_ALIGNMENT_LEFT, 46 if compact else 58)
-	_add_selected_skill_cell(grid, "Skill", true, HORIZONTAL_ALIGNMENT_LEFT, 108 if compact else 170, true)
-	_add_selected_skill_cell(grid, "Score", true, HORIZONTAL_ALIGNMENT_LEFT, 76 if compact else 86)
-	_add_selected_skill_cell(grid, "Die", true, HORIZONTAL_ALIGNMENT_LEFT, 38 if compact else 42)
+	_add_selected_skill_cell(grid, "Cost", true, HORIZONTAL_ALIGNMENT_LEFT, 34 if compact else 62)
+	_add_selected_skill_cell(grid, "Rank", true, HORIZONTAL_ALIGNMENT_LEFT, 36 if compact else 58)
+	_add_selected_skill_cell(grid, "Skill", true, HORIZONTAL_ALIGNMENT_LEFT, 50 if compact else 170, true)
+	_add_selected_skill_cell(grid, "Score", true, HORIZONTAL_ALIGNMENT_LEFT, 64 if compact else 86)
+	_add_selected_skill_cell(grid, "Die", true, HORIZONTAL_ALIGNMENT_LEFT, 30 if compact else 42)
 
 	for skill in selected:
 		var score: Dictionary = skill["score"]
@@ -3198,11 +3322,11 @@ func _add_selected_skill_table(parent: VBoxContainer, selected: Array) -> void:
 			rules._as_int(score.get("good", 0)),
 			rules._as_int(score.get("amazing", 0)),
 		]
-		_add_selected_skill_cell(grid, cost_text, false, HORIZONTAL_ALIGNMENT_LEFT, 44 if compact else 62)
-		_add_selected_skill_cell(grid, rank_text, false, HORIZONTAL_ALIGNMENT_LEFT, 46 if compact else 58)
-		_add_selected_skill_cell(grid, rules.skill_label(skill), false, HORIZONTAL_ALIGNMENT_LEFT, 108 if compact else 170, true)
-		_add_selected_skill_cell(grid, score_text, false, HORIZONTAL_ALIGNMENT_LEFT, 76 if compact else 86)
-		_add_selected_skill_cell(grid, String(score.get("die", "")), false, HORIZONTAL_ALIGNMENT_LEFT, 38 if compact else 42)
+		_add_selected_skill_cell(grid, cost_text, false, HORIZONTAL_ALIGNMENT_LEFT, 34 if compact else 62)
+		_add_selected_skill_cell(grid, rank_text, false, HORIZONTAL_ALIGNMENT_LEFT, 36 if compact else 58)
+		_add_selected_skill_cell(grid, rules.skill_label(skill), false, HORIZONTAL_ALIGNMENT_LEFT, 50 if compact else 170, true)
+		_add_selected_skill_cell(grid, score_text, false, HORIZONTAL_ALIGNMENT_LEFT, 64 if compact else 86)
+		_add_selected_skill_cell(grid, String(score.get("die", "")), false, HORIZONTAL_ALIGNMENT_LEFT, 30 if compact else 42)
 
 
 func _add_selected_skill_cell(parent: GridContainer, text: String, header_cell: bool, alignment: HorizontalAlignment, min_width: int, expand := false) -> Label:
@@ -3453,10 +3577,31 @@ func _render_cybertech() -> void:
 		var item: Dictionary = item_value
 		var row = VBoxContainer.new()
 		catalog_section.add_child(row)
-		var header_row = HBoxContainer.new()
-		row.add_child(header_row)
-		var title = _add_text(header_row, String(item.get("name", "")), 16, color_accent)
-		title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		
+		var title = _add_text(row, String(item.get("name", "")), 16, color_accent)
+		
+		var info_str = "PL: %d  |  Mass: %s  |  Size: %s" % [
+			rules._as_int(item.get("pl", 6)),
+			str(item.get("mass", item.get("mass_ordinary", 0))),
+			str(item.get("size", item.get("size_ordinary", 0)))
+		]
+		var source_str = String(item.get("source", ""))
+		if not source_str.is_empty():
+			info_str += "  |  Source: %s" % source_str
+		_add_text(row, info_str, 12, color_muted)
+		
+		_add_text(row, String(item.get("description", "")), 14, color_text)
+		
+		var action_margin = MarginContainer.new()
+		action_margin.add_theme_constant_override("margin_top", 12)
+		action_margin.add_theme_constant_override("margin_bottom", 8)
+		row.add_child(action_margin)
+		
+		var action_row = HFlowContainer.new()
+		action_row.add_theme_constant_override("h_separation", 8)
+		action_row.add_theme_constant_override("v_separation", 8)
+		action_margin.add_child(action_row)
+		
 		var installed = false
 		for inst in rules.cybertech.installed_cybertech(character):
 			if String(inst.get("item_id", "")) == String(item.get("id", "")):
@@ -3470,7 +3615,7 @@ func _render_cybertech() -> void:
 				_save_character()
 				_render()
 			)
-			header_row.add_child(btn_remove)
+			action_row.add_child(btn_remove)
 		else:
 			for q in ["ordinary", "good", "amazing"]:
 				var cost = item.get("cost_%s" % q, 0)
@@ -3483,17 +3628,7 @@ func _render_cybertech() -> void:
 							_save_character()
 							_render()
 					)
-					header_row.add_child(btn_add)
-		var info_str = "PL: %d  |  Mass: %s  |  Size: %s" % [
-			rules._as_int(item.get("pl", 6)),
-			str(item.get("mass", item.get("mass_ordinary", 0))),
-			str(item.get("size", item.get("size_ordinary", 0)))
-		]
-		var source_str = String(item.get("source", ""))
-		if not source_str.is_empty():
-			info_str += "  |  Source: %s" % source_str
-		_add_text(row, info_str, 12, color_muted)
-		_add_text(row, String(item.get("description", "")), 14, color_text)
+					action_row.add_child(btn_add)
 		_add_thin_separator(row)
 
 func _render_fx_psionics() -> void:
@@ -4387,7 +4522,7 @@ func _add_form_float_input(parent: Container, label_text: String, value: float, 
 	return edit
 
 
-func _add_field(parent: VBoxContainer, label_text: String, control: Control) -> void:
+func _add_field(parent: Container, label_text: String, control: Control) -> void:
 	var label := Label.new()
 	label.text = label_text
 	label.add_theme_color_override("font_color", color_muted)
@@ -4429,6 +4564,7 @@ func _add_readonly_number_cell(parent: BoxContainer, label_text: String, value: 
 	var label := Label.new()
 	label.text = label_text
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.custom_minimum_size = Vector2(1, 0)
 	label.add_theme_color_override("font_color", color_muted)
 	label.add_theme_font_size_override("font_size", 12)
 	box.add_child(label)
@@ -4443,7 +4579,7 @@ func _add_readonly_number_cell(parent: BoxContainer, label_text: String, value: 
 	return edit
 
 
-func _add_number_input(parent: VBoxContainer, label_text: String, value: int, minimum: int, maximum: int, changed: Callable) -> LineEdit:
+func _add_number_input(parent: Container, label_text: String, value: int, minimum: int, maximum: int, changed: Callable) -> LineEdit:
 	var edit := LineEdit.new()
 	edit.text = str(clampi(value, minimum, maximum))
 	edit.placeholder_text = str(minimum)
@@ -4545,6 +4681,7 @@ func _add_text(parent: Container, text: String, font_size: int, color: Color) ->
 	var label := Label.new()
 	label.text = text
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.custom_minimum_size = Vector2(1, 0)
 	label.add_theme_font_size_override("font_size", font_size)
 	label.add_theme_color_override("font_color", color)
 	parent.add_child(label)
@@ -4567,6 +4704,7 @@ func _add_rich_note(parent: VBoxContainer, text: String, font_size: int, color: 
 	label.selection_enabled = false
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.custom_minimum_size = Vector2(1, 0)
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	label.add_theme_font_size_override("normal_font_size", font_size)
 	label.add_theme_font_size_override("bold_font_size", font_size)
@@ -4629,6 +4767,7 @@ func _add_metric(parent: VBoxContainer, name: String, value: String) -> void:
 	value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT if row is VBoxContainer else HORIZONTAL_ALIGNMENT_RIGHT
 	value_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	value_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	value_label.custom_minimum_size = Vector2(1, 0)
 	value_label.add_theme_color_override("font_color", color_text)
 	value_label.add_theme_font_size_override("font_size", 13)
 	row.add_child(value_label)
@@ -4706,6 +4845,7 @@ func _add_ability_summary_cell(parent: GridContainer, text: String, header_cell:
 	var label := Label.new()
 	label.text = text
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.custom_minimum_size = Vector2(1, 0)
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	label.add_theme_color_override("font_color", color_muted if header_cell else color_text)
 	label.add_theme_font_size_override("font_size", 10 if header_cell else 11)
@@ -4797,9 +4937,19 @@ func _flat_style(background: Color, border: Color, radius: int, shadow: bool = f
 		style.shadow_offset = Vector2(0, 4)
 	return style
 
+
+func _tab_style(background: Color, border: Color, radius: int) -> StyleBoxFlat:
+	var style := _flat_style(background, border, radius)
+	style.content_margin_left = 16
+	style.content_margin_right = 16
+	style.content_margin_top = 4
+	style.content_margin_bottom = 4
+	return style
+
 var theme_btn: Button
-var theme_dialog: AcceptDialog
-var theme_list: ItemList
+var theme_overlay: Control
+var theme_panel: PanelContainer
+var theme_body: VBoxContainer
 
 func _setup_theme() -> void:
 	if not Engine.is_editor_hint() and has_node("/root/ThemeManager"):
@@ -4829,25 +4979,48 @@ func _on_theme_changed() -> void:
 		color_accent = tm.get_theme_color("color_accent")
 		color_warning = tm.get_theme_color("color_warning")
 		color_border = tm.get_theme_color("color_border")
-		_render()
+
+		if background_rect != null:
+			background_rect.color = color_background
+		if title_label != null:
+			title_label.add_theme_color_override("font_color", color_text)
+		if status_label != null:
+			status_label.add_theme_color_override("font_color", color_muted)
+
+		# Update tab buttons
+		for tab in tab_buttons.keys():
+			var button = tab_buttons[tab]
+			if button != null:
+				button.add_theme_stylebox_override("normal", _tab_style(color_surface, Color(0, 0, 0, 0), 8))
+				button.add_theme_stylebox_override("hover", _tab_style(color_surface_soft, Color(0, 0, 0, 0), 8))
+				button.add_theme_stylebox_override("pressed", _tab_style(color_accent, Color(0, 0, 0, 0), 8))
+				button.add_theme_stylebox_override("focus", _tab_style(color_surface_soft, color_accent, 8))
+				button.add_theme_color_override("font_color", color_text)
+				button.add_theme_color_override("font_pressed_color", color_background)
+
+		# Update permanent overlay panels
+		if optional_rules_panel != null:
+			optional_rules_panel.add_theme_stylebox_override("panel", _flat_style(color_surface, color_border, 8))
+		if skill_details_panel != null:
+			skill_details_panel.add_theme_stylebox_override("panel", _flat_style(color_surface, color_border, 8))
+		if equipment_form_panel != null:
+			equipment_form_panel.add_theme_stylebox_override("panel", _flat_style(color_surface, color_border, 8))
+		if achievement_form_panel != null:
+			achievement_form_panel.add_theme_stylebox_override("panel", _flat_style(color_surface, color_border, 8))
+		if perk_flaw_catalog_panel != null:
+			perk_flaw_catalog_panel.add_theme_stylebox_override("panel", _flat_style(color_surface, color_border, 8))
+		if mutation_catalog_panel != null:
+			mutation_catalog_panel.add_theme_stylebox_override("panel", _flat_style(color_surface, color_border, 8))
+		if theme_panel != null:
+			theme_panel.add_theme_stylebox_override("panel", _flat_style(color_surface, color_border, 8))
+
+		_refresh_theme_panel()
+		if main_content != null:
+			_render()
 
 func _show_theme_selector() -> void:
 	if not has_node("/root/ThemeManager"):
 		return
-	var tm = get_node("/root/ThemeManager")
-	if theme_dialog == null:
-		theme_dialog = AcceptDialog.new()
-		theme_dialog.title = "INTERFACE CONFIG"
-		add_child(theme_dialog)
-
-		theme_list = ItemList.new()
-		theme_list.custom_minimum_size = Vector2(250, 150)
-		for name in tm.theme_names:
-			theme_list.add_item(name)
-		theme_list.item_selected.connect(func(index: int):
-			get_node("/root/ThemeManager").set_theme(index)
-		)
-		theme_dialog.add_child(theme_list)
-
-	theme_list.select(tm.current_theme_index)
-	theme_dialog.popup_centered()
+	_refresh_theme_panel()
+	theme_overlay.visible = true
+	_update_theme_modal_height.call_deferred()

@@ -844,6 +844,11 @@ func is_flaw_selected(character: Dictionary, flaw_id: String) -> bool:
 	return selected.has(flaw_id)
 
 
+func is_perk_selected(character: Dictionary, perk_id: String) -> bool:
+	var selected: Dictionary = character.get("selected_perks", {})
+	return selected.has(perk_id) or achievements.is_perk_granted_by_achievement(character, perk_id)
+
+
 func perk_cost_selected(character: Dictionary, perk_id: String) -> int:
 	var selected: Dictionary = character.get("selected_perks", {})
 	return _as_int(selected.get(perk_id, 0))

@@ -509,12 +509,6 @@ func mutation_attack_forms(character: Dictionary) -> Array:
 	return forms
 
 
-func is_perk_selected(character: Dictionary, perk_id: String) -> bool:
-	var selected: Dictionary = character.get("selected_perks", {})
-	return selected.has(perk_id) or _get_parent().achievements.is_perk_granted_by_achievement(character, perk_id)
-
-
-
 func _normalize_mutations(character: Dictionary) -> void:
 	var mutation_value = character.get("mutations", {})
 	var mutations: Dictionary = mutation_value if typeof(mutation_value) == TYPE_DICTIONARY else {}
