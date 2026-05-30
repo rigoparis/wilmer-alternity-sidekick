@@ -14,6 +14,8 @@ func get_character_equipment_item(character: Dictionary, item_id: String) -> Dic
 		return catalog_item
 	var equipment: Dictionary = character.get("equipment", {})
 	if not equipment.has("_custom_items_by_id"):
+		# Cache custom items as a dictionary by ID to achieve O(1) lookups
+		# instead of repeatedly doing linear scans of the custom_items array.
 		var cache := {}
 		for item in equipment.get("custom_items", []):
 			if typeof(item) == TYPE_DICTIONARY:
