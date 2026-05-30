@@ -1799,12 +1799,14 @@ func _add_perk_catalog_rows(parent: VBoxContainer, filter: String) -> int:
 			parent,
 			option,
 			selected_value,
-			"cost_options",
-			"Buy %d SP",
-			"Selected %d SP",
-			change_perk,
-			can_select_new,
-			"The hero already has three perks." if not can_select_new else ""
+			{
+				"options_key": "cost_options",
+				"button_format": "Buy %d SP",
+				"selected_format": "Selected %d SP",
+				"changed": change_perk,
+				"can_select_new": can_select_new,
+				"disabled_reason": "The hero already has three perks." if not can_select_new else ""
+			}
 		)
 	return shown
 
@@ -1829,12 +1831,14 @@ func _add_flaw_catalog_rows(parent: VBoxContainer, filter: String) -> int:
 			parent,
 			option,
 			selected_value,
-			"bonus_options",
-			"Take +%d SP",
-			"Selected +%d SP",
-			change_flaw,
-			can_select_new,
-			"The hero already has three flaws." if not can_select_new else ""
+			{
+				"options_key": "bonus_options",
+				"button_format": "Take +%d SP",
+				"selected_format": "Selected +%d SP",
+				"changed": change_flaw,
+				"can_select_new": can_select_new,
+				"disabled_reason": "The hero already has three flaws." if not can_select_new else ""
+			}
 		)
 	return shown
 
@@ -1852,7 +1856,14 @@ func _character_option_matches_filter(option: Dictionary, filter: String) -> boo
 	return haystack.contains(filter)
 
 
-func _add_character_option_row(parent: VBoxContainer, option: Dictionary, selected_value: int, options_key: String, button_format: String, selected_format: String, changed: Callable, can_select_new := true, disabled_reason := "") -> void:
+func _add_character_option_row(parent: VBoxContainer, option: Dictionary, selected_value: int, config: Dictionary) -> void:
+	var options_key: String = config.get("options_key", "")
+	var button_format: String = config.get("button_format", "")
+	var selected_format: String = config.get("selected_format", "")
+	var changed: Callable = config.get("changed", Callable())
+	var can_select_new: bool = config.get("can_select_new", true)
+	var disabled_reason: String = config.get("disabled_reason", "")
+
 	var row_box := VBoxContainer.new()
 	row_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row_box.add_theme_constant_override("separation", 6)
@@ -3342,50 +3353,60 @@ func _add_selected_skill_cell(parent: GridContainer, text: String, header_cell: 
 	return label
 
 
+func _get_filtered_specialties(broad_id: int, filter: String) -> Array:
+	var specialties: Array = rules.specialty_skills_by_broad_id.get(broad_id, [])
+	if filter.is_empty():
+		return specialties
+	var child_matches := []
+	for specialty in specialties:
+		var specialty_label := rules.skill_label(specialty).to_lower()
+		if specialty_label.contains(filter):
+			child_matches.append(specialty)
+	return child_matches
+
+func _populate_ability_skills(list: VBoxContainer, ability: String, is_psionics: bool, filter: String) -> void:
+	var rows_for_ability := []
+	for broad in rules.broad_skills:
+		if String(broad.get("stat", "")) != ability:
+			continue
+		if (broad.get("source", "") == "psionics") != is_psionics:
+			continue
+
+		var broad_id := rules._as_int(broad.get("id", -1))
+		var child_matches := _get_filtered_specialties(broad_id, filter)
+
+		var broad_label := rules.skill_label(broad).to_lower()
+		var show_broad := filter.is_empty() or broad_label.contains(filter) or not child_matches.is_empty()
+		if show_broad:
+			rows_for_ability.append({
+				"broad": broad,
+				"specialties": child_matches,
+			})
+
+	if rows_for_ability.is_empty():
+		return
+
+	var ability_label := Label.new()
+	ability_label.text = "%s  %s" % [ability, AlternityRules.ABILITY_NAMES.get(ability, ability)]
+	ability_label.add_theme_color_override("font_color", color_accent)
+	ability_label.add_theme_font_size_override("font_size", 16)
+	list.add_child(ability_label)
+
+	for row in rows_for_ability:
+		var broad: Dictionary = row["broad"]
+		var broad_id := rules._as_int(broad.get("id", -1))
+		_add_skill_row(list, broad, false)
+		if rules.is_skill_selected(character, broad_id) or not filter.is_empty():
+			for specialty in row["specialties"]:
+				_add_skill_row(list, specialty, true)
+
 func _refresh_skill_rows(list: VBoxContainer, is_psionics := false) -> void:
 	for child in list.get_children():
 		child.queue_free()
 
 	var filter := (psionic_filter if is_psionics else skill_filter).strip_edges().to_lower()
 	for ability in AlternityRules.ABILITIES:
-		var rows_for_ability := []
-		for broad in rules.broad_skills:
-			if String(broad.get("stat", "")) != ability:
-				continue
-			if (broad.get("source", "") == "psionics") != is_psionics:
-				continue
-
-			var broad_id := rules._as_int(broad.get("id", -1))
-			var child_matches := []
-			for specialty in rules.specialty_skills_by_broad_id.get(broad_id, []):
-				var specialty_label := rules.skill_label(specialty).to_lower()
-				if filter.is_empty() or specialty_label.contains(filter):
-					child_matches.append(specialty)
-
-			var broad_label := rules.skill_label(broad).to_lower()
-			var show_broad := filter.is_empty() or broad_label.contains(filter) or not child_matches.is_empty()
-			if show_broad:
-				rows_for_ability.append({
-					"broad": broad,
-					"specialties": child_matches,
-				})
-
-		if rows_for_ability.is_empty():
-			continue
-
-		var ability_label := Label.new()
-		ability_label.text = "%s  %s" % [ability, AlternityRules.ABILITY_NAMES.get(ability, ability)]
-		ability_label.add_theme_color_override("font_color", color_accent)
-		ability_label.add_theme_font_size_override("font_size", 16)
-		list.add_child(ability_label)
-
-		for row in rows_for_ability:
-			var broad: Dictionary = row["broad"]
-			var broad_id := rules._as_int(broad.get("id", -1))
-			_add_skill_row(list, broad, false)
-			if rules.is_skill_selected(character, broad_id) or not filter.is_empty():
-				for specialty in row["specialties"]:
-					_add_skill_row(list, specialty, true)
+		_populate_ability_skills(list, ability, is_psionics, filter)
 
 
 func _add_skill_row(parent: VBoxContainer, skill: Dictionary, indented: bool) -> void:
@@ -3832,28 +3853,7 @@ func _render_summary() -> void:
 		for note in roll_notes:
 			_add_rich_note(roll_box, String(note), 13, color_text)
 
-	var benefit_box := _add_section_to(right_parent, "Rank Benefits")
-	var rank_groups := rules.skill_rank_benefit_groups(character)
-	if rank_groups.is_empty():
-		_add_text(benefit_box, "No selected specialty rank benefits are active yet.", 14, color_muted)
-	else:
-		for group in rank_groups:
-			var entries: Array = group.get("entries", [])
-			var skill_name := String(group.get("skill", "Skill"))
-			if entries.size() >= 2:
-				_add_rich_note(benefit_box, "%s:" % skill_name, 13, color_text)
-				for entry in entries:
-					_add_indented_text(benefit_box, "Rank %d: %s" % [
-						rules._as_int(entry.get("rank", 0)),
-						String(entry.get("text", "")),
-					], 13, color_text)
-			else:
-				var entry: Dictionary = entries[0]
-				_add_rich_note(benefit_box, "%s rank %d: %s" % [
-					skill_name,
-					rules._as_int(entry.get("rank", 0)),
-					String(entry.get("text", "")),
-				], 13, color_text)
+	_add_rank_benefits_summary(right_parent)
 
 	var save_box := _add_section_to(right_parent, "Save")
 	var save_button := Button.new()
@@ -3865,6 +3865,35 @@ func _render_summary() -> void:
 	save_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	save_status_label.add_theme_color_override("font_color", color_muted)
 	save_box.add_child(save_status_label)
+
+
+func _add_rank_benefits_summary(parent: VBoxContainer) -> void:
+	var benefit_box := _add_section_to(parent, "Rank Benefits")
+	var rank_groups := rules.skill_rank_benefit_groups(character)
+	if rank_groups.is_empty():
+		_add_text(benefit_box, "No selected specialty rank benefits are active yet.", 14, color_muted)
+		return
+
+	for group in rank_groups:
+		var entries: Array = group.get("entries", [])
+		if entries.is_empty():
+			continue
+
+		var skill_name := String(group.get("skill", "Skill"))
+		if entries.size() >= 2:
+			_add_rich_note(benefit_box, "%s:" % skill_name, 13, color_text)
+			for entry in entries:
+				_add_indented_text(benefit_box, "Rank %d: %s" % [
+					rules._as_int(entry.get("rank", 0)),
+					String(entry.get("text", "")),
+				], 13, color_text)
+		else:
+			var entry: Dictionary = entries[0]
+			_add_rich_note(benefit_box, "%s rank %d: %s" % [
+				skill_name,
+				rules._as_int(entry.get("rank", 0)),
+				String(entry.get("text", "")),
+			], 13, color_text)
 
 
 func _achievement_summary_groups(entries: Array) -> Array:

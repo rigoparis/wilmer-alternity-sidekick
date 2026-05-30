@@ -312,18 +312,24 @@ func remove_achievement_purchase(character: Dictionary, line_id: String) -> void
 		if typeof(entry_value) != TYPE_DICTIONARY:
 			continue
 		var entry: Dictionary = entry_value
-		if String(entry.get("line_id", "")) == line_id:
-			var achievement: Dictionary = _get_parent().get_achievement_by_id(String(entry.get("achievement_id", "")))
-			var effect: Dictionary = achievement.get("effect", {})
-			if String(effect.get("type", "")) == "remove_flaw":
-				var target_id := String(entry.get("target_id", ""))
-				var target_value: int = _get_parent()._as_int(entry.get("target_value", 0))
-				if not target_id.is_empty() and target_value > 0:
-					var flaws: Dictionary = character.get("selected_flaws", {})
-					flaws[target_id] = target_value
-					character["selected_flaws"] = flaws
+		if String(entry.get("line_id", "")) != line_id:
+			next.append(entry)
 			continue
-		next.append(entry)
+
+		var achievement: Dictionary = _get_parent().get_achievement_by_id(String(entry.get("achievement_id", "")))
+		var effect: Dictionary = achievement.get("effect", {})
+		if String(effect.get("type", "")) != "remove_flaw":
+			continue
+
+		var target_id := String(entry.get("target_id", ""))
+		var target_value: int = _get_parent()._as_int(entry.get("target_value", 0))
+		if target_id.is_empty() or target_value <= 0:
+			continue
+
+		var flaws: Dictionary = character.get("selected_flaws", {})
+		flaws[target_id] = target_value
+		character["selected_flaws"] = flaws
+
 	character["selected_achievements"] = next
 	_get_parent().clamp_trackers(character)
 

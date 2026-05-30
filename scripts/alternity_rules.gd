@@ -1009,6 +1009,17 @@ func _species_skill_step_bonus(character: Dictionary, skill_id: int) -> int:
 
 func validate(character: Dictionary) -> Array:
 	var messages := []
+
+	_validate_abilities(character, messages)
+	_validate_skills(character, messages)
+	_validate_perks_and_flaws(character, messages)
+	_validate_achievements(character, messages)
+	_validate_mutations(character, messages)
+
+	return messages
+
+
+func _validate_abilities(character: Dictionary, messages: Array) -> void:
 	var total := ability_total(character)
 	var target := ability_point_total()
 	if total != target:
@@ -1024,15 +1035,11 @@ func validate(character: Dictionary) -> Array:
 		if achievement_adjusted_score > _as_int(limits[1]):
 			messages.append("%s achievement increases exceed the species maximum of %d." % [ability, _as_int(limits[1])])
 
+
+func _validate_skills(character: Dictionary, messages: Array) -> void:
 	var remaining := skill_budget(character) - skill_points_used(character)
 	if remaining < 0:
 		messages.append("Skill points are overspent by %d." % abs(remaining))
-
-	if selected_perk_count(character) > 3:
-		messages.append("A starting hero can have no more than three perks. Source: Player's Handbook p. 103.")
-
-	if selected_flaw_count(character) > 3:
-		messages.append("A starting hero can have no more than three flaws. Source: Player's Handbook p. 107.")
 
 	if optional_rule_enabled(character, "2b"):
 		var additional_broad_remaining := additional_broad_skill_limit(character) - additional_broad_skills_used(character)
@@ -1056,6 +1063,16 @@ func validate(character: Dictionary) -> Array:
 			var broad_skill := get_skill_by_id(broad_id)
 			messages.append("%s requires the %s broad skill." % [skill.get("name", "Specialty"), broad_skill.get("name", "parent")])
 
+
+func _validate_perks_and_flaws(character: Dictionary, messages: Array) -> void:
+	if selected_perk_count(character) > 3:
+		messages.append("A starting hero can have no more than three perks. Source: Player's Handbook p. 103.")
+
+	if selected_flaw_count(character) > 3:
+		messages.append("A starting hero can have no more than three flaws. Source: Player's Handbook p. 107.")
+
+
+func _validate_achievements(character: Dictionary, messages: Array) -> void:
 	for entry in achievements.selected_achievements(character):
 		var achievement: Dictionary = entry.get("achievement", {})
 		var min_level := _as_int(achievements.achievement_cost_entry(achievement, character).get("min_level", 99))
@@ -1066,6 +1083,8 @@ func validate(character: Dictionary) -> Array:
 		if String(effect.get("type", "")) == "remove_flaw" and String(entry.get("target_id", "")).is_empty():
 			messages.append("Remove Flaw requires a selected flaw target.")
 
+
+func _validate_mutations(character: Dictionary, messages: Array) -> void:
 	if mutations.mutations_enabled(character):
 		var advantages := mutations.selected_mutation_advantages(character)
 		var drawbacks := mutations.selected_mutation_drawbacks(character)
@@ -1090,8 +1109,6 @@ func validate(character: Dictionary) -> Array:
 			var allowed_count := _as_int(mutations.mutation_distribution(character, "drawback").get(tier, 0))
 			if count > allowed_count:
 				messages.append("Mutation drawbacks exceed the selected point distribution for %s by %d." % [tier, count - allowed_count])
-
-	return messages
 
 
 func summary(character: Dictionary) -> Dictionary:
