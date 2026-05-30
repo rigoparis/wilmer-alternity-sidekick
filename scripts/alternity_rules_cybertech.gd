@@ -49,7 +49,6 @@ func cyber_tolerance_breakdown(character: Dictionary) -> Dictionary:
 	# Fallback to avoid rounding issues if the sum isn't exactly total
 	if left + center + right != total:
 		right = total - left - center
-	
 	var used := 0
 	for item in installed_cybertech(character):
 		var size = _get_parent()._as_int(item.get("item", {}).get("size", item.get("item", {}).get("size_%s" % String(item.get("quality", "ordinary")), 0)))
@@ -95,23 +94,21 @@ func install_cybertech(character: Dictionary, item_id: String, quality: String) 
 	var item := get_cybertech_item_by_id(item_id)
 	if item.is_empty():
 		return {"ok": false, "reason": "Unknown cybertech item."}
-	
 	var cybertech_data := _cybertech_data(character)
 	var installed: Array = cybertech_data.get("installed", [])
-	
+
 	# Check if already installed
 	for row in installed:
 		if String(row.get("item_id", "")) == item_id:
 			return {"ok": false, "reason": "Already installed."}
-			
 	installed.append({"item_id": item_id, "quality": quality})
 	cybertech_data["installed"] = installed
 	character["cybertech"] = cybertech_data
-	
+
 	# Auto-purchase skill if required and not purchased
 	if bool(item.get("requires_skill_points", false)) and not is_cybertech_skill_purchased(character):
 		set_cybertech_skill_purchased(character, true)
-		
+
 	return {"ok": true}
 
 func remove_cybertech(character: Dictionary, item_id: String) -> void:
@@ -235,7 +232,6 @@ func cybertech_attack_forms(character: Dictionary) -> Array:
 					damage = "d4+2w/d6+2w/d4m"
 				elif quality == "amazing":
 					damage = "d6+2w/d4m/d4+2m"
-			
 			var form := {
 				"name": String(item.get("name", "Cybertech Attack")),
 				"score": _get_parent().equipment._score_text(score),
