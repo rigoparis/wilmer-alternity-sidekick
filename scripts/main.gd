@@ -5681,12 +5681,13 @@ func _add_tracker_row(parent: VBoxContainer, name: String, total: int, used: int
 		button.text = ""
 		button.tooltip_text = "%s box %d" % [name, box_number]
 		button.custom_minimum_size = Vector2(24, 24)
+		button.action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS
 		button.add_theme_stylebox_override("normal", _flat_style(color_surface, color_border, 4))
 		button.add_theme_stylebox_override("hover", _flat_style(color_surface_soft, color_border, 4))
 		button.add_theme_stylebox_override("pressed", _flat_style(color_warning, color_warning, 4))
 		button.pressed.connect(func():
 			var next_used := box_number
-			if box_number == used:
+			if box_number <= used:
 				next_used = box_number - 1
 			changed.call(next_used)
 		)
