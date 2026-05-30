@@ -82,17 +82,18 @@ var mutation_catalog_kind := "advantage"
 var search_refocus_target := ""
 var search_refocus_caret := -1
 
-var color_background := Color(0.05, 0.07, 0.10)
-var color_surface := Color(0.10, 0.12, 0.16)
-var color_surface_soft := Color(0.15, 0.18, 0.22)
-var color_text := Color(0.90, 0.92, 0.95)
-var color_muted := Color(0.50, 0.55, 0.60)
-var color_accent := Color(0.00, 0.80, 0.80)
-var color_warning := Color(0.90, 0.30, 0.20)
-var color_border := Color(0.20, 0.25, 0.30)
+var color_background: Color
+var color_surface: Color
+var color_surface_soft: Color
+var color_text: Color
+var color_muted: Color
+var color_accent: Color
+var color_warning: Color
+var color_border: Color
 
 
 func _ready() -> void:
+	_setup_theme()
 	rules = AlternityRules.new()
 	rules.load_core_data()
 	_build_shell()
@@ -183,6 +184,14 @@ func _build_shell() -> void:
 	status_label.add_theme_color_override("font_color", color_muted)
 	status_label.add_theme_font_size_override("font_size", 13)
 	header.add_child(status_label)
+
+
+	theme_btn = Button.new()
+	theme_btn.text = "DECK SETTINGS"
+	theme_btn.custom_minimum_size = Vector2(118, 36)
+	theme_btn.add_theme_font_size_override("font_size", 12)
+	theme_btn.pressed.connect(_show_theme_selector)
+	header.add_child(theme_btn)
 
 	optional_rules_button = Button.new()
 	optional_rules_button.text = "Optional Rules"
@@ -3399,7 +3408,93 @@ func _add_skill_row(parent: VBoxContainer, skill: Dictionary, indented: bool) ->
 
 
 func _render_cybertech() -> void:
-	_add_text(content, "Cybertech implementations coming soon...", 14, color_muted)
+	var cybertech_data = rules.cybertech._cybertech_data(character)
+	var enabled = rules.cybertech.cybertech_enabled(character)
+	var top_section = _add_section("Cybertech")
+	_add_text(top_section, "Cybertech allows characters to enhance their bodies with technology. Your Cyber Tolerance is equal to your Constitution score (Mechalus get +4). Installing items uses up your tolerance. Items that tap into your nervous system (like Reflex or Fast Chips) risk giving you Cykosis, a mental strain that reduces your Will-based checks by -1 per point of Cykosis.", 12, color_muted)
+
+	_add_large_checkbox(top_section, "Hero uses Cybertech", enabled, func(checked):
+		rules.cybertech.set_cybertech_enabled(character, checked)
+		_save_character()
+		_render()
+	)
+	if not enabled:
+		return
+
+	var metrics_row = VBoxContainer.new()
+	metrics_row.add_theme_constant_override("separation", 8)
+	top_section.add_child(metrics_row)
+
+	var tolerance = rules.cybertech.cyber_tolerance_breakdown(character)
+	_add_metric(metrics_row, "Cyber Tolerance Used / Total", "%d / %d" % [tolerance.used, tolerance.total])
+	_add_metric(metrics_row, "Cyber Tolerance Thresholds", "%d / %d / %d" % [tolerance.left, tolerance.left + tolerance.center, tolerance.total])
+
+	var cyk_total = rules.cybertech.cykosis_total(character)
+	var cyk_used = rules.cybertech.cykosis_used(character)
+	_add_number_stepper(metrics_row, "Cykosis Points Used (Max %d)" % cyk_total, cyk_used, 0, cyk_total, func(value):
+		rules.cybertech.set_cykosis_used(character, value)
+		_save_character()
+	)
+	_add_thin_separator(top_section)
+
+	var skill_purchased = rules.cybertech.is_cybertech_skill_purchased(character)
+	_add_large_checkbox(top_section, "Purchase the Cybertech skill required to use certain cybertech for 10 skill points", skill_purchased, func(checked):
+		rules.cybertech.set_cybertech_skill_purchased(character, checked)
+		_save_character()
+		_render()
+	)
+	_add_thin_separator(top_section)
+
+	var catalog_section = _add_section("Cybertech Catalog")
+
+	for item_value in rules.cybertech_catalog:
+		if typeof(item_value) != TYPE_DICTIONARY:
+			continue
+		var item: Dictionary = item_value
+		var row = VBoxContainer.new()
+		catalog_section.add_child(row)
+		var header_row = HBoxContainer.new()
+		row.add_child(header_row)
+		var title = _add_text(header_row, String(item.get("name", "")), 16, color_accent)
+		title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var installed = false
+		for inst in rules.cybertech.installed_cybertech(character):
+			if String(inst.get("item_id", "")) == String(item.get("id", "")):
+				installed = true
+				break
+		if installed:
+			var btn_remove = Button.new()
+			btn_remove.text = "Remove"
+			btn_remove.pressed.connect(func():
+				rules.cybertech.remove_cybertech(character, String(item.get("id", "")))
+				_save_character()
+				_render()
+			)
+			header_row.add_child(btn_remove)
+		else:
+			for q in ["ordinary", "good", "amazing"]:
+				var cost = item.get("cost_%s" % q, 0)
+				if rules._as_int(cost) > 0:
+					var btn_add = Button.new()
+					btn_add.text = "Install %s" % q.capitalize()
+					btn_add.pressed.connect(func():
+						var res = rules.cybertech.install_cybertech(character, String(item.get("id", "")), q)
+						if res.get("ok", false):
+							_save_character()
+							_render()
+					)
+					header_row.add_child(btn_add)
+		var info_str = "PL: %d  |  Mass: %s  |  Size: %s" % [
+			rules._as_int(item.get("pl", 6)),
+			str(item.get("mass", item.get("mass_ordinary", 0))),
+			str(item.get("size", item.get("size_ordinary", 0)))
+		]
+		var source_str = String(item.get("source", ""))
+		if not source_str.is_empty():
+			info_str += "  |  Source: %s" % source_str
+		_add_text(row, info_str, 12, color_muted)
+		_add_text(row, String(item.get("description", "")), 14, color_text)
+		_add_thin_separator(row)
 
 func _render_fx_psionics() -> void:
 	var overview := _add_section("Psionic Energy & Mindwalker Status")
@@ -3517,9 +3612,13 @@ func _render_summary() -> void:
 
 	var equipment_summary: Dictionary = summary.get("equipment", {})
 	var attack_forms_box := _add_section_to(left_parent, "Attack Forms")
-	_add_attack_forms_summary(attack_forms_box, equipment_summary.get("attack_forms", []))
+	var combined_attacks: Array = equipment_summary.get("attack_forms", []).duplicate(true)
+	combined_attacks.append_array(rules.cybertech.cybertech_attack_forms(character))
+	_add_attack_forms_summary(attack_forms_box, combined_attacks)
 	var armor_box := _add_section_to(left_parent, "Armor")
-	_add_armor_summary(armor_box, equipment_summary.get("combat_armor", []))
+	var combined_armor: Array = equipment_summary.get("combat_armor", []).duplicate(true)
+	combined_armor.append_array(rules.cybertech.cybertech_armor_rows(character))
+	_add_armor_summary(armor_box, combined_armor)
 
 	_render_notes_section(left_parent)
 
@@ -3562,6 +3661,21 @@ func _render_summary() -> void:
 		var drawback_box := _add_section_to(right_parent, "Mutation Drawbacks")
 		_add_mutation_summary_panel(drawback_box, rules.mutations.selected_mutation_drawbacks(character), "drawback", mutation_summary)
 
+	var cybertech_summary: Dictionary = summary.get("cybertech", {})
+	if bool(cybertech_summary.get("enabled", false)):
+		var cybertech_box := _add_section_to(right_parent, "Cybertech")
+		var installed: Array = cybertech_summary.get("installed", [])
+		if installed.is_empty():
+			_add_text(cybertech_box, "No cybertech installed.", 14, color_muted)
+		else:
+			for i in range(installed.size()):
+				var item = installed[i]
+				_add_text(cybertech_box, "%s (%s)" % [String(item.get("item", {}).get("name", "")), String(item.get("quality", "ordinary")).capitalize()], 14, color_text)
+				var desc = String(item.get("item", {}).get("description", ""))
+				if not desc.is_empty():
+					_add_text(cybertech_box, desc, 12, color_muted)
+				if i < installed.size() - 1:
+					_add_thin_separator(cybertech_box)
 	var achievements_box := _add_section_to(right_parent, "Achievements")
 	var selected_achievements: Array = summary.get("selected_achievements", [])
 	if selected_achievements.is_empty():
@@ -4599,6 +4713,32 @@ func _add_ability_summary_cell(parent: GridContainer, text: String, header_cell:
 	return label
 
 
+func _add_large_checkbox(parent: Container, label_text: String, is_checked: bool, changed: Callable) -> void:
+	var row := HBoxContainer.new()
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var label := Label.new()
+	label.text = label_text
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.add_theme_font_size_override("font_size", 14)
+	label.add_theme_color_override("font_color", color_text)
+	var button := Button.new()
+	button.toggle_mode = true
+	button.button_pressed = is_checked
+	button.text = "✔" if is_checked else ""
+	button.custom_minimum_size = Vector2(24, 24)
+	button.add_theme_stylebox_override("normal", _flat_style(color_surface, color_border, 4))
+	button.add_theme_stylebox_override("hover", _flat_style(color_surface_soft, color_border, 4))
+	button.add_theme_stylebox_override("pressed", _flat_style(color_accent, color_accent, 4))
+	button.toggled.connect(func(c):
+		button.text = "✔" if c else ""
+		changed.call(c)
+	)
+	row.add_child(label)
+	row.add_child(button)
+	parent.add_child(row)
+
+
 func _add_tracker_row(parent: VBoxContainer, name: String, total: int, used: int, changed: Callable) -> void:
 	var box := VBoxContainer.new()
 	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -4656,3 +4796,58 @@ func _flat_style(background: Color, border: Color, radius: int, shadow: bool = f
 		style.shadow_size = 8
 		style.shadow_offset = Vector2(0, 4)
 	return style
+
+var theme_btn: Button
+var theme_dialog: AcceptDialog
+var theme_list: ItemList
+
+func _setup_theme() -> void:
+	if not Engine.is_editor_hint() and has_node("/root/ThemeManager"):
+		var tm = get_node("/root/ThemeManager")
+		if tm.theme_changed.is_connected(_on_theme_changed):
+			return
+		tm.theme_changed.connect(_on_theme_changed)
+		_on_theme_changed()
+	else:
+		color_background = Color(0.05, 0.07, 0.10)
+		color_surface = Color(0.10, 0.12, 0.16)
+		color_surface_soft = Color(0.15, 0.18, 0.22)
+		color_text = Color(0.90, 0.92, 0.95)
+		color_muted = Color(0.50, 0.55, 0.60)
+		color_accent = Color(0.00, 0.80, 0.80)
+		color_warning = Color(0.90, 0.30, 0.20)
+		color_border = Color(0.20, 0.25, 0.30)
+
+func _on_theme_changed() -> void:
+	if has_node("/root/ThemeManager"):
+		var tm = get_node("/root/ThemeManager")
+		color_background = tm.get_theme_color("color_background")
+		color_surface = tm.get_theme_color("color_surface")
+		color_surface_soft = tm.get_theme_color("color_surface_soft")
+		color_text = tm.get_theme_color("color_text")
+		color_muted = tm.get_theme_color("color_muted")
+		color_accent = tm.get_theme_color("color_accent")
+		color_warning = tm.get_theme_color("color_warning")
+		color_border = tm.get_theme_color("color_border")
+		_render()
+
+func _show_theme_selector() -> void:
+	if not has_node("/root/ThemeManager"):
+		return
+	var tm = get_node("/root/ThemeManager")
+	if theme_dialog == null:
+		theme_dialog = AcceptDialog.new()
+		theme_dialog.title = "INTERFACE CONFIG"
+		add_child(theme_dialog)
+
+		theme_list = ItemList.new()
+		theme_list.custom_minimum_size = Vector2(250, 150)
+		for name in tm.theme_names:
+			theme_list.add_item(name)
+		theme_list.item_selected.connect(func(index: int):
+			get_node("/root/ThemeManager").set_theme(index)
+		)
+		theme_dialog.add_child(theme_list)
+
+	theme_list.select(tm.current_theme_index)
+	theme_dialog.popup_centered()

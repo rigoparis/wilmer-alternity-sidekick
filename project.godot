@@ -15,6 +15,11 @@ run/main_scene="res://main.tscn"
 config/features=PackedStringArray("4.6", "Mobile")
 config/icon="res://icon.svg"
 
+
+[autoload]
+
+ThemeManager="*res://scripts/theme_manager.gd"
+
 [display]
 
 window/size/viewport_width=390

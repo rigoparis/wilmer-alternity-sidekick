@@ -3,6 +3,7 @@ extends "res://scripts/alternity_rules_constants.gd"
 
 # Sub-modules
 var mutations = preload('res://scripts/alternity_rules_mutations.gd').new(self)
+var cybertech = preload('res://scripts/alternity_rules_cybertech.gd').new(self)
 var equipment = preload('res://scripts/alternity_rules_equipment.gd').new(self)
 var achievements = preload('res://scripts/alternity_rules_achievements.gd').new(self)
 
@@ -39,6 +40,8 @@ var mutation_advantages: Array = []
 var mutation_drawbacks: Array = []
 var mutation_advantages_by_id: Dictionary = {}
 var mutation_drawbacks_by_id: Dictionary = {}
+var cybertech_catalog: Array = []
+var cybertech_catalog_by_id: Dictionary = {}
 var skills_by_id: Dictionary = {}
 var broad_skills: Array = []
 var specialty_skills_by_broad_id: Dictionary = {}
@@ -64,6 +67,7 @@ func load_core_data(path := "res://data/rules/alternity_core.json") -> void:
 	_load_equipment_catalog()
 	_load_achievement_catalog()
 	_load_mutation_catalog()
+	_load_cybertech_catalog()
 
 
 func _index_constants() -> void:
@@ -198,6 +202,30 @@ func _load_mutation_catalog(path := "res://data/rules/mutations_core.json") -> v
 			mutation_drawbacks_by_id[item_id] = item
 
 
+func _load_cybertech_catalog(path := "res://data/rules/cybertech_core.json") -> void:
+	cybertech_catalog.clear()
+	cybertech_catalog_by_id.clear()
+
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		push_error("Unable to load Alternity cybertech data: %s" % path)
+		return
+
+	var parsed = JSON.parse_string(file.get_as_text())
+	if typeof(parsed) != TYPE_ARRAY:
+		push_error("Alternity cybertech data is not a valid JSON array: %s" % path)
+		return
+
+	cybertech_catalog = parsed
+	for item_value in cybertech_catalog:
+		if typeof(item_value) != TYPE_DICTIONARY:
+			continue
+		var item: Dictionary = item_value
+		var item_id := String(item.get("id", ""))
+		if not item_id.is_empty():
+			cybertech_catalog_by_id[item_id] = item
+
+
 func _load_psionics_catalog(path := "res://data/rules/psionics_core.json") -> void:
 	var file := FileAccess.open(path, FileAccess.READ)
 	if file == null:
@@ -294,6 +322,9 @@ func ensure_character_shape(character: Dictionary) -> Dictionary:
 	if not character.has("mutations"):
 		character["mutations"] = {}
 	mutations._normalize_mutations(character)
+	if not character.has("cybertech"):
+		character["cybertech"] = {}
+	cybertech._normalize_cybertech(character)
 	if not character.has("optional_rules"):
 		character["optional_rules"] = {}
 	for rule in OPTIONAL_RULES:
@@ -453,7 +484,7 @@ func achievement_adjusted_abilities(character: Dictionary) -> Dictionary:
 func effective_abilities(character: Dictionary) -> Dictionary:
 	var result := achievement_adjusted_abilities(character)
 	for ability in ABILITIES:
-		result[ability] = max(1, _as_int(result.get(ability, 10)) + mutations.mutation_ability_bonus(character, ability))
+		result[ability] = max(1, _as_int(result.get(ability, 10)) + mutations.mutation_ability_bonus(character, ability) + cybertech.cybertech_stat_bonus(character, ability))
 	return result
 
 
@@ -537,7 +568,7 @@ func action_check(character: Dictionary) -> Dictionary:
 	var ordinary := base + _as_int(profession.get("action_bonus", 0)) + achievements.achievement_effect_total(character, "action_check_score")
 	var good := int(floor(ordinary / 2.0))
 	var amazing := int(floor(good / 2.0))
-	var action_step := _as_int(current_species.get("action_step", 0)) + achievements.achievement_effect_total(character, "action_check_step") + mutations.mutation_action_check_step(character)
+	var action_step := _as_int(current_species.get("action_step", 0)) + achievements.achievement_effect_total(character, "action_check_step") + mutations.mutation_action_check_step(character) + cybertech.cybertech_action_check_step(character)
 	return {
 		"marginal": ordinary + 1,
 		"ordinary": ordinary,
@@ -555,10 +586,10 @@ func durability(character: Dictionary) -> Dictionary:
 	var multiplier := _as_float(current_species.get("durability_multiplier", 1.0))
 	var durability_base := int(floor(constitution * multiplier))
 	return {
-		"stun": durability_base + achievements.achievement_durability_bonus(character, "stun") + mutations.mutation_durability_bonus(character, "stun"),
-		"wound": durability_base + achievements.achievement_durability_bonus(character, "wound") + mutations.mutation_durability_bonus(character, "wound"),
-		"mortal": int(ceil(durability_base / 2.0)) + achievements.achievement_durability_bonus(character, "mortal") + mutations.mutation_durability_bonus(character, "mortal"),
-		"fatigue": int(ceil(durability_base / 2.0)) + achievements.achievement_durability_bonus(character, "fatigue") + mutations.mutation_durability_bonus(character, "fatigue"),
+		"stun": durability_base + achievements.achievement_durability_bonus(character, "stun") + mutations.mutation_durability_bonus(character, "stun") + cybertech.cybertech_durability_bonus(character, "stun"),
+		"wound": durability_base + achievements.achievement_durability_bonus(character, "wound") + mutations.mutation_durability_bonus(character, "wound") + cybertech.cybertech_durability_bonus(character, "wound"),
+		"mortal": int(ceil(durability_base / 2.0)) + achievements.achievement_durability_bonus(character, "mortal") + mutations.mutation_durability_bonus(character, "mortal") + cybertech.cybertech_durability_bonus(character, "mortal"),
+		"fatigue": int(ceil(durability_base / 2.0)) + achievements.achievement_durability_bonus(character, "fatigue") + mutations.mutation_durability_bonus(character, "fatigue") + cybertech.cybertech_durability_bonus(character, "fatigue"),
 	}
 
 
@@ -874,7 +905,7 @@ func skill_purchase_points_used(character: Dictionary) -> int:
 
 
 func skill_points_used(character: Dictionary) -> int:
-	return skill_purchase_points_used(character) + perk_points_used(character) + achievements.achievement_points_spent(character)
+	return skill_purchase_points_used(character) + perk_points_used(character) + achievements.achievement_points_spent(character) + cybertech.cybertech_skill_points_used(character)
 
 
 func broad_skills_used(character: Dictionary) -> int:
@@ -1110,6 +1141,7 @@ func summary(character: Dictionary) -> Dictionary:
 		"last_resorts": last_resorts(character),
 		"equipment": equipment.equipment_summary(character),
 		"mutations": mutations.mutation_summary(character),
+		"cybertech": cybertech.cybertech_summary(character),
 		"validations": validate(character),
 	}
 	_last_character_hash = current_hash
