@@ -10,3 +10,8 @@
 # Antigravity agent & CLI ignores
 .antigravity/
 .antigravitycli/
+*.keystore
+
+# Scratch and temp files
+/scratch/
+*.uid

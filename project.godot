@@ -15,23 +15,25 @@ run/main_scene="res://main.tscn"
 config/features=PackedStringArray("4.6", "Mobile")
 config/icon="res://icon.svg"
 
-
 [autoload]
 
 ThemeManager="*res://scripts/theme_manager.gd"
 
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+window/handheld/orientation=1
+window/size/viewport_width.mobile=390
+window/size/viewport_height.mobile=844
+window/size/min_width=320
+window/size/min_height=560
+
 [input_devices]
 
 pointing/emulate_touch_from_mouse=true
-
-[display]
-
-window/size/viewport_width=390
-window/size/viewport_height=844
-window/stretch/mode="canvas_items"
-window/stretch/aspect="expand"
-window/size/min_width=320
-window/size/min_height=560
 
 [physics]
 
@@ -41,3 +43,4 @@ window/size/min_height=560
 
 rendering_device/driver.windows="d3d12"
 renderer/rendering_method="mobile"
+textures/vram_compression/import_etc2_astc=true

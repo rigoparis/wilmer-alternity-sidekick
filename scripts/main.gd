@@ -305,6 +305,7 @@ func _apply_responsive_layout() -> void:
 	_resize_modal_panel(perk_flaw_catalog_panel, available_width, 820.0, _update_perk_flaw_catalog_modal_height)
 	_resize_modal_panel(mutation_catalog_panel, available_width, 820.0, _update_mutation_catalog_modal_height)
 	_resize_modal_panel(theme_panel, available_width, 360.0, _update_theme_modal_height)
+	_update_all_scrolls_mouse_filters(compact)
 
 
 func _update_header_layout(compact: bool) -> void:
@@ -1177,6 +1178,7 @@ func _render() -> void:
 
 		_render_character_select()
 		_refresh_status()
+		_update_all_scrolls_mouse_filters(get_viewport_rect().size.x < COMPACT_WIDTH)
 		return
 
 	# State 2: Character Sheet Editor (active character loaded)
@@ -1255,6 +1257,7 @@ func _render() -> void:
 
 	_refresh_status()
 	_restore_scroll_position.call_deferred()
+	_update_all_scrolls_mouse_filters(get_viewport_rect().size.x < COMPACT_WIDTH)
 
 
 func _restore_scroll_position() -> void:
@@ -5796,3 +5799,37 @@ func _show_theme_selector() -> void:
 	_refresh_theme_panel()
 	theme_overlay.visible = true
 	_update_theme_modal_height.call_deferred()
+
+
+func _update_all_scrolls_mouse_filters(touch_pass: bool) -> void:
+	var scroll_containers = [
+		content_scroll,
+		optional_rules_scroll,
+		skill_details_scroll,
+		equipment_form_scroll,
+		achievement_form_scroll,
+		perk_flaw_catalog_scroll,
+		mutation_catalog_scroll
+	]
+	for sc in scroll_containers:
+		if sc != null and is_instance_valid(sc):
+			_update_mouse_filters_for_touch(sc, touch_pass)
+
+
+func _update_mouse_filters_for_touch(node: Node, touch_pass: bool) -> void:
+	if node == null or not is_instance_valid(node):
+		return
+	
+	if node is Control:
+		if not node is ScrollContainer:
+			if touch_pass:
+				node.mouse_filter = Control.MOUSE_FILTER_PASS
+			else:
+				# Revert to standard Godot defaults for desktop
+				if node is BaseButton or node is ItemList or node is OptionButton or node is LineEdit or node is Slider or node is Panel or node is PanelContainer or node is ColorRect or node is TextureRect or node is TextureProgressBar:
+					node.mouse_filter = Control.MOUSE_FILTER_STOP
+				elif node is Label:
+					node.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	
+	for child in node.get_children():
+		_update_mouse_filters_for_touch(child, touch_pass)
