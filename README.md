@@ -97,6 +97,9 @@ godot --headless --path . -s tools/smoke_mutations.gd
 # Run achievements diagnostic tests
 godot --headless --path . -s tools/smoke_achievements.gd
 
+# Run achievement math diagnostic tests
+godot --headless --path . -s tools/smoke_achievement_math.gd
+
 # Run equipment catalog diagnostic tests
 godot --headless --path . -s tools/smoke_equipment_catalog.gd
 ```
