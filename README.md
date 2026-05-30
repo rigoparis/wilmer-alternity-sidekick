@@ -6,6 +6,18 @@ This application serves as a handy digital assistant to quickly reference core r
 
 ---
 
+## Motivation
+
+This companion application was born out of a simple, practical frustration: playing **Alternity** often requires referencing up to five separate core manuals just to calculate a single action roll with all its corresponding situation steps, situational adjustments, skill interactions, and gear parameters. By digitizing these lookups, this sidekick app aims to keep players and Game Masters in the flow of the game rather than buried in rulebooks.
+
+Godot was chosen as the engine for this project to ensure seamless cross-platform performance across both mobile (for quick table lookups) and desktop screens. 
+
+Future plans include integrating a robust in-app dice roller to calculate rolls and steps dynamically. 
+
+This project is a labor of love for the classic Alternity Sci-Fi system. Feel free to open issues, submit pull requests, or fork the repository to expand it further!
+
+---
+
 ## Features
 
 - **Mobile Viewport Optimization**: Structured for modern mobile displays (defaulting to a `390x844` viewport).
