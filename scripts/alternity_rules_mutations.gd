@@ -425,17 +425,20 @@ func mutation_roll_notes_for_character(character: Dictionary) -> Array:
 	if not mutations_enabled(character):
 		return notes
 	for mutation in _selected_mutation_effect_sources(character):
-		for effect_type in ["roll_note", "damage_note"]:
-			for effect in _mutation_effects(mutation, effect_type):
-				var text := String(effect.get("text", "")).strip_edges()
-				if text.is_empty():
-					continue
-				notes.append("%s: %s Source: %s" % [
-					String(mutation.get("name", "Mutation")),
-					text,
-					String(mutation.get("reference", "")),
-				])
+		_append_mutation_notes(mutation, "roll_note", notes)
+		_append_mutation_notes(mutation, "damage_note", notes)
 	return _get_parent()._unique_strings(notes)
+
+
+func _append_mutation_notes(mutation: Dictionary, effect_type: String, notes: Array) -> void:
+	for effect in _mutation_effects(mutation, effect_type):
+		var text := String(effect.get("text", "")).strip_edges()
+		if not text.is_empty():
+			notes.append("%s: %s Source: %s" % [
+				String(mutation.get("name", "Mutation")),
+				text,
+				String(mutation.get("reference", "")),
+			])
 
 
 func mutation_armor_rows(character: Dictionary) -> Array:
