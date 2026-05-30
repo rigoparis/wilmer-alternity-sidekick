@@ -3342,50 +3342,60 @@ func _add_selected_skill_cell(parent: GridContainer, text: String, header_cell: 
 	return label
 
 
+func _get_filtered_specialties(broad_id: int, filter: String) -> Array:
+	var specialties: Array = rules.specialty_skills_by_broad_id.get(broad_id, [])
+	if filter.is_empty():
+		return specialties
+	var child_matches := []
+	for specialty in specialties:
+		var specialty_label := rules.skill_label(specialty).to_lower()
+		if specialty_label.contains(filter):
+			child_matches.append(specialty)
+	return child_matches
+
+func _populate_ability_skills(list: VBoxContainer, ability: String, is_psionics: bool, filter: String) -> void:
+	var rows_for_ability := []
+	for broad in rules.broad_skills:
+		if String(broad.get("stat", "")) != ability:
+			continue
+		if (broad.get("source", "") == "psionics") != is_psionics:
+			continue
+
+		var broad_id := rules._as_int(broad.get("id", -1))
+		var child_matches := _get_filtered_specialties(broad_id, filter)
+
+		var broad_label := rules.skill_label(broad).to_lower()
+		var show_broad := filter.is_empty() or broad_label.contains(filter) or not child_matches.is_empty()
+		if show_broad:
+			rows_for_ability.append({
+				"broad": broad,
+				"specialties": child_matches,
+			})
+
+	if rows_for_ability.is_empty():
+		return
+
+	var ability_label := Label.new()
+	ability_label.text = "%s  %s" % [ability, AlternityRules.ABILITY_NAMES.get(ability, ability)]
+	ability_label.add_theme_color_override("font_color", color_accent)
+	ability_label.add_theme_font_size_override("font_size", 16)
+	list.add_child(ability_label)
+
+	for row in rows_for_ability:
+		var broad: Dictionary = row["broad"]
+		var broad_id := rules._as_int(broad.get("id", -1))
+		_add_skill_row(list, broad, false)
+		if rules.is_skill_selected(character, broad_id) or not filter.is_empty():
+			for specialty in row["specialties"]:
+				_add_skill_row(list, specialty, true)
+
 func _refresh_skill_rows(list: VBoxContainer, is_psionics := false) -> void:
 	for child in list.get_children():
 		child.queue_free()
 
 	var filter := (psionic_filter if is_psionics else skill_filter).strip_edges().to_lower()
 	for ability in AlternityRules.ABILITIES:
-		var rows_for_ability := []
-		for broad in rules.broad_skills:
-			if String(broad.get("stat", "")) != ability:
-				continue
-			if (broad.get("source", "") == "psionics") != is_psionics:
-				continue
-
-			var broad_id := rules._as_int(broad.get("id", -1))
-			var child_matches := []
-			for specialty in rules.specialty_skills_by_broad_id.get(broad_id, []):
-				var specialty_label := rules.skill_label(specialty).to_lower()
-				if filter.is_empty() or specialty_label.contains(filter):
-					child_matches.append(specialty)
-
-			var broad_label := rules.skill_label(broad).to_lower()
-			var show_broad := filter.is_empty() or broad_label.contains(filter) or not child_matches.is_empty()
-			if show_broad:
-				rows_for_ability.append({
-					"broad": broad,
-					"specialties": child_matches,
-				})
-
-		if rows_for_ability.is_empty():
-			continue
-
-		var ability_label := Label.new()
-		ability_label.text = "%s  %s" % [ability, AlternityRules.ABILITY_NAMES.get(ability, ability)]
-		ability_label.add_theme_color_override("font_color", color_accent)
-		ability_label.add_theme_font_size_override("font_size", 16)
-		list.add_child(ability_label)
-
-		for row in rows_for_ability:
-			var broad: Dictionary = row["broad"]
-			var broad_id := rules._as_int(broad.get("id", -1))
-			_add_skill_row(list, broad, false)
-			if rules.is_skill_selected(character, broad_id) or not filter.is_empty():
-				for specialty in row["specialties"]:
-					_add_skill_row(list, specialty, true)
+		_populate_ability_skills(list, ability, is_psionics, filter)
 
 
 func _add_skill_row(parent: VBoxContainer, skill: Dictionary, indented: bool) -> void:
