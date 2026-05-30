@@ -3832,28 +3832,7 @@ func _render_summary() -> void:
 		for note in roll_notes:
 			_add_rich_note(roll_box, String(note), 13, color_text)
 
-	var benefit_box := _add_section_to(right_parent, "Rank Benefits")
-	var rank_groups := rules.skill_rank_benefit_groups(character)
-	if rank_groups.is_empty():
-		_add_text(benefit_box, "No selected specialty rank benefits are active yet.", 14, color_muted)
-	else:
-		for group in rank_groups:
-			var entries: Array = group.get("entries", [])
-			var skill_name := String(group.get("skill", "Skill"))
-			if entries.size() >= 2:
-				_add_rich_note(benefit_box, "%s:" % skill_name, 13, color_text)
-				for entry in entries:
-					_add_indented_text(benefit_box, "Rank %d: %s" % [
-						rules._as_int(entry.get("rank", 0)),
-						String(entry.get("text", "")),
-					], 13, color_text)
-			else:
-				var entry: Dictionary = entries[0]
-				_add_rich_note(benefit_box, "%s rank %d: %s" % [
-					skill_name,
-					rules._as_int(entry.get("rank", 0)),
-					String(entry.get("text", "")),
-				], 13, color_text)
+	_add_rank_benefits_summary(right_parent)
 
 	var save_box := _add_section_to(right_parent, "Save")
 	var save_button := Button.new()
@@ -3865,6 +3844,35 @@ func _render_summary() -> void:
 	save_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	save_status_label.add_theme_color_override("font_color", color_muted)
 	save_box.add_child(save_status_label)
+
+
+func _add_rank_benefits_summary(parent: VBoxContainer) -> void:
+	var benefit_box := _add_section_to(parent, "Rank Benefits")
+	var rank_groups := rules.skill_rank_benefit_groups(character)
+	if rank_groups.is_empty():
+		_add_text(benefit_box, "No selected specialty rank benefits are active yet.", 14, color_muted)
+		return
+
+	for group in rank_groups:
+		var entries: Array = group.get("entries", [])
+		if entries.is_empty():
+			continue
+
+		var skill_name := String(group.get("skill", "Skill"))
+		if entries.size() >= 2:
+			_add_rich_note(benefit_box, "%s:" % skill_name, 13, color_text)
+			for entry in entries:
+				_add_indented_text(benefit_box, "Rank %d: %s" % [
+					rules._as_int(entry.get("rank", 0)),
+					String(entry.get("text", "")),
+				], 13, color_text)
+		else:
+			var entry: Dictionary = entries[0]
+			_add_rich_note(benefit_box, "%s rank %d: %s" % [
+				skill_name,
+				rules._as_int(entry.get("rank", 0)),
+				String(entry.get("text", "")),
+			], 13, color_text)
 
 
 func _achievement_summary_groups(entries: Array) -> Array:
