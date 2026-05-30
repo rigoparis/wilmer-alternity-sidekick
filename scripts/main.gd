@@ -1,7 +1,7 @@
 extends Control
 
 const AlternityRules := preload("res://scripts/alternity_rules.gd")
-const TABS := ["Basics", "Skills", "Perks/Flaws", "Equipment", "Cybertech", "Psionics", "Achievements", "Mutations", "Summary"]
+const TABS := ["Basics", "Skills", "Perks/Flaws", "Equipment", "Cybertech", "Psionics", "FX", "Achievements", "Mutations", "Summary"]
 const COMPACT_WIDTH := 520.0
 const WIDE_WIDTH := 900.0
 const DESKTOP_MAX_WIDTH := 1120.0
@@ -11,6 +11,7 @@ var character: Dictionary = {}
 var active_tab := "Basics"
 var skill_filter := ""
 var psionic_filter := ""
+var fx_filter_text := ""
 var active_character_file := ""
 var deleting_files: Dictionary = {}
 var close_char_button: Button
@@ -1241,6 +1242,8 @@ func _render() -> void:
 				_render_cybertech()
 			"Psionics":
 				_render_fx_psionics()
+			"FX":
+				_render_fx()
 			"Achievements":
 				_render_achievements()
 			"Mutations":
@@ -1436,6 +1439,114 @@ func _render_basics() -> void:
 	for note in profession.get("notes", []):
 		_add_text(profession_box, String(note), 13, color_muted)
 
+	# Dynamic specials selections
+	var primary_prof_id := rules._as_int(character.get("profession_id", 0))
+	
+	# 1. Free Agent RM Bonus (Primary Free Agent = id 4)
+	if primary_prof_id == 4:
+		var current_rm_bonus = String(character.get("free_agent_rm_bonus", ""))
+		if current_rm_bonus.is_empty():
+			current_rm_bonus = "STR"
+			character["free_agent_rm_bonus"] = current_rm_bonus
+			
+		var rm_option := OptionButton.new()
+		var stats := ["STR", "DEX", "INT", "WIL"]
+		for stat in stats:
+			rm_option.add_item(stat)
+		rm_option.select(stats.find(current_rm_bonus))
+		rm_option.item_selected.connect(func(index):
+			character["free_agent_rm_bonus"] = stats[index]
+			_render()
+		)
+		_add_field(profession_box, "Select Stat for Free Agent Resistance Modifier Bonus", rm_option)
+		
+	# 2. Combat Spec Bonus (Primary Combat Spec = id 0)
+	elif primary_prof_id == 0:
+		var current_cs_id = rules._as_int(character.get("combat_spec_bonus_specialty", -1))
+		var combat_specialties := []
+		var combat_broad_ids := [8, 11, 15, 30, 34]
+		for skill in rules.skills:
+			if skill.get("type", "") == "specialty":
+				var broad_id = rules._as_int(skill.get("broad_id", -1))
+				if broad_id in combat_broad_ids:
+					combat_specialties.append(skill)
+					
+		combat_specialties.sort_custom(func(a, b): return String(a.get("name", "")) < String(b.get("name", "")))
+		
+		var cs_option := OptionButton.new()
+		var selected_index := -1
+		for idx in range(combat_specialties.size()):
+			var spec = combat_specialties[idx]
+			var spec_id = rules._as_int(spec.get("id", -1))
+			var broad_id = rules._as_int(spec.get("broad_id", -1))
+			var broad_name = rules.skills_by_id.get(broad_id, {}).get("name", "Unknown")
+			var item_text = "%s - %s" % [broad_name, spec.get("name", "")]
+			cs_option.add_item(item_text, spec_id)
+			if spec_id == current_cs_id:
+				selected_index = idx
+				
+		if selected_index == -1 and not combat_specialties.is_empty():
+			selected_index = 0
+			character["combat_spec_bonus_specialty"] = rules._as_int(combat_specialties[0].get("id", -1))
+			
+		cs_option.select(selected_index)
+		cs_option.item_selected.connect(func(index):
+			character["combat_spec_bonus_specialty"] = cs_option.get_item_id(index)
+			_render()
+		)
+		_add_field(profession_box, "Select Combat Specialty for step bonus (-1 step)", cs_option)
+		
+	# 3. Mindwalker focus (Primary Mindwalker = id 6)
+	elif primary_prof_id == 6:
+		var current_focus_id = rules._as_int(character.get("mindwalker_psionic_focus", -1))
+		var psionic_broads := []
+		for skill in rules.skills:
+			if skill.get("type", "") == "broad":
+				var skill_id = rules._as_int(skill.get("id", -1))
+				if skill_id in [900, 901, 902, 903]:
+					psionic_broads.append(skill)
+					
+		psionic_broads.sort_custom(func(a, b): return String(a.get("name", "")) < String(b.get("name", "")))
+		
+		var mw_option := OptionButton.new()
+		var selected_index := -1
+		for idx in range(psionic_broads.size()):
+			var broad = psionic_broads[idx]
+			var broad_id = rules._as_int(broad.get("id", -1))
+			mw_option.add_item(String(broad.get("name", "")), broad_id)
+			if broad_id == current_focus_id:
+				selected_index = idx
+				
+		if selected_index == -1 and not psionic_broads.is_empty():
+			selected_index = 0
+			character["mindwalker_psionic_focus"] = rules._as_int(psionic_broads[0].get("id", -1))
+			
+		mw_option.select(selected_index)
+		mw_option.item_selected.connect(func(index):
+			character["mindwalker_psionic_focus"] = mw_option.get_item_id(index)
+			_render()
+		)
+		_add_field(profession_box, "Select Psionic Broad skill for Mindwalker Focus (-1 step)", mw_option)
+		
+	# 4. Diplomat Bonus (Primary Diplomat dual-professions = ids 1, 2, 3)
+	elif primary_prof_id in [1, 2, 3]:
+		var current_diplomat_bonus = String(character.get("diplomat_bonus", ""))
+		if current_diplomat_bonus.is_empty():
+			current_diplomat_bonus = "Contacts"
+			character["diplomat_bonus"] = current_diplomat_bonus
+			
+		var dip_option := OptionButton.new()
+		var choices := ["Contacts", "Resources"]
+		for choice in choices:
+			dip_option.add_item(choice)
+		dip_option.select(choices.find(current_diplomat_bonus))
+		dip_option.item_selected.connect(func(index):
+			character["diplomat_bonus"] = choices[index]
+			_render()
+		)
+		_add_field(profession_box, "Select starting skill for Diplomat bonus (Free broad skill)", dip_option)
+		
+
 
 func _render_abilities() -> void:
 	_render_abilities_to(content)
@@ -1444,8 +1555,27 @@ func _render_abilities() -> void:
 func _render_abilities_to(parent: Container) -> void:
 	var summary := rules.summary(character)
 	var box := _add_section_to(parent, "Abilities")
-	var ability_state := "Cost %d / %d" % [summary["ability_total"], summary["ability_target"]]
-	_add_text(box, ability_state, 18, color_warning if summary["ability_total"] != summary["ability_target"] else color_accent)
+
+	var header_row := HBoxContainer.new()
+	header_row.add_theme_constant_override("separation", 6)
+	box.add_child(header_row)
+
+	var cost_label := Label.new()
+	cost_label.text = "Cost %d /" % summary["ability_total"]
+	cost_label.add_theme_font_size_override("font_size", 18)
+	cost_label.add_theme_color_override("font_color", color_warning if summary["ability_total"] != summary["ability_target"] else color_accent)
+	header_row.add_child(cost_label)
+
+	var target_spin := SpinBox.new()
+	target_spin.min_value = 1
+	target_spin.max_value = 999
+	target_spin.value = summary["ability_target"]
+	target_spin.custom_minimum_size = Vector2(80, 0)
+	target_spin.value_changed.connect(func(val):
+		character["custom_ability_target"] = int(val)
+		_render()
+	)
+	header_row.add_child(target_spin)
 
 	var ability_parent: Container = box
 	if is_wide_layout:
@@ -1499,7 +1629,7 @@ func _add_ability_row(parent: Container, ability: String) -> void:
 		rules._as_int(effective_limits[0]),
 		rules._as_int(effective_limits[1]),
 		rules.untrained_score(effective_score),
-		rules.resistance_modifier(effective_score),
+		rules.character_resistance_modifier(character, ability),
 		adjustment_note,
 	]
 	detail.add_theme_color_override("font_color", color_muted)
@@ -3323,7 +3453,42 @@ func _add_selected_skill_table(parent: VBoxContainer, selected: Array) -> void:
 	_add_selected_skill_cell(grid, "Score", true, HORIZONTAL_ALIGNMENT_LEFT, 64 if compact else 86)
 	_add_selected_skill_cell(grid, "Die", true, HORIZONTAL_ALIGNMENT_LEFT, 30 if compact else 42)
 
-	for skill in selected:
+	# Group selected skills: broad flush-left, specialties indented
+	var grouped_selected := []
+	for broad in rules.broad_skills:
+		var broad_id = rules._as_int(broad.get("id", -1))
+		var has_broad = rules.skill_rank(character, broad_id) > 0 or rules.is_free_species_skill(character, broad_id)
+		
+		var selected_specialties := []
+		var specialties: Array = rules.specialty_skills_by_broad_id.get(broad_id, [])
+		for spec in specialties:
+			var spec_id = rules._as_int(spec.get("id", -1))
+			if rules.skill_rank(character, spec_id) > 0:
+				selected_specialties.append(spec)
+				
+		if has_broad or not selected_specialties.is_empty():
+			if has_broad:
+				var broad_info = null
+				for s in selected:
+					if rules._as_int(s.get("id", -1)) == broad_id:
+						broad_info = s
+						break
+				if broad_info != null:
+					grouped_selected.append({ "skill": broad_info, "indented": false })
+					
+			for spec in selected_specialties:
+				var spec_id = rules._as_int(spec.get("id", -1))
+				var spec_info = null
+				for s in selected:
+					if rules._as_int(s.get("id", -1)) == spec_id:
+						spec_info = s
+						break
+				if spec_info != null:
+					grouped_selected.append({ "skill": spec_info, "indented": true })
+
+	for item in grouped_selected:
+		var skill: Dictionary = item["skill"]
+		var indented: bool = item["indented"]
 		var score: Dictionary = skill["score"]
 		var spent := rules._as_int(skill.get("cost", 0))
 		var cost_text := "Free" if bool(skill.get("free", false)) and spent <= 0 else ("Free+%d" % spent if bool(skill.get("free", false)) else "%d SP" % spent)
@@ -3333,11 +3498,89 @@ func _add_selected_skill_table(parent: VBoxContainer, selected: Array) -> void:
 			rules._as_int(score.get("good", 0)),
 			rules._as_int(score.get("amazing", 0)),
 		]
+		
+		var skill_name = String(skill.get("name", ""))
+		var display_name = "    " + skill_name if indented else skill_name
+		
 		_add_selected_skill_cell(grid, cost_text, false, HORIZONTAL_ALIGNMENT_LEFT, 34 if compact else 62)
 		_add_selected_skill_cell(grid, rank_text, false, HORIZONTAL_ALIGNMENT_LEFT, 36 if compact else 58)
-		_add_selected_skill_cell(grid, rules.skill_label(skill), false, HORIZONTAL_ALIGNMENT_LEFT, 50 if compact else 170, true)
+		_add_selected_skill_cell(grid, display_name, false, HORIZONTAL_ALIGNMENT_LEFT, 50 if compact else 170, true)
 		_add_selected_skill_cell(grid, score_text, false, HORIZONTAL_ALIGNMENT_LEFT, 64 if compact else 86)
 		_add_selected_skill_cell(grid, String(score.get("die", "")), false, HORIZONTAL_ALIGNMENT_LEFT, 30 if compact else 42)
+
+
+func _add_selected_fx_skill_table(parent: VBoxContainer, fx_skills: Array) -> void:
+	var compact := get_viewport_rect().size.x < COMPACT_WIDTH
+	var grid := GridContainer.new()
+	grid.columns = 5
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid.add_theme_constant_override("h_separation", 8 if compact else 12)
+	grid.add_theme_constant_override("v_separation", 6)
+	parent.add_child(grid)
+
+	_add_selected_skill_cell(grid, "Cost", true, HORIZONTAL_ALIGNMENT_LEFT, 34 if compact else 62)
+	_add_selected_skill_cell(grid, "Rank", true, HORIZONTAL_ALIGNMENT_LEFT, 36 if compact else 58)
+	_add_selected_skill_cell(grid, "Skill", true, HORIZONTAL_ALIGNMENT_LEFT, 50 if compact else 170, true)
+	_add_selected_skill_cell(grid, "Score", true, HORIZONTAL_ALIGNMENT_LEFT, 64 if compact else 86)
+	_add_selected_skill_cell(grid, "Die", true, HORIZONTAL_ALIGNMENT_LEFT, 30 if compact else 42)
+
+	# Group selected FX skills: broad flush-left, specialties indented
+	var grouped_selected := []
+	var broad_skills = rules.fx.get_broad_skills()
+	for broad in broad_skills:
+		var b_name = String(broad.get("name", ""))
+		var b_rank = rules.fx.fx_skill_rank(character, b_name)
+		var has_broad = b_rank > 0
+		
+		var selected_specialties := []
+		var specialties = rules.fx.get_specialty_skills_for_broad(b_name)
+		for spec in specialties:
+			var s_name = String(spec.get("name", ""))
+			if rules.fx.fx_skill_rank(character, s_name) > 0:
+				selected_specialties.append(spec)
+				
+		if has_broad or not selected_specialties.is_empty():
+			if has_broad:
+				var broad_info = null
+				for s in fx_skills:
+					if String(s.get("name", "")) == b_name:
+						broad_info = s
+						break
+				if broad_info != null:
+					grouped_selected.append({ "skill": broad_info, "indented": false })
+					
+			for spec in selected_specialties:
+				var s_name = String(spec.get("name", ""))
+				var spec_info = null
+				for s in fx_skills:
+					if String(s.get("name", "")) == s_name:
+						spec_info = s
+						break
+				if spec_info != null:
+					grouped_selected.append({ "skill": spec_info, "indented": true })
+
+	for item in grouped_selected:
+		var skill: Dictionary = item["skill"]
+		var indented: bool = item["indented"]
+		var skill_name = String(skill.get("name", ""))
+		var score = rules.fx.fx_skill_score(character, skill_name)
+		var spent = rules.fx.fx_skill_total_cost(character, skill_name)
+		var cost_text := "%d SP" % spent
+		var rank_text := "Broad" if skill.get("type", "") == "broad" else "R%d" % rules.fx.fx_skill_rank(character, skill_name)
+		var score_text := "O%d/G%d/A%d" % [
+			rules._as_int(score.get("ordinary", 0)),
+			rules._as_int(score.get("good", 0)),
+			rules._as_int(score.get("amazing", 0)),
+		]
+		
+		var display_name = "    " + skill_name if indented else skill_name
+		var die_text = "+d0" if indented else "+d4"
+		
+		_add_selected_skill_cell(grid, cost_text, false, HORIZONTAL_ALIGNMENT_LEFT, 34 if compact else 62)
+		_add_selected_skill_cell(grid, rank_text, false, HORIZONTAL_ALIGNMENT_LEFT, 36 if compact else 58)
+		_add_selected_skill_cell(grid, display_name, false, HORIZONTAL_ALIGNMENT_LEFT, 50 if compact else 170, true)
+		_add_selected_skill_cell(grid, score_text, false, HORIZONTAL_ALIGNMENT_LEFT, 64 if compact else 86)
+		_add_selected_skill_cell(grid, die_text, false, HORIZONTAL_ALIGNMENT_LEFT, 30 if compact else 42)
 
 
 func _add_selected_skill_cell(parent: GridContainer, text: String, header_cell: bool, alignment: HorizontalAlignment, min_width: int, expand := false) -> Label:
@@ -3679,6 +3922,466 @@ func _render_fx_psionics() -> void:
 	else:
 		_add_text(skills_box, "Psionic skills are locked.", 13, color_muted)
 
+var fx_category_filter := "Arcane Magic"
+
+func _render_fx() -> void:
+	var left_parent: Container = content
+	var right_parent: Container = content
+	if is_wide_layout:
+		var columns := _add_columns()
+		left_parent = columns[0]
+		right_parent = columns[1]
+
+	var skills_box := _add_section_to(left_parent, "FX Skills")
+	
+	var is_talent = rules.fx.is_fx_talent(character)
+	if is_talent:
+		_render_fx_skill_picker(skills_box)
+	else:
+		_add_text(skills_box, "FX skills are locked. Enable FX Talent status to unlock.", 13, color_muted)
+
+	var overview := _add_section_to(right_parent, "FX Talent Status")
+	
+	var talent_box := HBoxContainer.new()
+	talent_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	talent_box.add_theme_constant_override("separation", 10)
+	overview.add_child(talent_box)
+	
+	var talent_check := CheckBox.new()
+	talent_check.text = "Character is an FX Talent"
+	talent_check.button_pressed = is_talent
+	talent_check.toggled.connect(func(toggled_on):
+		rules.fx.set_fx_talent(character, toggled_on)
+		_render()
+	)
+	talent_box.add_child(talent_check)
+	
+	if is_talent:
+		var energy_box := HBoxContainer.new()
+		energy_box.add_theme_constant_override("separation", 10)
+		overview.add_child(energy_box)
+		
+		var energy_label := Label.new()
+		energy_label.text = "FX Energy Pool:"
+		energy_box.add_child(energy_label)
+		
+		var energy_spin := SpinBox.new()
+		energy_spin.min_value = 0
+		energy_spin.max_value = 999
+		energy_spin.value = rules.fx.energy_pool(character)
+		energy_spin.value_changed.connect(func(value):
+			rules.fx.set_energy_pool(character, int(value))
+		)
+		energy_box.add_child(energy_spin)
+		
+		# FX Primary Broad Skill Group Selector
+		var current_primary_fx = String(character.get("fx", {}).get("primary_broad_group", ""))
+		var fx_broads = rules.fx.get_broad_skills()
+		
+		var fx_option := OptionButton.new()
+		var selected_index := -1
+		for idx in range(fx_broads.size()):
+			var broad = fx_broads[idx]
+			var broad_name = String(broad.get("name", ""))
+			fx_option.add_item(broad_name)
+			if broad_name == current_primary_fx:
+				selected_index = idx
+				
+		if selected_index == -1 and not fx_broads.is_empty():
+			selected_index = 0
+			if not character.has("fx"):
+				character["fx"] = {}
+			character["fx"]["primary_broad_group"] = String(fx_broads[0].get("name", ""))
+			
+		fx_option.select(selected_index)
+		fx_option.item_selected.connect(func(index):
+			if not character.has("fx"):
+				character["fx"] = {}
+			character["fx"]["primary_broad_group"] = String(fx_broads[index].get("name", ""))
+			_render()
+		)
+		_add_field(overview, "Select your FX primary broad skill group (Base cost specialties)", fx_option)
+		_add_text(overview, "Under the Beyond Science rules (p. 10), specialty skills in your primary FX broad skill group are purchased at base cost; specialties in all other FX groups cost double.", 12, color_muted)
+		
+		var selected_box := _add_section_to(right_parent, "Selected FX Skills")
+		_render_fx_selected_skills(selected_box)
+
+
+func _render_fx_selected_skills(parent: VBoxContainer) -> void:
+	var list := VBoxContainer.new()
+	list.add_theme_constant_override("separation", 5)
+	parent.add_child(list)
+	
+	var header := HBoxContainer.new()
+	var cost_label = _add_text(header, "Cost", 12, color_accent)
+	cost_label.custom_minimum_size.x = 40
+	var rank_label = _add_text(header, "Rank", 12, color_accent)
+	rank_label.custom_minimum_size.x = 60
+	var name_label = _add_text(header, "Skill", 12, color_accent)
+	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var score_label = _add_text(header, "Score", 12, color_accent)
+	score_label.custom_minimum_size.x = 90
+	var die_label = _add_text(header, "Die", 12, color_accent)
+	die_label.custom_minimum_size.x = 40
+	list.add_child(header)
+	
+	var has_skills = false
+	var broad_skills = rules.fx.get_broad_skills()
+	for broad in broad_skills:
+		var b_name = String(broad.get("name", ""))
+		var b_rank = rules.fx.fx_skill_rank(character, b_name)
+		if b_rank > 0:
+			has_skills = true
+			_add_fx_selected_row(list, broad, false)
+			
+		var specialties = rules.fx.get_specialty_skills_for_broad(b_name)
+		for spec in specialties:
+			var s_name = String(spec.get("name", ""))
+			var s_rank = rules.fx.fx_skill_rank(character, s_name)
+			if s_rank > 0:
+				has_skills = true
+				_add_fx_selected_row(list, spec, true)
+				
+	if not has_skills:
+		_add_text(list, "No FX skills selected.", 13, color_muted)
+
+func _add_fx_selected_row(parent: VBoxContainer, skill: Dictionary, indented: bool) -> void:
+	var row := HBoxContainer.new()
+	parent.add_child(row)
+	
+	var skill_name = String(skill.get("name", ""))
+	var is_specialty = skill.has("broad_skill")
+	var rank = rules.fx.fx_skill_rank(character, skill_name)
+	
+	var cost_label = _add_text(row, str(rules.fx.fx_skill_total_cost(character, skill_name)) + " SP", 13, color_text)
+	cost_label.custom_minimum_size.x = 40
+	var rank_label = _add_text(row, "R%d" % rank if is_specialty else "Broad", 13, color_text)
+	rank_label.custom_minimum_size.x = 60
+	
+	var name_box := HBoxContainer.new()
+	name_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	if indented:
+		var indent := Control.new()
+		indent.custom_minimum_size.x = 20
+		name_box.add_child(indent)
+	var name_lbl := _add_text(name_box, skill_name, 13, color_text)
+	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(name_box)
+	
+	var score = rules.fx.fx_skill_score(character, skill_name)
+	var score_label = _add_text(row, "O%d/G%d/A%d" % [score.get("ordinary", 0), score.get("good", 0), score.get("amazing", 0)], 13, color_text)
+	score_label.custom_minimum_size.x = 90
+	var die_label = _add_text(row, "+d0" if is_specialty else "+d4", 13, color_text)
+	die_label.custom_minimum_size.x = 40
+
+
+func _render_fx_skill_picker(parent: VBoxContainer) -> void:
+	var filters := HBoxContainer.new()
+	filters.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	filters.add_theme_constant_override("separation", 10)
+	parent.add_child(filters)
+	
+	var categories = ["Arcane Magic", "Faith", "Super Hero"]
+	for category in categories:
+		var btn := Button.new()
+		btn.text = category
+		btn.toggle_mode = true
+		btn.button_pressed = (category == fx_category_filter)
+		btn.pressed.connect(func():
+			fx_category_filter = category
+			_render()
+		)
+		filters.add_child(btn)
+
+	var search := LineEdit.new()
+	search.text = fx_filter_text
+	search.placeholder_text = "Search %s skills" % fx_category_filter
+	search.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	parent.add_child(search)
+
+	var list := VBoxContainer.new()
+	list.add_theme_constant_override("separation", 4)
+	parent.add_child(list)
+
+	search.text_changed.connect(func(value):
+		fx_filter_text = value
+		_refresh_fx_skill_rows(list)
+	)
+	_refresh_fx_skill_rows(list)
+
+
+func _refresh_fx_skill_rows(list: VBoxContainer) -> void:
+	for child in list.get_children():
+		child.queue_free()
+
+	var filter := fx_filter_text.strip_edges().to_lower()
+	var broad_skills = rules.fx.get_broad_skills()
+	
+	for broad in broad_skills:
+		if String(broad.get("category", "")) != fx_category_filter:
+			continue
+			
+		var broad_name = String(broad.get("name", ""))
+		var specialties = rules.fx.get_specialty_skills_for_broad(broad_name)
+		var child_matches := []
+		for spec in specialties:
+			var spec_label = String(spec.get("name", "")).to_lower()
+			if filter.is_empty() or spec_label.contains(filter):
+				child_matches.append(spec)
+				
+		var broad_label := broad_name.to_lower()
+		var show_broad := filter.is_empty() or broad_label.contains(filter) or not child_matches.is_empty()
+		
+		if show_broad:
+			_add_fx_skill_row(list, broad, false)
+			if rules.fx.is_fx_skill_selected(character, broad_name) or not filter.is_empty():
+				for spec in child_matches:
+					_add_fx_skill_row(list, spec, true)
+
+
+func _add_fx_skill_row(parent: VBoxContainer, skill: Dictionary, indented: bool) -> void:
+	var skill_name = String(skill.get("name", ""))
+	var is_specialty := skill.has("broad_skill")
+	var selected := rules.fx.fx_skill_rank(character, skill_name) > 0
+	var rank := rules.fx.fx_skill_rank(character, skill_name)
+
+	var row_box := VBoxContainer.new()
+	row_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row_box.add_theme_constant_override("separation", 4)
+	parent.add_child(row_box)
+
+	var top_row := HBoxContainer.new()
+	top_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top_row.add_theme_constant_override("separation", 8)
+	top_row.custom_minimum_size = Vector2(0, 38)
+	row_box.add_child(top_row)
+
+	if indented:
+		var spacer := Control.new()
+		spacer.custom_minimum_size = Vector2(18, 1)
+		top_row.add_child(spacer)
+
+	var check := CheckBox.new()
+	check.button_pressed = selected
+	check.disabled = is_specialty
+	check.custom_minimum_size = Vector2(38, 38)
+	top_row.add_child(check)
+
+	var name := Label.new()
+	name.text = "%s (%s)" % [skill_name, String(skill.get("ability", "WIL"))]
+	name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	name.add_theme_color_override("font_color", color_text)
+	name.add_theme_font_size_override("font_size", 14 if indented else 15)
+	top_row.add_child(name)
+
+	var info := Button.new()
+	info.text = "?"
+	info.tooltip_text = "Skill details"
+	info.custom_minimum_size = Vector2(34, 34)
+	info.pressed.connect(func(): _show_fx_skill_details(skill))
+	top_row.add_child(info)
+
+	var cost := Label.new()
+	if is_specialty:
+		cost.text = "Rank %d" % rank
+	else:
+		if selected:
+			cost.text = "Spent %d" % rules.fx.fx_skill_total_cost(character, skill_name)
+		else:
+			cost.text = "Cost %d" % rules.fx.fx_skill_cost(character, skill_name)
+	cost.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	cost.custom_minimum_size = Vector2(78, 38)
+	cost.add_theme_color_override("font_color", color_accent if selected else color_muted)
+	cost.add_theme_font_size_override("font_size", 13)
+	top_row.add_child(cost)
+
+	if not is_specialty:
+		check.toggled.connect(func(pressed):
+			if pressed:
+				rules.fx.add_fx_skill(character, skill_name)
+			else:
+				rules.fx.remove_fx_skill(character, skill_name)
+				var specialties = rules.fx.get_specialty_skills_for_broad(skill_name)
+				for spec in specialties:
+					var spec_name = String(spec.get("name", ""))
+					while rules.fx.fx_skill_rank(character, spec_name) > 0:
+						rules.fx.remove_fx_skill(character, spec_name)
+			_render()
+		)
+
+	if is_specialty:
+		var controls_container: Container
+		if is_wide_layout:
+			controls_container = HBoxContainer.new()
+		else:
+			controls_container = VBoxContainer.new()
+		controls_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row_box.add_child(controls_container)
+
+		var controls := HBoxContainer.new()
+		controls.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		controls.add_theme_constant_override("separation", 6)
+		controls_container.add_child(controls)
+
+		var control_spacer := Control.new()
+		control_spacer.custom_minimum_size = Vector2(56, 1) if indented else Vector2(38, 1)
+		controls.add_child(control_spacer)
+
+		var minus := Button.new()
+		minus.text = "-"
+		minus.disabled = rank <= 0
+		minus.custom_minimum_size = Vector2(36, 34) if is_wide_layout else Vector2(44, 44)
+		minus.pressed.connect(func():
+			rules.fx.remove_fx_skill(character, skill_name)
+			_render()
+		)
+		controls.add_child(minus)
+
+		var rank_label := Label.new()
+		rank_label.text = "Rank %d" % rank
+		rank_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		rank_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		rank_label.custom_minimum_size = Vector2(62, 34) if is_wide_layout else Vector2(62, 44)
+		rank_label.add_theme_color_override("font_color", color_text if rank > 0 else color_muted)
+		rank_label.add_theme_font_size_override("font_size", 13)
+		controls.add_child(rank_label)
+
+		var plus := Button.new()
+		plus.text = "+"
+		plus.disabled = rank >= AlternityRules.MAX_SPECIALTY_RANK
+		plus.custom_minimum_size = Vector2(36, 34) if is_wide_layout else Vector2(44, 44)
+		plus.pressed.connect(func():
+			var broad_name = String(skill.get("broad_skill", ""))
+			if not rules.fx.is_fx_skill_selected(character, broad_name):
+				rules.fx.add_fx_skill(character, broad_name)
+			rules.fx.add_fx_skill(character, skill_name)
+			_render()
+		)
+		controls.add_child(plus)
+
+		var broad_name = String(skill.get("broad_skill", ""))
+		var next_cost := rules.fx.fx_skill_cost(character, skill_name)
+		var cost_note := Label.new()
+		if rank >= AlternityRules.MAX_SPECIALTY_RANK:
+			cost_note.text = "Max rank"
+		elif rank <= 0:
+			cost_note.text = "Buy %d SP" % next_cost
+		else:
+			cost_note.text = "Spent %d SP  |  Next %d SP" % [rules.fx.fx_skill_total_cost(character, skill_name), next_cost]
+		cost_note.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		cost_note.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		cost_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		cost_note.add_theme_color_override("font_color", color_muted)
+		cost_note.add_theme_font_size_override("font_size", 12)
+
+		if is_wide_layout:
+			controls.add_child(cost_note)
+		else:
+			var cost_box := HBoxContainer.new()
+			var cost_spacer := Control.new()
+			cost_spacer.custom_minimum_size = Vector2(56, 1) if indented else Vector2(38, 1)
+			cost_box.add_child(cost_spacer)
+			cost_box.add_child(cost_note)
+			controls_container.add_child(cost_box)
+
+
+func _show_fx_skill_details(skill: Dictionary) -> void:
+	_refresh_fx_skill_details_panel(skill)
+	skill_details_overlay.visible = true
+	_update_skill_details_modal_height.call_deferred()
+
+
+func _refresh_fx_skill_details_panel(skill: Dictionary) -> void:
+	for child in skill_details_body.get_children():
+		child.queue_free()
+
+	var skill_name = String(skill.get("name", ""))
+	var is_specialty := skill.has("broad_skill")
+	var category = String(skill.get("category", ""))
+	var ability = String(skill.get("ability", "WIL"))
+	var rank = rules.fx.fx_skill_rank(character, skill_name)
+	
+	skill_details_title.text = skill_name
+
+	var type_label = "Specialty skill" if is_specialty else "Broad skill"
+	var meta := "%s  |  %s (%s)  |  Category: %s" % [
+		type_label,
+		AlternityRules.ABILITY_NAMES.get(ability, ability),
+		ability,
+		category
+	]
+	_add_text(skill_details_body, meta, 13, color_muted)
+
+	if is_specialty:
+		var next_cost := rules.fx.fx_skill_cost(character, skill_name)
+		var rank_line := "Current rank %d" % rank
+		if rank < AlternityRules.MAX_SPECIALTY_RANK:
+			rank_line += "  |  Next rank %d SP" % next_cost
+		else:
+			rank_line += "  |  Maximum rank"
+		_add_text(skill_details_body, rank_line, 13, color_accent)
+	else:
+		_add_text(skill_details_body, "Cost %d SP" % rules.fx.fx_skill_cost(character, skill_name), 13, color_accent)
+
+	_add_subheading(skill_details_body, "Check Scores")
+	
+	var is_broad_selected := false
+	if is_specialty:
+		var broad_name = String(skill.get("broad_skill", ""))
+		is_broad_selected = rules.fx.is_fx_skill_selected(character, broad_name)
+	
+	if (not is_specialty and rank > 0) or (is_specialty and rank > 0):
+		var score := rules.fx.fx_skill_score(character, skill_name)
+		var die_str = "+d0" if is_specialty else "+d4"
+		var check_line := "Ordinary %d  |  Good %d  |  Amazing %d  |  Die: %s" % [
+			score.get("ordinary", 0),
+			score.get("good", 0),
+			score.get("amazing", 0),
+			die_str
+		]
+		_add_text(skill_details_body, check_line, 14, color_text)
+	elif is_specialty and is_broad_selected:
+		var abilities := rules.effective_abilities(character)
+		var ability_score = rules._as_int(abilities.get(ability, 10))
+		var base = int(floor(ability_score / 2.0))
+		var ordinary = base
+		var good = int(floor(ordinary / 2.0))
+		var amazing = int(floor(good / 2.0))
+		var check_line := "Untrained: Ordinary %d  |  Good %d  |  Amazing %d  |  Die: +d4" % [
+			ordinary,
+			good,
+			amazing
+		]
+		_add_text(skill_details_body, check_line, 14, color_muted)
+		_add_text(skill_details_body, "Note: Untrained FX specialty use, if allowed by GM, increases activation cost by +1 FX energy point.", 12, color_muted)
+	else:
+		_add_text(skill_details_body, "Locked (Requires purchasing broad skill first)", 13, color_warning)
+
+	var skill_meta = String(skill.get("meta", ""))
+	if not skill_meta.is_empty():
+		_add_subheading(skill_details_body, "Type & Activation")
+		_add_text(skill_details_body, skill_meta, 13, color_text)
+
+	var description = String(skill.get("description", ""))
+	if not description.is_empty():
+		_add_subheading(skill_details_body, "Description")
+		_add_text(skill_details_body, description, 13, color_text)
+
+	var rank_benefits: Dictionary = skill.get("rank_benefits", {})
+	if not rank_benefits.is_empty():
+		_add_subheading(skill_details_body, "Rank Benefits")
+		var thresholds := rank_benefits.keys()
+		thresholds.sort_custom(func(a, b): return int(a) < int(b))
+		for threshold in thresholds:
+			var required_rank := int(threshold)
+			var color := color_accent if rank >= required_rank else color_muted
+			_add_text(skill_details_body, "Rank %d: %s" % [required_rank, String(rank_benefits[threshold])], 13, color)
+
+	_add_subheading(skill_details_body, "Source")
+	_add_text(skill_details_body, "Alternity Beyond Science: A Guide to FX", 12, color_muted)
+
+
 func _render_summary() -> void:
 	var summary := rules.summary(character)
 	var current_species := rules.get_species_by_id(rules._as_int(character.get("species_id", 0)))
@@ -3734,6 +4437,39 @@ func _render_summary() -> void:
 	], 13, color_muted)
 	if rules._as_int(last_resorts.get("profession_bonus", 0)) > 0:
 		_add_text(overview, "Free Agent maximum includes +%d and may spend 2 points on one action." % rules._as_int(last_resorts.get("profession_bonus", 0)), 13, color_muted)
+
+	# Special profession and talent benefits summary
+	var primary_prof_id := rules._as_int(character.get("profession_id", 0))
+	var specials_info := []
+	if primary_prof_id == 4:
+		var bonus = String(character.get("free_agent_rm_bonus", "STR"))
+		specials_info.append("Free Agent Bonus: +1 %s Resistance Modifier" % bonus)
+	elif primary_prof_id == 0:
+		var cs_id = rules._as_int(character.get("combat_spec_bonus_specialty", -1))
+		var cs_name = "None"
+		for skill in rules.skills:
+			if rules._as_int(skill.get("id", -1)) == cs_id:
+				cs_name = String(skill.get("name", ""))
+				break
+		specials_info.append("Combat Spec Bonus: -1 step situation bonus to %s" % cs_name)
+	elif primary_prof_id == 6:
+		var mw_id = rules._as_int(character.get("mindwalker_psionic_focus", -1))
+		var mw_name = "None"
+		for skill in rules.skills:
+			if rules._as_int(skill.get("id", -1)) == mw_id:
+				mw_name = String(skill.get("name", ""))
+				break
+		specials_info.append("Mindwalker Focus: -1 step bonus to %s and its specialties" % mw_name)
+	elif primary_prof_id in [1, 2, 3]:
+		var dip_bonus = String(character.get("diplomat_bonus", "Contacts"))
+		specials_info.append("Diplomat Bonus: Free %s broad skill" % dip_bonus)
+		
+	if rules.fx.is_fx_talent(character):
+		var fx_group = String(character.get("fx", {}).get("primary_broad_group", "None"))
+		specials_info.append("Primary FX Group: %s" % fx_group)
+		
+	for info in specials_info:
+		_add_text(overview, info, 13, color_accent)
 
 	var durability_box := _add_section_to(left_parent, "Durability")
 	var durability: Dictionary = summary["durability"]
@@ -3803,6 +4539,12 @@ func _render_summary() -> void:
 	if not psionic_skills.is_empty():
 		var psionics_box := _add_section_to(right_parent, "Selected Psionics")
 		_add_selected_skill_table(psionics_box, psionic_skills)
+
+	if rules.fx.is_fx_talent(character):
+		var fx_skills = rules.fx.selected_fx_skills(character)
+		if not fx_skills.is_empty():
+			var fx_box := _add_section_to(right_parent, "Selected FX")
+			_add_selected_fx_skill_table(fx_box, fx_skills)
 
 	var perks_box := _add_section_to(right_parent, "Perks")
 	_add_selected_perks_summary(perks_box)
@@ -4867,7 +5609,7 @@ func _add_compact_abilities(parent: VBoxContainer) -> void:
 		_add_ability_summary_cell(grid, ability, false)
 		_add_ability_summary_cell(grid, score_text, false)
 		_add_ability_summary_cell(grid, str(rules.untrained_score(score)), false)
-		_add_ability_summary_cell(grid, "%+d" % rules.resistance_modifier(score), false)
+		_add_ability_summary_cell(grid, "%+d" % rules.character_resistance_modifier(character, ability), false)
 
 
 func _add_ability_summary_cell(parent: GridContainer, text: String, header_cell: bool) -> Label:

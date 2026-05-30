@@ -6,6 +6,7 @@ var mutations = preload('res://scripts/alternity_rules_mutations.gd').new(self)
 var cybertech = preload('res://scripts/alternity_rules_cybertech.gd').new(self)
 var equipment = preload('res://scripts/alternity_rules_equipment.gd').new(self)
 var achievements = preload('res://scripts/alternity_rules_achievements.gd').new(self)
+var fx = preload('res://scripts/alternity_rules_fx.gd').new(self)
 
 # Delegation wrappers removed. Sub-modules are exposed directly.
 
@@ -45,6 +46,10 @@ var cybertech_catalog_by_id: Dictionary = {}
 var skills_by_id: Dictionary = {}
 var broad_skills: Array = []
 var specialty_skills_by_broad_id: Dictionary = {}
+var fx_broad_skills: Array = []
+var fx_broad_skills_by_name: Dictionary = {}
+var fx_specialty_skills_by_broad: Dictionary = {}
+var fx_specialty_skills_by_name: Dictionary = {}
 
 
 func load_core_data(path := "res://data/rules/alternity_core.json") -> void:
@@ -68,6 +73,7 @@ func load_core_data(path := "res://data/rules/alternity_core.json") -> void:
 	_load_achievement_catalog()
 	_load_mutation_catalog()
 	_load_cybertech_catalog()
+	_load_fx_catalog()
 
 
 func _index_constants() -> void:
@@ -226,6 +232,39 @@ func _load_cybertech_catalog(path := "res://data/rules/cybertech_core.json") -> 
 			cybertech_catalog_by_id[item_id] = item
 
 
+func _load_fx_catalog(path := "res://data/rules/fx_core.json") -> void:
+	fx_broad_skills.clear()
+	fx_broad_skills_by_name.clear()
+	fx_specialty_skills_by_broad.clear()
+	fx_specialty_skills_by_name.clear()
+
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		push_error("Unable to load Alternity fx data: %s" % path)
+		return
+
+	var parsed = JSON.parse_string(file.get_as_text())
+	if typeof(parsed) != TYPE_DICTIONARY:
+		push_error("Alternity fx data is not valid JSON: %s" % path)
+		return
+
+	var broad_dict = parsed.get("broad_skills", {})
+	for key in broad_dict.keys():
+		var broad = broad_dict[key]
+		fx_broad_skills.append(broad)
+		fx_broad_skills_by_name[String(broad.get("name", ""))] = broad
+		fx_specialty_skills_by_broad[String(broad.get("name", ""))] = []
+		
+	var spec_dict = parsed.get("specialty_skills", {})
+	for key in spec_dict.keys():
+		var spec = spec_dict[key]
+		fx_specialty_skills_by_name[String(spec.get("name", ""))] = spec
+		var broad_name = String(spec.get("broad_skill", ""))
+		if fx_specialty_skills_by_broad.has(broad_name):
+			fx_specialty_skills_by_broad[broad_name].append(spec)
+
+
+
 func _load_psionics_catalog(path := "res://data/rules/psionics_core.json") -> void:
 	var file := FileAccess.open(path, FileAccess.READ)
 	if file == null:
@@ -325,6 +364,9 @@ func ensure_character_shape(character: Dictionary) -> Dictionary:
 	if not character.has("cybertech"):
 		character["cybertech"] = {}
 	cybertech._normalize_cybertech(character)
+	if not character.has("fx"):
+		character["fx"] = {}
+	fx._normalize_fx(character)
 	if not character.has("optional_rules"):
 		character["optional_rules"] = {}
 	for rule in OPTIONAL_RULES:
@@ -500,7 +542,9 @@ func ability_total(character: Dictionary) -> int:
 	return total
 
 
-func ability_point_total() -> int:
+func ability_point_total(character: Dictionary = {}) -> int:
+	if not character.is_empty() and character.has("custom_ability_target"):
+		return _as_int(character["custom_ability_target"])
 	return _as_int(data.get("ability_point_total", 60))
 
 
@@ -558,6 +602,19 @@ func resistance_modifier(score: int) -> int:
 	if score <= 14:
 		return 2
 	return 3
+
+
+func character_resistance_modifier(character: Dictionary, ability: String) -> int:
+	var score = 10
+	var abilities := effective_abilities(character)
+	if abilities.has(ability):
+		score = _as_int(abilities[ability])
+	var rm = resistance_modifier(score)
+	# Free Agent RM Bonus (+1 to one modifier chosen by the player)
+	if _as_int(character.get("profession_id", 0)) == 4: # Free Agent primary
+		if String(character.get("free_agent_rm_bonus", "")) == ability:
+			rm += 1
+	return rm
 
 
 func action_check(character: Dictionary) -> Dictionary:
@@ -707,7 +764,7 @@ func racial_broad_skills_count(character: Dictionary) -> int:
 func additional_broad_skill_limit(character: Dictionary) -> int:
 	var abilities := effective_abilities(character)
 	if optional_rule_enabled(character, "2b"):
-		var intelligence_rm := resistance_modifier(_as_int(abilities.get("INT", 10)))
+		var intelligence_rm := character_resistance_modifier(character, "INT")
 		return max(0, 6 + intelligence_rm)
 	return max(0, max_broad_skills(character) - racial_broad_skills_count(character))
 
@@ -910,7 +967,7 @@ func skill_purchase_points_used(character: Dictionary) -> int:
 
 
 func skill_points_used(character: Dictionary) -> int:
-	return skill_purchase_points_used(character) + perk_points_used(character) + achievements.achievement_points_spent(character) + cybertech.cybertech_skill_points_used(character)
+	return skill_purchase_points_used(character) + perk_points_used(character) + achievements.achievement_points_spent(character) + cybertech.cybertech_skill_points_used(character) + fx.fx_skill_purchase_points_used(character)
 
 
 func broad_skills_used(character: Dictionary) -> int:
@@ -990,6 +1047,11 @@ func skill_score(character: Dictionary, skill: Dictionary) -> Dictionary:
 		if _as_int(character.get("mindwalker_psionic_focus", -1)) == broad_id:
 			step -= 1
 			
+	# Combat Spec profession bonus (-1 step to chosen combat specialty skill)
+	if _as_int(character.get("profession_id", 0)) == 0: # Combat Spec primary
+		if skill.get("type", "") == "specialty" and _as_int(character.get("combat_spec_bonus_specialty", -1)) == skill_id:
+			step -= 1
+			
 	return {
 		"ordinary": ordinary,
 		"good": good,
@@ -1021,7 +1083,7 @@ func validate(character: Dictionary) -> Array:
 
 func _validate_abilities(character: Dictionary, messages: Array) -> void:
 	var total := ability_total(character)
-	var target := ability_point_total()
+	var target := ability_point_total(character)
 	if total != target:
 		messages.append("Ability total must be %d; current total is %d." % [target, total])
 
@@ -1138,7 +1200,7 @@ func summary(character: Dictionary) -> Dictionary:
 		"achievements.achievement_skill_bonus": achievements.achievement_skill_bonus(character),
 		"starting_skill_budget": starting_skill_budget(character),
 		"ability_total": ability_total(character),
-		"ability_target": ability_point_total(),
+		"ability_target": ability_point_total(character),
 		"effective_abilities": effective_abilities(character),
 		"skill_budget": skill_budget(character),
 		"skill_points_used": used_points,
@@ -1292,6 +1354,32 @@ func skill_rank_benefit_groups(character: Dictionary) -> Array:
 				"skill": skill_label(skill),
 				"entries": entries,
 			})
+			
+	# FX skills rank benefits
+	if fx.is_fx_talent(character):
+		for s in fx.selected_fx_skills(character):
+			if s.get("type", "") == "specialty":
+				var s_name = String(s.get("name", ""))
+				var rank = fx.fx_skill_rank(character, s_name)
+				var benefits: Dictionary = s.get("rank_benefits", {})
+				if benefits.is_empty():
+					continue
+					
+				var entries := []
+				var thresholds := benefits.keys()
+				thresholds.sort_custom(func(a, b): return int(a) < int(b))
+				for threshold in thresholds:
+					var required_rank := int(threshold)
+					if rank >= required_rank:
+						entries.append({
+							"rank": required_rank,
+							"text": String(benefits[threshold]),
+						})
+				if not entries.is_empty():
+					groups.append({
+						"skill": s_name,
+						"entries": entries,
+					})
 	return groups
 
 
