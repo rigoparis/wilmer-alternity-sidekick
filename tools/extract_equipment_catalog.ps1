@@ -25,6 +25,28 @@ function Normalize-Key {
     return (($Value.ToLowerInvariant() -replace "[^a-z0-9]+", " ").Trim() -replace "\s+", " ")
 }
 
+function Read-SecureXml {
+    param(
+        [string]$FilePath
+    )
+    $readerSettings = New-Object System.Xml.XmlReaderSettings
+    $readerSettings.DtdProcessing = [System.Xml.DtdProcessing]::Prohibit
+    $readerSettings.XmlResolver = $null
+
+    $reader = [System.Xml.XmlReader]::Create($FilePath, $readerSettings)
+    try {
+        $doc = New-Object System.Xml.XmlDocument
+        $doc.Load($reader)
+        return $doc
+    }
+    finally {
+        if ($null -ne $reader) {
+            $reader.Close()
+            $reader.Dispose()
+        }
+    }
+}
+
 function Get-XmlAttribute {
     param(
         [System.Xml.XmlElement]$Node,
@@ -427,7 +449,7 @@ function Get-WeaponReference {
 }
 
 $weaponXmlPath = Join-Path $WalterDataRoot "weapon_Core.xml"
-[xml]$weaponXml = Get-Content -LiteralPath $weaponXmlPath -Raw
+$weaponXml = Read-SecureXml -FilePath $weaponXmlPath
 foreach ($node in $weaponXml.SelectNodes("//AttackForm")) {
     $originalName = Get-XmlAttribute $node "Name"
     $name = if ($weaponNameCorrections.ContainsKey($originalName)) { $weaponNameCorrections[$originalName] } else { $originalName }
@@ -497,7 +519,7 @@ $armorNameCorrections = @{
 }
 
 $armorXmlPath = Join-Path $WalterDataRoot "armor_Core.xml"
-[xml]$armorXml = Get-Content -LiteralPath $armorXmlPath -Raw
+$armorXml = Read-SecureXml -FilePath $armorXmlPath
 $armorReference = New-Reference "188" "P41" "Armor"
 foreach ($node in $armorXml.SelectNodes("//ArmorItem")) {
     $originalName = Get-XmlAttribute $node "Name"
