@@ -195,13 +195,13 @@ func roll_mutation_distribution(character: Dictionary, kind: String) -> Dictiona
 
 func mutation_distribution_id(character: Dictionary, kind: String) -> String:
 	var distribution := mutation_distribution(character, kind)
-	var order := get_parent().MUTATION_DRAWBACK_TIERS if kind == "drawback" else get_parent().MUTATION_ADVANTAGE_TIERS
+	var order: Array = _get_parent().MUTATION_DRAWBACK_TIERS if kind == "drawback" else _get_parent().MUTATION_ADVANTAGE_TIERS
 	return _mutation_distribution_id(distribution, order)
 
 
 func mutation_distribution_label(character: Dictionary, kind: String) -> String:
 	var distribution := mutation_distribution(character, kind)
-	var order := get_parent().MUTATION_DRAWBACK_LABEL_ORDER if kind == "drawback" else get_parent().MUTATION_ADVANTAGE_LABEL_ORDER
+	var order: Array = _get_parent().MUTATION_DRAWBACK_LABEL_ORDER if kind == "drawback" else _get_parent().MUTATION_ADVANTAGE_LABEL_ORDER
 	return _mutation_distribution_label(distribution, order)
 
 
@@ -569,7 +569,7 @@ func _normalized_mutation_id_list(value, catalog: Dictionary) -> Array:
 
 
 func _normalized_mutation_distribution(value, kind: String, points: int) -> Dictionary:
-	var order := get_parent().MUTATION_DRAWBACK_TIERS if kind == "drawback" else get_parent().MUTATION_ADVANTAGE_TIERS
+	var order: Array = _get_parent().MUTATION_DRAWBACK_TIERS if kind == "drawback" else _get_parent().MUTATION_ADVANTAGE_TIERS
 	var raw: Dictionary = value if typeof(value) == TYPE_DICTIONARY else {}
 	var result := {}
 	for tier in order:
@@ -610,7 +610,7 @@ func _mutation_advantage_distribution_options(points: int) -> Array:
 					"Good": good,
 					"Amazing": amazing,
 				}
-				rows.append(_mutation_distribution_option(counts, get_parent().MUTATION_ADVANTAGE_TIERS, get_parent().MUTATION_ADVANTAGE_LABEL_ORDER))
+				rows.append(_mutation_distribution_option(counts, _get_parent().MUTATION_ADVANTAGE_TIERS, _get_parent().MUTATION_ADVANTAGE_LABEL_ORDER))
 	return rows
 
 
@@ -626,7 +626,7 @@ func _mutation_drawback_distribution_options(points: int) -> Array:
 					"Moderate": moderate,
 					"Extreme": extreme,
 				}
-				rows.append(_mutation_distribution_option(counts, get_parent().MUTATION_DRAWBACK_TIERS, get_parent().MUTATION_DRAWBACK_LABEL_ORDER))
+				rows.append(_mutation_distribution_option(counts, _get_parent().MUTATION_DRAWBACK_TIERS, _get_parent().MUTATION_DRAWBACK_LABEL_ORDER))
 	return rows
 
 
@@ -708,7 +708,7 @@ func _roll_mutation_selection(character: Dictionary, selected_key: String, catal
 	character["mutations"] = mutations
 
 	var distribution := mutation_distribution(character, kind)
-	var order := get_parent().MUTATION_DRAWBACK_TIERS if kind == "drawback" else get_parent().MUTATION_ADVANTAGE_TIERS
+	var order: Array = _get_parent().MUTATION_DRAWBACK_TIERS if kind == "drawback" else _get_parent().MUTATION_ADVANTAGE_TIERS
 	var selected := []
 	var failed := []
 	for tier_value in order:
