@@ -1799,12 +1799,14 @@ func _add_perk_catalog_rows(parent: VBoxContainer, filter: String) -> int:
 			parent,
 			option,
 			selected_value,
-			"cost_options",
-			"Buy %d SP",
-			"Selected %d SP",
-			change_perk,
-			can_select_new,
-			"The hero already has three perks." if not can_select_new else ""
+			{
+				"options_key": "cost_options",
+				"button_format": "Buy %d SP",
+				"selected_format": "Selected %d SP",
+				"changed": change_perk,
+				"can_select_new": can_select_new,
+				"disabled_reason": "The hero already has three perks." if not can_select_new else ""
+			}
 		)
 	return shown
 
@@ -1829,12 +1831,14 @@ func _add_flaw_catalog_rows(parent: VBoxContainer, filter: String) -> int:
 			parent,
 			option,
 			selected_value,
-			"bonus_options",
-			"Take +%d SP",
-			"Selected +%d SP",
-			change_flaw,
-			can_select_new,
-			"The hero already has three flaws." if not can_select_new else ""
+			{
+				"options_key": "bonus_options",
+				"button_format": "Take +%d SP",
+				"selected_format": "Selected +%d SP",
+				"changed": change_flaw,
+				"can_select_new": can_select_new,
+				"disabled_reason": "The hero already has three flaws." if not can_select_new else ""
+			}
 		)
 	return shown
 
@@ -1852,7 +1856,14 @@ func _character_option_matches_filter(option: Dictionary, filter: String) -> boo
 	return haystack.contains(filter)
 
 
-func _add_character_option_row(parent: VBoxContainer, option: Dictionary, selected_value: int, options_key: String, button_format: String, selected_format: String, changed: Callable, can_select_new := true, disabled_reason := "") -> void:
+func _add_character_option_row(parent: VBoxContainer, option: Dictionary, selected_value: int, config: Dictionary) -> void:
+	var options_key: String = config.get("options_key", "")
+	var button_format: String = config.get("button_format", "")
+	var selected_format: String = config.get("selected_format", "")
+	var changed: Callable = config.get("changed", Callable())
+	var can_select_new: bool = config.get("can_select_new", true)
+	var disabled_reason: String = config.get("disabled_reason", "")
+
 	var row_box := VBoxContainer.new()
 	row_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row_box.add_theme_constant_override("separation", 6)
