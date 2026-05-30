@@ -20,23 +20,31 @@ if ([string]::IsNullOrWhiteSpace($AuditPath)) {
 $CoreRulesPath = Join-Path $ProjectRoot "data\rules\alternity_core.json"
 $ExistingCatalogPath = $OutputPath
 
-function Read-XmlSafe {
-    param([string]$FilePath)
-    $xmlDoc = New-Object System.Xml.XmlDocument
-    $xmlReaderSettings = New-Object System.Xml.XmlReaderSettings
-    $xmlReaderSettings.DtdProcessing = [System.Xml.DtdProcessing]::Prohibit
-    $xmlReader = [System.Xml.XmlReader]::Create($FilePath, $xmlReaderSettings)
-    try {
-        $xmlDoc.Load($xmlReader)
-    } finally {
-        $xmlReader.Dispose()
-    }
-    return $xmlDoc
-}
-
 function Normalize-Key {
     param([string]$Value)
     return (($Value.ToLowerInvariant() -replace "[^a-z0-9]+", " ").Trim() -replace "\s+", " ")
+}
+
+function Read-SecureXml {
+    param(
+        [string]$FilePath
+    )
+    $readerSettings = New-Object System.Xml.XmlReaderSettings
+    $readerSettings.DtdProcessing = [System.Xml.DtdProcessing]::Prohibit
+    $readerSettings.XmlResolver = $null
+
+    $reader = [System.Xml.XmlReader]::Create($FilePath, $readerSettings)
+    try {
+        $doc = New-Object System.Xml.XmlDocument
+        $doc.Load($reader)
+        return $doc
+    }
+    finally {
+        if ($null -ne $reader) {
+            $reader.Close()
+            $reader.Dispose()
+        }
+    }
 }
 
 function Get-XmlAttribute {
@@ -441,7 +449,7 @@ function Get-WeaponReference {
 }
 
 $weaponXmlPath = Join-Path $WalterDataRoot "weapon_Core.xml"
-$weaponXml = Read-XmlSafe -FilePath $weaponXmlPath
+$weaponXml = Read-SecureXml -FilePath $weaponXmlPath
 foreach ($node in $weaponXml.SelectNodes("//AttackForm")) {
     $originalName = Get-XmlAttribute $node "Name"
     $name = if ($weaponNameCorrections.ContainsKey($originalName)) { $weaponNameCorrections[$originalName] } else { $originalName }
@@ -511,7 +519,7 @@ $armorNameCorrections = @{
 }
 
 $armorXmlPath = Join-Path $WalterDataRoot "armor_Core.xml"
-$armorXml = Read-XmlSafe -FilePath $armorXmlPath
+$armorXml = Read-SecureXml -FilePath $armorXmlPath
 $armorReference = New-Reference "188" "P41" "Armor"
 foreach ($node in $armorXml.SelectNodes("//ArmorItem")) {
     $originalName = Get-XmlAttribute $node "Name"
