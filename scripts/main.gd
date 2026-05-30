@@ -3399,7 +3399,101 @@ func _add_skill_row(parent: VBoxContainer, skill: Dictionary, indented: bool) ->
 
 
 func _render_cybertech() -> void:
-	_add_text(content, "Cybertech implementations coming soon...", 14, color_muted)
+	var cybertech_data = rules.cybertech._cybertech_data(character)
+	var enabled = rules.cybertech.cybertech_enabled(character)
+	var top_section = _add_section("Cybertech")
+	
+	_add_text(top_section, "Cybertech allows characters to enhance their bodies with technology. Your Cyber Tolerance is equal to your Constitution score (Mechalus get +4). Installing items uses up your tolerance. Items that tap into your nervous system (like Reflex or Fast Chips) risk giving you Cykosis, a mental strain that reduces your Will-based checks by -1 per point of Cykosis.", 12, color_muted)
+	
+	_add_large_checkbox(top_section, "Hero uses Cybertech", enabled, func(checked):
+		rules.cybertech.set_cybertech_enabled(character, checked)
+		_save_character()
+		_render()
+	)
+	
+	if not enabled:
+		return
+		
+	var metrics_row = VBoxContainer.new()
+	metrics_row.add_theme_constant_override("separation", 8)
+	top_section.add_child(metrics_row)
+	
+	var tolerance = rules.cybertech.cyber_tolerance_breakdown(character)
+	_add_metric(metrics_row, "Cyber Tolerance Used / Total", "%d / %d" % [tolerance.used, tolerance.total])
+	_add_metric(metrics_row, "Cyber Tolerance Thresholds", "%d / %d / %d" % [tolerance.left, tolerance.left + tolerance.center, tolerance.total])
+	
+	var cyk_total = rules.cybertech.cykosis_total(character)
+	var cyk_used = rules.cybertech.cykosis_used(character)
+	_add_number_stepper(metrics_row, "Cykosis Points Used (Max %d)" % cyk_total, cyk_used, 0, cyk_total, func(value):
+		rules.cybertech.set_cykosis_used(character, value)
+		_save_character()
+	)
+	
+	_add_thin_separator(top_section)
+	
+	var skill_purchased = rules.cybertech.is_cybertech_skill_purchased(character)
+	_add_large_checkbox(top_section, "Purchase the Cybertech skill required to use certain cybertech for 10 skill points", skill_purchased, func(checked):
+		rules.cybertech.set_cybertech_skill_purchased(character, checked)
+		_save_character()
+		_render()
+	)
+	
+	_add_thin_separator(top_section)
+	
+	var catalog_section = _add_section("Cybertech Catalog")
+	
+	for item_value in rules.cybertech_catalog:
+		if typeof(item_value) != TYPE_DICTIONARY:
+			continue
+		var item: Dictionary = item_value
+		var row = VBoxContainer.new()
+		catalog_section.add_child(row)
+		
+		var header_row = HBoxContainer.new()
+		row.add_child(header_row)
+		var title = _add_text(header_row, String(item.get("name", "")), 16, color_accent)
+		title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		
+		var installed = false
+		for inst in rules.cybertech.installed_cybertech(character):
+			if String(inst.get("item_id", "")) == String(item.get("id", "")):
+				installed = true
+				break
+				
+		if installed:
+			var btn_remove = Button.new()
+			btn_remove.text = "Remove"
+			btn_remove.pressed.connect(func():
+				rules.cybertech.remove_cybertech(character, String(item.get("id", "")))
+				_save_character()
+				_render()
+			)
+			header_row.add_child(btn_remove)
+		else:
+			for q in ["ordinary", "good", "amazing"]:
+				var cost = item.get("cost_%s" % q, 0)
+				if rules._as_int(cost) > 0:
+					var btn_add = Button.new()
+					btn_add.text = "Install %s" % q.capitalize()
+					btn_add.pressed.connect(func():
+						var res = rules.cybertech.install_cybertech(character, String(item.get("id", "")), q)
+						if res.get("ok", false):
+							_save_character()
+							_render()
+					)
+					header_row.add_child(btn_add)
+		
+		var info_str = "PL: %d  |  Mass: %s  |  Size: %s" % [
+			rules._as_int(item.get("pl", 6)),
+			str(item.get("mass", item.get("mass_ordinary", 0))),
+			str(item.get("size", item.get("size_ordinary", 0)))
+		]
+		var source_str = String(item.get("source", ""))
+		if not source_str.is_empty():
+			info_str += "  |  Source: %s" % source_str
+		_add_text(row, info_str, 12, color_muted)
+		_add_text(row, String(item.get("description", "")), 14, color_text)
+		_add_thin_separator(row)
 
 func _render_fx_psionics() -> void:
 	var overview := _add_section("Psionic Energy & Mindwalker Status")
@@ -3517,9 +3611,13 @@ func _render_summary() -> void:
 
 	var equipment_summary: Dictionary = summary.get("equipment", {})
 	var attack_forms_box := _add_section_to(left_parent, "Attack Forms")
-	_add_attack_forms_summary(attack_forms_box, equipment_summary.get("attack_forms", []))
+	var combined_attacks: Array = equipment_summary.get("attack_forms", []).duplicate(true)
+	combined_attacks.append_array(rules.cybertech.cybertech_attack_forms(character))
+	_add_attack_forms_summary(attack_forms_box, combined_attacks)
 	var armor_box := _add_section_to(left_parent, "Armor")
-	_add_armor_summary(armor_box, equipment_summary.get("combat_armor", []))
+	var combined_armor: Array = equipment_summary.get("combat_armor", []).duplicate(true)
+	combined_armor.append_array(rules.cybertech.cybertech_armor_rows(character))
+	_add_armor_summary(armor_box, combined_armor)
 
 	_render_notes_section(left_parent)
 
@@ -3562,6 +3660,22 @@ func _render_summary() -> void:
 		var drawback_box := _add_section_to(right_parent, "Mutation Drawbacks")
 		_add_mutation_summary_panel(drawback_box, rules.mutations.selected_mutation_drawbacks(character), "drawback", mutation_summary)
 
+	var cybertech_summary: Dictionary = summary.get("cybertech", {})
+	if bool(cybertech_summary.get("enabled", false)):
+		var cybertech_box := _add_section_to(right_parent, "Cybertech")
+		var installed: Array = cybertech_summary.get("installed", [])
+		if installed.is_empty():
+			_add_text(cybertech_box, "No cybertech installed.", 14, color_muted)
+		else:
+			for i in range(installed.size()):
+				var item = installed[i]
+				_add_text(cybertech_box, "%s (%s)" % [String(item.get("item", {}).get("name", "")), String(item.get("quality", "ordinary")).capitalize()], 14, color_text)
+				var desc = String(item.get("item", {}).get("description", ""))
+				if not desc.is_empty():
+					_add_text(cybertech_box, desc, 12, color_muted)
+				if i < installed.size() - 1:
+					_add_thin_separator(cybertech_box)
+				
 	var achievements_box := _add_section_to(right_parent, "Achievements")
 	var selected_achievements: Array = summary.get("selected_achievements", [])
 	if selected_achievements.is_empty():
@@ -4597,6 +4711,36 @@ func _add_ability_summary_cell(parent: GridContainer, text: String, header_cell:
 	label.add_theme_font_size_override("font_size", 10 if header_cell else 11)
 	parent.add_child(label)
 	return label
+
+
+func _add_large_checkbox(parent: Container, label_text: String, is_checked: bool, changed: Callable) -> void:
+	var row := HBoxContainer.new()
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	
+	var label := Label.new()
+	label.text = label_text
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.add_theme_font_size_override("font_size", 14)
+	label.add_theme_color_override("font_color", color_text)
+	
+	var button := Button.new()
+	button.toggle_mode = true
+	button.button_pressed = is_checked
+	button.text = "✔" if is_checked else ""
+	button.custom_minimum_size = Vector2(24, 24)
+	button.add_theme_stylebox_override("normal", _flat_style(color_surface, color_border, 4))
+	button.add_theme_stylebox_override("hover", _flat_style(color_surface_soft, color_border, 4))
+	button.add_theme_stylebox_override("pressed", _flat_style(color_accent, color_accent, 4))
+	
+	button.toggled.connect(func(c):
+		button.text = "✔" if c else ""
+		changed.call(c)
+	)
+	
+	row.add_child(label)
+	row.add_child(button)
+	parent.add_child(row)
 
 
 func _add_tracker_row(parent: VBoxContainer, name: String, total: int, used: int, changed: Callable) -> void:
