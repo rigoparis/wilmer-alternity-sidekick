@@ -20,6 +20,20 @@ if ([string]::IsNullOrWhiteSpace($AuditPath)) {
 $CoreRulesPath = Join-Path $ProjectRoot "data\rules\alternity_core.json"
 $ExistingCatalogPath = $OutputPath
 
+function Read-XmlSafe {
+    param([string]$FilePath)
+    $xmlDoc = New-Object System.Xml.XmlDocument
+    $xmlReaderSettings = New-Object System.Xml.XmlReaderSettings
+    $xmlReaderSettings.DtdProcessing = [System.Xml.DtdProcessing]::Prohibit
+    $xmlReader = [System.Xml.XmlReader]::Create($FilePath, $xmlReaderSettings)
+    try {
+        $xmlDoc.Load($xmlReader)
+    } finally {
+        $xmlReader.Dispose()
+    }
+    return $xmlDoc
+}
+
 function Normalize-Key {
     param([string]$Value)
     return (($Value.ToLowerInvariant() -replace "[^a-z0-9]+", " ").Trim() -replace "\s+", " ")
@@ -427,7 +441,7 @@ function Get-WeaponReference {
 }
 
 $weaponXmlPath = Join-Path $WalterDataRoot "weapon_Core.xml"
-[xml]$weaponXml = Get-Content -LiteralPath $weaponXmlPath -Raw
+$weaponXml = Read-XmlSafe -FilePath $weaponXmlPath
 foreach ($node in $weaponXml.SelectNodes("//AttackForm")) {
     $originalName = Get-XmlAttribute $node "Name"
     $name = if ($weaponNameCorrections.ContainsKey($originalName)) { $weaponNameCorrections[$originalName] } else { $originalName }
@@ -497,7 +511,7 @@ $armorNameCorrections = @{
 }
 
 $armorXmlPath = Join-Path $WalterDataRoot "armor_Core.xml"
-[xml]$armorXml = Get-Content -LiteralPath $armorXmlPath -Raw
+$armorXml = Read-XmlSafe -FilePath $armorXmlPath
 $armorReference = New-Reference "188" "P41" "Armor"
 foreach ($node in $armorXml.SelectNodes("//ArmorItem")) {
     $originalName = Get-XmlAttribute $node "Name"
