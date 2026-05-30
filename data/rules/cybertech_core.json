@@ -1,0 +1,397 @@
+[
+  {
+    "id": "battleklaw",
+    "name": "BattleKlaw",
+    "pl": 6,
+    "mass": 1,
+    "size": 2,
+    "cost_ordinary": 300,
+    "cost_good": 600,
+    "cost_amazing": 900,
+    "requires_nanocomputer": true,
+    "requires_skill_points": true,
+    "description": "Cybernetic talon weapon; uses Unarmed Attack. Ordinary: d4w/d4+1w/d4+2w. Good: d4+2w/d6+2w/d4m (retractable). Amazing: d6+2w/d4m/d4+2m (requires exoskeleton + cyberlimb). Double cost for a pair.",
+    "effects": {
+      "combat": {
+        "role": "weapon",
+        "skill_id": 15,
+        "type": "LI/O",
+        "range": "Personal",
+        "hide": "3",
+        "clip_size": "-"
+      }
+    },
+    "source": "Player's Handbook p.242"
+  },
+  {
+    "id": "bioart",
+    "name": "BioArt",
+    "pl": 6,
+    "mass": 0,
+    "size": 0,
+    "cost_ordinary": 50,
+    "cost_good": 100,
+    "cost_amazing": 200,
+    "requires_nanocomputer": false,
+    "requires_skill_points": false,
+    "description": "Subdermal neon/fiber-optic decoration. Purely cosmetic.",
+    "source": "Player's Handbook p.242"
+  },
+  {
+    "id": "biowatch",
+    "name": "BioWatch",
+    "pl": 6,
+    "mass": 0,
+    "size": 0,
+    "cost_ordinary": 50,
+    "cost_good": 100,
+    "cost_amazing": 300,
+    "requires_nanocomputer": false,
+    "requires_skill_points": false,
+    "description": "Subdermal timepiece. Tapped to view, glows through flesh briefly.",
+    "source": "Player's Handbook p.242"
+  },
+  {
+    "id": "body_plating",
+    "name": "Body Plating",
+    "pl": 6,
+    "mass_ordinary": 20,
+    "mass_good": 40,
+    "mass_amazing": 60,
+    "size_ordinary": 2,
+    "size_good": 3,
+    "size_amazing": 4,
+    "cost_ordinary": 1500,
+    "cost_good": 3000,
+    "cost_amazing": 4500,
+    "requires_nanocomputer": false,
+    "requires_skill_points": true,
+    "description": "Metal/plastic armor bonded to body. Amazing reduces DEX by 2 permanently.",
+    "effects": {
+      "armor": true
+    },
+    "source": "Player's Handbook p.242"
+  },
+  {
+    "id": "cyberlimb",
+    "name": "Cyberlimb",
+    "pl": 6,
+    "mass": 10,
+    "size": 2,
+    "cost_ordinary": 1000,
+    "cost_good": 2000,
+    "cost_amazing": 3000,
+    "requires_nanocomputer": true,
+    "requires_skill_points": true,
+    "description": "Replaces/improves a limb. Ordinary: +1 STR. Good: +2 STR (requires exoskeleton). Amazing: +3 STR (requires exoskeleton). Bonus only applies to that specific limb.",
+    "source": "Player's Handbook pp.242-243"
+  },
+  {
+    "id": "cyberoptics",
+    "name": "Cyberoptics",
+    "pl": 6,
+    "mass": 0,
+    "size": 1,
+    "cost_ordinary": 500,
+    "cost_good": 1000,
+    "cost_amazing": 2000,
+    "requires_nanocomputer": true,
+    "requires_skill_points": true,
+    "description": "Replaces/adds eye. Ordinary: normal vision, digital camera. Good: extended vision, 300x zoom. Amazing: 500x zoom, normal/night/thermal shifting.",
+    "source": "Player's Handbook p.243"
+  },
+  {
+    "id": "fast_chip",
+    "name": "Fast chip",
+    "pl": 6,
+    "mass": 0,
+    "size": 2,
+    "cost_ordinary": 1000,
+    "cost_good": 1500,
+    "cost_amazing": 2000,
+    "requires_nanocomputer": true,
+    "requires_skill_points": true,
+    "description": "Illegal speed enhancer. Action check bonus (-1/-2/-3). Causes fatigue and cykosis risk.",
+    "effects": {
+      "action_step": {
+        "ordinary": -1,
+        "good": -2,
+        "amazing": -3
+      }
+    },
+    "source": "Player's Handbook p.244"
+  },
+  {
+    "id": "muscleplus",
+    "name": "MusclePlus",
+    "pl": 6,
+    "mass": 2,
+    "size": 2,
+    "cost_ordinary": 1000,
+    "cost_good": 2000,
+    "cost_amazing": 3000,
+    "requires_nanocomputer": true,
+    "requires_skill_points": true,
+    "description": "Synthetic muscle. Ordinary: +1 STR. Good: +2 STR (req. exoskeleton). Amazing: +3 STR (req. exoskeleton + cyberlimb). Cannot raise damage bonus above +5.",
+    "effects": {
+      "stat_bonus": {
+        "STR": {
+          "ordinary": 1,
+          "good": 2,
+          "amazing": 3
+        }
+      }
+    },
+    "source": "Player's Handbook p.244"
+  },
+  {
+    "id": "nanocomputer",
+    "name": "Nanocomputer",
+    "pl": 6,
+    "mass": 0,
+    "size": 1,
+    "cost_ordinary": 2000,
+    "cost_good": 3000,
+    "cost_amazing": 4000,
+    "requires_nanocomputer": false,
+    "requires_skill_points": true,
+    "description": "Includes computer and cytronic circuitry. Required for most cyber gear.",
+    "source": "Player's Handbook p.244"
+  },
+  {
+    "id": "nijack",
+    "name": "NIJack",
+    "pl": 6,
+    "mass": 0,
+    "size": 1,
+    "cost_ordinary": 500,
+    "cost_good": 0,
+    "cost_amazing": 0,
+    "requires_nanocomputer": true,
+    "requires_skill_points": true,
+    "description": "Neural interface jack (neck/head) for cable connection.",
+    "source": "Player's Handbook p.244"
+  },
+  {
+    "id": "optic_screen",
+    "name": "Optic screen",
+    "pl": 6,
+    "mass": 0,
+    "size": 0,
+    "cost_ordinary": 250,
+    "cost_good": 0,
+    "cost_amazing": 0,
+    "requires_nanocomputer": true,
+    "requires_skill_points": true,
+    "description": "Lens display (HUD) from nanocomputer.",
+    "source": "Player's Handbook p.244"
+  },
+  {
+    "id": "self_repair_unit",
+    "name": "Self-repair unit",
+    "pl": 6,
+    "mass": 2,
+    "size": 2,
+    "cost_ordinary": 1000,
+    "cost_good": 2000,
+    "cost_amazing": 3000,
+    "requires_nanocomputer": true,
+    "requires_skill_points": true,
+    "description": "Nanite repair for damaged cyber gear. Repairs 1 wound/hr or 1 mortal/2hrs.",
+    "source": "Player's Handbook p.245"
+  },
+  {
+    "id": "subdermal_comm",
+    "name": "Subdermal comm",
+    "pl": 6,
+    "mass": 0,
+    "size": 1,
+    "cost_ordinary": 0,
+    "cost_good": 500,
+    "cost_amazing": 0,
+    "requires_nanocomputer": false,
+    "requires_skill_points": true,
+    "description": "Hidden communicator. Surface range 1000 km.",
+    "source": "Player's Handbook p.245"
+  },
+  {
+    "id": "subdermal_weapon_mount",
+    "name": "Subdermal weapon mount",
+    "pl": 6,
+    "mass": 2,
+    "size_ordinary": 2,
+    "size_good": 3,
+    "size_amazing": 4,
+    "cost_ordinary": 250,
+    "cost_good": 500,
+    "cost_amazing": 750,
+    "requires_nanocomputer": true,
+    "requires_skill_points": true,
+    "description": "Hidden weapon mounts. Ordinary: up to 1 kg. Good: up to 3 kg. Amazing: up to 6 kg (requires cyberlimb/exoskeleton).",
+    "source": "Player's Handbook p.245"
+  },
+  {
+    "id": "cf_skinweave",
+    "name": "CF skinweave",
+    "pl": 7,
+    "mass": 0,
+    "size": 1,
+    "cost_ordinary": 1000,
+    "cost_good": 2000,
+    "cost_amazing": 3000,
+    "requires_nanocomputer": false,
+    "requires_skill_points": false,
+    "description": "Carbon fiber woven with living flesh. Increases durability.",
+    "effects": {
+      "durability": {
+        "ordinary": {
+          "stun": 2,
+          "wound": 0,
+          "mortal": 0
+        },
+        "good": {
+          "stun": 2,
+          "wound": 1,
+          "mortal": 0
+        },
+        "amazing": {
+          "stun": 2,
+          "wound": 1,
+          "mortal": 1
+        }
+      }
+    },
+    "source": "Player's Handbook p.242"
+  },
+  {
+    "id": "data_slot_passive",
+    "name": "Data slot, passive",
+    "pl": 7,
+    "mass": 1,
+    "size": 1,
+    "cost_ordinary": 500,
+    "cost_good": 700,
+    "cost_amazing": 900,
+    "requires_nanocomputer": false,
+    "requires_skill_points": false,
+    "description": "External storage for 3D/data. Cannot be self-accessed.",
+    "source": "Player's Handbook p.243"
+  },
+  {
+    "id": "er_slot",
+    "name": "ER slot",
+    "pl": 7,
+    "mass": 1,
+    "size": 1,
+    "cost_ordinary": 500,
+    "cost_good": 1000,
+    "cost_amazing": 1500,
+    "requires_nanocomputer": true,
+    "requires_skill_points": true,
+    "description": "Emergency trauma pack attachment. Auto-injects when unconscious.",
+    "source": "Player's Handbook p.243"
+  },
+  {
+    "id": "er_slot_passive",
+    "name": "ER slot, passive",
+    "pl": 7,
+    "mass": 1,
+    "size": 1,
+    "cost_ordinary": 500,
+    "cost_good": 1000,
+    "cost_amazing": 1500,
+    "requires_nanocomputer": false,
+    "requires_skill_points": false,
+    "description": "Same as ER slot but CANNOT be manually activated.",
+    "source": "Player's Handbook p.243"
+  },
+  {
+    "id": "exoskeleton",
+    "name": "Exoskeleton",
+    "pl": 7,
+    "mass": 30,
+    "size": 3,
+    "cost_ordinary": 2000,
+    "cost_good": 3000,
+    "cost_amazing": 4000,
+    "requires_nanocomputer": true,
+    "requires_skill_points": true,
+    "description": "Reinforces body for heavy cyber. Increases durability.",
+    "effects": {
+      "durability": {
+        "ordinary": {
+          "stun": 2,
+          "wound": 0,
+          "mortal": 0
+        },
+        "good": {
+          "stun": 2,
+          "wound": 2,
+          "mortal": 0
+        },
+        "amazing": {
+          "stun": 2,
+          "wound": 2,
+          "mortal": 2
+        }
+      }
+    },
+    "source": "Player's Handbook pp.243-244"
+  },
+  {
+    "id": "neural_3d_external",
+    "name": "Neural 3D, external",
+    "pl": 7,
+    "mass": 1,
+    "size": 1,
+    "cost_ordinary": 500,
+    "cost_good": 750,
+    "cost_amazing": 1000,
+    "requires_nanocomputer": true,
+    "requires_skill_points": true,
+    "description": "External data input/storage.",
+    "source": "Player's Handbook p.244"
+  },
+  {
+    "id": "reflex",
+    "name": "Reflex",
+    "pl": 7,
+    "mass": 0,
+    "size": 2,
+    "cost_ordinary": 0,
+    "cost_good": 2000,
+    "cost_amazing": 0,
+    "requires_nanocomputer": true,
+    "requires_skill_points": true,
+    "description": "Cytronic circuitry for enhance programs. Risk of cykosis.",
+    "source": "Player's Handbook p.245"
+  },
+  {
+    "id": "subdermal_nijack",
+    "name": "Subdermal NIJack",
+    "pl": 7,
+    "mass": 0,
+    "size": 1,
+    "cost_ordinary": 0,
+    "cost_good": 700,
+    "cost_amazing": 0,
+    "requires_nanocomputer": true,
+    "requires_skill_points": true,
+    "description": "NIJack in wrist/forearm.",
+    "source": "Player's Handbook p.245"
+  },
+  {
+    "id": "wireless_nijack",
+    "name": "Wireless NIJack",
+    "pl": 7,
+    "mass": 0,
+    "size": 1,
+    "cost_ordinary": 0,
+    "cost_good": 1000,
+    "cost_amazing": 0,
+    "requires_nanocomputer": true,
+    "requires_skill_points": true,
+    "description": "Works like NIJack but radio-based (within 10m).",
+    "source": "Player's Handbook p.245"
+  }
+]
