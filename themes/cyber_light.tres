@@ -18,7 +18,7 @@ border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(1, 0.8, 0, 1)
+border_color = Color(0, 0.4, 0.8, 1)
 corner_radius_top_left = 8
 corner_radius_top_right = 8
 corner_radius_bottom_right = 8
@@ -49,7 +49,7 @@ corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_j3e8a"]
-bg_color = Color(1, 0.8, 0, 1)
+bg_color = Color(0, 0.4, 0.8, 1)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
@@ -85,7 +85,7 @@ Button/styles/normal = SubResource("StyleBoxFlat_f743v")
 Button/styles/pressed = SubResource("StyleBoxFlat_j3e8a")
 Label/colors/font_color = Color(0.0666667, 0.0666667, 0.0666667, 1)
 PanelContainer/styles/panel = SubResource("StyleBoxFlat_4ivxd")
-Theme/colors/color_accent = Color(1, 0.8, 0, 1)
+Theme/colors/color_accent = Color(0, 0.4, 0.8, 1)
 Theme/colors/color_background = Color(0.878431, 0.878431, 0.878431, 1)
 Theme/colors/color_border = Color(0, 0, 0, 1)
 Theme/colors/color_muted = Color(0.266667, 0.266667, 0.266667, 1)
