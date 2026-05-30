@@ -18,6 +18,10 @@ func clear_cache() -> void:
 
 var data: Dictionary = {}
 var species: Array = []
+var species_by_id: Dictionary = {}
+var professions_by_id: Dictionary = {}
+var perks_by_id: Dictionary = {}
+var flaws_by_id: Dictionary = {}
 var skills: Array = []
 var equipment_sources: Array = []
 var equipment_catalog: Array = []
@@ -54,11 +58,42 @@ func load_core_data(path := "res://data/rules/alternity_core.json") -> void:
 	data = parsed
 	species = data.get("species", [])
 	skills = data.get("skills", [])
+	_index_constants()
 	_load_psionics_catalog()
 	_index_skills()
 	_load_equipment_catalog()
 	_load_achievement_catalog()
 	_load_mutation_catalog()
+
+
+func _index_constants() -> void:
+	species_by_id.clear()
+	for item in species:
+		var item_id := _as_int(item.get("id", -1))
+		if item_id != -1:
+			species_by_id[item_id] = item
+
+	professions_by_id.clear()
+	for item in PROFESSION_DEFINITIONS:
+		var item_id := _as_int(item.get("id", -1))
+		if item_id != -1:
+			professions_by_id[item_id] = item
+
+	perks_by_id.clear()
+	for item in PERK_DEFINITIONS:
+		if typeof(item) != TYPE_DICTIONARY:
+			continue
+		var item_id := String(item.get("id", ""))
+		if not item_id.is_empty():
+			perks_by_id[item_id] = item
+
+	flaws_by_id.clear()
+	for item in FLAW_DEFINITIONS:
+		if typeof(item) != TYPE_DICTIONARY:
+			continue
+		var item_id := String(item.get("id", ""))
+		if not item_id.is_empty():
+			flaws_by_id[item_id] = item
 
 
 func _load_equipment_catalog(path := "res://data/rules/equipment_core.json") -> void:
@@ -300,17 +335,15 @@ func ensure_character_shape(character: Dictionary) -> Dictionary:
 
 
 func get_species_by_id(species_id: int) -> Dictionary:
-	for item in species:
-		if _as_int(item.get("id", -1)) == species_id:
-			return item
+	if species_by_id.has(species_id):
+		return species_by_id[species_id]
 	return species[0] if not species.is_empty() else {}
 
 
 func get_profession_by_id(profession_id: int) -> Dictionary:
-	for profession in PROFESSION_DEFINITIONS:
-		if _as_int(profession.get("id", -1)) == profession_id:
-			return profession
-	return PROFESSION_DEFINITIONS[0]
+	if professions_by_id.has(profession_id):
+		return professions_by_id[profession_id]
+	return PROFESSION_DEFINITIONS[0] if not PROFESSION_DEFINITIONS.is_empty() else {}
 
 
 func get_skill_by_id(skill_id: int) -> Dictionary:
@@ -342,11 +375,11 @@ func skill_name_for_id(skill_id: int) -> String:
 
 
 func get_perk_by_id(perk_id: String) -> Dictionary:
-	return _get_character_option_by_id(PERK_DEFINITIONS, perk_id)
+	return perks_by_id.get(perk_id, {})
 
 
 func get_flaw_by_id(flaw_id: String) -> Dictionary:
-	return _get_character_option_by_id(FLAW_DEFINITIONS, flaw_id)
+	return flaws_by_id.get(flaw_id, {})
 
 
 func get_free_skill_ids(character: Dictionary) -> Array:
@@ -1330,6 +1363,12 @@ func _normalize_selected_character_options(character: Dictionary, selected_key: 
 
 
 func _get_character_option_by_id(definitions: Array, option_id: String) -> Dictionary:
+	# Keep O(1) optimization if definitions happens to match the core constants
+	if is_same(definitions, PERK_DEFINITIONS):
+		return get_perk_by_id(option_id)
+	elif is_same(definitions, FLAW_DEFINITIONS):
+		return get_flaw_by_id(option_id)
+
 	for item in definitions:
 		if typeof(item) != TYPE_DICTIONARY:
 			continue
