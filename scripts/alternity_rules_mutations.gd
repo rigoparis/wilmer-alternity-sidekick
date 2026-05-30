@@ -596,9 +596,8 @@ func _mutation_advantage_distribution_options(points: int) -> Array:
 	var rows := []
 	for amazing in range(mini(1, int(floor(points / 4.0))), -1, -1):
 		for good in range(mini(2, int(floor((points - (4 * amazing)) / 2.0))), -1, -1):
-			for ordinary in range(mini(3, points - (4 * amazing) - (2 * good)), -1, -1):
-				if ordinary + (2 * good) + (4 * amazing) != points:
-					continue
+			var ordinary: int = points - (4 * amazing) - (2 * good)
+			if ordinary <= 3:
 				var counts := {
 					"Ordinary": ordinary,
 					"Good": good,
@@ -612,9 +611,8 @@ func _mutation_drawback_distribution_options(points: int) -> Array:
 	var rows := []
 	for moderate in range(mini(8, int(floor(points / 2.0))), -1, -1):
 		for extreme in range(mini(8, int(floor((points - (2 * moderate)) / 4.0))), -1, -1):
-			for slight in range(mini(8, points - (2 * moderate) - (4 * extreme)), -1, -1):
-				if slight + (2 * moderate) + (4 * extreme) != points:
-					continue
+			var slight: int = points - (2 * moderate) - (4 * extreme)
+			if slight <= 8:
 				var counts := {
 					"Slight": slight,
 					"Moderate": moderate,
