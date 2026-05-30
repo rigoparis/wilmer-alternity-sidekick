@@ -3411,7 +3411,6 @@ func _render_cybertech() -> void:
 	var cybertech_data = rules.cybertech._cybertech_data(character)
 	var enabled = rules.cybertech.cybertech_enabled(character)
 	var top_section = _add_section("Cybertech")
-
 	_add_text(top_section, "Cybertech allows characters to enhance their bodies with technology. Your Cyber Tolerance is equal to your Constitution score (Mechalus get +4). Installing items uses up your tolerance. Items that tap into your nervous system (like Reflex or Fast Chips) risk giving you Cykosis, a mental strain that reduces your Will-based checks by -1 per point of Cykosis.", 12, color_muted)
 
 	_add_large_checkbox(top_section, "Hero uses Cybertech", enabled, func(checked):
@@ -3419,7 +3418,6 @@ func _render_cybertech() -> void:
 		_save_character()
 		_render()
 	)
-
 	if not enabled:
 		return
 
@@ -3437,7 +3435,6 @@ func _render_cybertech() -> void:
 		rules.cybertech.set_cykosis_used(character, value)
 		_save_character()
 	)
-
 	_add_thin_separator(top_section)
 
 	var skill_purchased = rules.cybertech.is_cybertech_skill_purchased(character)
@@ -3446,7 +3443,6 @@ func _render_cybertech() -> void:
 		_save_character()
 		_render()
 	)
-
 	_add_thin_separator(top_section)
 
 	var catalog_section = _add_section("Cybertech Catalog")
@@ -3457,18 +3453,15 @@ func _render_cybertech() -> void:
 		var item: Dictionary = item_value
 		var row = VBoxContainer.new()
 		catalog_section.add_child(row)
-
 		var header_row = HBoxContainer.new()
 		row.add_child(header_row)
 		var title = _add_text(header_row, String(item.get("name", "")), 16, color_accent)
 		title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-
 		var installed = false
 		for inst in rules.cybertech.installed_cybertech(character):
 			if String(inst.get("item_id", "")) == String(item.get("id", "")):
 				installed = true
 				break
-
 		if installed:
 			var btn_remove = Button.new()
 			btn_remove.text = "Remove"
@@ -3491,7 +3484,6 @@ func _render_cybertech() -> void:
 							_render()
 					)
 					header_row.add_child(btn_add)
-
 		var info_str = "PL: %d  |  Mass: %s  |  Size: %s" % [
 			rules._as_int(item.get("pl", 6)),
 			str(item.get("mass", item.get("mass_ordinary", 0))),
@@ -3684,7 +3676,6 @@ func _render_summary() -> void:
 					_add_text(cybertech_box, desc, 12, color_muted)
 				if i < installed.size() - 1:
 					_add_thin_separator(cybertech_box)
-
 	var achievements_box := _add_section_to(right_parent, "Achievements")
 	var selected_achievements: Array = summary.get("selected_achievements", [])
 	if selected_achievements.is_empty():
@@ -4725,14 +4716,12 @@ func _add_ability_summary_cell(parent: GridContainer, text: String, header_cell:
 func _add_large_checkbox(parent: Container, label_text: String, is_checked: bool, changed: Callable) -> void:
 	var row := HBoxContainer.new()
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-
 	var label := Label.new()
 	label.text = label_text
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.add_theme_font_size_override("font_size", 14)
 	label.add_theme_color_override("font_color", color_text)
-
 	var button := Button.new()
 	button.toggle_mode = true
 	button.button_pressed = is_checked
@@ -4741,12 +4730,10 @@ func _add_large_checkbox(parent: Container, label_text: String, is_checked: bool
 	button.add_theme_stylebox_override("normal", _flat_style(color_surface, color_border, 4))
 	button.add_theme_stylebox_override("hover", _flat_style(color_surface_soft, color_border, 4))
 	button.add_theme_stylebox_override("pressed", _flat_style(color_accent, color_accent, 4))
-
 	button.toggled.connect(func(c):
 		button.text = "✔" if c else ""
 		changed.call(c)
 	)
-
 	row.add_child(label)
 	row.add_child(button)
 	parent.add_child(row)
