@@ -4980,6 +4980,8 @@ func _render_character_select() -> void:
 	welcome_label.text = "Character Selection"
 	welcome_label.add_theme_font_size_override("font_size", 20)
 	welcome_label.add_theme_color_override("font_color", color_accent)
+	welcome_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	welcome_label.custom_minimum_size = Vector2(1, 0)
 	banner_box.add_child(welcome_label)
 
 	var welcome_desc := Label.new()
@@ -4987,6 +4989,7 @@ func _render_character_select() -> void:
 	welcome_desc.add_theme_font_size_override("font_size", 13)
 	welcome_desc.add_theme_color_override("font_color", color_muted)
 	welcome_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	welcome_desc.custom_minimum_size = Vector2(1, 0)
 	banner_box.add_child(welcome_desc)
 
 	var actions_bar := HBoxContainer.new()
@@ -5013,6 +5016,8 @@ func _render_character_select() -> void:
 	list_header.text = "Saved Heroes" if not saved_heroes.is_empty() else ""
 	list_header.add_theme_font_size_override("font_size", 15)
 	list_header.add_theme_color_override("font_color", color_text)
+	list_header.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	list_header.custom_minimum_size = Vector2(1, 0)
 	main_box.add_child(list_header)
 
 	if saved_heroes.is_empty():
@@ -5031,6 +5036,8 @@ func _render_character_select() -> void:
 		empty_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		empty_label.add_theme_font_size_override("font_size", 14)
 		empty_label.add_theme_color_override("font_color", color_muted)
+		empty_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		empty_label.custom_minimum_size = Vector2(1, 0)
 		empty_margin.add_child(empty_label)
 		return
 
@@ -5062,6 +5069,8 @@ func _render_character_select() -> void:
 		name_label.text = hero["hero_name"]
 		name_label.add_theme_font_size_override("font_size", 17)
 		name_label.add_theme_color_override("font_color", color_text)
+		name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		name_label.custom_minimum_size = Vector2(1, 0)
 		card_box.add_child(name_label)
 
 		var species := rules.get_species_by_id(hero["species_id"])
@@ -5074,6 +5083,8 @@ func _render_character_select() -> void:
 		]
 		spec_label.add_theme_font_size_override("font_size", 12)
 		spec_label.add_theme_color_override("font_color", color_muted)
+		spec_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		spec_label.custom_minimum_size = Vector2(1, 0)
 		card_box.add_child(spec_label)
 
 		var time_str := Time.get_datetime_string_from_unix_time(hero["mod_time"], true)
@@ -5085,6 +5096,8 @@ func _render_character_select() -> void:
 		date_label.text = "Saved: " + time_str
 		date_label.add_theme_font_size_override("font_size", 11)
 		date_label.add_theme_color_override("font_color", color_muted)
+		date_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		date_label.custom_minimum_size = Vector2(1, 0)
 		card_box.add_child(date_label)
 
 		var btn_spacer := Control.new()
