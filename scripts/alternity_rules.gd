@@ -646,7 +646,7 @@ func character_resistance_modifier(character: Dictionary, ability: String) -> in
 	var skill_bonus := 0
 	if ability == "STR":
 		var max_melee_bonus := 0
-		for skill_id in [12, 13, 14, 16, 17]: # Blade, Bludgeon, Powered weapon, Brawl, Power Martial Arts
+		for skill_id in [12, 13, 14, 17]: # Blade, Bludgeon, Powered weapon, Power Martial Arts
 			var r := skill_rank(character, skill_id)
 			var b := 0
 			if r >= 12:
