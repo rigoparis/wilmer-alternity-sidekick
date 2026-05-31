@@ -355,7 +355,7 @@ func _update_header_layout(compact: bool) -> void:
 		header.add_theme_constant_override("separation", 6)
 		shell.add_child(header)
 		shell.move_child(header, index)
-		_reparent_header_children()
+		_reparent_header_children(compact)
 	elif not compact and header is VBoxContainer:
 		var index := shell.get_children().find(header)
 		shell.remove_child(header)
@@ -365,7 +365,7 @@ func _update_header_layout(compact: bool) -> void:
 		header.add_theme_constant_override("separation", 10)
 		shell.add_child(header)
 		shell.move_child(header, index)
-		_reparent_header_children()
+		_reparent_header_children(compact)
 
 	title_label.add_theme_font_size_override("font_size", 22 if compact else 24)
 	status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT if compact else HORIZONTAL_ALIGNMENT_RIGHT
@@ -383,12 +383,32 @@ func _update_header_layout(compact: bool) -> void:
 		close_char_button.custom_minimum_size = Vector2(0 if compact else 120, 38 if compact else 36)
 
 
-func _reparent_header_children() -> void:
-	for node in [title_label, status_label, theme_btn, optional_rules_button, share_char_button, close_char_button]:
+func _reparent_header_children(compact: bool = false) -> void:
+	var title_nodes = [title_label, status_label]
+	for node in title_nodes:
 		if node != null:
 			if node.get_parent() != null:
 				node.get_parent().remove_child(node)
 			header.add_child(node)
+	var button_nodes = [theme_btn, optional_rules_button, share_char_button, close_char_button]
+	var button_parent = header
+	if compact:
+		var grid = GridContainer.new()
+		grid.columns = 2
+		grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		grid.add_theme_constant_override("h_separation", 10)
+		grid.add_theme_constant_override("v_separation", 6)
+		header.add_child(grid)
+		button_parent = grid
+	for node in button_nodes:
+		if node != null:
+			if node.get_parent() != null:
+				node.get_parent().remove_child(node)
+			if compact:
+				node.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			else:
+				node.size_flags_horizontal = Control.SIZE_SHRINK_END
+			button_parent.add_child(node)
 
 
 func _build_theme_overlay() -> void:
