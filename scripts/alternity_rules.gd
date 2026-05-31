@@ -610,10 +610,67 @@ func character_resistance_modifier(character: Dictionary, ability: String) -> in
 	if abilities.has(ability):
 		score = _as_int(abilities[ability])
 	var rm = resistance_modifier(score)
+	
 	# Free Agent RM Bonus (+1 to one modifier chosen by the player)
 	if _as_int(character.get("profession_id", 0)) == 4: # Free Agent primary
 		if String(character.get("free_agent_rm_bonus", "")) == ability:
 			rm += 1
+			
+	# Perk Adjustments
+	if ability == "STR" and is_perk_selected(character, "tough_as_nails"):
+		rm += 1
+	elif ability == "DEX" and is_perk_selected(character, "reflexes"):
+		rm += 1
+	elif ability == "WIL" and is_perk_selected(character, "willpower"):
+		rm += 1
+		
+	# Flaw Adjustments
+	if ability == "WIL" and is_flaw_selected(character, "spineless"):
+		var val = _as_int(character.get("selected_flaws", {}).get("spineless", 0))
+		rm -= int(val / 2.0)
+		
+	# Skill Rank Benefits
+	var skill_bonus := 0
+	if ability == "STR":
+		var max_melee_bonus := 0
+		for skill_id in [12, 13, 14, 16, 17]: # Blade, Bludgeon, Powered weapon, Brawl, Power Martial Arts
+			var r := skill_rank(character, skill_id)
+			var b := 0
+			if r >= 12:
+				b = 3
+			elif r >= 8:
+				b = 2
+			elif r >= 4:
+				b = 1
+			if b > max_melee_bonus:
+				max_melee_bonus = b
+		skill_bonus += max_melee_bonus
+	elif ability == "DEX":
+		var r := skill_rank(character, 21) # Dodge
+		if r >= 12:
+			skill_bonus += 3
+		elif r >= 8:
+			skill_bonus += 2
+		elif r >= 4:
+			skill_bonus += 1
+	elif ability == "INT":
+		var r := skill_rank(character, 71) # Deduction
+		if r >= 12:
+			skill_bonus += 3
+		elif r >= 8:
+			skill_bonus += 2
+		elif r >= 4:
+			skill_bonus += 1
+	elif ability == "WIL":
+		var r := skill_rank(character, 135) # Resolve
+		if r >= 12:
+			skill_bonus += 3
+		elif r >= 8:
+			skill_bonus += 2
+		elif r >= 4:
+			skill_bonus += 1
+			
+	rm += skill_bonus
 	return rm
 
 
