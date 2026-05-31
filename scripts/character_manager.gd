@@ -90,7 +90,26 @@ func share_character() -> void:
 	if character.is_empty(): return
 	var payload := character.duplicate(true)
 	if rules: payload["summary"] = rules.summary(character)
-	var json_str := JSON.stringify(payload)
-	var encoded := Marshalls.utf8_to_base64(json_str)
-	var url := "https://wilmer-alternity-sidekick.vercel.app/?data=" + encoded
-	OS.shell_open(url)
+	var json_str := JSON.stringify(payload, "	")
+
+	if DisplayServer.has_feature(DisplayServer.FEATURE_NATIVE_DIALOG):
+		var safe_name := safe_filename(String(character.get("hero_name", "hero")))
+		if safe_name.is_empty(): safe_name = "hero"
+		var filename := safe_name + ".json"
+		var callback = func(status: bool, paths: PackedStringArray, filter_index: int):
+			if status and paths.size() > 0:
+				var path = paths[0]
+				var file = FileAccess.open(path, FileAccess.WRITE)
+				if file != null:
+					file.store_string(json_str)
+		DisplayServer.file_dialog_show("Save Character", "", filename, false, DisplayServer.FILE_DIALOG_MODE_SAVE_FILE, ["*.json"], callback)
+	else:
+		var safe_name := safe_filename(String(character.get("hero_name", "hero")))
+		if safe_name.is_empty(): safe_name = "hero"
+		var filename := "shared_" + safe_name + ".json"
+		var downloads_dir: String = OS.get_system_dir(OS.SYSTEM_DIR_DOWNLOADS)
+		var path: String = downloads_dir + "/" + filename
+		var file := FileAccess.open(path, FileAccess.WRITE)
+		if file != null:
+			file.store_string(json_str)
+			OS.shell_open(ProjectSettings.globalize_path(path))
