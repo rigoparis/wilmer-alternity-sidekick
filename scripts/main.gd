@@ -15,6 +15,7 @@ var fx_filter_text := ""
 var active_character_file := ""
 var deleting_files: Dictionary = {}
 var close_char_button: Button
+var share_char_button: Button
 var background_rect: ColorRect
 
 
@@ -203,6 +204,13 @@ func _build_shell() -> void:
 	optional_rules_button.pressed.connect(_show_optional_rules)
 	header.add_child(optional_rules_button)
 
+	share_char_button = Button.new()
+	share_char_button.text = "Share Character"
+	share_char_button.custom_minimum_size = Vector2(120, 36)
+	share_char_button.add_theme_font_size_override("font_size", 12)
+	share_char_button.pressed.connect(_share_character)
+	header.add_child(share_char_button)
+
 	close_char_button = Button.new()
 	close_char_button.text = "Close Character"
 	close_char_button.custom_minimum_size = Vector2(120, 36)
@@ -337,13 +345,16 @@ func _update_header_layout(compact: bool) -> void:
 	if theme_btn != null:
 		theme_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL if compact else Control.SIZE_SHRINK_END
 		theme_btn.custom_minimum_size = Vector2(0 if compact else 118, 38 if compact else 36)
+	if share_char_button != null:
+		share_char_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL if compact else Control.SIZE_SHRINK_END
+		share_char_button.custom_minimum_size = Vector2(0 if compact else 120, 38 if compact else 36)
 	if close_char_button != null:
 		close_char_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL if compact else Control.SIZE_SHRINK_END
 		close_char_button.custom_minimum_size = Vector2(0 if compact else 120, 38 if compact else 36)
 
 
 func _reparent_header_children() -> void:
-	for node in [title_label, status_label, theme_btn, optional_rules_button, close_char_button]:
+	for node in [title_label, status_label, theme_btn, optional_rules_button, share_char_button, close_char_button]:
 		if node != null:
 			if node.get_parent() != null:
 				node.get_parent().remove_child(node)
@@ -1165,6 +1176,8 @@ func _render() -> void:
 		_clear_tab_cache()
 		if tabs != null and tabs.get_parent() != null:
 			tabs.get_parent().visible = false
+		if share_char_button != null:
+			share_char_button.visible = false
 		if close_char_button != null:
 			close_char_button.visible = false
 		_set_sticky_skills_layout(false)
@@ -1184,6 +1197,8 @@ func _render() -> void:
 	# State 2: Character Sheet Editor (active character loaded)
 	if tabs != null and tabs.get_parent() != null:
 		tabs.get_parent().visible = true
+	if share_char_button != null:
+		share_char_button.visible = true
 	if close_char_button != null:
 		close_char_button.visible = true
 
@@ -1788,6 +1803,8 @@ func _add_selected_perk_row(parent: VBoxContainer, perk: Dictionary, add_separat
 	_add_text(title_box, String(perk.get("name", "Perk")), 15, color_text)
 	if bool(perk.get("granted_by_achievement", false)):
 		_add_text(title_box, "Granted by achievement", 12, color_accent)
+	elif bool(perk.get("gm_given", false)):
+		_add_text(title_box, "0 SP (Given by GM)", 12, color_accent)
 	else:
 		_add_text(title_box, "%d SP" % rules._as_int(perk.get("cost", 0)), 12, color_muted)
 
@@ -1800,6 +1817,16 @@ func _add_selected_perk_row(parent: VBoxContainer, perk: Dictionary, add_separat
 			_render()
 		)
 		top_row.add_child(remove)
+
+	if not bool(perk.get("granted_by_achievement", false)):
+		var gm_checkbox := CheckBox.new()
+		gm_checkbox.text = "Given by GM"
+		gm_checkbox.button_pressed = bool(perk.get("gm_given", false))
+		gm_checkbox.toggled.connect(func(pressed):
+			rules.set_perk_gm_given(character, String(perk.get("id", "")), pressed)
+			_render()
+		)
+		row_box.add_child(gm_checkbox)
 
 	_add_text(row_box, String(perk.get("summary", "")), 13, color_text)
 	_add_text(row_box, "Source: %s" % String(perk.get("source", "")), 11, color_muted)
@@ -1827,7 +1854,10 @@ func _add_selected_flaw_row(parent: VBoxContainer, flaw: Dictionary, add_separat
 	top_row.add_child(title_box)
 
 	_add_text(title_box, String(flaw.get("name", "Flaw")), 15, color_text)
-	_add_text(title_box, "+%d SP" % rules._as_int(flaw.get("bonus", 0)), 12, color_muted)
+	if bool(flaw.get("gm_given", false)):
+		_add_text(title_box, "+0 SP (Given by GM)", 12, color_accent)
+	else:
+		_add_text(title_box, "+%d SP" % rules._as_int(flaw.get("bonus", 0)), 12, color_muted)
 
 	var remove := Button.new()
 	remove.text = "Remove"
@@ -1837,6 +1867,15 @@ func _add_selected_flaw_row(parent: VBoxContainer, flaw: Dictionary, add_separat
 		_render()
 	)
 	top_row.add_child(remove)
+
+	var gm_checkbox := CheckBox.new()
+	gm_checkbox.text = "Given by GM"
+	gm_checkbox.button_pressed = bool(flaw.get("gm_given", false))
+	gm_checkbox.toggled.connect(func(pressed):
+		rules.set_flaw_gm_given(character, String(flaw.get("id", "")), pressed)
+		_render()
+	)
+	row_box.add_child(gm_checkbox)
 
 	_add_text(row_box, String(flaw.get("summary", "")), 13, color_text)
 	_add_text(row_box, "Source: %s" % String(flaw.get("source", "")), 11, color_muted)
@@ -1911,6 +1950,8 @@ func _refresh_perk_flaw_catalog_panel() -> void:
 
 func _add_perk_catalog_rows(parent: VBoxContainer, filter: String) -> int:
 	var shown := 0
+	var non_gm_count := rules.non_gm_perk_count(character)
+	var over_limit := non_gm_count >= 3
 	for perk in AlternityRules.PERK_DEFINITIONS:
 		var option: Dictionary = perk
 		if not _character_option_matches_filter(option, filter):
@@ -1921,10 +1962,7 @@ func _add_perk_catalog_rows(parent: VBoxContainer, filter: String) -> int:
 			_add_granted_perk_row(parent, option)
 			continue
 		var selected_value := rules.perk_cost_selected(character, perk_id)
-		var can_select_new := selected_value > 0 or rules.selected_perk_count(character) < 3
 		var change_perk := func(value):
-			if value > 0 and selected_value <= 0 and rules.selected_perk_count(character) >= 3:
-				return
 			rules.set_perk_selected(character, perk_id, value)
 			_render()
 			_refresh_perk_flaw_catalog_panel()
@@ -1937,8 +1975,8 @@ func _add_perk_catalog_rows(parent: VBoxContainer, filter: String) -> int:
 				"button_format": "Buy %d SP",
 				"selected_format": "Selected %d SP",
 				"changed": change_perk,
-				"can_select_new": can_select_new,
-				"disabled_reason": "The hero already has three perks." if not can_select_new else ""
+				"can_select_new": true,
+				"warning": "Warning: You already have 3 or more standard perks." if over_limit and selected_value <= 0 else ""
 			}
 		)
 	return shown
@@ -1946,6 +1984,8 @@ func _add_perk_catalog_rows(parent: VBoxContainer, filter: String) -> int:
 
 func _add_flaw_catalog_rows(parent: VBoxContainer, filter: String) -> int:
 	var shown := 0
+	var non_gm_count := rules.non_gm_flaw_count(character)
+	var over_limit := non_gm_count >= 3
 	for flaw in AlternityRules.FLAW_DEFINITIONS:
 		var option: Dictionary = flaw
 		if not _character_option_matches_filter(option, filter):
@@ -1953,10 +1993,7 @@ func _add_flaw_catalog_rows(parent: VBoxContainer, filter: String) -> int:
 		shown += 1
 		var flaw_id := String(option.get("id", ""))
 		var selected_value := rules.flaw_bonus_selected(character, flaw_id)
-		var can_select_new := selected_value > 0 or rules.selected_flaw_count(character) < 3
 		var change_flaw := func(value):
-			if value > 0 and selected_value <= 0 and rules.selected_flaw_count(character) >= 3:
-				return
 			rules.set_flaw_selected(character, flaw_id, value)
 			_render()
 			_refresh_perk_flaw_catalog_panel()
@@ -1969,8 +2006,8 @@ func _add_flaw_catalog_rows(parent: VBoxContainer, filter: String) -> int:
 				"button_format": "Take +%d SP",
 				"selected_format": "Selected +%d SP",
 				"changed": change_flaw,
-				"can_select_new": can_select_new,
-				"disabled_reason": "The hero already has three flaws." if not can_select_new else ""
+				"can_select_new": true,
+				"warning": "Warning: You already have 3 or more standard flaws." if over_limit and selected_value <= 0 else ""
 			}
 		)
 	return shown
@@ -1996,6 +2033,7 @@ func _add_character_option_row(parent: VBoxContainer, option: Dictionary, select
 	var changed: Callable = config.get("changed", Callable())
 	var can_select_new: bool = config.get("can_select_new", true)
 	var disabled_reason: String = config.get("disabled_reason", "")
+	var warning_msg: String = config.get("warning", "")
 
 	var row_box := VBoxContainer.new()
 	row_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -2048,6 +2086,8 @@ func _add_character_option_row(parent: VBoxContainer, option: Dictionary, select
 		button.text = (selected_format % value_int) if selected_value == value_int else (button_format % value_int)
 		var selecting_new := selected_value <= 0 and value_int > 0
 		button.disabled = selected_value == value_int or (selecting_new and not can_select_new)
+		if button.disabled:
+			button.add_theme_color_override("font_disabled_color", Color(color_text.r, color_text.g, color_text.b, 0.6))
 		if selecting_new and not can_select_new:
 			button.tooltip_text = disabled_reason
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -2065,6 +2105,8 @@ func _add_character_option_row(parent: VBoxContainer, option: Dictionary, select
 
 	if not can_select_new and selected_value <= 0 and not String(disabled_reason).is_empty():
 		_add_text(row_box, String(disabled_reason), 12, color_warning)
+	elif not String(warning_msg).is_empty():
+		_add_text(row_box, String(warning_msg), 12, color_warning)
 
 	_add_text(row_box, String(option.get("summary", "")), 13, color_text)
 	_add_text(row_box, "Source: %s" % String(option.get("source", "")), 11, color_muted)
@@ -3115,7 +3157,41 @@ func _add_equipment_item_editor(parent: VBoxContainer, item: Dictionary) -> void
 		kind.add_item(kinds[index].capitalize(), index)
 		if String(item.get("kind", "equipment")) == kinds[index]:
 			kind.select(index)
-	kind.item_selected.connect(func(index): item["kind"] = kinds[index])
+	kind.item_selected.connect(func(index):
+		var new_kind = kinds[index]
+		item["kind"] = new_kind
+		if new_kind == "weapon":
+			if typeof(item.get("combat")) != TYPE_DICTIONARY:
+				item["combat"] = {
+					"skill": "",
+					"accuracy": 0,
+					"mode": "",
+					"range": "",
+					"damage": "",
+					"damage_type": "",
+					"actions": 1,
+					"clip_size": "",
+					"clip_cost": 0,
+					"hide": 0,
+					"strength_based": false,
+					"melee": false,
+					"thrown": false,
+					"type": ""
+				}
+		elif new_kind == "armor":
+			if typeof(item.get("combat")) != TYPE_DICTIONARY:
+				item["combat"] = {
+					"skill": "",
+					"action_penalty": 0,
+					"toughness": "",
+					"li": "",
+					"hi": "",
+					"en": ""
+				}
+		else:
+			item.erase("combat")
+		_refresh_equipment_form_panel()
+	)
 	_add_form_cell(form_parent, "Kind", kind)
 
 	_add_form_line_edit(form_parent, "Category", String(item.get("category", "")), func(value): item["category"] = value)
@@ -3128,6 +3204,79 @@ func _add_equipment_item_editor(parent: VBoxContainer, item: Dictionary) -> void
 		item["source"] = value
 		item["source_code"] = value.to_lower().replace(" ", "_")
 	)
+
+	if String(item.get("kind", "equipment")) == "weapon":
+		var combat: Dictionary = item.get("combat", {})
+		if combat.is_empty():
+			combat = {
+				"skill": "",
+				"accuracy": 0,
+				"mode": "",
+				"range": "",
+				"damage": "",
+				"damage_type": "",
+				"actions": 1,
+				"clip_size": "",
+				"clip_cost": 0,
+				"hide": 0,
+				"strength_based": false,
+				"melee": false,
+				"thrown": false,
+				"type": ""
+			}
+			item["combat"] = combat
+
+		_add_form_line_edit(form_parent, "Damage Formula", String(combat.get("damage", "")), func(value):
+			combat["damage"] = value
+			item["combat"] = combat
+		)
+		_add_form_line_edit(form_parent, "Damage Type", String(combat.get("damage_type", combat.get("type", ""))), func(value):
+			combat["damage_type"] = value
+			combat["type"] = value
+			item["combat"] = combat
+		)
+		_add_form_line_edit(form_parent, "Weapon Skill", String(combat.get("skill", "")), func(value):
+			combat["skill"] = value
+			item["combat"] = combat
+		)
+		_add_form_line_edit(form_parent, "Range", String(combat.get("range", "")), func(value):
+			combat["range"] = value
+			item["combat"] = combat
+		)
+		_add_form_line_edit(form_parent, "Mode", String(combat.get("mode", "")), func(value):
+			combat["mode"] = value
+			item["combat"] = combat
+		)
+
+	elif String(item.get("kind", "equipment")) == "armor":
+		var combat: Dictionary = item.get("combat", {})
+		if combat.is_empty():
+			combat = {
+				"skill": "",
+				"action_penalty": 0,
+				"toughness": "",
+				"li": "",
+				"hi": "",
+				"en": ""
+			}
+			item["combat"] = combat
+
+		_add_form_line_edit(form_parent, "LI Protection", String(combat.get("li", "")), func(value):
+			combat["li"] = value
+			item["combat"] = combat
+		)
+		_add_form_line_edit(form_parent, "HI Protection", String(combat.get("hi", "")), func(value):
+			combat["hi"] = value
+			item["combat"] = combat
+		)
+		_add_form_line_edit(form_parent, "En Protection", String(combat.get("en", "")), func(value):
+			combat["en"] = value
+			item["combat"] = combat
+		)
+		_add_form_line_edit(form_parent, "Toughness", String(combat.get("toughness", "")), func(value):
+			combat["toughness"] = value
+			item["combat"] = combat
+		)
 
 
 func _save_equipment_form() -> void:
@@ -3658,7 +3807,9 @@ func _refresh_skill_rows(list: VBoxContainer, is_psionics := false) -> void:
 func _add_skill_row(parent: VBoxContainer, skill: Dictionary, indented: bool) -> void:
 	var skill_id := rules._as_int(skill.get("id", -1))
 	var selected := rules.is_skill_selected(character, skill_id)
-	var free := rules.is_free_species_skill(character, skill_id)
+	var normally_free := rules.is_normally_free_species_skill(character, skill_id)
+	var currently_free := rules.is_free_species_skill(character, skill_id)
+	var free := currently_free
 	var free_rank := rules.free_species_skill_rank(character, skill_id)
 	var rank := rules.skill_rank(character, skill_id)
 	var is_specialty: bool = skill.get("type", "") == "specialty"
@@ -3681,7 +3832,7 @@ func _add_skill_row(parent: VBoxContainer, skill: Dictionary, indented: bool) ->
 
 	var check := CheckBox.new()
 	check.button_pressed = selected
-	check.disabled = free or is_specialty
+	check.disabled = is_specialty
 	check.custom_minimum_size = Vector2(38, 38)
 	top_row.add_child(check)
 
@@ -3701,7 +3852,12 @@ func _add_skill_row(parent: VBoxContainer, skill: Dictionary, indented: bool) ->
 	top_row.add_child(info)
 
 	var cost := Label.new()
-	if free and rank > free_rank:
+	if normally_free:
+		if currently_free:
+			cost.text = "Free"
+		else:
+			cost.text = "+3 SP (Sold)"
+	elif free and rank > free_rank:
 		cost.text = "Free + %d" % rules.skill_rank_total_cost(character, skill)
 	elif free:
 		cost.text = "Free"
@@ -3718,9 +3874,23 @@ func _add_skill_row(parent: VBoxContainer, skill: Dictionary, indented: bool) ->
 	cost.add_theme_font_size_override("font_size", 13)
 	top_row.add_child(cost)
 
-	if not free and not is_specialty:
+	if not is_specialty:
 		check.toggled.connect(func(pressed):
-			rules.set_skill_selected(character, skill_id, pressed)
+			if normally_free:
+				var sold_list: Array = character.get("sold_species_skills", [])
+				if pressed:
+					if sold_list.has(skill_id):
+						sold_list.erase(skill_id)
+				else:
+					if not sold_list.has(skill_id):
+						sold_list.append(skill_id)
+					var selected_skills: Dictionary = character.get("selected_skills", {})
+					for specialty in rules.specialty_skills_by_broad_id.get(skill_id, []):
+						selected_skills.erase(str(rules._as_int(specialty.get("id", -1))))
+					character["selected_skills"] = selected_skills
+				character["sold_species_skills"] = sold_list
+			else:
+				rules.set_skill_selected(character, skill_id, pressed)
 			_render()
 		)
 
@@ -4874,6 +5044,39 @@ func _save_character() -> void:
 	file.store_string(JSON.stringify(payload, "\t"))
 	if is_instance_valid(save_status_label):
 		save_status_label.text = ProjectSettings.globalize_path(path)
+		save_status_label.add_theme_color_override("font_color", color_accent)
+
+
+func _share_character() -> void:
+	if character.is_empty():
+		return
+		
+	var payload := character.duplicate(true)
+	payload["summary"] = rules.summary(character)
+	var json_text := JSON.stringify(payload, "\t")
+	
+	if OS.get_name() == "Android":
+		var activity = null
+		if Engine.has_singleton("AndroidRuntime"):
+			activity = Engine.get_singleton("AndroidRuntime").getActivity()
+		elif Engine.has_singleton("GodotAndroid"):
+			activity = Engine.get_singleton("GodotAndroid").get_activity()
+			
+		if activity != null:
+			var Intent = JavaClassWrapper.wrap("android.content.Intent")
+			var intent = Intent.Intent()
+			intent.setAction(Intent.ACTION_SEND)
+			intent.putExtra(Intent.EXTRA_TEXT, json_text)
+			intent.setType("text/plain")
+			
+			var chooser = Intent.createChooser(intent, "Share Character JSON")
+			activity.startActivity(chooser)
+			return
+			
+	# Fallback (Clipboard copy for Windows/other platforms)
+	DisplayServer.clipboard_set(json_text)
+	if is_instance_valid(save_status_label):
+		save_status_label.text = "Character JSON copied to clipboard!"
 		save_status_label.add_theme_color_override("font_color", color_accent)
 
 
