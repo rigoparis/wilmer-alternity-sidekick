@@ -3115,7 +3115,41 @@ func _add_equipment_item_editor(parent: VBoxContainer, item: Dictionary) -> void
 		kind.add_item(kinds[index].capitalize(), index)
 		if String(item.get("kind", "equipment")) == kinds[index]:
 			kind.select(index)
-	kind.item_selected.connect(func(index): item["kind"] = kinds[index])
+	kind.item_selected.connect(func(index):
+		var new_kind = kinds[index]
+		item["kind"] = new_kind
+		if new_kind == "weapon":
+			if typeof(item.get("combat")) != TYPE_DICTIONARY:
+				item["combat"] = {
+					"skill": "",
+					"accuracy": 0,
+					"mode": "",
+					"range": "",
+					"damage": "",
+					"damage_type": "",
+					"actions": 1,
+					"clip_size": "",
+					"clip_cost": 0,
+					"hide": 0,
+					"strength_based": false,
+					"melee": false,
+					"thrown": false,
+					"type": ""
+				}
+		elif new_kind == "armor":
+			if typeof(item.get("combat")) != TYPE_DICTIONARY:
+				item["combat"] = {
+					"skill": "",
+					"action_penalty": 0,
+					"toughness": "",
+					"li": "",
+					"hi": "",
+					"en": ""
+				}
+		else:
+			item.erase("combat")
+		_refresh_equipment_form_panel()
+	)
 	_add_form_cell(form_parent, "Kind", kind)
 
 	_add_form_line_edit(form_parent, "Category", String(item.get("category", "")), func(value): item["category"] = value)
@@ -3128,6 +3162,79 @@ func _add_equipment_item_editor(parent: VBoxContainer, item: Dictionary) -> void
 		item["source"] = value
 		item["source_code"] = value.to_lower().replace(" ", "_")
 	)
+
+	if String(item.get("kind", "equipment")) == "weapon":
+		var combat: Dictionary = item.get("combat", {})
+		if combat.is_empty():
+			combat = {
+				"skill": "",
+				"accuracy": 0,
+				"mode": "",
+				"range": "",
+				"damage": "",
+				"damage_type": "",
+				"actions": 1,
+				"clip_size": "",
+				"clip_cost": 0,
+				"hide": 0,
+				"strength_based": false,
+				"melee": false,
+				"thrown": false,
+				"type": ""
+			}
+			item["combat"] = combat
+
+		_add_form_line_edit(form_parent, "Damage Formula", String(combat.get("damage", "")), func(value):
+			combat["damage"] = value
+			item["combat"] = combat
+		)
+		_add_form_line_edit(form_parent, "Damage Type", String(combat.get("damage_type", combat.get("type", ""))), func(value):
+			combat["damage_type"] = value
+			combat["type"] = value
+			item["combat"] = combat
+		)
+		_add_form_line_edit(form_parent, "Weapon Skill", String(combat.get("skill", "")), func(value):
+			combat["skill"] = value
+			item["combat"] = combat
+		)
+		_add_form_line_edit(form_parent, "Range", String(combat.get("range", "")), func(value):
+			combat["range"] = value
+			item["combat"] = combat
+		)
+		_add_form_line_edit(form_parent, "Mode", String(combat.get("mode", "")), func(value):
+			combat["mode"] = value
+			item["combat"] = combat
+		)
+
+	elif String(item.get("kind", "equipment")) == "armor":
+		var combat: Dictionary = item.get("combat", {})
+		if combat.is_empty():
+			combat = {
+				"skill": "",
+				"action_penalty": 0,
+				"toughness": "",
+				"li": "",
+				"hi": "",
+				"en": ""
+			}
+			item["combat"] = combat
+
+		_add_form_line_edit(form_parent, "LI Protection", String(combat.get("li", "")), func(value):
+			combat["li"] = value
+			item["combat"] = combat
+		)
+		_add_form_line_edit(form_parent, "HI Protection", String(combat.get("hi", "")), func(value):
+			combat["hi"] = value
+			item["combat"] = combat
+		)
+		_add_form_line_edit(form_parent, "En Protection", String(combat.get("en", "")), func(value):
+			combat["en"] = value
+			item["combat"] = combat
+		)
+		_add_form_line_edit(form_parent, "Toughness", String(combat.get("toughness", "")), func(value):
+			combat["toughness"] = value
+			item["combat"] = combat
+		)
 
 
 func _save_equipment_form() -> void:
@@ -3658,7 +3765,9 @@ func _refresh_skill_rows(list: VBoxContainer, is_psionics := false) -> void:
 func _add_skill_row(parent: VBoxContainer, skill: Dictionary, indented: bool) -> void:
 	var skill_id := rules._as_int(skill.get("id", -1))
 	var selected := rules.is_skill_selected(character, skill_id)
-	var free := rules.is_free_species_skill(character, skill_id)
+	var normally_free := rules.is_normally_free_species_skill(character, skill_id)
+	var currently_free := rules.is_free_species_skill(character, skill_id)
+	var free := currently_free
 	var free_rank := rules.free_species_skill_rank(character, skill_id)
 	var rank := rules.skill_rank(character, skill_id)
 	var is_specialty: bool = skill.get("type", "") == "specialty"
@@ -3681,7 +3790,7 @@ func _add_skill_row(parent: VBoxContainer, skill: Dictionary, indented: bool) ->
 
 	var check := CheckBox.new()
 	check.button_pressed = selected
-	check.disabled = free or is_specialty
+	check.disabled = is_specialty
 	check.custom_minimum_size = Vector2(38, 38)
 	top_row.add_child(check)
 
@@ -3701,7 +3810,12 @@ func _add_skill_row(parent: VBoxContainer, skill: Dictionary, indented: bool) ->
 	top_row.add_child(info)
 
 	var cost := Label.new()
-	if free and rank > free_rank:
+	if normally_free:
+		if currently_free:
+			cost.text = "Free"
+		else:
+			cost.text = "+3 SP (Sold)"
+	elif free and rank > free_rank:
 		cost.text = "Free + %d" % rules.skill_rank_total_cost(character, skill)
 	elif free:
 		cost.text = "Free"
@@ -3718,9 +3832,23 @@ func _add_skill_row(parent: VBoxContainer, skill: Dictionary, indented: bool) ->
 	cost.add_theme_font_size_override("font_size", 13)
 	top_row.add_child(cost)
 
-	if not free and not is_specialty:
+	if not is_specialty:
 		check.toggled.connect(func(pressed):
-			rules.set_skill_selected(character, skill_id, pressed)
+			if normally_free:
+				var sold_list: Array = character.get("sold_species_skills", [])
+				if pressed:
+					if sold_list.has(skill_id):
+						sold_list.erase(skill_id)
+				else:
+					if not sold_list.has(skill_id):
+						sold_list.append(skill_id)
+					var selected_skills: Dictionary = character.get("selected_skills", {})
+					for specialty in rules.specialty_skills_by_broad_id.get(skill_id, []):
+						selected_skills.erase(str(rules._as_int(specialty.get("id", -1))))
+					character["selected_skills"] = selected_skills
+				character["sold_species_skills"] = sold_list
+			else:
+				rules.set_skill_selected(character, skill_id, pressed)
 			_render()
 		)
 

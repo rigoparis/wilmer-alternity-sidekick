@@ -475,11 +475,24 @@ func free_species_skill_rank(character: Dictionary, skill_id: int) -> int:
 	var skill := get_skill_by_id(skill_id)
 	if skill.is_empty():
 		return 0
+	if character.get("sold_species_skills", []).has(skill_id):
+		return 0
 	if skill.get("type", "") == "broad" and get_free_skill_ids(character).has(skill_id):
 		return 1
 	if skill.get("type", "") == "specialty" and get_free_specialty_skill_ids(character).has(skill_id):
 		return 1
 	return 0
+
+
+func is_normally_free_species_skill(character: Dictionary, skill_id: int) -> bool:
+	var skill := get_skill_by_id(skill_id)
+	if skill.is_empty():
+		return false
+	if skill.get("type", "") == "broad" and get_free_skill_ids(character).has(skill_id):
+		return true
+	if skill.get("type", "") == "specialty" and get_free_specialty_skill_ids(character).has(skill_id):
+		return true
+	return false
 
 
 func species_rule_notes(character: Dictionary) -> Array:
@@ -791,10 +804,21 @@ func starting_skill_budget(character: Dictionary) -> int:
 	var abilities := effective_abilities(character)
 	var current_species := get_species_by_id(_as_int(character.get("species_id", 0)))
 	var flaw_bonus := flaw_skill_points_bonus(character)
+	
+	# Sold species broad skills bonus (+3 SP per sold skill)
+	var sold_bonus := 0
+	var sold_list: Array = character.get("sold_species_skills", [])
+	for skill_id in get_free_skill_ids(character):
+		if sold_list.has(skill_id):
+			sold_bonus += 3
+			
+	var base := 0
 	if optional_rule_enabled(character, "2a"):
 		var human_bonus := _as_int(current_species.get("skill_points", 0)) if String(current_species.get("name", "")) == "Human" else 0
-		return 30 + (3 * _as_int(abilities.get("INT", 10))) + human_bonus + flaw_bonus
-	return _as_int(data.get("base_skill_points", 50)) + _as_int(abilities.get("INT", 10)) + _as_int(current_species.get("skill_points", 0)) + flaw_bonus
+		base = 30 + (3 * _as_int(abilities.get("INT", 10))) + human_bonus + flaw_bonus
+	else:
+		base = _as_int(data.get("base_skill_points", 50)) + _as_int(abilities.get("INT", 10)) + _as_int(current_species.get("skill_points", 0)) + flaw_bonus
+	return base + sold_bonus
 
 
 func skill_budget(character: Dictionary) -> int:
@@ -930,7 +954,12 @@ func set_skill_rank(character: Dictionary, skill_id: int, rank: int) -> void:
 		selected_skills[str(skill_id)] = 1 if skill.get("type", "") == "broad" else clampi(rank, 1, MAX_SPECIALTY_RANK)
 		if skill.get("type", "") == "specialty":
 			var broad_id := _as_int(skill.get("broad_id", -1))
-			if not is_free_species_skill(character, broad_id):
+			if is_normally_free_species_skill(character, broad_id):
+				var sold_list: Array = character.get("sold_species_skills", [])
+				if sold_list.has(broad_id):
+					sold_list.erase(broad_id)
+					character["sold_species_skills"] = sold_list
+			elif not is_free_species_skill(character, broad_id):
 				selected_skills[str(broad_id)] = 1
 	else:
 		selected_skills.erase(str(skill_id))
@@ -1053,9 +1082,11 @@ func additional_broad_skills_used(character: Dictionary) -> int:
 
 func selected_skill_ids(character: Dictionary) -> Array:
 	var ids := []
+	var sold: Array = character.get("sold_species_skills", [])
 	for skill_id in get_free_skill_ids(character):
-		if not ids.has(skill_id):
-			ids.append(skill_id)
+		if not sold.has(skill_id) or skill_rank(character, skill_id) > 0:
+			if not ids.has(skill_id):
+				ids.append(skill_id)
 	for skill_id in get_free_specialty_skill_ids(character):
 		if not ids.has(skill_id):
 			ids.append(skill_id)
@@ -1064,7 +1095,8 @@ func selected_skill_ids(character: Dictionary) -> Array:
 	for key in selected.keys():
 		var id := _as_int(key)
 		if not ids.has(id):
-			ids.append(id)
+			if skill_rank(character, id) > 0:
+				ids.append(id)
 
 	ids.sort()
 	return ids
