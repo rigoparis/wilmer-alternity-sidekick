@@ -1022,14 +1022,16 @@ func selected_flaws(character: Dictionary) -> Array:
 func perk_points_used(character: Dictionary) -> int:
 	var total := 0
 	for perk in _selected_character_options(character, "selected_perks", PERK_DEFINITIONS, "cost"):
-		total += _as_int(perk.get("cost", 0))
+		if not perk.get("gm_given", false):
+			total += _as_int(perk.get("cost", 0))
 	return total
 
 
 func flaw_skill_points_bonus(character: Dictionary) -> int:
 	var total := 0
 	for flaw in selected_flaws(character):
-		total += _as_int(flaw.get("bonus", 0))
+		if not flaw.get("gm_given", false):
+			total += _as_int(flaw.get("bonus", 0))
 	return total
 
 
@@ -1039,6 +1041,46 @@ func selected_perk_count(character: Dictionary) -> int:
 
 func selected_flaw_count(character: Dictionary) -> int:
 	return selected_flaws(character).size()
+
+
+func non_gm_perk_count(character: Dictionary) -> int:
+	var count := 0
+	for perk in selected_perks(character):
+		if not perk.get("granted_by_achievement", false) and not perk.get("gm_given", false):
+			count += 1
+	return count
+
+
+func non_gm_flaw_count(character: Dictionary) -> int:
+	var count := 0
+	for flaw in selected_flaws(character):
+		if not flaw.get("gm_given", false):
+			count += 1
+	return count
+
+
+func set_perk_gm_given(character: Dictionary, perk_id: String, gm_given: bool) -> void:
+	_set_character_option_gm_given(character, "selected_perks", perk_id, gm_given)
+
+
+func set_flaw_gm_given(character: Dictionary, flaw_id: String, gm_given: bool) -> void:
+	_set_character_option_gm_given(character, "selected_flaws", flaw_id, gm_given)
+
+
+func _set_character_option_gm_given(character: Dictionary, selected_key: String, option_id: String, gm_given: bool) -> void:
+	var selected: Dictionary = character.get(selected_key, {})
+	if not selected.has(option_id):
+		return
+	var raw_val = selected[option_id]
+	var value := _selected_character_option_entry_value(raw_val)
+	if gm_given:
+		selected[option_id] = {
+			"value": value,
+			"gm_given": true
+		}
+	else:
+		selected[option_id] = value
+	character[selected_key] = selected
 
 
 func skill_purchase_points_used(character: Dictionary) -> int:
@@ -1216,11 +1258,13 @@ func _validate_skills(character: Dictionary, messages: Array) -> void:
 
 
 func _validate_perks_and_flaws(character: Dictionary, messages: Array) -> void:
-	if selected_perk_count(character) > 3:
-		messages.append("A starting hero can have no more than three perks. Source: Player's Handbook p. 103.")
+	var perks_limit_count := non_gm_perk_count(character)
+	if perks_limit_count > 3:
+		messages.append("A starting hero can have no more than three standard perks (excluding GM-given). Current: %d. Source: Player's Handbook p. 103." % perks_limit_count)
 
-	if selected_flaw_count(character) > 3:
-		messages.append("A starting hero can have no more than three flaws. Source: Player's Handbook p. 107.")
+	var flaws_limit_count := non_gm_flaw_count(character)
+	if flaws_limit_count > 3:
+		messages.append("A starting hero can have no more than three standard flaws (excluding GM-given). Current: %d. Source: Player's Handbook p. 107." % flaws_limit_count)
 
 
 func _validate_achievements(character: Dictionary, messages: Array) -> void:
@@ -1586,10 +1630,19 @@ func _normalize_selected_character_options(character: Dictionary, selected_key: 
 		if definition.is_empty():
 			continue
 
-		var value := _selected_character_option_entry_value(selected[key])
+		var raw_val = selected[key]
+		var value := _selected_character_option_entry_value(raw_val)
 		if not _character_option_value_allowed(definition, value_options_key, value):
 			continue
-		normalized[option_id] = value
+		if typeof(raw_val) == TYPE_DICTIONARY:
+			var entry: Dictionary = raw_val
+			var norm_entry := {}
+			norm_entry["value"] = value
+			if entry.get("gm_given", false):
+				norm_entry["gm_given"] = true
+			normalized[option_id] = norm_entry
+		else:
+			normalized[option_id] = value
 	character[selected_key] = normalized
 
 
@@ -1615,7 +1668,13 @@ func _set_character_option_selected(character: Dictionary, selected_key: String,
 	if definition.is_empty() or value <= 0 or not _character_option_value_allowed(definition, value_options_key, value):
 		selected.erase(option_id)
 	else:
-		selected[option_id] = value
+		var existing = selected.get(option_id)
+		if typeof(existing) == TYPE_DICTIONARY:
+			var new_entry = existing.duplicate()
+			new_entry["value"] = value
+			selected[option_id] = new_entry
+		else:
+			selected[option_id] = value
 	character[selected_key] = selected
 
 
@@ -1631,7 +1690,12 @@ func _selected_character_options(character: Dictionary, selected_key: String, de
 			continue
 
 		var row := definition.duplicate(true)
-		row[value_key] = _as_int(selected.get(option_id, 0))
+		var raw_val = selected.get(option_id)
+		row[value_key] = _selected_character_option_entry_value(raw_val)
+		if typeof(raw_val) == TYPE_DICTIONARY:
+			row["gm_given"] = bool(raw_val.get("gm_given", false))
+		else:
+			row["gm_given"] = false
 		rows.append(row)
 	return rows
 
