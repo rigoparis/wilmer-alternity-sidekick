@@ -85,3 +85,12 @@ func safe_filename(name: String) -> String:
 		if c.is_valid_filename() and c != " " and c != "-": safe += c
 		elif c == " " or c == "-": safe += "_"
 	return safe
+
+func share_character() -> void:
+	if character.is_empty(): return
+	var payload := character.duplicate(true)
+	if rules: payload["summary"] = rules.summary(character)
+	var json_str := JSON.stringify(payload)
+	var encoded := Marshalls.utf8_to_base64(json_str)
+	var url := "https://wilmer-alternity-sidekick.vercel.app/?data=" + encoded
+	OS.shell_open(url)

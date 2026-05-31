@@ -205,7 +205,7 @@ func _build_shell() -> void:
 	share_char_button.text = "Share Character"
 	share_char_button.custom_minimum_size = Vector2(120, 36)
 	share_char_button.add_theme_font_size_override("font_size", 12)
-	share_char_button.pressed.connect(_share_character)
+	share_char_button.pressed.connect(func(): char_manager.share_character())
 	header.add_child(share_char_button)
 
 	close_char_button = Button.new()
@@ -4554,40 +4554,6 @@ func _enabled_optional_rules_label() -> String:
 		if rules.optional_rule_enabled(character, rule_id):
 			enabled.append(String(rule.get("name", "")))
 	return "Standard" if enabled.is_empty() else ", ".join(enabled)
-
-
-
-func _share_character() -> void:
-	if character.is_empty():
-		return
-
-	var payload := character.duplicate(true)
-	payload["summary"] = rules.summary(character)
-	var json_text := JSON.stringify(payload, "\t")
-
-	if OS.get_name() == "Android":
-		var activity = null
-		if Engine.has_singleton("AndroidRuntime"):
-			activity = Engine.get_singleton("AndroidRuntime").getActivity()
-		elif Engine.has_singleton("GodotAndroid"):
-			activity = Engine.get_singleton("GodotAndroid").get_activity()
-
-		if activity != null:
-			var Intent = JavaClassWrapper.wrap("android.content.Intent")
-			var intent = Intent.Intent()
-			intent.setAction(Intent.ACTION_SEND)
-			intent.putExtra(Intent.EXTRA_TEXT, json_text)
-			intent.setType("text/plain")
-
-			var chooser = Intent.createChooser(intent, "Share Character JSON")
-			activity.startActivity(chooser)
-			return
-
-	# Fallback (Clipboard copy for Windows/other platforms)
-	DisplayServer.clipboard_set(json_text)
-	if is_instance_valid(save_status_label):
-		save_status_label.text = "Character JSON copied to clipboard!"
-		save_status_label.add_theme_color_override("font_color", color_accent)
 
 
 func _close_character() -> void:
