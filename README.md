@@ -21,6 +21,8 @@ This project is a labor of love for the classic Alternity Sci-Fi system. Feel fr
 ## Features
 
 - **Mobile Viewport Optimization**: Structured for modern mobile displays (defaulting to a `390x844` viewport).
+- **Responsive Layout Safety**: Protects compact screen boundaries using custom size constraints and smart word-wrapping to prevent empty list elements or wide layouts from breaking layout containers.
+- **Accurate Rules Evaluation**: Translates the full Alternity tabletop rules for derived attributes, checking perks (*Tough as Nails*, *Reflexes*, *Willpower*), flaws (*Spineless*), and specialty/melee combat skill ranks to calculate exact Resistance Modifiers on character sheets.
 - **Core Database Engine**: Fast offline searching and viewing of data sourced directly from JSON rulesheets.
 - **Excluded Media Size Optimization**: Keeps packaged builds lightweight by automatically excluding raw reference manuals (PDFs) from the final binary files.
 - **Developer Tools**: Automated build utility (`tools/build.ps1`) and GDScript smoke-test scripts for verification.
@@ -114,4 +116,10 @@ godot --headless --path . -s tools/smoke_achievement_math.gd
 
 # Run equipment catalog diagnostic tests
 godot --headless --path . -s tools/smoke_equipment_catalog.gd
+
+# Run resistance modifier rules validation tests
+godot --headless -s scratch/test_resistance_modifier.gd
+
+# Run resistance modifier verification on saved character sheets
+godot --headless -s scratch/test_characters_rm.gd
 ```
