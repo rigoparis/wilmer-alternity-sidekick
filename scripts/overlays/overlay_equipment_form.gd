@@ -6,6 +6,7 @@ var panel: PanelContainer
 var title_label: Label
 var body: VBoxContainer
 var scroll: ScrollContainer
+var actions_bar: HBoxContainer
 var main_ui: Node
 
 func build(parent: Node, p_main_ui: Node, color_surface: Color, color_border: Color, color_text: Color) -> void:
@@ -72,8 +73,7 @@ func build(parent: Node, p_main_ui: Node, color_surface: Color, color_border: Co
 	body.add_theme_constant_override("separation", 16)
 	scroll_margin.add_child(body)
 
-	var close := Button.new()
-	close.text = "Cancel"
-	close.custom_minimum_size = Vector2(0, 42)
-	close.pressed.connect(func(): visible = false)
-	box.add_child(close)
+	actions_bar = HBoxContainer.new()
+	actions_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	actions_bar.add_theme_constant_override("separation", 8)
+	box.add_child(actions_bar)

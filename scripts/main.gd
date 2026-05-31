@@ -2627,6 +2627,8 @@ func _show_edit_equipment_form(line_id: String) -> void:
 func _refresh_equipment_form_panel() -> void:
 	for child in equipment_form_body.get_children():
 		child.queue_free()
+	for child in equipment_form_overlay.actions_bar.get_children():
+		child.queue_free()
 
 	var mode := String(equipment_form_state.get("mode", "custom"))
 	var item: Dictionary = equipment_form_state.get("item", {})
@@ -2635,6 +2637,14 @@ func _refresh_equipment_form_panel() -> void:
 		equipment_form_overlay.title_label.text = "Add Equipment"
 		_add_equipment_filters(equipment_form_body, true)
 		_add_equipment_catalog(equipment_form_body, true)
+
+		var cancel := Button.new()
+		cancel.text = "Cancel"
+		cancel.custom_minimum_size = Vector2(0, 42)
+		cancel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		cancel.pressed.connect(func(): equipment_form_overlay.visible = false)
+		equipment_form_overlay.actions_bar.add_child(cancel)
+
 		_update_equipment_form_modal_height.call_deferred()
 		return
 
@@ -2675,24 +2685,19 @@ func _refresh_equipment_form_panel() -> void:
 	notes.text_changed.connect(func(): equipment_form_state["notes"] = notes.text)
 	UIBuilder.add_field(equipment_form_body, "Notes", notes, color_muted)
 
-	var actions := HBoxContainer.new()
-	actions.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	actions.add_theme_constant_override("separation", 8)
-	equipment_form_body.add_child(actions)
-
 	var save := Button.new()
 	save.text = "Save"
-	save.custom_minimum_size = Vector2(0, 40)
+	save.custom_minimum_size = Vector2(0, 42)
 	save.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	save.pressed.connect(_save_equipment_form)
-	actions.add_child(save)
+	equipment_form_overlay.actions_bar.add_child(save)
 
 	var cancel := Button.new()
 	cancel.text = "Cancel"
-	cancel.custom_minimum_size = Vector2(0, 40)
+	cancel.custom_minimum_size = Vector2(0, 42)
 	cancel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	cancel.pressed.connect(func(): equipment_form_overlay.visible = false)
-	actions.add_child(cancel)
+	equipment_form_overlay.actions_bar.add_child(cancel)
 
 	_update_equipment_form_modal_height.call_deferred()
 
