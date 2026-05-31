@@ -623,12 +623,12 @@ func character_resistance_modifier(character: Dictionary, ability: String) -> in
 	if abilities.has(ability):
 		score = _as_int(abilities[ability])
 	var rm = resistance_modifier(score)
-	
+
 	# Free Agent RM Bonus (+1 to one modifier chosen by the player)
 	if _as_int(character.get("profession_id", 0)) == 4: # Free Agent primary
 		if String(character.get("free_agent_rm_bonus", "")) == ability:
 			rm += 1
-			
+
 	# Perk Adjustments
 	if ability == "STR" and is_perk_selected(character, "tough_as_nails"):
 		rm += 1
@@ -636,12 +636,12 @@ func character_resistance_modifier(character: Dictionary, ability: String) -> in
 		rm += 1
 	elif ability == "WIL" and is_perk_selected(character, "willpower"):
 		rm += 1
-		
+
 	# Flaw Adjustments
 	if ability == "WIL" and is_flaw_selected(character, "spineless"):
 		var val = _as_int(character.get("selected_flaws", {}).get("spineless", 0))
 		rm -= int(val / 2.0)
-		
+
 	# Skill Rank Benefits
 	var skill_bonus := 0
 	if ability == "STR":
@@ -682,7 +682,7 @@ func character_resistance_modifier(character: Dictionary, ability: String) -> in
 			skill_bonus += 2
 		elif r >= 4:
 			skill_bonus += 1
-			
+
 	rm += skill_bonus
 	return rm
 
@@ -804,14 +804,14 @@ func starting_skill_budget(character: Dictionary) -> int:
 	var abilities := effective_abilities(character)
 	var current_species := get_species_by_id(_as_int(character.get("species_id", 0)))
 	var flaw_bonus := flaw_skill_points_bonus(character)
-	
+
 	# Sold species broad skills bonus (+3 SP per sold skill)
 	var sold_bonus := 0
 	var sold_list: Array = character.get("sold_species_skills", [])
 	for skill_id in get_free_skill_ids(character):
 		if sold_list.has(skill_id):
 			sold_bonus += 3
-			
+
 	var base := 0
 	if optional_rule_enabled(character, "2a"):
 		var human_bonus := _as_int(current_species.get("skill_points", 0)) if String(current_species.get("name", "")) == "Human" else 0

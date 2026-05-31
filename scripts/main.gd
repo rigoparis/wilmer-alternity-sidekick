@@ -1,18 +1,27 @@
 extends Control
 
+const UIBuilder := preload("res://scripts/ui_builder.gd")
+const OverlayOptionalRules := preload("res://scripts/overlays/overlay_optional_rules.gd")
+const OverlaySkillDetails := preload("res://scripts/overlays/overlay_skill_details.gd")
+const OverlayEquipmentForm := preload("res://scripts/overlays/overlay_equipment_form.gd")
+const OverlayAchievementForm := preload("res://scripts/overlays/overlay_achievement_form.gd")
+const OverlayCatalogs := preload("res://scripts/overlays/overlay_catalogs.gd")
+
+
 const AlternityRules := preload("res://scripts/alternity_rules.gd")
+const CharacterManager := preload("res://scripts/character_manager.gd")
 const TABS := ["Basics", "Skills", "Perks/Flaws", "Equipment", "Cybertech", "Psionics", "FX", "Achievements", "Mutations", "Summary"]
 const COMPACT_WIDTH := 520.0
 const WIDE_WIDTH := 900.0
 const DESKTOP_MAX_WIDTH := 1120.0
 
 var rules: AlternityRules
+var char_manager: CharacterManager
 var character: Dictionary = {}
 var active_tab := "Basics"
 var skill_filter := ""
 var psionic_filter := ""
 var fx_filter_text := ""
-var active_character_file := ""
 var deleting_files: Dictionary = {}
 var close_char_button: Button
 var share_char_button: Button
@@ -29,33 +38,30 @@ var content_scroll: ScrollContainer
 var content: VBoxContainer
 var status_label: Label
 var save_status_label: Label
-var optional_rules_overlay: Control
+var optional_rules_overlay: OverlayOptionalRules
 var optional_rules_panel: PanelContainer
 var optional_rules_body: VBoxContainer
 var optional_rules_scroll: ScrollContainer
-var skill_details_overlay: Control
+var skill_details_overlay: OverlaySkillDetails
 var skill_details_panel: PanelContainer
-var skill_details_title: Label
 var skill_details_body: VBoxContainer
 var skill_details_scroll: ScrollContainer
-var equipment_form_overlay: Control
+var equipment_form_overlay: OverlayEquipmentForm
 var equipment_form_panel: PanelContainer
-var equipment_form_title: Label
 var equipment_form_body: VBoxContainer
 var equipment_form_scroll: ScrollContainer
-var achievement_form_overlay: Control
+var achievement_form_overlay: OverlayAchievementForm
 var achievement_form_panel: PanelContainer
-var achievement_form_title: Label
 var achievement_form_body: VBoxContainer
 var achievement_form_scroll: ScrollContainer
-var perk_flaw_catalog_overlay: Control
+var perk_flaw_catalog_overlay: OverlayCatalogs
 var perk_flaw_catalog_panel: PanelContainer
-var perk_flaw_catalog_title: Label
 var perk_flaw_catalog_body: VBoxContainer
 var perk_flaw_catalog_scroll: ScrollContainer
-var mutation_catalog_overlay: Control
+var perk_flaw_filter_edit: LineEdit
+var mutation_filter_edit: LineEdit
+var mutation_catalog_overlay: OverlayCatalogs
 var mutation_catalog_panel: PanelContainer
-var mutation_catalog_title: Label
 var mutation_catalog_body: VBoxContainer
 var mutation_catalog_scroll: ScrollContainer
 var skills_body: HBoxContainer
@@ -99,47 +105,38 @@ func _ready() -> void:
 	_setup_theme()
 	rules = AlternityRules.new()
 	rules.load_core_data()
+	char_manager = CharacterManager.new()
+	char_manager.set_rules(rules)
+	char_manager.character_updated.connect(func():
+		character = char_manager.get_character()
+		_render()
+	)
+	char_manager.request_save.connect(func():
+		char_manager.save_character(notes_editing, notes_draft)
+	)
+	char_manager.save_completed.connect(func(path: String, success: bool):
+		if is_instance_valid(save_status_label):
+			if success:
+				save_status_label.text = path
+				save_status_label.add_theme_color_override("font_color", color_accent)
+			else:
+				save_status_label.text = "Save failed."
+				save_status_label.add_theme_color_override("font_color", color_warning)
+	)
 	_build_shell()
 	_apply_responsive_layout()
-
-	# Check for last active character to autoload
-	var last_char_path := "user://last_character.txt"
 	var loaded := false
-	if FileAccess.file_exists(last_char_path):
-		var last_file := FileAccess.open(last_char_path, FileAccess.READ)
+	if FileAccess.file_exists("user://last_character.txt"):
+		var last_file := FileAccess.open("user://last_character.txt", FileAccess.READ)
 		if last_file != null:
 			var last_name := last_file.get_as_text().strip_edges()
 			if not last_name.is_empty():
-				loaded = _load_character_from_file(last_name)
-
+				loaded = char_manager.load_character_from_file(last_name)
 	if not loaded:
-		# Boot directly to character selection menu (State 1)
-		active_character_file = ""
-		character = rules.default_character()
-		rules.ensure_character_shape(character)
-
+		char_manager.active_character_file = ""
+		char_manager.set_character(rules.default_character())
+	character = char_manager.get_character()
 	_render()
-
-
-func _load_character_from_file(file_name: String) -> bool:
-	var path := "user://" + file_name
-	if not FileAccess.file_exists(path):
-		return false
-	var file := FileAccess.open(path, FileAccess.READ)
-	if file == null:
-		return false
-	var content_str := file.get_as_text()
-	var json := JSON.new()
-	var err := json.parse(content_str)
-	if err != OK:
-		return false
-	var data_parsed = json.get_data()
-	if typeof(data_parsed) == TYPE_DICTIONARY:
-		character = data_parsed
-		rules.ensure_character_shape(character)
-		active_character_file = file_name
-		return true
-	return false
 
 
 func _notification(what: int) -> void:
@@ -208,7 +205,7 @@ func _build_shell() -> void:
 	share_char_button.text = "Share Character"
 	share_char_button.custom_minimum_size = Vector2(120, 36)
 	share_char_button.add_theme_font_size_override("font_size", 12)
-	share_char_button.pressed.connect(_share_character)
+	share_char_button.pressed.connect(func(): char_manager.share_character())
 	header.add_child(share_char_button)
 
 	close_char_button = Button.new()
@@ -237,10 +234,10 @@ func _build_shell() -> void:
 		button.mouse_filter = Control.MOUSE_FILTER_PASS
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.custom_minimum_size = Vector2(0, 42)
-		button.add_theme_stylebox_override("normal", _tab_style(color_surface, Color(0, 0, 0, 0), 8))
-		button.add_theme_stylebox_override("hover", _tab_style(color_surface_soft, Color(0, 0, 0, 0), 8))
-		button.add_theme_stylebox_override("pressed", _tab_style(color_accent, Color(0, 0, 0, 0), 8))
-		button.add_theme_stylebox_override("focus", _tab_style(color_surface_soft, color_accent, 8))
+		button.add_theme_stylebox_override("normal", UIBuilder.tab_style(color_surface, Color(0, 0, 0, 0), 8))
+		button.add_theme_stylebox_override("hover", UIBuilder.tab_style(color_surface_soft, Color(0, 0, 0, 0), 8))
+		button.add_theme_stylebox_override("pressed", UIBuilder.tab_style(color_accent, Color(0, 0, 0, 0), 8))
+		button.add_theme_stylebox_override("focus", UIBuilder.tab_style(color_surface_soft, color_accent, 8))
 		button.add_theme_color_override("font_color", color_text)
 		button.add_theme_color_override("font_pressed_color", color_background)
 		button.pressed.connect(func(): _set_tab(tab))
@@ -268,12 +265,45 @@ func _build_shell() -> void:
 	content_margin.add_child(content)
 	main_content = content
 
-	_build_optional_rules_overlay()
-	_build_skill_details_overlay()
-	_build_equipment_form_overlay()
-	_build_achievement_form_overlay()
-	_build_perk_flaw_catalog_overlay()
-	_build_mutation_catalog_overlay()
+
+	optional_rules_overlay = OverlayOptionalRules.new()
+	optional_rules_overlay.build(self, self, background_rect, color_surface, color_border, color_text)
+	optional_rules_panel = optional_rules_overlay.panel
+	optional_rules_body = optional_rules_overlay.body
+	optional_rules_scroll = optional_rules_overlay.scroll
+
+	skill_details_overlay = OverlaySkillDetails.new()
+	skill_details_overlay.build(self, self, color_surface, color_border, color_text)
+	skill_details_panel = skill_details_overlay.panel
+	skill_details_body = skill_details_overlay.body
+	skill_details_scroll = skill_details_overlay.scroll
+
+	equipment_form_overlay = OverlayEquipmentForm.new()
+	equipment_form_overlay.build(self, self, color_surface, color_border, color_text)
+	equipment_form_panel = equipment_form_overlay.panel
+	equipment_form_body = equipment_form_overlay.body
+	equipment_form_scroll = equipment_form_overlay.scroll
+
+	achievement_form_overlay = OverlayAchievementForm.new()
+	achievement_form_overlay.build(self, self, color_surface, color_border, color_text)
+	achievement_form_panel = achievement_form_overlay.panel
+	achievement_form_body = achievement_form_overlay.body
+	achievement_form_scroll = achievement_form_overlay.scroll
+
+	perk_flaw_catalog_overlay = OverlayCatalogs.new()
+	perk_flaw_catalog_overlay.build(self, self, color_surface, color_border, color_text, "Perks / Flaws")
+	perk_flaw_catalog_panel = perk_flaw_catalog_overlay.panel
+	perk_flaw_catalog_body = perk_flaw_catalog_overlay.body
+	perk_flaw_catalog_scroll = perk_flaw_catalog_overlay.scroll
+	perk_flaw_filter_edit = perk_flaw_catalog_overlay.search_edit
+
+	mutation_catalog_overlay = OverlayCatalogs.new()
+	mutation_catalog_overlay.build(self, self, color_surface, color_border, color_text, "Mutations")
+	mutation_catalog_panel = mutation_catalog_overlay.panel
+	mutation_catalog_body = mutation_catalog_overlay.body
+	mutation_catalog_scroll = mutation_catalog_overlay.scroll
+	mutation_filter_edit = mutation_catalog_overlay.search_edit
+
 	_build_theme_overlay()
 
 
@@ -361,458 +391,6 @@ func _reparent_header_children() -> void:
 			header.add_child(node)
 
 
-func _build_optional_rules_overlay() -> void:
-	optional_rules_overlay = Control.new()
-	optional_rules_overlay.visible = false
-	optional_rules_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
-	optional_rules_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(optional_rules_overlay)
-
-	var shade := ColorRect.new()
-	shade.color = Color(0.0, 0.0, 0.0, 0.42)
-	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	optional_rules_overlay.add_child(shade)
-
-	var overlay_margin := MarginContainer.new()
-	overlay_margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	overlay_margin.add_theme_constant_override("margin_left", 12)
-	overlay_margin.add_theme_constant_override("margin_right", 12)
-	overlay_margin.add_theme_constant_override("margin_top", 12)
-	overlay_margin.add_theme_constant_override("margin_bottom", 12)
-	optional_rules_overlay.add_child(overlay_margin)
-
-	var center := CenterContainer.new()
-	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	center.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	overlay_margin.add_child(center)
-
-	optional_rules_panel = PanelContainer.new()
-	optional_rules_panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	optional_rules_panel.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	optional_rules_panel.add_theme_stylebox_override("panel", _flat_style(color_surface, color_border, 8))
-	center.add_child(optional_rules_panel)
-
-	var panel_margin := MarginContainer.new()
-	panel_margin.add_theme_constant_override("margin_left", 14)
-	panel_margin.add_theme_constant_override("margin_right", 14)
-	panel_margin.add_theme_constant_override("margin_top", 14)
-	panel_margin.add_theme_constant_override("margin_bottom", 14)
-	optional_rules_panel.add_child(panel_margin)
-
-	var panel_content := VBoxContainer.new()
-	panel_content.add_theme_constant_override("separation", 10)
-	panel_margin.add_child(panel_content)
-
-	var header := HBoxContainer.new()
-	header.add_theme_constant_override("separation", 8)
-	panel_content.add_child(header)
-
-	var title := Label.new()
-	title.text = "Optional Rules"
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	title.add_theme_color_override("font_color", color_text)
-	title.add_theme_font_size_override("font_size", 20)
-	header.add_child(title)
-
-	var close_button := Button.new()
-	close_button.text = "Close"
-	close_button.custom_minimum_size = Vector2(76, 36)
-	close_button.pressed.connect(func(): optional_rules_overlay.visible = false)
-	header.add_child(close_button)
-
-	optional_rules_scroll = ScrollContainer.new()
-	optional_rules_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	optional_rules_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	optional_rules_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel_content.add_child(optional_rules_scroll)
-
-	optional_rules_body = VBoxContainer.new()
-	optional_rules_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	optional_rules_body.add_theme_constant_override("separation", 24)
-	optional_rules_scroll.add_child(optional_rules_body)
-
-
-func _build_skill_details_overlay() -> void:
-	skill_details_overlay = Control.new()
-	skill_details_overlay.visible = false
-	skill_details_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
-	skill_details_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(skill_details_overlay)
-
-	var shade := ColorRect.new()
-	shade.color = Color(0.0, 0.0, 0.0, 0.42)
-	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	skill_details_overlay.add_child(shade)
-
-	var overlay_margin := MarginContainer.new()
-	overlay_margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	overlay_margin.add_theme_constant_override("margin_left", 12)
-	overlay_margin.add_theme_constant_override("margin_right", 12)
-	overlay_margin.add_theme_constant_override("margin_top", 12)
-	overlay_margin.add_theme_constant_override("margin_bottom", 12)
-	skill_details_overlay.add_child(overlay_margin)
-
-	var center := CenterContainer.new()
-	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	center.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	overlay_margin.add_child(center)
-
-	skill_details_panel = PanelContainer.new()
-	skill_details_panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	skill_details_panel.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	skill_details_panel.add_theme_stylebox_override("panel", _flat_style(color_surface, color_border, 8))
-	center.add_child(skill_details_panel)
-
-	var panel_margin := MarginContainer.new()
-	panel_margin.add_theme_constant_override("margin_left", 14)
-	panel_margin.add_theme_constant_override("margin_right", 14)
-	panel_margin.add_theme_constant_override("margin_top", 14)
-	panel_margin.add_theme_constant_override("margin_bottom", 14)
-	skill_details_panel.add_child(panel_margin)
-
-	var panel_content := VBoxContainer.new()
-	panel_content.add_theme_constant_override("separation", 10)
-	panel_margin.add_child(panel_content)
-
-	var header := HBoxContainer.new()
-	header.add_theme_constant_override("separation", 8)
-	panel_content.add_child(header)
-
-	skill_details_title = Label.new()
-	skill_details_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	skill_details_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	skill_details_title.add_theme_color_override("font_color", color_text)
-	skill_details_title.add_theme_font_size_override("font_size", 20)
-	header.add_child(skill_details_title)
-
-	var close_button := Button.new()
-	close_button.text = "Close"
-	close_button.custom_minimum_size = Vector2(76, 36)
-	close_button.pressed.connect(func(): skill_details_overlay.visible = false)
-	header.add_child(close_button)
-
-	skill_details_scroll = ScrollContainer.new()
-	skill_details_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	skill_details_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	skill_details_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel_content.add_child(skill_details_scroll)
-
-	skill_details_body = VBoxContainer.new()
-	skill_details_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	skill_details_body.add_theme_constant_override("separation", 10)
-	skill_details_scroll.add_child(skill_details_body)
-
-
-func _build_equipment_form_overlay() -> void:
-	equipment_form_overlay = Control.new()
-	equipment_form_overlay.visible = false
-	equipment_form_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
-	equipment_form_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(equipment_form_overlay)
-
-	var shade := ColorRect.new()
-	shade.color = Color(0.0, 0.0, 0.0, 0.42)
-	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	equipment_form_overlay.add_child(shade)
-
-	var overlay_margin := MarginContainer.new()
-	overlay_margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	overlay_margin.add_theme_constant_override("margin_left", 12)
-	overlay_margin.add_theme_constant_override("margin_right", 12)
-	overlay_margin.add_theme_constant_override("margin_top", 12)
-	overlay_margin.add_theme_constant_override("margin_bottom", 12)
-	equipment_form_overlay.add_child(overlay_margin)
-
-	var center := CenterContainer.new()
-	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	center.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	overlay_margin.add_child(center)
-
-	equipment_form_panel = PanelContainer.new()
-	equipment_form_panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	equipment_form_panel.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	equipment_form_panel.add_theme_stylebox_override("panel", _flat_style(color_surface, color_border, 8))
-	center.add_child(equipment_form_panel)
-
-	var panel_margin := MarginContainer.new()
-	panel_margin.add_theme_constant_override("margin_left", 14)
-	panel_margin.add_theme_constant_override("margin_right", 14)
-	panel_margin.add_theme_constant_override("margin_top", 14)
-	panel_margin.add_theme_constant_override("margin_bottom", 14)
-	equipment_form_panel.add_child(panel_margin)
-
-	var panel_content := VBoxContainer.new()
-	panel_content.add_theme_constant_override("separation", 10)
-	panel_margin.add_child(panel_content)
-
-	var header := HBoxContainer.new()
-	header.add_theme_constant_override("separation", 8)
-	panel_content.add_child(header)
-
-	equipment_form_title = Label.new()
-	equipment_form_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	equipment_form_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	equipment_form_title.add_theme_color_override("font_color", color_text)
-	equipment_form_title.add_theme_font_size_override("font_size", 20)
-	header.add_child(equipment_form_title)
-
-	var close_button := Button.new()
-	close_button.text = "Close"
-	close_button.custom_minimum_size = Vector2(76, 36)
-	close_button.pressed.connect(func(): equipment_form_overlay.visible = false)
-	header.add_child(close_button)
-
-	equipment_form_scroll = ScrollContainer.new()
-	equipment_form_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	equipment_form_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	equipment_form_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel_content.add_child(equipment_form_scroll)
-
-	var scroll_margin := MarginContainer.new()
-	scroll_margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll_margin.add_theme_constant_override("margin_left", 12)
-	scroll_margin.add_theme_constant_override("margin_right", 12)
-	equipment_form_scroll.add_child(scroll_margin)
-
-	equipment_form_body = VBoxContainer.new()
-	equipment_form_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	equipment_form_body.add_theme_constant_override("separation", 10)
-	scroll_margin.add_child(equipment_form_body)
-
-
-func _build_achievement_form_overlay() -> void:
-	achievement_form_overlay = Control.new()
-	achievement_form_overlay.visible = false
-	achievement_form_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
-	achievement_form_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(achievement_form_overlay)
-
-	var shade := ColorRect.new()
-	shade.color = Color(0.0, 0.0, 0.0, 0.42)
-	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	achievement_form_overlay.add_child(shade)
-
-	var overlay_margin := MarginContainer.new()
-	overlay_margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	overlay_margin.add_theme_constant_override("margin_left", 12)
-	overlay_margin.add_theme_constant_override("margin_right", 12)
-	overlay_margin.add_theme_constant_override("margin_top", 12)
-	overlay_margin.add_theme_constant_override("margin_bottom", 12)
-	achievement_form_overlay.add_child(overlay_margin)
-
-	var center := CenterContainer.new()
-	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	center.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	overlay_margin.add_child(center)
-
-	achievement_form_panel = PanelContainer.new()
-	achievement_form_panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	achievement_form_panel.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	achievement_form_panel.add_theme_stylebox_override("panel", _flat_style(color_surface, color_border, 8))
-	center.add_child(achievement_form_panel)
-
-	var panel_margin := MarginContainer.new()
-	panel_margin.add_theme_constant_override("margin_left", 14)
-	panel_margin.add_theme_constant_override("margin_right", 14)
-	panel_margin.add_theme_constant_override("margin_top", 14)
-	panel_margin.add_theme_constant_override("margin_bottom", 14)
-	achievement_form_panel.add_child(panel_margin)
-
-	var panel_content := VBoxContainer.new()
-	panel_content.add_theme_constant_override("separation", 10)
-	panel_margin.add_child(panel_content)
-
-	var header := HBoxContainer.new()
-	header.add_theme_constant_override("separation", 8)
-	panel_content.add_child(header)
-
-	achievement_form_title = Label.new()
-	achievement_form_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	achievement_form_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	achievement_form_title.add_theme_color_override("font_color", color_text)
-	achievement_form_title.add_theme_font_size_override("font_size", 20)
-	header.add_child(achievement_form_title)
-
-	var close_button := Button.new()
-	close_button.text = "Close"
-	close_button.custom_minimum_size = Vector2(76, 36)
-	close_button.pressed.connect(func(): achievement_form_overlay.visible = false)
-	header.add_child(close_button)
-
-	achievement_form_scroll = ScrollContainer.new()
-	achievement_form_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	achievement_form_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	achievement_form_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel_content.add_child(achievement_form_scroll)
-
-	var scroll_margin := MarginContainer.new()
-	scroll_margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll_margin.add_theme_constant_override("margin_left", 12)
-	scroll_margin.add_theme_constant_override("margin_right", 12)
-	achievement_form_scroll.add_child(scroll_margin)
-
-	achievement_form_body = VBoxContainer.new()
-	achievement_form_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	achievement_form_body.add_theme_constant_override("separation", 10)
-	scroll_margin.add_child(achievement_form_body)
-
-
-func _build_perk_flaw_catalog_overlay() -> void:
-	perk_flaw_catalog_overlay = Control.new()
-	perk_flaw_catalog_overlay.visible = false
-	perk_flaw_catalog_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
-	perk_flaw_catalog_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(perk_flaw_catalog_overlay)
-
-	var shade := ColorRect.new()
-	shade.color = Color(0.0, 0.0, 0.0, 0.42)
-	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	perk_flaw_catalog_overlay.add_child(shade)
-
-	var overlay_margin := MarginContainer.new()
-	overlay_margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	overlay_margin.add_theme_constant_override("margin_left", 12)
-	overlay_margin.add_theme_constant_override("margin_right", 12)
-	overlay_margin.add_theme_constant_override("margin_top", 12)
-	overlay_margin.add_theme_constant_override("margin_bottom", 12)
-	perk_flaw_catalog_overlay.add_child(overlay_margin)
-
-	var center := CenterContainer.new()
-	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	center.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	overlay_margin.add_child(center)
-
-	perk_flaw_catalog_panel = PanelContainer.new()
-	perk_flaw_catalog_panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	perk_flaw_catalog_panel.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	perk_flaw_catalog_panel.add_theme_stylebox_override("panel", _flat_style(color_surface, color_border, 8))
-	center.add_child(perk_flaw_catalog_panel)
-
-	var panel_margin := MarginContainer.new()
-	panel_margin.add_theme_constant_override("margin_left", 14)
-	panel_margin.add_theme_constant_override("margin_right", 14)
-	panel_margin.add_theme_constant_override("margin_top", 14)
-	panel_margin.add_theme_constant_override("margin_bottom", 14)
-	perk_flaw_catalog_panel.add_child(panel_margin)
-
-	var panel_content := VBoxContainer.new()
-	panel_content.add_theme_constant_override("separation", 10)
-	panel_margin.add_child(panel_content)
-
-	var header := HBoxContainer.new()
-	header.add_theme_constant_override("separation", 8)
-	panel_content.add_child(header)
-
-	perk_flaw_catalog_title = Label.new()
-	perk_flaw_catalog_title.text = "Add Perk / Flaw"
-	perk_flaw_catalog_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	perk_flaw_catalog_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	perk_flaw_catalog_title.add_theme_color_override("font_color", color_text)
-	perk_flaw_catalog_title.add_theme_font_size_override("font_size", 20)
-	header.add_child(perk_flaw_catalog_title)
-
-	var close_button := Button.new()
-	close_button.text = "Close"
-	close_button.custom_minimum_size = Vector2(76, 36)
-	close_button.pressed.connect(func(): perk_flaw_catalog_overlay.visible = false)
-	header.add_child(close_button)
-
-	perk_flaw_catalog_scroll = ScrollContainer.new()
-	perk_flaw_catalog_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	perk_flaw_catalog_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	perk_flaw_catalog_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel_content.add_child(perk_flaw_catalog_scroll)
-
-	var scroll_margin := MarginContainer.new()
-	scroll_margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll_margin.add_theme_constant_override("margin_left", 12)
-	scroll_margin.add_theme_constant_override("margin_right", 12)
-	perk_flaw_catalog_scroll.add_child(scroll_margin)
-
-	perk_flaw_catalog_body = VBoxContainer.new()
-	perk_flaw_catalog_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	perk_flaw_catalog_body.add_theme_constant_override("separation", 10)
-	scroll_margin.add_child(perk_flaw_catalog_body)
-
-
-func _build_mutation_catalog_overlay() -> void:
-	mutation_catalog_overlay = Control.new()
-	mutation_catalog_overlay.visible = false
-	mutation_catalog_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
-	mutation_catalog_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(mutation_catalog_overlay)
-
-	var shade := ColorRect.new()
-	shade.color = Color(0.0, 0.0, 0.0, 0.42)
-	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	mutation_catalog_overlay.add_child(shade)
-
-	var overlay_margin := MarginContainer.new()
-	overlay_margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	overlay_margin.add_theme_constant_override("margin_left", 12)
-	overlay_margin.add_theme_constant_override("margin_right", 12)
-	overlay_margin.add_theme_constant_override("margin_top", 12)
-	overlay_margin.add_theme_constant_override("margin_bottom", 12)
-	mutation_catalog_overlay.add_child(overlay_margin)
-
-	var center := CenterContainer.new()
-	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	center.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	overlay_margin.add_child(center)
-
-	mutation_catalog_panel = PanelContainer.new()
-	mutation_catalog_panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	mutation_catalog_panel.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	mutation_catalog_panel.add_theme_stylebox_override("panel", _flat_style(color_surface, color_border, 8))
-	center.add_child(mutation_catalog_panel)
-
-	var panel_margin := MarginContainer.new()
-	panel_margin.add_theme_constant_override("margin_left", 14)
-	panel_margin.add_theme_constant_override("margin_right", 14)
-	panel_margin.add_theme_constant_override("margin_top", 14)
-	panel_margin.add_theme_constant_override("margin_bottom", 14)
-	mutation_catalog_panel.add_child(panel_margin)
-
-	var panel_content := VBoxContainer.new()
-	panel_content.add_theme_constant_override("separation", 10)
-	panel_margin.add_child(panel_content)
-
-	var header := HBoxContainer.new()
-	header.add_theme_constant_override("separation", 8)
-	panel_content.add_child(header)
-
-	mutation_catalog_title = Label.new()
-	mutation_catalog_title.text = "Add Mutation"
-	mutation_catalog_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	mutation_catalog_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	mutation_catalog_title.add_theme_color_override("font_color", color_text)
-	mutation_catalog_title.add_theme_font_size_override("font_size", 20)
-	header.add_child(mutation_catalog_title)
-
-	var close_button := Button.new()
-	close_button.text = "Close"
-	close_button.custom_minimum_size = Vector2(76, 36)
-	close_button.pressed.connect(func(): mutation_catalog_overlay.visible = false)
-	header.add_child(close_button)
-
-	mutation_catalog_scroll = ScrollContainer.new()
-	mutation_catalog_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	mutation_catalog_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	mutation_catalog_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel_content.add_child(mutation_catalog_scroll)
-
-	var scroll_margin := MarginContainer.new()
-	scroll_margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll_margin.add_theme_constant_override("margin_left", 12)
-	scroll_margin.add_theme_constant_override("margin_right", 12)
-	mutation_catalog_scroll.add_child(scroll_margin)
-
-	mutation_catalog_body = VBoxContainer.new()
-	mutation_catalog_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	mutation_catalog_body.add_theme_constant_override("separation", 10)
-	scroll_margin.add_child(mutation_catalog_body)
-
-
 func _build_theme_overlay() -> void:
 	theme_overlay = Control.new()
 	theme_overlay.visible = false
@@ -841,7 +419,7 @@ func _build_theme_overlay() -> void:
 	theme_panel = PanelContainer.new()
 	theme_panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	theme_panel.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	theme_panel.add_theme_stylebox_override("panel", _flat_style(color_surface, color_border, 8))
+	theme_panel.add_theme_stylebox_override("panel", UIBuilder.flat_style(color_surface, color_border, 8))
 	center.add_child(theme_panel)
 
 	var panel_margin := MarginContainer.new()
@@ -899,16 +477,16 @@ func _refresh_theme_panel() -> void:
 		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 		if is_selected:
-			btn.add_theme_stylebox_override("normal", _flat_style(color_accent, Color(0, 0, 0, 0), 6))
-			btn.add_theme_stylebox_override("hover", _flat_style(color_accent.lightened(0.1), Color(0, 0, 0, 0), 6))
-			btn.add_theme_stylebox_override("pressed", _flat_style(color_accent.darkened(0.1), Color(0, 0, 0, 0), 6))
+			btn.add_theme_stylebox_override("normal", UIBuilder.flat_style(color_accent, Color(0, 0, 0, 0), 6))
+			btn.add_theme_stylebox_override("hover", UIBuilder.flat_style(color_accent.lightened(0.1), Color(0, 0, 0, 0), 6))
+			btn.add_theme_stylebox_override("pressed", UIBuilder.flat_style(color_accent.darkened(0.1), Color(0, 0, 0, 0), 6))
 			btn.add_theme_color_override("font_color", color_background)
 			btn.add_theme_color_override("font_hover_color", color_background)
 			btn.add_theme_color_override("font_pressed_color", color_background)
 		else:
-			btn.add_theme_stylebox_override("normal", _flat_style(color_surface_soft, Color(0, 0, 0, 0), 6))
-			btn.add_theme_stylebox_override("hover", _flat_style(color_surface_soft.lightened(0.1), Color(0, 0, 0, 0), 6))
-			btn.add_theme_stylebox_override("pressed", _flat_style(color_surface_soft.darkened(0.1), Color(0, 0, 0, 0), 6))
+			btn.add_theme_stylebox_override("normal", UIBuilder.flat_style(color_surface_soft, Color(0, 0, 0, 0), 6))
+			btn.add_theme_stylebox_override("hover", UIBuilder.flat_style(color_surface_soft.lightened(0.1), Color(0, 0, 0, 0), 6))
+			btn.add_theme_stylebox_override("pressed", UIBuilder.flat_style(color_surface_soft.darkened(0.1), Color(0, 0, 0, 0), 6))
 			btn.add_theme_color_override("font_color", color_text)
 			btn.add_theme_color_override("font_hover_color", color_text.lightened(0.1))
 			btn.add_theme_color_override("font_pressed_color", color_text)
@@ -960,7 +538,7 @@ func _refresh_skill_details_panel(skill: Dictionary) -> void:
 		child.queue_free()
 
 	var detail := rules.skill_detail(skill, character)
-	skill_details_title.text = String(detail.get("name", "Skill"))
+	skill_details_overlay.title_label.text = String(detail.get("name", "Skill"))
 
 	var meta := "%s  |  %s (%s)  |  Base price %d" % [
 		detail.get("type_label", "Skill"),
@@ -968,7 +546,7 @@ func _refresh_skill_details_panel(skill: Dictionary) -> void:
 		detail.get("ability", ""),
 		rules._as_int(detail.get("base_price", 0)),
 	]
-	_add_text(skill_details_body, meta, 13, color_muted)
+	UIBuilder.add_text(skill_details_body, meta, 13, color_muted)
 
 	var rank := rules._as_int(detail.get("rank", 0))
 	if skill.get("type", "") == "specialty":
@@ -978,43 +556,42 @@ func _refresh_skill_details_panel(skill: Dictionary) -> void:
 			rank_line += "  |  Next rank %d SP" % next_cost
 		else:
 			rank_line += "  |  Maximum rank"
-		_add_text(skill_details_body, rank_line, 13, color_accent)
+		UIBuilder.add_text(skill_details_body, rank_line, 13, color_accent)
 	else:
-		_add_text(skill_details_body, "Cost %d SP%s" % [
-			rules._as_int(detail.get("rank_one_cost", 0)),
-			"  |  Species free skill" if detail.get("rank_one_cost", 0) == 0 and rules.is_free_species_skill(character, rules._as_int(skill.get("id", -1))) else "",
+		UIBuilder.add_text(skill_details_body, "Cost %d SP%s" % [
+			rules._as_int(detail.get("rank_one_cost", 0)), "  |  Species free skill" if detail.get("rank_one_cost", 0) == 0 and rules.is_free_species_skill(character, rules._as_int(skill.get("id", -1))) else "",
 		], 13, color_accent)
 
-	_add_subheading(skill_details_body, "Use")
-	_add_text(skill_details_body, String(detail.get("summary", "")), 14, color_text)
+	UIBuilder.add_subheading(skill_details_body, "Use", color_text)
+	UIBuilder.add_text(skill_details_body, String(detail.get("summary", "")), 14, color_text)
 
-	_add_subheading(skill_details_body, "Roll Notes")
+	UIBuilder.add_subheading(skill_details_body, "Roll Notes", color_text)
 	for note in detail.get("roll_notes", []):
-		_add_text(skill_details_body, String(note), 13, color_muted)
+		UIBuilder.add_text(skill_details_body, String(note), 13, color_muted)
 
 	var complex_note := String(detail.get("complex_check", ""))
 	if not complex_note.is_empty():
-		_add_subheading(skill_details_body, "Complex Check")
-		_add_text(skill_details_body, complex_note, 13, color_text)
-		_add_text(skill_details_body, AlternityRules.COMPLEX_CHECK_RULES["successes"], 13, color_muted)
-		_add_text(skill_details_body, AlternityRules.COMPLEX_CHECK_RULES["failures"], 13, color_muted)
-		_add_text(skill_details_body, AlternityRules.COMPLEX_CHECK_RULES["complexity"], 13, color_muted)
+		UIBuilder.add_subheading(skill_details_body, "Complex Check", color_text)
+		UIBuilder.add_text(skill_details_body, complex_note, 13, color_text)
+		UIBuilder.add_text(skill_details_body, AlternityRules.COMPLEX_CHECK_RULES["successes"], 13, color_muted)
+		UIBuilder.add_text(skill_details_body, AlternityRules.COMPLEX_CHECK_RULES["failures"], 13, color_muted)
+		UIBuilder.add_text(skill_details_body, AlternityRules.COMPLEX_CHECK_RULES["complexity"], 13, color_muted)
 
 	var rank_benefits: Dictionary = detail.get("rank_benefits", {})
 	if not rank_benefits.is_empty():
-		_add_subheading(skill_details_body, "Rank Benefits")
+		UIBuilder.add_subheading(skill_details_body, "Rank Benefits", color_text)
 		var thresholds := rank_benefits.keys()
 		thresholds.sort()
 		for threshold in thresholds:
 			var required_rank := rules._as_int(threshold)
 			var color := color_accent if rank >= required_rank else color_muted
-			_add_text(skill_details_body, "Rank %d: %s" % [required_rank, String(rank_benefits[threshold])], 13, color)
+			UIBuilder.add_text(skill_details_body, "Rank %d: %s" % [required_rank, String(rank_benefits[threshold])], 13, color)
 
-	_add_subheading(skill_details_body, "Sources")
+	UIBuilder.add_subheading(skill_details_body, "Sources", color_text)
 	var sources := []
 	for source in detail.get("sources", []):
 		sources.append(String(source))
-	_add_text(skill_details_body, ", ".join(sources), 12, color_muted)
+	UIBuilder.add_text(skill_details_body, ", ".join(sources), 12, color_muted)
 	_update_skill_details_modal_height.call_deferred()
 
 
@@ -1100,8 +677,8 @@ func _add_optional_rule_row(rule: Dictionary) -> void:
 	toggle.custom_minimum_size = Vector2(24, 32)
 	toggle.toggled.connect(func(pressed):
 		rules.set_optional_rule(character, rule_id, pressed)
-		if not active_character_file.is_empty():
-			_save_character()
+		if not char_manager.active_character_file.is_empty():
+			char_manager.save_character(notes_editing, notes_draft)
 		_render()
 		_refresh_optional_rules_panel()
 	)
@@ -1115,7 +692,7 @@ func _add_optional_rule_row(rule: Dictionary) -> void:
 	title.add_theme_font_size_override("font_size", 15)
 	title_row.add_child(title)
 
-	_add_text(box, String(rule.get("description", "")), 13, color_muted)
+	UIBuilder.add_text(box, String(rule.get("description", "")), 13, color_muted)
 
 
 func _visible_tab_count() -> int:
@@ -1141,8 +718,8 @@ func _refresh_tab_visibility() -> void:
 func _set_tab(tab: String) -> void:
 	if not _tab_visible(tab):
 		return
-	if not active_character_file.is_empty():
-		_save_character()
+	if not char_manager.active_character_file.is_empty():
+		char_manager.save_character(notes_editing, notes_draft)
 	if not active_tab.is_empty() and content_scroll != null:
 		_tab_scroll_positions[active_tab] = content_scroll.scroll_vertical
 	active_tab = tab
@@ -1171,7 +748,7 @@ func _render() -> void:
 		_tab_scroll_positions[active_tab] = content_scroll.scroll_vertical
 
 	# State 1: Standalone Character Select (no active character)
-	if active_character_file.is_empty():
+	if char_manager.active_character_file.is_empty():
 		content = main_content
 		_clear_tab_cache()
 		if tabs != null and tabs.get_parent() != null:
@@ -1361,18 +938,18 @@ func _render_basics() -> void:
 	var basics_parent: Container = content
 	var rules_parent: Container = content
 	if is_wide_layout:
-		var columns := _add_columns()
+		var columns := UIBuilder.add_columns(content)
 		basics_parent = columns[0]
 		rules_parent = columns[1]
 
-	var basics := _add_section_to(basics_parent, "Basics")
+	var basics := UIBuilder.add_section(basics_parent, "Basics", null, color_surface, color_border, color_text)
 	_add_line_edit(basics, "Hero", String(character.get("hero_name", "")), func(value): character["hero_name"] = value; _refresh_status())
 	_add_line_edit(basics, "Player", String(character.get("player_name", "")), func(value): character["player_name"] = value)
 	_add_line_edit(basics, "Career", String(character.get("career", "")), func(value): character["career"] = value)
 
 	var achievement_points := rules._as_int(character.get("achievement_points", 0))
-	var level_label := _add_text(basics, _achievement_level_label(achievement_points), 15, color_text)
-	var next_level_label := _add_text(basics, _achievement_next_level_label(achievement_points), 12, color_muted)
+	var level_label := UIBuilder.add_text(basics, _achievement_level_label(achievement_points), 15, color_text)
+	var next_level_label := UIBuilder.add_text(basics, _achievement_next_level_label(achievement_points), 12, color_muted)
 	var achievement_hbox := HBoxContainer.new()
 	achievement_hbox.add_theme_constant_override("separation", 12)
 	basics.add_child(achievement_hbox)
@@ -1385,11 +962,8 @@ func _render_basics() -> void:
 	achievement_input.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	achievement_input.custom_minimum_size = Vector2(120, 42)
 	var achievement_summary := rules.summary(character)
-	var achievement_usage_label := _add_text(
-		basics,
-		_achievement_usage_text(achievement_summary),
-		13,
-		color_text
+	var achievement_usage_label := UIBuilder.add_text(
+		basics, _achievement_usage_text(achievement_summary), 13, color_text
 	)
 	achievement_input.text_changed.connect(func(_text):
 		achievement_usage_label.text = _achievement_usage_text(rules.summary(character))
@@ -1402,7 +976,7 @@ func _render_basics() -> void:
 	setting.select(0)
 	setting.set_item_disabled(1, true)
 	setting.set_item_disabled(2, true)
-	_add_field(basics, "Setting", setting)
+	UIBuilder.add_field(basics, "Setting", setting, color_muted)
 
 	var species_option := OptionButton.new()
 	for index in range(rules.species.size()):
@@ -1416,7 +990,7 @@ func _render_basics() -> void:
 		rules.clamp_trackers(character)
 		_render()
 	)
-	_add_field(basics, "Species", species_option)
+	UIBuilder.add_field(basics, "Species", species_option, color_muted)
 
 	var profession_option := OptionButton.new()
 	for index in range(AlternityRules.PROFESSION_DEFINITIONS.size()):
@@ -1430,32 +1004,32 @@ func _render_basics() -> void:
 		rules.clamp_trackers(character)
 		_render()
 	)
-	_add_field(basics, "Profession", profession_option)
+	UIBuilder.add_field(basics, "Profession", profession_option, color_muted)
 
 	_render_abilities_to(basics_parent)
 
-	var species_box := _add_section_to(rules_parent, "Species Rules")
+	var species_box := UIBuilder.add_section(rules_parent, "Species Rules", null, color_surface, color_border, color_text)
 	var free_broad_skill_names := []
 	for skill_id in rules.get_free_skill_ids(character):
 		var skill_name := rules.skill_name_for_id(skill_id)
 		if not skill_name.is_empty():
 			free_broad_skill_names.append(skill_name)
-	_add_text(species_box, "Free broad skills: %s" % ", ".join(free_broad_skill_names), 14, color_text)
-	_add_text(species_box, "Species ability limits, free broad skills, and starting skill differences use Player's Handbook Tables P3-P5, p. 33-34. Profession minimums use Table P1 p. 30.", 12, color_muted)
+	UIBuilder.add_text(species_box, "Free broad skills: %s" % ", ".join(free_broad_skill_names), 14, color_text)
+	UIBuilder.add_text(species_box, "Species ability limits, free broad skills, and starting skill differences use Player's Handbook Tables P3-P5, p. 33-34. Profession minimums use Table P1 p. 30.", 12, color_muted)
 	var free_specialty_skill_names := []
 	for skill_id in rules.get_free_specialty_skill_ids(character):
 		var skill_name := rules.skill_name_for_id(skill_id)
 		if not skill_name.is_empty():
 			free_specialty_skill_names.append(skill_name)
 	if not free_specialty_skill_names.is_empty():
-		_add_text(species_box, "Free specialty ranks: %s" % ", ".join(free_specialty_skill_names), 14, color_text)
+		UIBuilder.add_text(species_box, "Free specialty ranks: %s" % ", ".join(free_specialty_skill_names), 14, color_text)
 	for note in rules.species_rule_notes(character):
-		_add_text(species_box, String(note), 13, color_muted)
+		UIBuilder.add_text(species_box, String(note), 13, color_muted)
 
-	var profession_box := _add_section_to(rules_parent, "Profession Rules")
+	var profession_box := UIBuilder.add_section(rules_parent, "Profession Rules", null, color_surface, color_border, color_text)
 	var profession := rules.get_profession_by_id(rules._as_int(character.get("profession_id", 0)))
 	for note in profession.get("notes", []):
-		_add_text(profession_box, String(note), 13, color_muted)
+		UIBuilder.add_text(profession_box, String(note), 13, color_muted)
 
 	# Dynamic specials selections
 	var primary_prof_id := rules._as_int(character.get("profession_id", 0))
@@ -1476,7 +1050,7 @@ func _render_basics() -> void:
 			character["free_agent_rm_bonus"] = stats[index]
 			_render()
 		)
-		_add_field(profession_box, "Select Stat for Free Agent Resistance Modifier Bonus", rm_option)
+		UIBuilder.add_field(profession_box, "Select Stat for Free Agent Resistance Modifier Bonus", rm_option, color_muted)
 		
 	# 2. Combat Spec Bonus (Primary Combat Spec = id 0)
 	elif primary_prof_id == 0:
@@ -1512,7 +1086,7 @@ func _render_basics() -> void:
 			character["combat_spec_bonus_specialty"] = cs_option.get_item_id(index)
 			_render()
 		)
-		_add_field(profession_box, "Select Combat Specialty for step bonus (-1 step)", cs_option)
+		UIBuilder.add_field(profession_box, "Select Combat Specialty for step bonus (-1 step)", cs_option, color_muted)
 		
 	# 3. Mindwalker focus (Primary Mindwalker = id 6)
 	elif primary_prof_id == 6:
@@ -1544,7 +1118,7 @@ func _render_basics() -> void:
 			character["mindwalker_psionic_focus"] = mw_option.get_item_id(index)
 			_render()
 		)
-		_add_field(profession_box, "Select Psionic Broad skill for Mindwalker Focus (-1 step)", mw_option)
+		UIBuilder.add_field(profession_box, "Select Psionic Broad skill for Mindwalker Focus (-1 step)", mw_option, color_muted)
 		
 	# 4. Diplomat Bonus (Primary Diplomat dual-professions = ids 1, 2, 3)
 	elif primary_prof_id in [1, 2, 3]:
@@ -1562,7 +1136,7 @@ func _render_basics() -> void:
 			character["diplomat_bonus"] = choices[index]
 			_render()
 		)
-		_add_field(profession_box, "Select starting skill for Diplomat bonus (Free broad skill)", dip_option)
+		UIBuilder.add_field(profession_box, "Select starting skill for Diplomat bonus (Free broad skill)", dip_option, color_muted)
 		
 
 
@@ -1572,7 +1146,7 @@ func _render_abilities() -> void:
 
 func _render_abilities_to(parent: Container) -> void:
 	var summary := rules.summary(character)
-	var box := _add_section_to(parent, "Abilities")
+	var box := UIBuilder.add_section(parent, "Abilities", null, color_surface, color_border, color_text)
 
 	var header_row := HBoxContainer.new()
 	header_row.add_theme_constant_override("separation", 6)
@@ -1658,7 +1232,7 @@ func _add_ability_row(parent: Container, ability: String) -> void:
 	var minus := Button.new()
 	minus.text = "-"
 	minus.custom_minimum_size = Vector2(42, 42)
-	minus.pressed.connect(func(): _change_ability(ability, -1))
+	minus.pressed.connect(func(): char_manager.apply_change_ability(ability, -1))
 	row.add_child(minus)
 
 	var value := Label.new()
@@ -1673,34 +1247,25 @@ func _add_ability_row(parent: Container, ability: String) -> void:
 	var plus := Button.new()
 	plus.text = "+"
 	plus.custom_minimum_size = Vector2(42, 42)
-	plus.pressed.connect(func(): _change_ability(ability, 1))
+	plus.pressed.connect(func(): char_manager.apply_change_ability(ability, 1))
 	row.add_child(plus)
-
-
-func _change_ability(ability: String, delta: int) -> void:
-	var abilities: Dictionary = character.get("abilities", {})
-	var limits := rules.ability_limits(character, ability)
-	abilities[ability] = clampi(rules._as_int(abilities.get(ability, 10)) + delta, rules._as_int(limits[0]), rules._as_int(limits[1]))
-	character["abilities"] = abilities
-	rules.clamp_trackers(character)
-	_render()
 
 
 func _render_skills() -> void:
 	var summary := rules.summary(character)
 	if is_wide_layout and sticky_skills_panel != null:
-		var picker_box := _add_section("Skill Budget")
+		var picker_box := UIBuilder.add_section(content, "Skill Budget", null, color_surface, color_border, color_text)
 		_render_skill_picker(picker_box, summary, false)
 		_render_selected_skill_panel(sticky_skills_panel)
 		return
 
-	var box := _add_section("Skill Budget")
+	var box := UIBuilder.add_section(content, "Skill Budget", null, color_surface, color_border, color_text)
 	_render_skill_picker(box, summary, false)
 
 
 func _render_perks_flaws() -> void:
 	var summary := rules.summary(character)
-	var overview := _add_section("Perks / Flaws Budget")
+	var overview := UIBuilder.add_section(content, "Perks / Flaws Budget", null, color_surface, color_border, color_text)
 	_add_metric(overview, "Perks Selected", "%d / 3" % rules._as_int(summary.get("perk_count", 0)))
 	_add_metric(overview, "Flaws Selected", "%d / 3" % rules._as_int(summary.get("flaw_count", 0)))
 	_add_metric(overview, "Perk Skill Point Cost", "%d SP" % rules._as_int(summary.get("perk_points_used", 0)))
@@ -1709,7 +1274,7 @@ func _render_perks_flaws() -> void:
 		rules._as_int(summary.get("skill_points_used", 0)),
 		rules._as_int(summary.get("skill_points_remaining", 0)),
 	])
-	_add_text(overview, "At character creation, perks cost skill points and flaws add skill points. A starting hero can choose up to three perks and up to three flaws. Source: Player's Handbook p. 103 and p. 107.", 12, color_muted)
+	UIBuilder.add_text(overview, "At character creation, perks cost skill points and flaws add skill points. A starting hero can choose up to three perks and up to three flaws. Source: Player's Handbook p. 103 and p. 107.", 12, color_muted)
 
 	var action_row: BoxContainer
 	if get_viewport_rect().size.x < COMPACT_WIDTH:
@@ -1737,7 +1302,7 @@ func _render_perks_flaws() -> void:
 	var perks_parent: Container = content
 	var flaws_parent: Container = content
 	if is_wide_layout:
-		var columns := _add_columns()
+		var columns := UIBuilder.add_columns(content)
 		perks_parent = columns[0]
 		flaws_parent = columns[1]
 
@@ -1746,10 +1311,10 @@ func _render_perks_flaws() -> void:
 
 
 func _render_selected_perks(parent: Container) -> void:
-	var box := _add_section_to(parent, "Selected Perks")
+	var box := UIBuilder.add_section(parent, "Selected Perks", null, color_surface, color_border, color_text)
 	var perks := rules.selected_perks(character)
 	if perks.is_empty():
-		_add_text(box, "No perks selected.", 14, color_muted)
+		UIBuilder.add_text(box, "No perks selected.", 14, color_muted)
 		return
 
 	for index in range(perks.size()):
@@ -1763,9 +1328,9 @@ func _add_granted_perk_row(parent: VBoxContainer, option: Dictionary) -> void:
 	row_box.add_theme_constant_override("separation", 6)
 	parent.add_child(row_box)
 
-	_add_text(row_box, "%s  Granted by achievement" % String(option.get("name", "")), 15, color_accent)
-	_add_text(row_box, String(option.get("summary", "")), 13, color_text)
-	_add_text(row_box, "Source: %s" % String(option.get("source", "")), 11, color_muted)
+	UIBuilder.add_text(row_box, "%s  Granted by achievement" % String(option.get("name", "")), 15, color_accent)
+	UIBuilder.add_text(row_box, String(option.get("summary", "")), 13, color_text)
+	UIBuilder.add_text(row_box, "Source: %s" % String(option.get("source", "")), 11, color_muted)
 
 	var separator := HSeparator.new()
 	separator.add_theme_color_override("separator", Color(color_border.r, color_border.g, color_border.b, 0.7))
@@ -1773,10 +1338,10 @@ func _add_granted_perk_row(parent: VBoxContainer, option: Dictionary) -> void:
 
 
 func _render_selected_flaws(parent: Container) -> void:
-	var box := _add_section_to(parent, "Selected Flaws")
+	var box := UIBuilder.add_section(parent, "Selected Flaws", null, color_surface, color_border, color_text)
 	var flaws := rules.selected_flaws(character)
 	if flaws.is_empty():
-		_add_text(box, "No flaws selected.", 14, color_muted)
+		UIBuilder.add_text(box, "No flaws selected.", 14, color_muted)
 		return
 
 	for index in range(flaws.size()):
@@ -1800,13 +1365,13 @@ func _add_selected_perk_row(parent: VBoxContainer, perk: Dictionary, add_separat
 	title_box.add_theme_constant_override("separation", 2)
 	top_row.add_child(title_box)
 
-	_add_text(title_box, String(perk.get("name", "Perk")), 15, color_text)
+	UIBuilder.add_text(title_box, String(perk.get("name", "Perk")), 15, color_text)
 	if bool(perk.get("granted_by_achievement", false)):
-		_add_text(title_box, "Granted by achievement", 12, color_accent)
+		UIBuilder.add_text(title_box, "Granted by achievement", 12, color_accent)
 	elif bool(perk.get("gm_given", false)):
-		_add_text(title_box, "0 SP (Given by GM)", 12, color_accent)
+		UIBuilder.add_text(title_box, "0 SP (Given by GM)", 12, color_accent)
 	else:
-		_add_text(title_box, "%d SP" % rules._as_int(perk.get("cost", 0)), 12, color_muted)
+		UIBuilder.add_text(title_box, "%d SP" % rules._as_int(perk.get("cost", 0)), 12, color_muted)
 
 	if not bool(perk.get("granted_by_achievement", false)):
 		var remove := Button.new()
@@ -1828,8 +1393,8 @@ func _add_selected_perk_row(parent: VBoxContainer, perk: Dictionary, add_separat
 		)
 		row_box.add_child(gm_checkbox)
 
-	_add_text(row_box, String(perk.get("summary", "")), 13, color_text)
-	_add_text(row_box, "Source: %s" % String(perk.get("source", "")), 11, color_muted)
+	UIBuilder.add_text(row_box, String(perk.get("summary", "")), 13, color_text)
+	UIBuilder.add_text(row_box, "Source: %s" % String(perk.get("source", "")), 11, color_muted)
 
 	if add_separator:
 		var separator := HSeparator.new()
@@ -1853,11 +1418,11 @@ func _add_selected_flaw_row(parent: VBoxContainer, flaw: Dictionary, add_separat
 	title_box.add_theme_constant_override("separation", 2)
 	top_row.add_child(title_box)
 
-	_add_text(title_box, String(flaw.get("name", "Flaw")), 15, color_text)
+	UIBuilder.add_text(title_box, String(flaw.get("name", "Flaw")), 15, color_text)
 	if bool(flaw.get("gm_given", false)):
-		_add_text(title_box, "+0 SP (Given by GM)", 12, color_accent)
+		UIBuilder.add_text(title_box, "+0 SP (Given by GM)", 12, color_accent)
 	else:
-		_add_text(title_box, "+%d SP" % rules._as_int(flaw.get("bonus", 0)), 12, color_muted)
+		UIBuilder.add_text(title_box, "+%d SP" % rules._as_int(flaw.get("bonus", 0)), 12, color_muted)
 
 	var remove := Button.new()
 	remove.text = "Remove"
@@ -1877,8 +1442,8 @@ func _add_selected_flaw_row(parent: VBoxContainer, flaw: Dictionary, add_separat
 	)
 	row_box.add_child(gm_checkbox)
 
-	_add_text(row_box, String(flaw.get("summary", "")), 13, color_text)
-	_add_text(row_box, "Source: %s" % String(flaw.get("source", "")), 11, color_muted)
+	UIBuilder.add_text(row_box, String(flaw.get("summary", "")), 13, color_text)
+	UIBuilder.add_text(row_box, "Source: %s" % String(flaw.get("source", "")), 11, color_muted)
 
 	if add_separator:
 		var separator := HSeparator.new()
@@ -1908,7 +1473,7 @@ func _refresh_perk_flaw_catalog_panel() -> void:
 		child.queue_free()
 
 	var is_flaw_catalog := perk_flaw_catalog_kind == "flaw"
-	perk_flaw_catalog_title.text = "Add Flaw" if is_flaw_catalog else "Add Perk"
+	perk_flaw_catalog_overlay.title_label.text = "Add Flaw" if is_flaw_catalog else "Add Perk"
 	var search := LineEdit.new()
 	search.text = perk_flaw_filter_text
 	search.placeholder_text = "Search flaws" if is_flaw_catalog else "Search perks"
@@ -1917,33 +1482,33 @@ func _refresh_perk_flaw_catalog_panel() -> void:
 		perk_flaw_filter_text = value
 		_request_search_refresh("perk_flaw", String(value).length(), _refresh_perk_flaw_catalog_panel)
 	)
-	_add_field(perk_flaw_catalog_body, "Search", search)
+	UIBuilder.add_field(perk_flaw_catalog_body, "Search", search, color_muted)
 	_restore_search_focus(search, "perk_flaw")
 
 	if is_flaw_catalog:
-		_add_text(perk_flaw_catalog_body, "Flaws add skill points. A starting hero can choose up to three flaws. Source: Player's Handbook p. 107.", 12, color_muted)
+		UIBuilder.add_text(perk_flaw_catalog_body, "Flaws add skill points. A starting hero can choose up to three flaws. Source: Player's Handbook p. 107.", 12, color_muted)
 	else:
-		_add_text(perk_flaw_catalog_body, "Perks cost skill points. A starting hero can choose up to three perks. Source: Player's Handbook p. 103.", 12, color_muted)
+		UIBuilder.add_text(perk_flaw_catalog_body, "Perks cost skill points. A starting hero can choose up to three perks. Source: Player's Handbook p. 103.", 12, color_muted)
 
 	var filter := perk_flaw_filter_text.strip_edges().to_lower()
 	if is_flaw_catalog:
-		_add_subheading(perk_flaw_catalog_body, "Flaws")
+		UIBuilder.add_subheading(perk_flaw_catalog_body, "Flaws", color_text)
 		var flaw_box := VBoxContainer.new()
 		flaw_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		flaw_box.add_theme_constant_override("separation", 8)
 		perk_flaw_catalog_body.add_child(flaw_box)
 		var flaws_shown := _add_flaw_catalog_rows(flaw_box, filter)
 		if flaws_shown <= 0:
-			_add_text(flaw_box, "No flaws match the current search.", 14, color_muted)
+			UIBuilder.add_text(flaw_box, "No flaws match the current search.", 14, color_muted)
 	else:
-		_add_subheading(perk_flaw_catalog_body, "Perks")
+		UIBuilder.add_subheading(perk_flaw_catalog_body, "Perks", color_text)
 		var perk_box := VBoxContainer.new()
 		perk_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		perk_box.add_theme_constant_override("separation", 8)
 		perk_flaw_catalog_body.add_child(perk_box)
 		var perks_shown := _add_perk_catalog_rows(perk_box, filter)
 		if perks_shown <= 0:
-			_add_text(perk_box, "No perks match the current search.", 14, color_muted)
+			UIBuilder.add_text(perk_box, "No perks match the current search.", 14, color_muted)
 
 	_update_perk_flaw_catalog_modal_height.call_deferred()
 
@@ -2069,7 +1634,7 @@ func _add_character_option_row(parent: VBoxContainer, option: Dictionary, select
 	for option_value in values:
 		point_values.append("%d" % rules._as_int(option_value))
 	meta_parts.append("Options %s SP" % "/".join(point_values))
-	_add_text(title_box, " | ".join(meta_parts), 12, color_muted)
+	UIBuilder.add_text(title_box, " | ".join(meta_parts), 12, color_muted)
 
 	var button_row: BoxContainer
 	if get_viewport_rect().size.x < COMPACT_WIDTH:
@@ -2104,12 +1669,12 @@ func _add_character_option_row(parent: VBoxContainer, option: Dictionary, select
 		button_row.add_child(remove)
 
 	if not can_select_new and selected_value <= 0 and not String(disabled_reason).is_empty():
-		_add_text(row_box, String(disabled_reason), 12, color_warning)
+		UIBuilder.add_text(row_box, String(disabled_reason), 12, color_warning)
 	elif not String(warning_msg).is_empty():
-		_add_text(row_box, String(warning_msg), 12, color_warning)
+		UIBuilder.add_text(row_box, String(warning_msg), 12, color_warning)
 
-	_add_text(row_box, String(option.get("summary", "")), 13, color_text)
-	_add_text(row_box, "Source: %s" % String(option.get("source", "")), 11, color_muted)
+	UIBuilder.add_text(row_box, String(option.get("summary", "")), 13, color_text)
+	UIBuilder.add_text(row_box, "Source: %s" % String(option.get("source", "")), 11, color_muted)
 
 	var separator := HSeparator.new()
 	separator.add_theme_color_override("separator", Color(color_border.r, color_border.g, color_border.b, 0.7))
@@ -2118,7 +1683,7 @@ func _add_character_option_row(parent: VBoxContainer, option: Dictionary, select
 
 func _render_achievements() -> void:
 	var summary := rules.summary(character)
-	var box := _add_section("Achievements")
+	var box := UIBuilder.add_section(content, "Achievements", null, color_surface, color_border, color_text)
 	_add_metric(box, "Hero Level", str(rules._as_int(summary.get("achievement_level", 1))))
 	_add_metric(box, "Achievement Points", "%d total, %d used, %d available" % [
 		rules._as_int(summary.get("achievement_points", 0)),
@@ -2139,12 +1704,12 @@ func _render_achievements() -> void:
 	box.add_child(add_button)
 
 	for note in rules.achievement_rules:
-		_add_text(box, String(note), 12, color_muted)
+		UIBuilder.add_text(box, String(note), 12, color_muted)
 
-	var bought := _add_section("Bought Achievements")
+	var bought := UIBuilder.add_section(content, "Bought Achievements", null, color_surface, color_border, color_text)
 	var selected := rules.achievements.selected_achievements(character)
 	if selected.is_empty():
-		_add_text(bought, "No achievement benefits purchased yet.", 14, color_muted)
+		UIBuilder.add_text(bought, "No achievement benefits purchased yet.", 14, color_muted)
 		return
 	for entry in selected:
 		_add_bought_achievement_row(bought, entry)
@@ -2179,12 +1744,11 @@ func _add_bought_achievement_row(parent: VBoxContainer, entry: Dictionary) -> vo
 	)
 	top.add_child(remove)
 
-	_add_text(row, "Cost %d SP  |  Bought at level %d" % [
-		rules._as_int(entry.get("cost", 0)),
-		rules._as_int(entry.get("level", 1)),
+	UIBuilder.add_text(row, "Cost %d SP  |  Bought at level %d" % [
+		rules._as_int(entry.get("cost", 0)), rules._as_int(entry.get("level", 1)),
 	], 12, color_muted)
-	_add_text(row, String(entry.get("summary", achievement.get("summary", ""))), 13, color_text)
-	_add_text(row, String(achievement.get("reference", "")), 11, color_muted)
+	UIBuilder.add_text(row, String(entry.get("summary", achievement.get("summary", ""))), 13, color_text)
+	UIBuilder.add_text(row, String(achievement.get("reference", "")), 11, color_muted)
 
 	var separator := HSeparator.new()
 	separator.add_theme_color_override("separator", Color(color_border.r, color_border.g, color_border.b, 0.55))
@@ -2203,7 +1767,7 @@ func _refresh_achievement_form_panel() -> void:
 	for child in achievement_form_body.get_children():
 		child.queue_free()
 
-	achievement_form_title.text = "Add Achievement"
+	achievement_form_overlay.title_label.text = "Add Achievement"
 	var search := LineEdit.new()
 	search.text = achievement_filter_text
 	search.placeholder_text = "Search achievements"
@@ -2212,11 +1776,11 @@ func _refresh_achievement_form_panel() -> void:
 		achievement_filter_text = value
 		_request_search_refresh("achievement", String(value).length(), _refresh_achievement_form_panel)
 	)
-	_add_field(achievement_form_body, "Search", search)
+	UIBuilder.add_field(achievement_form_body, "Search", search, color_muted)
 	_restore_search_focus(search, "achievement")
 
 	var current_profession := rules.achievements.achievement_profile_key(character).replace("_", " ").capitalize()
-	_add_text(achievement_form_body, "Costs and minimum levels shown for %s." % current_profession, 12, color_muted)
+	UIBuilder.add_text(achievement_form_body, "Costs and minimum levels shown for %s." % current_profession, 12, color_muted)
 
 	var shown := 0
 	var filter := achievement_filter_text.strip_edges().to_lower()
@@ -2228,7 +1792,7 @@ func _refresh_achievement_form_panel() -> void:
 		shown += 1
 		_add_achievement_catalog_row(achievement_form_body, achievement)
 	if shown <= 0:
-		_add_text(achievement_form_body, "No achievement matches the current search.", 14, color_muted)
+		UIBuilder.add_text(achievement_form_body, "No achievement matches the current search.", 14, color_muted)
 	_update_achievement_form_modal_height.call_deferred()
 
 
@@ -2282,11 +1846,11 @@ func _add_achievement_catalog_row(parent: VBoxContainer, achievement: Dictionary
 		)
 		top.add_child(add)
 		if not bool(check.get("allowed", false)):
-			_add_text(row, String(check.get("reason", "")), 12, color_warning)
+			UIBuilder.add_text(row, String(check.get("reason", "")), 12, color_warning)
 
-	_add_text(row, _achievement_meta(achievement), 12, color_muted)
-	_add_text(row, String(achievement.get("summary", "")), 13, color_text)
-	_add_text(row, String(achievement.get("reference", "")), 11, color_muted)
+	UIBuilder.add_text(row, _achievement_meta(achievement), 12, color_muted)
+	UIBuilder.add_text(row, String(achievement.get("summary", "")), 13, color_text)
+	UIBuilder.add_text(row, String(achievement.get("reference", "")), 11, color_muted)
 
 	var separator := HSeparator.new()
 	separator.add_theme_color_override("separator", Color(color_border.r, color_border.g, color_border.b, 0.55))
@@ -2296,7 +1860,7 @@ func _add_achievement_catalog_row(parent: VBoxContainer, achievement: Dictionary
 func _add_remove_flaw_achievement_targets(parent: VBoxContainer, achievement: Dictionary) -> void:
 	var flaws := rules.selected_flaws(character)
 	if flaws.is_empty():
-		_add_text(parent, "No selected flaw is available to remove.", 12, color_warning)
+		UIBuilder.add_text(parent, "No selected flaw is available to remove.", 12, color_warning)
 		return
 	var target_row := VBoxContainer.new()
 	target_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -2324,7 +1888,7 @@ func _add_remove_flaw_achievement_targets(parent: VBoxContainer, achievement: Di
 		)
 		target_row.add_child(button)
 		if not bool(check.get("allowed", false)):
-			_add_text(target_row, String(check.get("reason", "")), 11, color_warning)
+			UIBuilder.add_text(target_row, String(check.get("reason", "")), 11, color_warning)
 
 
 func _achievement_meta(achievement: Dictionary) -> String:
@@ -2343,13 +1907,13 @@ func _achievement_meta(achievement: Dictionary) -> String:
 
 func _render_mutations() -> void:
 	if not rules.mutations.mutations_enabled(character):
-		var unavailable := _add_section("Mutations")
-		_add_text(unavailable, "Only Mutant heroes use the Player's Handbook Chapter 13 mutation rules.", 14, color_muted)
+		var unavailable := UIBuilder.add_section(content, "Mutations", null, color_surface, color_border, color_text)
+		UIBuilder.add_text(unavailable, "Only Mutant heroes use the Player's Handbook Chapter 13 mutation rules.", 14, color_muted)
 		return
 
 	var mutations: Dictionary = character.get("mutations", {})
 	var random_generation := String(mutations.get("generation_mode", "random")) == "random"
-	var overview := _add_section("Mutation Generation")
+	var overview := UIBuilder.add_section(content, "Mutation Generation", null, color_surface, color_border, color_text)
 
 	var mode := OptionButton.new()
 	var modes := [
@@ -2366,7 +1930,7 @@ func _render_mutations() -> void:
 		rules.mutations.set_mutation_generation_mode(character, String(mode_row.get("id", "random")))
 		_render()
 	)
-	_add_field(overview, "Mutation Generation", mode)
+	UIBuilder.add_field(overview, "Mutation Generation", mode, color_muted)
 
 	var origin := OptionButton.new()
 	var origins := rules.mutations.mutation_origin_options()
@@ -2381,7 +1945,7 @@ func _render_mutations() -> void:
 		_render()
 	)
 	origin.disabled = random_generation
-	_add_field(overview, "Mutant Origin", origin)
+	UIBuilder.add_field(overview, "Mutant Origin", origin, color_muted)
 
 	var uniqueness := OptionButton.new()
 	var uniqueness_rows := rules.mutations.mutation_uniqueness_options(String(character.get("mutations", {}).get("origin", "engineered")))
@@ -2396,7 +1960,7 @@ func _render_mutations() -> void:
 		_render()
 	)
 	uniqueness.disabled = random_generation
-	_add_field(overview, "Mutant Uniqueness", uniqueness)
+	UIBuilder.add_field(overview, "Mutant Uniqueness", uniqueness, color_muted)
 
 	var roll_actions: BoxContainer
 	if get_viewport_rect().size.x < COMPACT_WIDTH:
@@ -2419,16 +1983,16 @@ func _render_mutations() -> void:
 	roll_actions.add_child(roll_origin)
 
 	if not random_generation:
-		_add_text(overview, "Player Chosen mode allows manual origin and uniqueness selection. Point totals and point distributions remain editable in both modes. Source: Player's Handbook p. 214.", 12, color_muted)
+		UIBuilder.add_text(overview, "Player Chosen mode allows manual origin and uniqueness selection. Point totals and point distributions remain editable in both modes. Source: Player's Handbook p. 214.", 12, color_muted)
 	else:
-		_add_text(overview, "Randomly Generated mode locks origin and uniqueness; use Roll Origin and Points to roll Table P48 origin, uniqueness, and mutation point totals. Source: Player's Handbook p. 214.", 12, color_muted)
+		UIBuilder.add_text(overview, "Randomly Generated mode locks origin and uniqueness; use Roll Origin and Points to roll Table P48 origin, uniqueness, and mutation point totals. Source: Player's Handbook p. 214.", 12, color_muted)
 	for note in rules.mutation_rules:
-		_add_text(overview, String(note), 12, color_muted)
+		UIBuilder.add_text(overview, String(note), 12, color_muted)
 
 	var advantage_parent: Container = content
 	var drawback_parent: Container = content
 	if is_wide_layout:
-		var columns := _add_columns()
+		var columns := UIBuilder.add_columns(content)
 		advantage_parent = columns[0]
 		drawback_parent = columns[1]
 
@@ -2437,7 +2001,7 @@ func _render_mutations() -> void:
 
 
 func _render_selected_mutation_list(parent: Container, title: String, kind: String) -> void:
-	var box := _add_section_to(parent, title)
+	var box := UIBuilder.add_section(parent, title, null, color_surface, color_border, color_text)
 	var mutation_summary: Dictionary = rules.summary(character).get("mutations", {})
 	var is_drawback := kind == "drawback"
 	var points_key := "drawback_points" if is_drawback else "advantage_points"
@@ -2472,7 +2036,7 @@ func _render_selected_mutation_list(parent: Container, title: String, kind: Stri
 		_render()
 	)
 	distribution.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_add_field(box, "Point Distribution", distribution)
+	UIBuilder.add_field(box, "Point Distribution", distribution, color_muted)
 	box.add_child(point_actions)
 
 	var roll_points := Button.new()
@@ -2503,7 +2067,7 @@ func _render_selected_mutation_list(parent: Container, title: String, kind: Stri
 
 	var rows := rules.mutations.selected_mutation_drawbacks(character) if kind == "drawback" else rules.mutations.selected_mutation_advantages(character)
 	if rows.is_empty():
-		_add_text(box, "No %s selected." % ("mutation drawbacks" if kind == "drawback" else "advantageous mutations"), 14, color_muted)
+		UIBuilder.add_text(box, "No %s selected." % ("mutation drawbacks" if kind == "drawback" else "advantageous mutations"), 14, color_muted)
 	else:
 		_add_selected_mutation_table(box, rows, kind)
 
@@ -2583,10 +2147,9 @@ func _add_selected_mutation_row(parent: VBoxContainer, mutation: Dictionary, kin
 	title_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title_box.add_theme_constant_override("separation", 2)
 	top.add_child(title_box)
-	_add_text(title_box, String(mutation.get("name", "Mutation")), 15, color_text)
-	_add_text(title_box, "%s  |  %d points  |  %s" % [
-		String(mutation.get("tier", "")),
-		rules._as_int(mutation.get("points", 0)),
+	UIBuilder.add_text(title_box, String(mutation.get("name", "Mutation")), 15, color_text)
+	UIBuilder.add_text(title_box, "%s  |  %d points  |  %s" % [
+		String(mutation.get("tier", "")), rules._as_int(mutation.get("points", 0)),
 		String(mutation.get("related_ability", "")),
 	], 12, color_muted)
 
@@ -2602,11 +2165,11 @@ func _add_selected_mutation_row(parent: VBoxContainer, mutation: Dictionary, kin
 	)
 	top.add_child(remove)
 
-	_add_text(row, String(mutation.get("summary", "")), 13, color_text)
-	_add_text(row, String(mutation.get("reference", "")), 11, color_muted)
+	UIBuilder.add_text(row, String(mutation.get("summary", "")), 13, color_text)
+	UIBuilder.add_text(row, String(mutation.get("reference", "")), 11, color_muted)
 
 	if add_separator:
-		_add_thin_separator(row)
+		UIBuilder.add_thin_separator(row, color_border)
 
 
 func _show_mutation_catalog_modal(kind: String) -> void:
@@ -2623,7 +2186,7 @@ func _refresh_mutation_catalog_panel() -> void:
 		child.queue_free()
 
 	var is_drawback := mutation_catalog_kind == "drawback"
-	mutation_catalog_title.text = "Add Mutation Drawback" if is_drawback else "Add Advantageous Mutation"
+	mutation_catalog_overlay.title_label.text = "Add Mutation Drawback" if is_drawback else "Add Advantageous Mutation"
 	var search := LineEdit.new()
 	search.text = mutation_filter_text
 	search.placeholder_text = "Search drawbacks" if is_drawback else "Search mutations"
@@ -2632,12 +2195,12 @@ func _refresh_mutation_catalog_panel() -> void:
 		mutation_filter_text = value
 		_request_search_refresh("mutation", String(value).length(), _refresh_mutation_catalog_panel)
 	)
-	_add_field(mutation_catalog_body, "Search", search)
+	UIBuilder.add_field(mutation_catalog_body, "Search", search, color_muted)
 	_restore_search_focus(search, "mutation")
 
 	var distribution_label := rules.mutations.mutation_distribution_label(character, mutation_catalog_kind)
-	_add_text(mutation_catalog_body, "Showing mutations that fit the selected distribution: %s." % distribution_label, 12, color_muted)
-	_add_text(mutation_catalog_body, "Costs use Player's Handbook Table P47. Advantage caps are three Ordinary, two Good, and one Amazing mutation. Source: Player's Handbook p. 214-216.", 12, color_muted)
+	UIBuilder.add_text(mutation_catalog_body, "Showing mutations that fit the selected distribution: %s." % distribution_label, 12, color_muted)
+	UIBuilder.add_text(mutation_catalog_body, "Costs use Player's Handbook Table P47. Advantage caps are three Ordinary, two Good, and one Amazing mutation. Source: Player's Handbook p. 214-216.", 12, color_muted)
 
 	var rows := rules.mutation_drawbacks if is_drawback else rules.mutation_advantages
 	var filter := mutation_filter_text.strip_edges().to_lower()
@@ -2659,12 +2222,10 @@ func _refresh_mutation_catalog_panel() -> void:
 		var message := "No pickable mutations match the selected distribution."
 		if not filter.is_empty():
 			message = "No pickable mutations match the selected distribution and search."
-		_add_text(mutation_catalog_body, message, 14, color_muted)
+		UIBuilder.add_text(mutation_catalog_body, message, 14, color_muted)
 	elif hidden_by_rules > 0:
-		_add_text(mutation_catalog_body, "%d unavailable mutation%s hidden by the selected distribution or current selections." % [
-			hidden_by_rules,
-			"" if hidden_by_rules == 1 else "s",
-		], 12, color_muted)
+		UIBuilder.add_text(mutation_catalog_body, "%d unavailable mutation%s hidden by the selected distribution or current selections." % [
+			hidden_by_rules, "" if hidden_by_rules == 1 else "s", ], 12, color_muted)
 	_update_mutation_catalog_modal_height.call_deferred()
 
 
@@ -2715,16 +2276,15 @@ func _add_mutation_catalog_row(parent: VBoxContainer, mutation: Dictionary, kind
 	)
 	top.add_child(add)
 
-	_add_text(row, "%s  |  %d points  |  %s" % [
-		String(mutation.get("tier", "")),
-		rules._as_int(mutation.get("points", 0)),
+	UIBuilder.add_text(row, "%s  |  %d points  |  %s" % [
+		String(mutation.get("tier", "")), rules._as_int(mutation.get("points", 0)),
 		String(mutation.get("related_ability", "")),
 	], 12, color_muted)
 	if not bool(check.get("allowed", false)):
-		_add_text(row, String(check.get("reason", "")), 12, color_warning)
-	_add_text(row, String(mutation.get("summary", "")), 13, color_text)
-	_add_text(row, String(mutation.get("reference", "")), 11, color_muted)
-	_add_thin_separator(row)
+		UIBuilder.add_text(row, String(check.get("reason", "")), 12, color_warning)
+	UIBuilder.add_text(row, String(mutation.get("summary", "")), 13, color_text)
+	UIBuilder.add_text(row, String(mutation.get("reference", "")), 11, color_muted)
+	UIBuilder.add_thin_separator(row, color_border)
 
 
 func _render_equipment() -> void:
@@ -2801,7 +2361,7 @@ func _add_equipment_filters(parent: VBoxContainer, modal := false) -> void:
 		equipment_filter_text = value
 		_request_search_refresh("equipment", String(value).length(), _refresh_equipment_browser.bind(modal))
 	)
-	_add_field(parent, "Search", search)
+	UIBuilder.add_field(parent, "Search", search, color_muted)
 	_restore_search_focus(search, "equipment")
 
 	var pl_row := HBoxContainer.new()
@@ -2835,7 +2395,7 @@ func _add_equipment_filters(parent: VBoxContainer, modal := false) -> void:
 		equipment_filter_class = ""
 		_refresh_equipment_browser(modal)
 	)
-	_add_field(parent, "Category", category_option)
+	UIBuilder.add_field(parent, "Category", category_option, color_muted)
 
 	var class_option := OptionButton.new()
 	class_option.add_item("All classes", 0)
@@ -2848,12 +2408,12 @@ func _add_equipment_filters(parent: VBoxContainer, modal := false) -> void:
 		equipment_filter_class = "" if index == 0 else class_option.get_item_text(index)
 		_refresh_equipment_browser(modal)
 	)
-	_add_field(parent, "Class", class_option)
+	UIBuilder.add_field(parent, "Class", class_option, color_muted)
 
 	var sources_box := VBoxContainer.new()
 	sources_box.add_theme_constant_override("separation", 4)
 	parent.add_child(sources_box)
-	_add_text(sources_box, "Sources", 12, color_muted)
+	UIBuilder.add_text(sources_box, "Sources", 12, color_muted)
 	for source in rules.equipment.equipment_source_options():
 		var source_id := String(source.get("id", ""))
 		var toggle := CheckBox.new()
@@ -2873,9 +2433,9 @@ func _add_equipment_filters(parent: VBoxContainer, modal := false) -> void:
 
 func _add_equipment_catalog(parent: VBoxContainer, modal := false) -> void:
 	var items := rules.equipment.filtered_equipment(_equipment_filter_dictionary())
-	_add_text(parent, "%d matching items" % items.size(), 13, color_muted)
+	UIBuilder.add_text(parent, "%d matching items" % items.size(), 13, color_muted)
 	if items.is_empty():
-		_add_text(parent, "No equipment matches the current filters.", 14, color_muted)
+		UIBuilder.add_text(parent, "No equipment matches the current filters.", 14, color_muted)
 		return
 	for item in items:
 		_add_equipment_catalog_row(parent, item, modal)
@@ -2911,13 +2471,13 @@ func _add_equipment_catalog_row(parent: VBoxContainer, item: Dictionary, modal :
 	)
 	top.add_child(add_button)
 
-	_add_text(row, _equipment_item_meta(item), 12, color_muted)
+	UIBuilder.add_text(row, _equipment_item_meta(item), 12, color_muted)
 	var combat_line := _equipment_combat_line(item)
 	if not combat_line.is_empty():
-		_add_text(row, combat_line, 12, color_text)
+		UIBuilder.add_text(row, combat_line, 12, color_text)
 	var reference := String(item.get("reference", ""))
 	if not reference.is_empty():
-		_add_text(row, reference, 11, color_muted)
+		UIBuilder.add_text(row, reference, 11, color_muted)
 
 	var separator := HSeparator.new()
 	separator.add_theme_color_override("separator", Color(color_border.r, color_border.g, color_border.b, 0.55))
@@ -2925,9 +2485,9 @@ func _add_equipment_catalog_row(parent: VBoxContainer, item: Dictionary, modal :
 
 
 func _add_carried_equipment_panel(parent: Container) -> void:
-	var box := _add_section_to(parent, "Carried Equipment")
+	var box := UIBuilder.add_section(parent, "Carried Equipment", null, color_surface, color_border, color_text)
 	var summary := rules.equipment.equipment_summary(character)
-	_add_metric(box, "Total Mass", _format_number(rules._as_float(summary.get("total_mass", 0.0))))
+	_add_metric(box, "Total Mass", UIBuilder.format_number(rules._as_float(summary.get("total_mass", 0.0))))
 	_add_metric(box, "Total Cost", str(rules._as_int(summary.get("total_cost", 0))))
 
 	var actions: BoxContainer
@@ -2955,7 +2515,7 @@ func _add_carried_equipment_panel(parent: Container) -> void:
 
 	var rows := rules.equipment.carried_equipment(character)
 	if rows.is_empty():
-		_add_text(box, "No carried equipment yet.", 14, color_muted)
+		UIBuilder.add_text(box, "No carried equipment yet.", 14, color_muted)
 		return
 	for row in rows:
 		_add_carried_equipment_row(box, row)
@@ -3000,16 +2560,15 @@ func _add_carried_equipment_row(parent: VBoxContainer, row: Dictionary) -> void:
 	)
 	top.add_child(remove)
 
-	_add_text(row_box, "%s  |  Total mass %s  |  Total cost %d" % [
-		_equipment_item_meta(item),
-		_format_number(rules._as_float(row.get("total_mass", 0.0))),
+	UIBuilder.add_text(row_box, "%s  |  Total mass %s  |  Total cost %d" % [
+		_equipment_item_meta(item), UIBuilder.format_number(rules._as_float(row.get("total_mass", 0.0))),
 		rules._as_int(row.get("total_cost", 0)),
 	], 12, color_muted)
 	var combat_line := _equipment_combat_line(item)
 	if not combat_line.is_empty():
-		_add_text(row_box, combat_line, 12, color_text)
+		UIBuilder.add_text(row_box, combat_line, 12, color_text)
 	if not String(row.get("notes", "")).strip_edges().is_empty():
-		_add_text(row_box, String(row.get("notes", "")), 12, color_muted)
+		UIBuilder.add_text(row_box, String(row.get("notes", "")), 12, color_muted)
 
 	var separator := HSeparator.new()
 	separator.add_theme_color_override("separator", Color(color_border.r, color_border.g, color_border.b, 0.55))
@@ -3073,23 +2632,23 @@ func _refresh_equipment_form_panel() -> void:
 	var item: Dictionary = equipment_form_state.get("item", {})
 	var editable_item := mode == "custom" or bool(equipment_form_state.get("is_custom", false))
 	if mode == "catalog":
-		equipment_form_title.text = "Add Equipment"
+		equipment_form_overlay.title_label.text = "Add Equipment"
 		_add_equipment_filters(equipment_form_body, true)
 		_add_equipment_catalog(equipment_form_body, true)
 		_update_equipment_form_modal_height.call_deferred()
 		return
 
-	equipment_form_title.text = "Custom Equipment" if mode == "custom" else "Edit Equipment"
+	equipment_form_overlay.title_label.text = "Custom Equipment" if mode == "custom" else "Edit Equipment"
 
 	if editable_item:
 		_add_equipment_item_editor(equipment_form_body, item)
 	else:
-		_add_text(equipment_form_body, String(item.get("name", "Equipment")), 16, color_text)
-		_add_text(equipment_form_body, _equipment_item_meta(item), 13, color_muted)
+		UIBuilder.add_text(equipment_form_body, String(item.get("name", "Equipment")), 16, color_text)
+		UIBuilder.add_text(equipment_form_body, _equipment_item_meta(item), 13, color_muted)
 		var combat_line := _equipment_combat_line(item)
 		if not combat_line.is_empty():
-			_add_text(equipment_form_body, combat_line, 13, color_text)
-		_add_text(equipment_form_body, String(item.get("reference", "")), 12, color_muted)
+			UIBuilder.add_text(equipment_form_body, combat_line, 13, color_text)
+		UIBuilder.add_text(equipment_form_body, String(item.get("reference", "")), 12, color_muted)
 
 	_add_number_input(equipment_form_body, "Quantity", rules._as_int(equipment_form_state.get("quantity", 1)), 1, 999, func(value):
 		equipment_form_state["quantity"] = value
@@ -3114,7 +2673,7 @@ func _refresh_equipment_form_panel() -> void:
 	notes.custom_minimum_size = Vector2(0, 90)
 	notes.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	notes.text_changed.connect(func(): equipment_form_state["notes"] = notes.text)
-	_add_field(equipment_form_body, "Notes", notes)
+	UIBuilder.add_field(equipment_form_body, "Notes", notes, color_muted)
 
 	var actions := HBoxContainer.new()
 	actions.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -3192,7 +2751,7 @@ func _add_equipment_item_editor(parent: VBoxContainer, item: Dictionary) -> void
 			item.erase("combat")
 		_refresh_equipment_form_panel()
 	)
-	_add_form_cell(form_parent, "Kind", kind)
+	UIBuilder.add_form_cell(form_parent, "Kind", kind)
 
 	_add_form_line_edit(form_parent, "Category", String(item.get("category", "")), func(value): item["category"] = value)
 	_add_form_line_edit(form_parent, "Class", String(item.get("class", "")), func(value): item["class"] = value)
@@ -3314,7 +2873,7 @@ func _equipment_mass_text(item: Dictionary) -> String:
 	var mass_text := String(item.get("mass_text", ""))
 	if not mass_text.is_empty():
 		return mass_text
-	return _format_number(rules._as_float(item.get("mass", 0.0)))
+	return UIBuilder.format_number(rules._as_float(item.get("mass", 0.0)))
 
 
 func _equipment_cost_text(item: Dictionary) -> String:
@@ -3353,7 +2912,7 @@ func _equipment_combat_line(item: Dictionary) -> String:
 
 func _add_attack_forms_summary(parent: VBoxContainer, forms: Array) -> void:
 	if forms.is_empty():
-		_add_text(parent, "Unarmed attack data is unavailable.", 13, color_muted)
+		UIBuilder.add_text(parent, "Unarmed attack data is unavailable.", 13, color_muted)
 		return
 
 	if not is_wide_layout:
@@ -3388,7 +2947,7 @@ func _add_attack_form_card(parent: VBoxContainer, form: Dictionary, include_sepa
 	card.add_theme_constant_override("separation", 4)
 	parent.add_child(card)
 
-	_add_text(card, String(form.get("name", "Attack")), 15, color_text)
+	UIBuilder.add_text(card, String(form.get("name", "Attack")), 15, color_text)
 	_add_stat_pair_row(card, [
 		{"label": "Score", "value": String(form.get("score", ""))},
 		{"label": "Die", "value": String(form.get("base_die", ""))},
@@ -3404,12 +2963,12 @@ func _add_attack_form_card(parent: VBoxContainer, form: Dictionary, include_sepa
 		{"label": "Mass", "value": String(form.get("mass", ""))},
 	])
 	if include_separator:
-		_add_thin_separator(card)
+		UIBuilder.add_thin_separator(card, color_border)
 
 
 func _add_armor_summary(parent: VBoxContainer, armor_rows: Array) -> void:
 	if armor_rows.is_empty():
-		_add_text(parent, "No carried armor.", 13, color_muted)
+		UIBuilder.add_text(parent, "No carried armor.", 13, color_muted)
 		return
 
 	if not is_wide_layout:
@@ -3435,7 +2994,7 @@ func _add_armor_summary(parent: VBoxContainer, armor_rows: Array) -> void:
 		_add_table_label(grid, String(combat.get("li", "")), false)
 		_add_table_label(grid, String(combat.get("hi", "")), false)
 		_add_table_label(grid, String(combat.get("en", "")), false)
-		_add_table_label(grid, _format_number(rules._as_float(row.get("total_mass", 0.0))), false)
+		_add_table_label(grid, UIBuilder.format_number(rules._as_float(row.get("total_mass", 0.0))), false)
 
 
 func _add_armor_card(parent: VBoxContainer, row: Dictionary, include_separator := true) -> void:
@@ -3448,14 +3007,13 @@ func _add_armor_card(parent: VBoxContainer, row: Dictionary, include_separator :
 	card.add_theme_constant_override("separation", 4)
 	parent.add_child(card)
 
-	_add_text(card, "%s%s" % [
-		String(item.get("name", "Armor")),
-		"  Equipped" if bool(row.get("equipped", false)) else "",
+	UIBuilder.add_text(card, "%s%s" % [
+		String(item.get("name", "Armor")), "  Equipped" if bool(row.get("equipped", false)) else "",
 	], 15, color_text)
 	_add_stat_pair_row(card, [
 		{"label": "AP", "value": "%+d" % rules._as_int(combat.get("action_penalty", 0))},
 		{"label": "Tough", "value": str(combat.get("toughness", ""))},
-		{"label": "Mass", "value": _format_number(rules._as_float(row.get("total_mass", 0.0)))},
+		{"label": "Mass", "value": UIBuilder.format_number(rules._as_float(row.get("total_mass", 0.0)))},
 	])
 	_add_stat_pair_row(card, [
 		{"label": "LI", "value": String(combat.get("li", ""))},
@@ -3463,7 +3021,7 @@ func _add_armor_card(parent: VBoxContainer, row: Dictionary, include_separator :
 		{"label": "En", "value": String(combat.get("en", ""))},
 	])
 	if include_separator:
-		_add_thin_separator(card)
+		UIBuilder.add_thin_separator(card, color_border)
 
 
 func _add_stat_pair_row(parent: VBoxContainer, pairs: Array) -> void:
@@ -3507,10 +3065,6 @@ func _add_labeled_value_to(parent: Container, label_text: String, value_text: St
 	return box
 
 
-func _add_thin_separator(parent: VBoxContainer) -> void:
-	var separator := HSeparator.new()
-	separator.add_theme_color_override("separator", Color(color_border.r, color_border.g, color_border.b, 0.55))
-	parent.add_child(separator)
 
 
 func _add_table_label(parent: GridContainer, text: String, header_cell: bool) -> Label:
@@ -3552,13 +3106,13 @@ func _render_skill_picker(box: VBoxContainer, summary: Dictionary, is_psionics :
 		budget_note += "; perks spend %d SP" % rules._as_int(summary.get("perk_points_used", 0))
 	if rules._as_int(summary.get("achievement_benefit_points_used", 0)) > 0:
 		budget_note += "; achievements spend %d SP" % rules._as_int(summary.get("achievement_benefit_points_used", 0))
-	_add_text(box, budget_note, 12, color_muted)
+	UIBuilder.add_text(box, budget_note, 12, color_muted)
 	if summary["skill_points_remaining"] < 0:
-		_add_text(box, "Skill points are overspent by %d." % abs(summary["skill_points_remaining"]), 13, color_warning)
+		UIBuilder.add_text(box, "Skill points are overspent by %d." % abs(summary["skill_points_remaining"]), 13, color_warning)
 	if summary["broad_skills_remaining"] < 0:
-		_add_text(box, "Broad skills exceed the limit by %d." % abs(summary["broad_skills_remaining"]), 13, color_warning)
+		UIBuilder.add_text(box, "Broad skills exceed the limit by %d." % abs(summary["broad_skills_remaining"]), 13, color_warning)
 	if rules.optional_rule_enabled(character, "2b"):
-		_add_text(box, "Racial broad skills do not count against this limit: %d." % summary["racial_broad_skills"], 13, color_muted)
+		UIBuilder.add_text(box, "Racial broad skills do not count against this limit: %d." % summary["racial_broad_skills"], 13, color_muted)
 
 	var search := LineEdit.new()
 	search.text = psionic_filter if is_psionics else skill_filter
@@ -3581,10 +3135,10 @@ func _render_skill_picker(box: VBoxContainer, summary: Dictionary, is_psionics :
 
 
 func _render_selected_skill_panel(parent: Container) -> void:
-	var box := _add_section_to(parent, "Selected Skills")
+	var box := UIBuilder.add_section(parent, "Selected Skills", null, color_surface, color_border, color_text)
 	var selected := rules.selected_skills(character)
 	if selected.is_empty():
-		_add_text(box, "Only species free broad skills are selected.", 14, color_muted)
+		UIBuilder.add_text(box, "Only species free broad skills are selected.", 14, color_muted)
 		return
 
 	_add_selected_skill_table(box, selected)
@@ -3717,7 +3271,7 @@ func _add_selected_fx_skill_table(parent: VBoxContainer, fx_skills: Array) -> vo
 		var skill_name = String(skill.get("name", ""))
 		var score = rules.fx.fx_skill_score(character, skill_name)
 		var spent = rules.fx.fx_skill_total_cost(character, skill_name)
-		var cost_text := "%d SP" % spent
+		var cost_text: String = "%d SP" % spent
 		var rank_text := "Broad" if skill.get("type", "") == "broad" else "R%d" % rules.fx.fx_skill_rank(character, skill_name)
 		var score_text := "O%d/G%d/A%d" % [
 			rules._as_int(score.get("ordinary", 0)),
@@ -3971,12 +3525,12 @@ func _add_skill_row(parent: VBoxContainer, skill: Dictionary, indented: bool) ->
 func _render_cybertech() -> void:
 	var cybertech_data = rules.cybertech._cybertech_data(character)
 	var enabled = rules.cybertech.cybertech_enabled(character)
-	var top_section = _add_section("Cybertech")
-	_add_text(top_section, "Cybertech allows characters to enhance their bodies with technology. Your Cyber Tolerance is equal to your Constitution score (Mechalus get +4). Installing items uses up your tolerance. Items that tap into your nervous system (like Reflex or Fast Chips) risk giving you Cykosis, a mental strain that reduces your Will-based checks by -1 per point of Cykosis.", 12, color_muted)
+	var top_section = UIBuilder.add_section(content, "Cybertech", null, color_surface, color_border, color_text)
+	UIBuilder.add_text(top_section, "Cybertech allows characters to enhance their bodies with technology. Your Cyber Tolerance is equal to your Constitution score (Mechalus get +4). Installing items uses up your tolerance. Items that tap into your nervous system (like Reflex or Fast Chips) risk giving you Cykosis, a mental strain that reduces your Will-based checks by -1 per point of Cykosis.", 12, color_muted)
 
 	_add_large_checkbox(top_section, "Hero uses Cybertech", enabled, func(checked):
 		rules.cybertech.set_cybertech_enabled(character, checked)
-		_save_character()
+		char_manager.save_character(notes_editing, notes_draft)
 		_render()
 	)
 	if not enabled:
@@ -3994,19 +3548,19 @@ func _render_cybertech() -> void:
 	var cyk_used = rules.cybertech.cykosis_used(character)
 	_add_number_stepper(metrics_row, "Cykosis Points Used (Max %d)" % cyk_total, cyk_used, 0, cyk_total, func(value):
 		rules.cybertech.set_cykosis_used(character, value)
-		_save_character()
+		char_manager.save_character(notes_editing, notes_draft)
 	)
-	_add_thin_separator(top_section)
+	UIBuilder.add_thin_separator(top_section, color_border)
 
 	var skill_purchased = rules.cybertech.is_cybertech_skill_purchased(character)
 	_add_large_checkbox(top_section, "Purchase the Cybertech skill required to use certain cybertech for 10 skill points", skill_purchased, func(checked):
 		rules.cybertech.set_cybertech_skill_purchased(character, checked)
-		_save_character()
+		char_manager.save_character(notes_editing, notes_draft)
 		_render()
 	)
-	_add_thin_separator(top_section)
+	UIBuilder.add_thin_separator(top_section, color_border)
 
-	var catalog_section = _add_section("Cybertech Catalog")
+	var catalog_section = UIBuilder.add_section(content, "Cybertech Catalog", null, color_surface, color_border, color_text)
 
 	for item_value in rules.cybertech_catalog:
 		if typeof(item_value) != TYPE_DICTIONARY:
@@ -4015,7 +3569,7 @@ func _render_cybertech() -> void:
 		var row = VBoxContainer.new()
 		catalog_section.add_child(row)
 		
-		var title = _add_text(row, String(item.get("name", "")), 16, color_accent)
+		var title = UIBuilder.add_text(row, String(item.get("name", "")), 16, color_accent)
 		
 		var info_str = "PL: %d  |  Mass: %s  |  Size: %s" % [
 			rules._as_int(item.get("pl", 6)),
@@ -4025,9 +3579,9 @@ func _render_cybertech() -> void:
 		var source_str = String(item.get("source", ""))
 		if not source_str.is_empty():
 			info_str += "  |  Source: %s" % source_str
-		_add_text(row, info_str, 12, color_muted)
+		UIBuilder.add_text(row, info_str, 12, color_muted)
 		
-		_add_text(row, String(item.get("description", "")), 14, color_text)
+		UIBuilder.add_text(row, String(item.get("description", "")), 14, color_text)
 		
 		var action_margin = MarginContainer.new()
 		action_margin.add_theme_constant_override("margin_top", 12)
@@ -4049,7 +3603,7 @@ func _render_cybertech() -> void:
 			btn_remove.text = "Remove"
 			btn_remove.pressed.connect(func():
 				rules.cybertech.remove_cybertech(character, String(item.get("id", "")))
-				_save_character()
+				char_manager.save_character(notes_editing, notes_draft)
 				_render()
 			)
 			action_row.add_child(btn_remove)
@@ -4062,14 +3616,14 @@ func _render_cybertech() -> void:
 					btn_add.pressed.connect(func():
 						var res = rules.cybertech.install_cybertech(character, String(item.get("id", "")), q)
 						if res.get("ok", false):
-							_save_character()
+							char_manager.save_character(notes_editing, notes_draft)
 							_render()
 					)
 					action_row.add_child(btn_add)
-		_add_thin_separator(row)
+		UIBuilder.add_thin_separator(row, color_border)
 
 func _render_fx_psionics() -> void:
-	var overview := _add_section("Psionic Energy & Mindwalker Status")
+	var overview := UIBuilder.add_section(content, "Psionic Energy & Mindwalker Status", null, color_surface, color_border, color_text)
 	
 	var is_psionic: bool = rules._as_int(character.get("species_id", 0)) == 1 or character.get("profession_id", 0) == 6 # Fraal or Mindwalker
 	var summary := rules.summary(character)
@@ -4085,15 +3639,15 @@ func _render_fx_psionics() -> void:
 			energy_points = base_wil
 			
 		_add_progress_metric(overview, "Psionic Energy Points", energy_points, energy_points, "%d / %d" % [energy_points, energy_points])
-		_add_text(overview, "Your Psionic Energy is derived from your Will score. Use these points to power psionic abilities.", 12, color_muted)
+		UIBuilder.add_text(overview, "Your Psionic Energy is derived from your Will score. Use these points to power psionic abilities.", 12, color_muted)
 	else:
-		_add_text(overview, "You do not currently possess psionic potential. Only Fraal or heroes with the Mindwalker profession/perk can access these powers.", 13, color_warning)
+		UIBuilder.add_text(overview, "You do not currently possess psionic potential. Only Fraal or heroes with the Mindwalker profession/perk can access these powers.", 13, color_warning)
 
-	var skills_box := _add_section("Psionic Skills")
+	var skills_box := UIBuilder.add_section(content, "Psionic Skills", null, color_surface, color_border, color_text)
 	if is_psionic:
 		_render_skill_picker(skills_box, summary, true)
 	else:
-		_add_text(skills_box, "Psionic skills are locked.", 13, color_muted)
+		UIBuilder.add_text(skills_box, "Psionic skills are locked.", 13, color_muted)
 
 var fx_category_filter := "Arcane Magic"
 
@@ -4101,19 +3655,19 @@ func _render_fx() -> void:
 	var left_parent: Container = content
 	var right_parent: Container = content
 	if is_wide_layout:
-		var columns := _add_columns()
+		var columns := UIBuilder.add_columns(content)
 		left_parent = columns[0]
 		right_parent = columns[1]
 
-	var skills_box := _add_section_to(left_parent, "FX Skills")
+	var skills_box := UIBuilder.add_section(left_parent, "FX Skills", null, color_surface, color_border, color_text)
 	
 	var is_talent = rules.fx.is_fx_talent(character)
 	if is_talent:
 		_render_fx_skill_picker(skills_box)
 	else:
-		_add_text(skills_box, "FX skills are locked. Enable FX Talent status to unlock.", 13, color_muted)
+		UIBuilder.add_text(skills_box, "FX skills are locked. Enable FX Talent status to unlock.", 13, color_muted)
 
-	var overview := _add_section_to(right_parent, "FX Talent Status")
+	var overview := UIBuilder.add_section(right_parent, "FX Talent Status", null, color_surface, color_border, color_text)
 	
 	var talent_box := HBoxContainer.new()
 	talent_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -4173,10 +3727,10 @@ func _render_fx() -> void:
 			character["fx"]["primary_broad_group"] = String(fx_broads[index].get("name", ""))
 			_render()
 		)
-		_add_field(overview, "Select your FX primary broad skill group (Base cost specialties)", fx_option)
-		_add_text(overview, "Under the Beyond Science rules (p. 10), specialty skills in your primary FX broad skill group are purchased at base cost; specialties in all other FX groups cost double.", 12, color_muted)
+		UIBuilder.add_field(overview, "Select your FX primary broad skill group (Base cost specialties)", fx_option, color_muted)
+		UIBuilder.add_text(overview, "Under the Beyond Science rules (p. 10), specialty skills in your primary FX broad skill group are purchased at base cost; specialties in all other FX groups cost double.", 12, color_muted)
 		
-		var selected_box := _add_section_to(right_parent, "Selected FX Skills")
+		var selected_box := UIBuilder.add_section(right_parent, "Selected FX Skills", null, color_surface, color_border, color_text)
 		_render_fx_selected_skills(selected_box)
 
 
@@ -4186,15 +3740,15 @@ func _render_fx_selected_skills(parent: VBoxContainer) -> void:
 	parent.add_child(list)
 	
 	var header := HBoxContainer.new()
-	var cost_label = _add_text(header, "Cost", 12, color_accent)
+	var cost_label = UIBuilder.add_text(header, "Cost", 12, color_accent)
 	cost_label.custom_minimum_size.x = 40
-	var rank_label = _add_text(header, "Rank", 12, color_accent)
+	var rank_label = UIBuilder.add_text(header, "Rank", 12, color_accent)
 	rank_label.custom_minimum_size.x = 60
-	var name_label = _add_text(header, "Skill", 12, color_accent)
+	var name_label = UIBuilder.add_text(header, "Skill", 12, color_accent)
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var score_label = _add_text(header, "Score", 12, color_accent)
+	var score_label = UIBuilder.add_text(header, "Score", 12, color_accent)
 	score_label.custom_minimum_size.x = 90
-	var die_label = _add_text(header, "Die", 12, color_accent)
+	var die_label = UIBuilder.add_text(header, "Die", 12, color_accent)
 	die_label.custom_minimum_size.x = 40
 	list.add_child(header)
 	
@@ -4216,7 +3770,7 @@ func _render_fx_selected_skills(parent: VBoxContainer) -> void:
 				_add_fx_selected_row(list, spec, true)
 				
 	if not has_skills:
-		_add_text(list, "No FX skills selected.", 13, color_muted)
+		UIBuilder.add_text(list, "No FX skills selected.", 13, color_muted)
 
 func _add_fx_selected_row(parent: VBoxContainer, skill: Dictionary, indented: bool) -> void:
 	var row := HBoxContainer.new()
@@ -4226,9 +3780,9 @@ func _add_fx_selected_row(parent: VBoxContainer, skill: Dictionary, indented: bo
 	var is_specialty = skill.has("broad_skill")
 	var rank = rules.fx.fx_skill_rank(character, skill_name)
 	
-	var cost_label = _add_text(row, str(rules.fx.fx_skill_total_cost(character, skill_name)) + " SP", 13, color_text)
+	var cost_label = UIBuilder.add_text(row, str(rules.fx.fx_skill_total_cost(character, skill_name)) + " SP", 13, color_text)
 	cost_label.custom_minimum_size.x = 40
-	var rank_label = _add_text(row, "R%d" % rank if is_specialty else "Broad", 13, color_text)
+	var rank_label = UIBuilder.add_text(row, "R%d" % rank if is_specialty else "Broad", 13, color_text)
 	rank_label.custom_minimum_size.x = 60
 	
 	var name_box := HBoxContainer.new()
@@ -4237,14 +3791,14 @@ func _add_fx_selected_row(parent: VBoxContainer, skill: Dictionary, indented: bo
 		var indent := Control.new()
 		indent.custom_minimum_size.x = 20
 		name_box.add_child(indent)
-	var name_lbl := _add_text(name_box, skill_name, 13, color_text)
+	var name_lbl := UIBuilder.add_text(name_box, skill_name, 13, color_text)
 	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(name_box)
 	
 	var score = rules.fx.fx_skill_score(character, skill_name)
-	var score_label = _add_text(row, "O%d/G%d/A%d" % [score.get("ordinary", 0), score.get("good", 0), score.get("amazing", 0)], 13, color_text)
+	var score_label = UIBuilder.add_text(row, "O%d/G%d/A%d" % [score.get("ordinary", 0), score.get("good", 0), score.get("amazing", 0)], 13, color_text)
 	score_label.custom_minimum_size.x = 90
-	var die_label = _add_text(row, "+d0" if is_specialty else "+d4", 13, color_text)
+	var die_label = UIBuilder.add_text(row, "+d0" if is_specialty else "+d4", 13, color_text)
 	die_label.custom_minimum_size.x = 40
 
 
@@ -4475,7 +4029,7 @@ func _refresh_fx_skill_details_panel(skill: Dictionary) -> void:
 	var ability = String(skill.get("ability", "WIL"))
 	var rank = rules.fx.fx_skill_rank(character, skill_name)
 	
-	skill_details_title.text = skill_name
+	skill_details_overlay.title_label.text = skill_name
 
 	var type_label = "Specialty skill" if is_specialty else "Broad skill"
 	var meta := "%s  |  %s (%s)  |  Category: %s" % [
@@ -4484,20 +4038,20 @@ func _refresh_fx_skill_details_panel(skill: Dictionary) -> void:
 		ability,
 		category
 	]
-	_add_text(skill_details_body, meta, 13, color_muted)
+	UIBuilder.add_text(skill_details_body, meta, 13, color_muted)
 
 	if is_specialty:
 		var next_cost := rules.fx.fx_skill_cost(character, skill_name)
-		var rank_line := "Current rank %d" % rank
+		var rank_line: String = "Current rank %d" % rank
 		if rank < AlternityRules.MAX_SPECIALTY_RANK:
 			rank_line += "  |  Next rank %d SP" % next_cost
 		else:
 			rank_line += "  |  Maximum rank"
-		_add_text(skill_details_body, rank_line, 13, color_accent)
+		UIBuilder.add_text(skill_details_body, rank_line, 13, color_accent)
 	else:
-		_add_text(skill_details_body, "Cost %d SP" % rules.fx.fx_skill_cost(character, skill_name), 13, color_accent)
+		UIBuilder.add_text(skill_details_body, "Cost %d SP" % rules.fx.fx_skill_cost(character, skill_name), 13, color_accent)
 
-	_add_subheading(skill_details_body, "Check Scores")
+	UIBuilder.add_subheading(skill_details_body, "Check Scores", color_text)
 	
 	var is_broad_selected := false
 	if is_specialty:
@@ -4513,7 +4067,7 @@ func _refresh_fx_skill_details_panel(skill: Dictionary) -> void:
 			score.get("amazing", 0),
 			die_str
 		]
-		_add_text(skill_details_body, check_line, 14, color_text)
+		UIBuilder.add_text(skill_details_body, check_line, 14, color_text)
 	elif is_specialty and is_broad_selected:
 		var abilities := rules.effective_abilities(character)
 		var ability_score = rules._as_int(abilities.get(ability, 10))
@@ -4526,33 +4080,33 @@ func _refresh_fx_skill_details_panel(skill: Dictionary) -> void:
 			good,
 			amazing
 		]
-		_add_text(skill_details_body, check_line, 14, color_muted)
-		_add_text(skill_details_body, "Note: Untrained FX specialty use, if allowed by GM, increases activation cost by +1 FX energy point.", 12, color_muted)
+		UIBuilder.add_text(skill_details_body, check_line, 14, color_muted)
+		UIBuilder.add_text(skill_details_body, "Note: Untrained FX specialty use, if allowed by GM, increases activation cost by +1 FX energy point.", 12, color_muted)
 	else:
-		_add_text(skill_details_body, "Locked (Requires purchasing broad skill first)", 13, color_warning)
+		UIBuilder.add_text(skill_details_body, "Locked (Requires purchasing broad skill first)", 13, color_warning)
 
 	var skill_meta = String(skill.get("meta", ""))
 	if not skill_meta.is_empty():
-		_add_subheading(skill_details_body, "Type & Activation")
-		_add_text(skill_details_body, skill_meta, 13, color_text)
+		UIBuilder.add_subheading(skill_details_body, "Type & Activation", color_text)
+		UIBuilder.add_text(skill_details_body, skill_meta, 13, color_text)
 
 	var description = String(skill.get("description", ""))
 	if not description.is_empty():
-		_add_subheading(skill_details_body, "Description")
-		_add_text(skill_details_body, description, 13, color_text)
+		UIBuilder.add_subheading(skill_details_body, "Description", color_text)
+		UIBuilder.add_text(skill_details_body, description, 13, color_text)
 
 	var rank_benefits: Dictionary = skill.get("rank_benefits", {})
 	if not rank_benefits.is_empty():
-		_add_subheading(skill_details_body, "Rank Benefits")
+		UIBuilder.add_subheading(skill_details_body, "Rank Benefits", color_text)
 		var thresholds := rank_benefits.keys()
 		thresholds.sort_custom(func(a, b): return int(a) < int(b))
 		for threshold in thresholds:
 			var required_rank := int(threshold)
 			var color := color_accent if rank >= required_rank else color_muted
-			_add_text(skill_details_body, "Rank %d: %s" % [required_rank, String(rank_benefits[threshold])], 13, color)
+			UIBuilder.add_text(skill_details_body, "Rank %d: %s" % [required_rank, String(rank_benefits[threshold])], 13, color)
 
-	_add_subheading(skill_details_body, "Source")
-	_add_text(skill_details_body, "Alternity Beyond Science: A Guide to FX", 12, color_muted)
+	UIBuilder.add_subheading(skill_details_body, "Source", color_text)
+	UIBuilder.add_text(skill_details_body, "Alternity Beyond Science: A Guide to FX", 12, color_muted)
 
 
 func _render_summary() -> void:
@@ -4563,25 +4117,24 @@ func _render_summary() -> void:
 	var left_parent: Container = content
 	var right_parent: Container = content
 	if is_wide_layout:
-		var columns := _add_columns()
+		var columns := UIBuilder.add_columns(content)
 		left_parent = columns[0]
 		right_parent = columns[1]
 
-	var overview := _add_section_to(left_parent, "Character")
-	_add_text(overview, "%s  |  %s  |  %s" % [
-		String(character.get("hero_name", "")),
-		current_species.get("name", ""),
+	var overview := UIBuilder.add_section(left_parent, "Character", null, color_surface, color_border, color_text)
+	UIBuilder.add_text(overview, "%s  |  %s  |  %s" % [
+		String(character.get("hero_name", "")), current_species.get("name", ""),
 		profession.get("name", ""),
 	], 18, color_text)
 	if not String(character.get("career", "")).is_empty():
-		_add_text(overview, String(character.get("career", "")), 13, color_muted)
-	_add_text(overview, "Level %d  |  AP %d total, %d used, %d available" % [
+		UIBuilder.add_text(overview, String(character.get("career", "")), 13, color_muted)
+	UIBuilder.add_text(overview, "Level %d  |  AP %d total, %d used, %d available" % [
 		rules._as_int(summary.get("achievement_level", 1)),
 		rules._as_int(summary.get("achievement_points", 0)),
 		rules._as_int(summary.get("achievement_points_used", 0)),
 		rules._as_int(summary.get("achievement_points_available", 0)),
 	], 13, color_muted)
-	_add_text(overview, "Next level at %d AP" % rules._as_int(summary.get("achievement_next_level_points", 0)), 12, color_muted)
+	UIBuilder.add_text(overview, "Next level at %d AP" % rules._as_int(summary.get("achievement_next_level_points", 0)), 12, color_muted)
 	_add_compact_abilities(overview)
 	var action: Dictionary = summary["action_check"]
 	_add_metric(overview, "Action Check Score", "M%d / O%d / G%d / A%d  %s" % [
@@ -4603,13 +4156,12 @@ func _render_summary() -> void:
 			rules.set_last_resorts_used(character, value)
 			_render()
 	)
-	_add_text(overview, "%d available of %d max. Replacement cost: %d skill points." % [
-		rules._as_int(last_resorts.get("available", 0)),
-		rules._as_int(last_resorts.get("max", 0)),
+	UIBuilder.add_text(overview, "%d available of %d max. Replacement cost: %d skill points." % [
+		rules._as_int(last_resorts.get("available", 0)), rules._as_int(last_resorts.get("max", 0)),
 		rules._as_int(last_resorts.get("cost", 0)),
 	], 13, color_muted)
 	if rules._as_int(last_resorts.get("profession_bonus", 0)) > 0:
-		_add_text(overview, "Free Agent maximum includes +%d and may spend 2 points on one action." % rules._as_int(last_resorts.get("profession_bonus", 0)), 13, color_muted)
+		UIBuilder.add_text(overview, "Free Agent maximum includes +%d and may spend 2 points on one action." % rules._as_int(last_resorts.get("profession_bonus", 0)), 13, color_muted)
 
 	# Special profession and talent benefits summary
 	var primary_prof_id := rules._as_int(character.get("profession_id", 0))
@@ -4642,9 +4194,9 @@ func _render_summary() -> void:
 		specials_info.append("Primary FX Group: %s" % fx_group)
 		
 	for info in specials_info:
-		_add_text(overview, info, 13, color_accent)
+		UIBuilder.add_text(overview, info, 13, color_accent)
 
-	var durability_box := _add_section_to(left_parent, "Durability")
+	var durability_box := UIBuilder.add_section(left_parent, "Durability", null, color_surface, color_border, color_text)
 	var durability: Dictionary = summary["durability"]
 	for damage_type in ["stun", "wound", "mortal", "fatigue"]:
 		var damage_key := String(damage_type)
@@ -4658,7 +4210,7 @@ func _render_summary() -> void:
 				_render()
 		)
 
-	var movement_box := _add_section_to(left_parent, "Combat Movement")
+	var movement_box := UIBuilder.add_section(left_parent, "Combat Movement", null, color_surface, color_border, color_text)
 	var movement: Dictionary = summary["movement"]
 	_add_metric(movement_box, "STR + DEX", str(movement["total"]))
 	_add_metric(movement_box, "Rates", "Sprint %s   Run %s   Walk %s" % [
@@ -4673,26 +4225,26 @@ func _render_summary() -> void:
 		str(movement["fly"]),
 	])
 	for effect in movement.get("effects", []):
-		_add_text(movement_box, "%s: %s" % [effect.get("mode", ""), effect.get("effect", "")], 12, color_muted)
+		UIBuilder.add_text(movement_box, "%s: %s" % [effect.get("mode", ""), effect.get("effect", "")], 12, color_muted)
 
 	var equipment_summary: Dictionary = summary.get("equipment", {})
-	var attack_forms_box := _add_section_to(left_parent, "Attack Forms")
+	var attack_forms_box := UIBuilder.add_section(left_parent, "Attack Forms", null, color_surface, color_border, color_text)
 	var combined_attacks: Array = equipment_summary.get("attack_forms", []).duplicate(true)
 	combined_attacks.append_array(rules.cybertech.cybertech_attack_forms(character))
 	_add_attack_forms_summary(attack_forms_box, combined_attacks)
-	var armor_box := _add_section_to(left_parent, "Armor")
+	var armor_box := UIBuilder.add_section(left_parent, "Armor", null, color_surface, color_border, color_text)
 	var combined_armor: Array = equipment_summary.get("combat_armor", []).duplicate(true)
 	combined_armor.append_array(rules.cybertech.cybertech_armor_rows(character))
 	_add_armor_summary(armor_box, combined_armor)
 
 	_render_notes_section(left_parent)
 
-	var validation_box := _add_section_to(right_parent, "Rules")
+	var validation_box := UIBuilder.add_section(right_parent, "Rules", null, color_surface, color_border, color_text)
 	if summary["validations"].is_empty():
-		_add_text(validation_box, "No rule issues found for the implemented Core checks.", 14, color_accent)
+		UIBuilder.add_text(validation_box, "No rule issues found for the implemented Core checks.", 14, color_accent)
 	else:
 		for message in summary["validations"]:
-			_add_text(validation_box, String(message), 14, color_warning)
+			UIBuilder.add_text(validation_box, String(message), 14, color_warning)
 
 	var all_selected := rules.selected_skills(character)
 	var standard_skills := []
@@ -4703,78 +4255,78 @@ func _render_summary() -> void:
 		else:
 			standard_skills.append(s)
 
-	var skill_box := _add_section_to(right_parent, "Selected Skills")
+	var skill_box := UIBuilder.add_section(right_parent, "Selected Skills", null, color_surface, color_border, color_text)
 	if standard_skills.is_empty():
-		_add_text(skill_box, "No purchased skills beyond species free broad skills.", 14, color_muted)
+		UIBuilder.add_text(skill_box, "No purchased skills beyond species free broad skills.", 14, color_muted)
 	else:
 		_add_selected_skill_table(skill_box, standard_skills)
 
 	if not psionic_skills.is_empty():
-		var psionics_box := _add_section_to(right_parent, "Selected Psionics")
+		var psionics_box := UIBuilder.add_section(right_parent, "Selected Psionics", null, color_surface, color_border, color_text)
 		_add_selected_skill_table(psionics_box, psionic_skills)
 
 	if rules.fx.is_fx_talent(character):
 		var fx_skills = rules.fx.selected_fx_skills(character)
 		if not fx_skills.is_empty():
-			var fx_box := _add_section_to(right_parent, "Selected FX")
+			var fx_box := UIBuilder.add_section(right_parent, "Selected FX", null, color_surface, color_border, color_text)
 			_add_selected_fx_skill_table(fx_box, fx_skills)
 
-	var perks_box := _add_section_to(right_parent, "Perks")
+	var perks_box := UIBuilder.add_section(right_parent, "Perks", null, color_surface, color_border, color_text)
 	_add_selected_perks_summary(perks_box)
 
-	var flaws_box := _add_section_to(right_parent, "Flaws")
+	var flaws_box := UIBuilder.add_section(right_parent, "Flaws", null, color_surface, color_border, color_text)
 	_add_selected_flaws_summary(flaws_box)
 
 	if rules.mutations.mutations_enabled(character):
 		var mutation_summary: Dictionary = summary.get("mutations", {})
-		var advantage_box := _add_section_to(right_parent, "Advantageous Mutations")
+		var advantage_box := UIBuilder.add_section(right_parent, "Advantageous Mutations", null, color_surface, color_border, color_text)
 		_add_mutation_summary_panel(advantage_box, rules.mutations.selected_mutation_advantages(character), "advantage", mutation_summary)
-		var drawback_box := _add_section_to(right_parent, "Mutation Drawbacks")
+		var drawback_box := UIBuilder.add_section(right_parent, "Mutation Drawbacks", null, color_surface, color_border, color_text)
 		_add_mutation_summary_panel(drawback_box, rules.mutations.selected_mutation_drawbacks(character), "drawback", mutation_summary)
 
 	var cybertech_summary: Dictionary = summary.get("cybertech", {})
 	if bool(cybertech_summary.get("enabled", false)):
-		var cybertech_box := _add_section_to(right_parent, "Cybertech")
+		var cybertech_box := UIBuilder.add_section(right_parent, "Cybertech", null, color_surface, color_border, color_text)
 		var installed: Array = cybertech_summary.get("installed", [])
 		if installed.is_empty():
-			_add_text(cybertech_box, "No cybertech installed.", 14, color_muted)
+			UIBuilder.add_text(cybertech_box, "No cybertech installed.", 14, color_muted)
 		else:
 			for i in range(installed.size()):
 				var item = installed[i]
-				_add_text(cybertech_box, "%s (%s)" % [String(item.get("item", {}).get("name", "")), String(item.get("quality", "ordinary")).capitalize()], 14, color_text)
+				UIBuilder.add_text(cybertech_box, "%s (%s)" % [String(item.get("item", {}).get("name", "")), String(item.get("quality", "ordinary")).capitalize()], 14, color_text)
 				var desc = String(item.get("item", {}).get("description", ""))
 				if not desc.is_empty():
-					_add_text(cybertech_box, desc, 12, color_muted)
+					UIBuilder.add_text(cybertech_box, desc, 12, color_muted)
 				if i < installed.size() - 1:
-					_add_thin_separator(cybertech_box)
-	var achievements_box := _add_section_to(right_parent, "Achievements")
+					UIBuilder.add_thin_separator(cybertech_box, color_border)
+	var achievements_box := UIBuilder.add_section(right_parent, "Achievements", null, color_surface, color_border, color_text)
 	var selected_achievements: Array = summary.get("selected_achievements", [])
 	if selected_achievements.is_empty():
-		_add_text(achievements_box, "No achievement benefits purchased.", 14, color_muted)
+		UIBuilder.add_text(achievements_box, "No achievement benefits purchased.", 14, color_muted)
 	else:
 		for group in _achievement_summary_groups(selected_achievements):
 			var achievement: Dictionary = group.get("achievement", {})
-			_add_text(achievements_box, _achievement_summary_group_title(group), 13, color_text)
-			_add_text(achievements_box, "%s Source: %s" % [
+			UIBuilder.add_text(achievements_box, _achievement_summary_group_title(group), 13, color_text)
+			UIBuilder.add_text(achievements_box, "%s Source: %s" % [
 				String(group.get("summary", achievement.get("summary", ""))),
 				String(achievement.get("reference", "")),
 			], 11, color_muted)
 
-	var roll_box := _add_section_to(right_parent, "Roll Notes")
+	var roll_box := UIBuilder.add_section(right_parent, "Roll Notes", null, color_surface, color_border, color_text)
 	var roll_notes := rules.skill_roll_notes_for_character(character)
 	if roll_notes.is_empty():
-		_add_text(roll_box, "No selected skill has an extra implemented roll note yet.", 14, color_muted)
+		UIBuilder.add_text(roll_box, "No selected skill has an extra implemented roll note yet.", 14, color_muted)
 	else:
 		for note in roll_notes:
-			_add_rich_note(roll_box, String(note), 13, color_text)
+			UIBuilder.add_rich_note(roll_box, String(note), 13, color_text)
 
 	_add_rank_benefits_summary(right_parent)
 
-	var save_box := _add_section_to(right_parent, "Save")
+	var save_box := UIBuilder.add_section(right_parent, "Save", null, color_surface, color_border, color_text)
 	var save_button := Button.new()
 	save_button.text = "Save JSON"
 	save_button.custom_minimum_size = Vector2(0, 44)
-	save_button.pressed.connect(_save_character)
+	save_button.pressed.connect(func(): char_manager.save_character(notes_editing, notes_draft))
 	save_box.add_child(save_button)
 	save_status_label = Label.new()
 	save_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -4783,10 +4335,10 @@ func _render_summary() -> void:
 
 
 func _add_rank_benefits_summary(parent: VBoxContainer) -> void:
-	var benefit_box := _add_section_to(parent, "Rank Benefits")
+	var benefit_box := UIBuilder.add_section(parent, "Rank Benefits", null, color_surface, color_border, color_text)
 	var rank_groups := rules.skill_rank_benefit_groups(character)
 	if rank_groups.is_empty():
-		_add_text(benefit_box, "No selected specialty rank benefits are active yet.", 14, color_muted)
+		UIBuilder.add_text(benefit_box, "No selected specialty rank benefits are active yet.", 14, color_muted)
 		return
 
 	for group in rank_groups:
@@ -4796,17 +4348,15 @@ func _add_rank_benefits_summary(parent: VBoxContainer) -> void:
 
 		var skill_name := String(group.get("skill", "Skill"))
 		if entries.size() >= 2:
-			_add_rich_note(benefit_box, "%s:" % skill_name, 13, color_text)
+			UIBuilder.add_rich_note(benefit_box, "%s:" % skill_name, 13, color_text)
 			for entry in entries:
-				_add_indented_text(benefit_box, "Rank %d: %s" % [
-					rules._as_int(entry.get("rank", 0)),
-					String(entry.get("text", "")),
+				UIBuilder.add_indented_text(benefit_box, "Rank %d: %s" % [
+					rules._as_int(entry.get("rank", 0)), String(entry.get("text", "")),
 				], 13, color_text)
 		else:
 			var entry: Dictionary = entries[0]
-			_add_rich_note(benefit_box, "%s rank %d: %s" % [
-				skill_name,
-				rules._as_int(entry.get("rank", 0)),
+			UIBuilder.add_rich_note(benefit_box, "%s rank %d: %s" % [
+				skill_name, rules._as_int(entry.get("rank", 0)),
 				String(entry.get("text", "")),
 			], 13, color_text)
 
@@ -4856,7 +4406,7 @@ func _achievement_summary_group_title(group: Dictionary) -> String:
 
 
 func _render_notes_section(parent: Container) -> void:
-	var box := _add_section_to(parent, "Notes")
+	var box := UIBuilder.add_section(parent, "Notes", null, color_surface, color_border, color_text)
 	if notes_editing:
 		var editor := TextEdit.new()
 		editor.text = notes_draft
@@ -4895,7 +4445,7 @@ func _render_notes_section(parent: Container) -> void:
 		return
 
 	var notes := String(character.get("notes", "")).strip_edges()
-	_add_text(box, notes if not notes.is_empty() else "No notes yet.", 14, color_text if not notes.is_empty() else color_muted)
+	UIBuilder.add_text(box, notes if not notes.is_empty() else "No notes yet.", 14, color_text if not notes.is_empty() else color_muted)
 
 	var edit := Button.new()
 	edit.text = "Edit Notes"
@@ -4913,7 +4463,7 @@ func _add_selected_character_options_summary(parent: VBoxContainer) -> void:
 	var perks := rules.selected_perks(character)
 	var flaws := rules.selected_flaws(character)
 	if perks.is_empty() and flaws.is_empty():
-		_add_text(parent, "No perks or flaws selected.", 14, color_muted)
+		UIBuilder.add_text(parent, "No perks or flaws selected.", 14, color_muted)
 		return
 
 	if not perks.is_empty():
@@ -4926,7 +4476,7 @@ func _add_selected_character_options_summary(parent: VBoxContainer) -> void:
 func _add_selected_perks_summary(parent: VBoxContainer) -> void:
 	var perks := rules.selected_perks(character)
 	if perks.is_empty():
-		_add_text(parent, "No perks selected.", 14, color_muted)
+		UIBuilder.add_text(parent, "No perks selected.", 14, color_muted)
 		return
 
 	for index in range(perks.size()):
@@ -4939,33 +4489,30 @@ func _add_selected_perks_summary(parent: VBoxContainer) -> void:
 				String(perk.get("name", "")),
 				rules._as_int(perk.get("cost", 0)),
 			]
-		_add_text(parent, title, 15, color_text)
-		_add_text(parent, "%s Source: %s" % [
-			String(perk.get("summary", "")),
-			String(perk.get("source", "")),
+		UIBuilder.add_text(parent, title, 15, color_text)
+		UIBuilder.add_text(parent, "%s Source: %s" % [
+			String(perk.get("summary", "")), String(perk.get("source", "")),
 		], 11, color_muted)
 		if index < perks.size() - 1:
-			_add_thin_separator(parent)
+			UIBuilder.add_thin_separator(parent, color_border)
 
 
 func _add_selected_flaws_summary(parent: VBoxContainer) -> void:
 	var flaws := rules.selected_flaws(character)
 	if flaws.is_empty():
-		_add_text(parent, "No flaws selected.", 14, color_muted)
+		UIBuilder.add_text(parent, "No flaws selected.", 14, color_muted)
 		return
 
 	for index in range(flaws.size()):
 		var flaw: Dictionary = flaws[index]
-		_add_text(parent, "%s  +%d SP" % [
-			String(flaw.get("name", "")),
-			rules._as_int(flaw.get("bonus", 0)),
+		UIBuilder.add_text(parent, "%s  +%d SP" % [
+			String(flaw.get("name", "")), rules._as_int(flaw.get("bonus", 0)),
 		], 15, color_text)
-		_add_text(parent, "%s Source: %s" % [
-			String(flaw.get("summary", "")),
-			String(flaw.get("source", "")),
+		UIBuilder.add_text(parent, "%s Source: %s" % [
+			String(flaw.get("summary", "")), String(flaw.get("source", "")),
 		], 11, color_muted)
 		if index < flaws.size() - 1:
-			_add_thin_separator(parent)
+			UIBuilder.add_thin_separator(parent, color_border)
 
 
 func _add_mutation_summary_panel(parent: VBoxContainer, rows: Array, kind: String, mutation_summary: Dictionary) -> void:
@@ -4980,25 +4527,24 @@ func _add_mutation_summary_panel(parent: VBoxContainer, rows: Array, kind: Strin
 	])
 
 	if rows.is_empty():
-		_add_text(parent, "None selected.", 14, color_muted)
+		UIBuilder.add_text(parent, "None selected.", 14, color_muted)
 		return
 	for index in range(rows.size()):
 		var mutation: Dictionary = rows[index]
 		_add_mutation_summary_row(parent, mutation)
 		if index < rows.size() - 1:
-			_add_thin_separator(parent)
+			UIBuilder.add_thin_separator(parent, color_border)
 
 
 func _add_mutation_summary_row(parent: VBoxContainer, mutation: Dictionary) -> void:
 	var related_ability := String(mutation.get("related_ability", ""))
-	_add_text(parent, String(mutation.get("name", "Mutation")), 15, color_text)
-	_add_text(parent, "%s  |  %d points%s" % [
-		String(mutation.get("tier", "")),
-		rules._as_int(mutation.get("points", 0)),
+	UIBuilder.add_text(parent, String(mutation.get("name", "Mutation")), 15, color_text)
+	UIBuilder.add_text(parent, "%s  |  %d points%s" % [
+		String(mutation.get("tier", "")), rules._as_int(mutation.get("points", 0)),
 		"  |  %s" % related_ability if not related_ability.is_empty() else "",
 	], 12, color_muted)
-	_add_text(parent, String(mutation.get("summary", "")), 13, color_text)
-	_add_text(parent, String(mutation.get("reference", "")), 11, color_muted)
+	UIBuilder.add_text(parent, String(mutation.get("summary", "")), 13, color_text)
+	UIBuilder.add_text(parent, String(mutation.get("reference", "")), 11, color_muted)
 
 
 func _enabled_optional_rules_label() -> String:
@@ -5010,80 +4556,10 @@ func _enabled_optional_rules_label() -> String:
 	return "Standard" if enabled.is_empty() else ", ".join(enabled)
 
 
-func _save_character() -> void:
-	if notes_editing:
-		character["notes"] = notes_draft
-	var safe_name := _safe_filename(String(character.get("hero_name", "hero")))
-	if safe_name.is_empty():
-		safe_name = "hero"
-	
-	var filename := safe_name + ".json"
-	var path := "user://" + filename
-	
-	# If active character name changed, delete the old file to avoid duplicates
-	if not active_character_file.is_empty() and active_character_file != filename:
-		var old_path := "user://" + active_character_file
-		if FileAccess.file_exists(old_path) and old_path != path:
-			DirAccess.remove_absolute(old_path)
-			
-	active_character_file = filename
-	
-	# Persist last active character reference
-	var tracker := FileAccess.open("user://last_character.txt", FileAccess.WRITE)
-	if tracker != null:
-		tracker.store_string(filename)
-		
-	var payload := character.duplicate(true)
-	payload["summary"] = rules.summary(character)
-	var file := FileAccess.open(path, FileAccess.WRITE)
-	if file == null:
-		if is_instance_valid(save_status_label):
-			save_status_label.text = "Save failed."
-			save_status_label.add_theme_color_override("font_color", color_warning)
-		return
-	file.store_string(JSON.stringify(payload, "\t"))
-	if is_instance_valid(save_status_label):
-		save_status_label.text = ProjectSettings.globalize_path(path)
-		save_status_label.add_theme_color_override("font_color", color_accent)
-
-
-func _share_character() -> void:
-	if character.is_empty():
-		return
-		
-	var payload := character.duplicate(true)
-	payload["summary"] = rules.summary(character)
-	var json_text := JSON.stringify(payload, "\t")
-	
-	if OS.get_name() == "Android":
-		var activity = null
-		if Engine.has_singleton("AndroidRuntime"):
-			activity = Engine.get_singleton("AndroidRuntime").getActivity()
-		elif Engine.has_singleton("GodotAndroid"):
-			activity = Engine.get_singleton("GodotAndroid").get_activity()
-			
-		if activity != null:
-			var Intent = JavaClassWrapper.wrap("android.content.Intent")
-			var intent = Intent.Intent()
-			intent.setAction(Intent.ACTION_SEND)
-			intent.putExtra(Intent.EXTRA_TEXT, json_text)
-			intent.setType("text/plain")
-			
-			var chooser = Intent.createChooser(intent, "Share Character JSON")
-			activity.startActivity(chooser)
-			return
-			
-	# Fallback (Clipboard copy for Windows/other platforms)
-	DisplayServer.clipboard_set(json_text)
-	if is_instance_valid(save_status_label):
-		save_status_label.text = "Character JSON copied to clipboard!"
-		save_status_label.add_theme_color_override("font_color", color_accent)
-
-
 func _close_character() -> void:
-	if not active_character_file.is_empty():
-		_save_character()
-	active_character_file = ""
+	if not char_manager.active_character_file.is_empty():
+		char_manager.save_character(notes_editing, notes_draft)
+	char_manager.active_character_file = ""
 	
 	var last_char_path := "user://last_character.txt"
 	if FileAccess.file_exists(last_char_path):
@@ -5098,7 +4574,7 @@ func _create_new_character() -> void:
 	rules.ensure_character_shape(character)
 	
 	var base_name := "New Hero"
-	var safe_name := _safe_filename(base_name)
+	var safe_name := char_manager.safe_filename(base_name)
 	var final_filename := safe_name + ".json"
 	
 	var counter := 1
@@ -5111,8 +4587,8 @@ func _create_new_character() -> void:
 		display_name = "%s %d" % [base_name, counter]
 	character["hero_name"] = display_name
 	
-	active_character_file = final_filename
-	_save_character()
+	char_manager.active_character_file = final_filename
+	char_manager.save_character(notes_editing, notes_draft)
 	active_tab = "Basics"
 	_render()
 
@@ -5164,7 +4640,7 @@ func _render_character_select() -> void:
 	content.add_child(main_box)
 
 	var banner := PanelContainer.new()
-	banner.add_theme_stylebox_override("panel", _flat_style(color_surface, Color(0, 0, 0, 0), 8))
+	banner.add_theme_stylebox_override("panel", UIBuilder.flat_style(color_surface, Color(0, 0, 0, 0), 8))
 	banner.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	main_box.add_child(banner)
 
@@ -5204,9 +4680,9 @@ func _render_character_select() -> void:
 	create_btn.text = "Create New Hero"
 	create_btn.custom_minimum_size = Vector2(200, 44)
 	create_btn.add_theme_font_size_override("font_size", 14)
-	create_btn.add_theme_stylebox_override("normal", _flat_style(color_accent, Color(0, 0, 0, 0), 8))
-	create_btn.add_theme_stylebox_override("hover", _flat_style(color_accent.lightened(0.15), Color(0, 0, 0, 0), 8))
-	create_btn.add_theme_stylebox_override("pressed", _flat_style(color_accent.darkened(0.15), Color(0, 0, 0, 0), 8))
+	create_btn.add_theme_stylebox_override("normal", UIBuilder.flat_style(color_accent, Color(0, 0, 0, 0), 8))
+	create_btn.add_theme_stylebox_override("hover", UIBuilder.flat_style(color_accent.lightened(0.15), Color(0, 0, 0, 0), 8))
+	create_btn.add_theme_stylebox_override("pressed", UIBuilder.flat_style(color_accent.darkened(0.15), Color(0, 0, 0, 0), 8))
 	create_btn.add_theme_color_override("font_color", color_background)
 	create_btn.add_theme_color_override("font_hover_color", color_background)
 	create_btn.add_theme_color_override("font_pressed_color", color_background)
@@ -5225,7 +4701,7 @@ func _render_character_select() -> void:
 
 	if saved_heroes.is_empty():
 		var empty_panel := PanelContainer.new()
-		empty_panel.add_theme_stylebox_override("panel", _flat_style(Color(0, 0, 0, 0), color_border, 8))
+		empty_panel.add_theme_stylebox_override("panel", UIBuilder.flat_style(Color(0, 0, 0, 0), color_border, 8))
 		empty_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		main_box.add_child(empty_panel)
 
@@ -5253,7 +4729,7 @@ func _render_character_select() -> void:
 
 	for hero in saved_heroes:
 		var card := PanelContainer.new()
-		card.add_theme_stylebox_override("panel", _flat_style(color_surface, color_border, 8, true))
+		card.add_theme_stylebox_override("panel", UIBuilder.flat_style(color_surface, color_border, 8, true))
 		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		grid.add_child(card)
 
@@ -5324,16 +4800,16 @@ func _render_character_select() -> void:
 			yes_btn.text = "Yes"
 			yes_btn.custom_minimum_size = Vector2(56, 32)
 			yes_btn.add_theme_font_size_override("font_size", 12)
-			yes_btn.add_theme_stylebox_override("normal", _flat_style(color_warning, Color(0, 0, 0, 0), 6))
-			yes_btn.add_theme_stylebox_override("hover", _flat_style(color_warning.lightened(0.15), Color(0, 0, 0, 0), 6))
-			yes_btn.add_theme_stylebox_override("pressed", _flat_style(color_warning.darkened(0.15), Color(0, 0, 0, 0), 6))
+			yes_btn.add_theme_stylebox_override("normal", UIBuilder.flat_style(color_warning, Color(0, 0, 0, 0), 6))
+			yes_btn.add_theme_stylebox_override("hover", UIBuilder.flat_style(color_warning.lightened(0.15), Color(0, 0, 0, 0), 6))
+			yes_btn.add_theme_stylebox_override("pressed", UIBuilder.flat_style(color_warning.darkened(0.15), Color(0, 0, 0, 0), 6))
 			yes_btn.add_theme_color_override("font_color", color_text)
 			yes_btn.pressed.connect(func():
 				var path := "user://" + file_name
 				if FileAccess.file_exists(path):
 					DirAccess.remove_absolute(path)
-				if active_character_file == file_name:
-					active_character_file = ""
+				if char_manager.active_character_file == file_name:
+					char_manager.active_character_file = ""
 					var tracker_path := "user://last_character.txt"
 					if FileAccess.file_exists(tracker_path):
 						DirAccess.remove_absolute(tracker_path)
@@ -5346,9 +4822,9 @@ func _render_character_select() -> void:
 			cancel_btn.text = "Cancel"
 			cancel_btn.custom_minimum_size = Vector2(70, 32)
 			cancel_btn.add_theme_font_size_override("font_size", 12)
-			cancel_btn.add_theme_stylebox_override("normal", _flat_style(color_surface_soft, Color(0, 0, 0, 0), 6))
-			cancel_btn.add_theme_stylebox_override("hover", _flat_style(color_surface_soft.lightened(0.1), Color(0, 0, 0, 0), 6))
-			cancel_btn.add_theme_stylebox_override("pressed", _flat_style(color_surface_soft.darkened(0.1), Color(0, 0, 0, 0), 6))
+			cancel_btn.add_theme_stylebox_override("normal", UIBuilder.flat_style(color_surface_soft, Color(0, 0, 0, 0), 6))
+			cancel_btn.add_theme_stylebox_override("hover", UIBuilder.flat_style(color_surface_soft.lightened(0.1), Color(0, 0, 0, 0), 6))
+			cancel_btn.add_theme_stylebox_override("pressed", UIBuilder.flat_style(color_surface_soft.darkened(0.1), Color(0, 0, 0, 0), 6))
 			cancel_btn.add_theme_color_override("font_color", color_text)
 			cancel_btn.pressed.connect(func():
 				deleting_files.erase(file_name)
@@ -5366,13 +4842,13 @@ func _render_character_select() -> void:
 			load_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			load_btn.custom_minimum_size = Vector2(0, 32)
 			load_btn.add_theme_font_size_override("font_size", 12)
-			load_btn.add_theme_stylebox_override("normal", _flat_style(color_surface_soft, color_accent, 6))
-			load_btn.add_theme_stylebox_override("hover", _flat_style(color_surface_soft.lightened(0.1), color_accent, 6))
-			load_btn.add_theme_stylebox_override("pressed", _flat_style(color_accent, Color(0,0,0,0), 6))
+			load_btn.add_theme_stylebox_override("normal", UIBuilder.flat_style(color_surface_soft, color_accent, 6))
+			load_btn.add_theme_stylebox_override("hover", UIBuilder.flat_style(color_surface_soft.lightened(0.1), color_accent, 6))
+			load_btn.add_theme_stylebox_override("pressed", UIBuilder.flat_style(color_accent, Color(0, 0, 0,0), 6))
 			load_btn.add_theme_color_override("font_color", color_text)
 			load_btn.add_theme_color_override("font_pressed_color", color_background)
 			load_btn.pressed.connect(func():
-				if _load_character_from_file(file_name):
+				if char_manager.load_character_from_file(file_name):
 					var tracker := FileAccess.open("user://last_character.txt", FileAccess.WRITE)
 					if tracker != null:
 						tracker.store_string(file_name)
@@ -5385,9 +4861,9 @@ func _render_character_select() -> void:
 			del_btn.text = "Delete"
 			del_btn.custom_minimum_size = Vector2(70, 32)
 			del_btn.add_theme_font_size_override("font_size", 12)
-			del_btn.add_theme_stylebox_override("normal", _flat_style(color_surface_soft, color_warning, 6))
-			del_btn.add_theme_stylebox_override("hover", _flat_style(color_surface_soft.lightened(0.1), color_warning, 6))
-			del_btn.add_theme_stylebox_override("pressed", _flat_style(color_warning, Color(0,0,0,0), 6))
+			del_btn.add_theme_stylebox_override("normal", UIBuilder.flat_style(color_surface_soft, color_warning, 6))
+			del_btn.add_theme_stylebox_override("hover", UIBuilder.flat_style(color_surface_soft.lightened(0.1), color_warning, 6))
+			del_btn.add_theme_stylebox_override("pressed", UIBuilder.flat_style(color_warning, Color(0, 0, 0,0), 6))
 			del_btn.add_theme_color_override("font_color", color_text)
 			del_btn.pressed.connect(func():
 				deleting_files[file_name] = true
@@ -5396,78 +4872,19 @@ func _render_character_select() -> void:
 			act_row.add_child(del_btn)
 
 
-func _safe_filename(value: String) -> String:
-	var safe := value.strip_edges().replace(" ", "_")
-	for character_to_replace in ["<", ">", ":", "\"", "/", "\\", "|", "?", "*"]:
-		safe = safe.replace(character_to_replace, "_")
-	return safe
 
 
-func _add_columns(left_ratio := 0.5) -> Array:
-	var row := HBoxContainer.new()
-	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_theme_constant_override("separation", 12)
-	content.add_child(row)
-
-	var left := VBoxContainer.new()
-	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	left.size_flags_stretch_ratio = left_ratio
-	left.add_theme_constant_override("separation", 10)
-	row.add_child(left)
-
-	var right := VBoxContainer.new()
-	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	right.size_flags_stretch_ratio = max(0.1, 1.0 - left_ratio)
-	right.add_theme_constant_override("separation", 10)
-	row.add_child(right)
-
-	return [left, right]
 
 
-func _add_section(title: String) -> VBoxContainer:
-	return _add_section_to(content, title)
 
 
-func _add_section_to(parent: Container, title: String) -> VBoxContainer:
-	var panel := PanelContainer.new()
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.add_theme_stylebox_override("panel", _flat_style(color_surface, color_border, 8, true))
-	parent.add_child(panel)
-
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 12)
-	margin.add_theme_constant_override("margin_right", 12)
-	margin.add_theme_constant_override("margin_top", 12)
-	margin.add_theme_constant_override("margin_bottom", 12)
-	panel.add_child(margin)
-
-	var box := VBoxContainer.new()
-	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	box.add_theme_constant_override("separation", 8)
-	margin.add_child(box)
-
-	var label := Label.new()
-	label.text = title
-	label.add_theme_color_override("font_color", color_text)
-	label.add_theme_font_size_override("font_size", 18)
-	box.add_child(label)
-
-	return box
-
-
-func _add_form_cell(parent: Container, label_text: String, control: Control) -> void:
-	var box := VBoxContainer.new()
-	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	box.add_theme_constant_override("separation", 4)
-	parent.add_child(box)
-	_add_field(box, label_text, control)
 
 
 func _add_form_line_edit(parent: Container, label_text: String, value: String, changed: Callable) -> void:
 	var edit := LineEdit.new()
 	edit.text = value
 	edit.text_changed.connect(changed)
-	_add_form_cell(parent, label_text, edit)
+	UIBuilder.add_form_cell(parent, label_text, edit, color_muted)
 
 
 func _add_form_number_input(parent: Container, label_text: String, value: int, minimum: int, maximum: int, changed: Callable) -> LineEdit:
@@ -5477,7 +4894,7 @@ func _add_form_number_input(parent: Container, label_text: String, value: int, m
 	edit.alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	var state := {"value": clampi(value, minimum, maximum)}
 	edit.text_changed.connect(func(text):
-		state["value"] = _number_input_value(text, rules._as_int(state.get("value", value)), minimum, maximum)
+		state["value"] = UIBuilder.number_input_value(text, rules._as_int(state.get("value", value)), minimum, maximum)
 		changed.call(state["value"])
 	)
 	edit.text_submitted.connect(func(_text):
@@ -5486,13 +4903,13 @@ func _add_form_number_input(parent: Container, label_text: String, value: int, m
 	edit.focus_exited.connect(func():
 		edit.text = str(rules._as_int(state.get("value", value)))
 	)
-	_add_form_cell(parent, label_text, edit)
+	UIBuilder.add_form_cell(parent, label_text, edit, color_muted)
 	return edit
 
 
 func _add_form_float_input(parent: Container, label_text: String, value: float, changed: Callable) -> LineEdit:
 	var edit := LineEdit.new()
-	edit.text = _format_number(value)
+	edit.text = UIBuilder.format_number(value)
 	edit.placeholder_text = "0"
 	edit.alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	var state := {"value": maxf(0.0, value)}
@@ -5503,31 +4920,22 @@ func _add_form_float_input(parent: Container, label_text: String, value: float, 
 			changed.call(state["value"])
 	)
 	edit.text_submitted.connect(func(_text):
-		edit.text = _format_number(rules._as_float(state.get("value", value)))
+		edit.text = UIBuilder.format_number(rules._as_float(state.get("value", value)))
 	)
 	edit.focus_exited.connect(func():
-		edit.text = _format_number(rules._as_float(state.get("value", value)))
+		edit.text = UIBuilder.format_number(rules._as_float(state.get("value", value)))
 	)
-	_add_form_cell(parent, label_text, edit)
+	UIBuilder.add_form_cell(parent, label_text, edit, color_muted)
 	return edit
 
 
-func _add_field(parent: Container, label_text: String, control: Control) -> void:
-	var label := Label.new()
-	label.text = label_text
-	label.add_theme_color_override("font_color", color_muted)
-	label.add_theme_font_size_override("font_size", 12)
-	parent.add_child(label)
-	control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	control.custom_minimum_size = Vector2(0, 42)
-	parent.add_child(control)
 
 
 func _add_line_edit(parent: VBoxContainer, label_text: String, value: String, changed: Callable) -> void:
 	var edit := LineEdit.new()
 	edit.text = value
 	edit.text_changed.connect(changed)
-	_add_field(parent, label_text, edit)
+	UIBuilder.add_field(parent, label_text, edit, color_muted)
 
 
 func _add_readonly_number_pair(parent: VBoxContainer, left_label_text: String, left_value: int, right_label_text: String, right_value: int) -> Array:
@@ -5576,7 +4984,7 @@ func _add_number_input(parent: Container, label_text: String, value: int, minimu
 	edit.alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	var state := {"value": clampi(value, minimum, maximum)}
 	edit.text_changed.connect(func(text):
-		state["value"] = _number_input_value(text, rules._as_int(state.get("value", value)), minimum, maximum)
+		state["value"] = UIBuilder.number_input_value(text, rules._as_int(state.get("value", value)), minimum, maximum)
 		changed.call(state["value"])
 	)
 	edit.text_submitted.connect(func(_text):
@@ -5585,13 +4993,13 @@ func _add_number_input(parent: Container, label_text: String, value: int, minimu
 	edit.focus_exited.connect(func():
 		edit.text = str(rules._as_int(state.get("value", value)))
 	)
-	_add_field(parent, label_text, edit)
+	UIBuilder.add_field(parent, label_text, edit, color_muted)
 	return edit
 
 
 func _add_float_input(parent: VBoxContainer, label_text: String, value: float, changed: Callable) -> LineEdit:
 	var edit := LineEdit.new()
-	edit.text = _format_number(value)
+	edit.text = UIBuilder.format_number(value)
 	edit.placeholder_text = "0"
 	edit.alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	var state := {"value": maxf(0.0, value)}
@@ -5602,26 +5010,17 @@ func _add_float_input(parent: VBoxContainer, label_text: String, value: float, c
 			changed.call(state["value"])
 	)
 	edit.text_submitted.connect(func(_text):
-		edit.text = _format_number(rules._as_float(state.get("value", value)))
+		edit.text = UIBuilder.format_number(rules._as_float(state.get("value", value)))
 	)
 	edit.focus_exited.connect(func():
-		edit.text = _format_number(rules._as_float(state.get("value", value)))
+		edit.text = UIBuilder.format_number(rules._as_float(state.get("value", value)))
 	)
-	_add_field(parent, label_text, edit)
+	UIBuilder.add_field(parent, label_text, edit, color_muted)
 	return edit
 
 
-func _number_input_value(text: String, fallback: int, minimum: int, maximum: int) -> int:
-	var stripped := text.strip_edges()
-	if stripped.is_empty() or not stripped.is_valid_int():
-		return clampi(fallback, minimum, maximum)
-	return clampi(int(stripped), minimum, maximum)
 
 
-func _format_number(value: float) -> String:
-	if is_equal_approx(value, float(int(value))):
-		return str(int(value))
-	return "%.2f" % value
 
 
 func _add_number_stepper(parent: VBoxContainer, label_text: String, value: int, minimum: int, maximum: int, changed: Callable) -> void:
@@ -5667,41 +5066,10 @@ func _add_number_stepper(parent: VBoxContainer, label_text: String, value: int, 
 	row.add_child(plus)
 
 
-func _add_text(parent: Container, text: String, font_size: int, color: Color) -> Label:
-	var label := Label.new()
-	label.text = text
-	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	label.custom_minimum_size = Vector2(1, 0)
-	label.add_theme_font_size_override("font_size", font_size)
-	label.add_theme_color_override("font_color", color)
-	parent.add_child(label)
-	return label
 
 
-func _add_indented_text(parent: VBoxContainer, text: String, font_size: int, color: Color) -> Label:
-	var margin := MarginContainer.new()
-	margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	margin.add_theme_constant_override("margin_left", 14)
-	parent.add_child(margin)
-	return _add_text(margin, text, font_size, color)
 
 
-func _add_rich_note(parent: VBoxContainer, text: String, font_size: int, color: Color) -> RichTextLabel:
-	var label := RichTextLabel.new()
-	label.bbcode_enabled = true
-	label.fit_content = true
-	label.scroll_active = false
-	label.selection_enabled = false
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	label.custom_minimum_size = Vector2(1, 0)
-	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	label.add_theme_font_size_override("normal_font_size", font_size)
-	label.add_theme_font_size_override("bold_font_size", font_size)
-	label.add_theme_color_override("default_color", color)
-	label.text = _format_note_bbcode(text)
-	parent.add_child(label)
-	return label
 
 
 func _format_note_bbcode(text: String) -> String:
@@ -5727,13 +5095,6 @@ func _escape_bbcode(text: String) -> String:
 	return text.replace("[", "[lb]").replace("]", "[rb]")
 
 
-func _add_subheading(parent: VBoxContainer, text: String) -> Label:
-	var label := Label.new()
-	label.text = text
-	label.add_theme_font_size_override("font_size", 15)
-	label.add_theme_color_override("font_color", color_text)
-	parent.add_child(label)
-	return label
 
 
 func _add_metric(parent: VBoxContainer, name: String, value: String) -> void:
@@ -5857,9 +5218,9 @@ func _add_large_checkbox(parent: Container, label_text: String, is_checked: bool
 	button.button_pressed = is_checked
 	button.text = "✔" if is_checked else ""
 	button.custom_minimum_size = Vector2(24, 24)
-	button.add_theme_stylebox_override("normal", _flat_style(color_surface, color_border, 4))
-	button.add_theme_stylebox_override("hover", _flat_style(color_surface_soft, color_border, 4))
-	button.add_theme_stylebox_override("pressed", _flat_style(color_accent, color_accent, 4))
+	button.add_theme_stylebox_override("normal", UIBuilder.flat_style(color_surface, color_border, 4))
+	button.add_theme_stylebox_override("hover", UIBuilder.flat_style(color_surface_soft, color_border, 4))
+	button.add_theme_stylebox_override("pressed", UIBuilder.flat_style(color_accent, color_accent, 4))
 	button.toggled.connect(func(c):
 		button.text = "✔" if c else ""
 		changed.call(c)
@@ -5882,7 +5243,7 @@ func _add_tracker_row(parent: VBoxContainer, name: String, total: int, used: int
 	box.add_child(label)
 
 	if total <= 0:
-		_add_text(box, "None", 13, color_muted)
+		UIBuilder.add_text(box, "None", 13, color_muted)
 		return
 
 	var grid := GridContainer.new()
@@ -5901,9 +5262,9 @@ func _add_tracker_row(parent: VBoxContainer, name: String, total: int, used: int
 		button.tooltip_text = "%s box %d" % [name, box_number]
 		button.custom_minimum_size = Vector2(24, 24)
 		button.action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS
-		button.add_theme_stylebox_override("normal", _flat_style(color_surface, color_border, 4))
-		button.add_theme_stylebox_override("hover", _flat_style(color_surface_soft, color_border, 4))
-		button.add_theme_stylebox_override("pressed", _flat_style(color_warning, color_warning, 4))
+		button.add_theme_stylebox_override("normal", UIBuilder.flat_style(color_surface, color_border, 4))
+		button.add_theme_stylebox_override("hover", UIBuilder.flat_style(color_surface_soft, color_border, 4))
+		button.add_theme_stylebox_override("pressed", UIBuilder.flat_style(color_warning, color_warning, 4))
 		button.pressed.connect(func():
 			var next_used := box_number
 			if box_number <= used:
@@ -5913,29 +5274,8 @@ func _add_tracker_row(parent: VBoxContainer, name: String, total: int, used: int
 		grid.add_child(button)
 
 
-func _flat_style(background: Color, border: Color, radius: int, shadow: bool = false) -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = background
-	style.set_corner_radius_all(radius)
-	if border.a > 0.0:
-		style.border_color = border
-		style.set_border_width_all(1)
-	else:
-		style.set_border_width_all(0)
-	if shadow:
-		style.shadow_color = Color(0, 0, 0, 0.4)
-		style.shadow_size = 8
-		style.shadow_offset = Vector2(0, 4)
-	return style
 
 
-func _tab_style(background: Color, border: Color, radius: int) -> StyleBoxFlat:
-	var style := _flat_style(background, border, radius)
-	style.content_margin_left = 16
-	style.content_margin_right = 16
-	style.content_margin_top = 4
-	style.content_margin_bottom = 4
-	return style
 
 var theme_btn: Button
 var theme_overlay: Control
@@ -5982,28 +5322,28 @@ func _on_theme_changed() -> void:
 		for tab in tab_buttons.keys():
 			var button = tab_buttons[tab]
 			if button != null:
-				button.add_theme_stylebox_override("normal", _tab_style(color_surface, Color(0, 0, 0, 0), 8))
-				button.add_theme_stylebox_override("hover", _tab_style(color_surface_soft, Color(0, 0, 0, 0), 8))
-				button.add_theme_stylebox_override("pressed", _tab_style(color_accent, Color(0, 0, 0, 0), 8))
-				button.add_theme_stylebox_override("focus", _tab_style(color_surface_soft, color_accent, 8))
+				button.add_theme_stylebox_override("normal", UIBuilder.tab_style(color_surface, Color(0, 0, 0, 0), 8))
+				button.add_theme_stylebox_override("hover", UIBuilder.tab_style(color_surface_soft, Color(0, 0, 0, 0), 8))
+				button.add_theme_stylebox_override("pressed", UIBuilder.tab_style(color_accent, Color(0, 0, 0, 0), 8))
+				button.add_theme_stylebox_override("focus", UIBuilder.tab_style(color_surface_soft, color_accent, 8))
 				button.add_theme_color_override("font_color", color_text)
 				button.add_theme_color_override("font_pressed_color", color_background)
 
 		# Update permanent overlay panels
 		if optional_rules_panel != null:
-			optional_rules_panel.add_theme_stylebox_override("panel", _flat_style(color_surface, color_border, 8))
+			optional_rules_panel.add_theme_stylebox_override("panel", UIBuilder.flat_style(color_surface, color_border, 8))
 		if skill_details_panel != null:
-			skill_details_panel.add_theme_stylebox_override("panel", _flat_style(color_surface, color_border, 8))
+			skill_details_panel.add_theme_stylebox_override("panel", UIBuilder.flat_style(color_surface, color_border, 8))
 		if equipment_form_panel != null:
-			equipment_form_panel.add_theme_stylebox_override("panel", _flat_style(color_surface, color_border, 8))
+			equipment_form_panel.add_theme_stylebox_override("panel", UIBuilder.flat_style(color_surface, color_border, 8))
 		if achievement_form_panel != null:
-			achievement_form_panel.add_theme_stylebox_override("panel", _flat_style(color_surface, color_border, 8))
+			achievement_form_panel.add_theme_stylebox_override("panel", UIBuilder.flat_style(color_surface, color_border, 8))
 		if perk_flaw_catalog_panel != null:
-			perk_flaw_catalog_panel.add_theme_stylebox_override("panel", _flat_style(color_surface, color_border, 8))
+			perk_flaw_catalog_panel.add_theme_stylebox_override("panel", UIBuilder.flat_style(color_surface, color_border, 8))
 		if mutation_catalog_panel != null:
-			mutation_catalog_panel.add_theme_stylebox_override("panel", _flat_style(color_surface, color_border, 8))
+			mutation_catalog_panel.add_theme_stylebox_override("panel", UIBuilder.flat_style(color_surface, color_border, 8))
 		if theme_panel != null:
-			theme_panel.add_theme_stylebox_override("panel", _flat_style(color_surface, color_border, 8))
+			theme_panel.add_theme_stylebox_override("panel", UIBuilder.flat_style(color_surface, color_border, 8))
 
 		_refresh_theme_panel()
 		if main_content != null:
@@ -6035,7 +5375,7 @@ func _update_all_scrolls_mouse_filters(touch_pass: bool) -> void:
 func _update_mouse_filters_for_touch(node: Node, touch_pass: bool) -> void:
 	if node == null or not is_instance_valid(node):
 		return
-	
+
 	if node is Control:
 		if not node is ScrollContainer:
 			if touch_pass:
@@ -6046,6 +5386,6 @@ func _update_mouse_filters_for_touch(node: Node, touch_pass: bool) -> void:
 					node.mouse_filter = Control.MOUSE_FILTER_STOP
 				elif node is Label:
 					node.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	
+
 	for child in node.get_children():
 		_update_mouse_filters_for_touch(child, touch_pass)
