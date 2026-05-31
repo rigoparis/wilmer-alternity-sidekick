@@ -377,13 +377,28 @@ func _unarmed_attack_form(character: Dictionary) -> Dictionary:
 	var score := _combat_skill_score(character, 15)
 	var abilities: Dictionary = _get_parent().effective_abilities(character)
 	var strength_bonus := strength_damage_bonus(_get_parent()._as_int(abilities.get("STR", 10)))
+
+	var base_damage := "d4s/d4+1s/d4+2s"
+	if _get_parent().skill_rank(character, 17) > 0:
+		base_damage = "d6s/d6+2s/d4w"
+	if _get_parent().skill_rank(character, 16) >= 8:
+		base_damage = "d6s/d6+2s/d4w"
+	if _get_parent().skill_rank(character, 17) >= 7:
+		base_damage = "d6+2s/d4w/d4+2w"
+	if _get_parent()._as_int(character.get("species_id", 0)) == 5:
+		base_damage = "d4w/d4+2w/d4m"
+
+	var extra_bonus := 0
+	if _get_parent().is_perk_selected(character, "fists_of_iron"):
+		extra_bonus = 1
+
 	return {
 		"name": "Unarmed",
 		"score": _score_text(score),
 		"base_die": _get_parent().action_step_die(_get_parent()._as_int(score.get("step", 1))),
 		"type": "LI/O",
 		"range": "Personal",
-		"damage": _damage_with_bonus("d4s/d4+1s/d4+2s", strength_bonus),
+		"damage": _damage_with_bonus(base_damage, strength_bonus + extra_bonus),
 		"hide": "3",
 		"clip_size": "-",
 		"mass": "",
