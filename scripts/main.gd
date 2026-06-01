@@ -91,6 +91,15 @@ var mutation_catalog_kind := "advantage"
 var search_refocus_target := ""
 var search_refocus_caret := -1
 
+var import_character_overlay: Control
+var import_character_panel: PanelContainer
+var import_character_title: Label
+var import_character_body: VBoxContainer
+var import_character_scroll: ScrollContainer
+var import_character_text_edit: TextEdit
+var import_character_status_label: Label
+var import_character_file_dialog: FileDialog
+
 var color_background: Color
 var color_surface: Color
 var color_surface_soft: Color
@@ -305,6 +314,7 @@ func _build_shell() -> void:
 	mutation_filter_edit = mutation_catalog_overlay.search_edit
 
 	_build_theme_overlay()
+	_build_import_character_overlay()
 
 
 func _resize_modal_panel(panel: Control, available_width: float, max_width: float, height_updater: Callable) -> void:
@@ -343,6 +353,7 @@ func _apply_responsive_layout() -> void:
 	_resize_modal_panel(perk_flaw_catalog_panel, available_width, 820.0, _update_perk_flaw_catalog_modal_height)
 	_resize_modal_panel(mutation_catalog_panel, available_width, 820.0, _update_mutation_catalog_modal_height)
 	_resize_modal_panel(theme_panel, available_width, 360.0, _update_theme_modal_height)
+	_resize_modal_panel(import_character_panel, available_width, 680.0, _update_import_character_modal_height)
 	_update_all_scrolls_mouse_filters(compact)
 
 
@@ -389,6 +400,254 @@ func _reparent_header_children() -> void:
 			if node.get_parent() != null:
 				node.get_parent().remove_child(node)
 			header.add_child(node)
+
+
+func _show_import_character() -> void:
+	_refresh_import_character_panel()
+	import_character_overlay.visible = true
+	_update_import_character_modal_height.call_deferred()
+
+
+func _refresh_import_character_panel() -> void:
+	if import_character_status_label != null:
+		import_character_status_label.text = ""
+	if import_character_text_edit != null:
+		import_character_text_edit.text = ""
+
+
+func _update_import_character_modal_height() -> void:
+	if import_character_scroll == null:
+		return
+
+	var viewport_size := get_viewport_rect().size
+	var max_scroll_height := maxf(280.0, viewport_size.y - 180.0)
+	var content_height := import_character_body.get_combined_minimum_size().y
+	var needs_scroll := content_height > max_scroll_height
+	import_character_scroll.custom_minimum_size.y = max_scroll_height if needs_scroll else content_height
+	import_character_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO if needs_scroll else ScrollContainer.SCROLL_MODE_DISABLED
+
+
+func _build_import_character_overlay() -> void:
+	import_character_overlay = Control.new()
+	import_character_overlay.visible = false
+	import_character_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	import_character_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(import_character_overlay)
+
+	var shade := ColorRect.new()
+	shade.color = Color(0.0, 0.0, 0.0, 0.42)
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	import_character_overlay.add_child(shade)
+
+	var overlay_margin := MarginContainer.new()
+	overlay_margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	overlay_margin.add_theme_constant_override("margin_left", 12)
+	overlay_margin.add_theme_constant_override("margin_right", 12)
+	overlay_margin.add_theme_constant_override("margin_top", 12)
+	overlay_margin.add_theme_constant_override("margin_bottom", 12)
+	import_character_overlay.add_child(overlay_margin)
+
+	var center := CenterContainer.new()
+	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	center.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	overlay_margin.add_child(center)
+
+	import_character_panel = PanelContainer.new()
+	import_character_panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	import_character_panel.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	import_character_panel.add_theme_stylebox_override("panel", UIBuilder.flat_style(color_surface, color_border, 8))
+	center.add_child(import_character_panel)
+
+	var panel_margin := MarginContainer.new()
+	panel_margin.add_theme_constant_override("margin_left", 14)
+	panel_margin.add_theme_constant_override("margin_right", 14)
+	panel_margin.add_theme_constant_override("margin_top", 14)
+	panel_margin.add_theme_constant_override("margin_bottom", 14)
+	import_character_panel.add_child(panel_margin)
+
+	var panel_content := VBoxContainer.new()
+	panel_content.add_theme_constant_override("separation", 12)
+	panel_margin.add_child(panel_content)
+
+	var header_box := HBoxContainer.new()
+	header_box.add_theme_constant_override("separation", 8)
+	panel_content.add_child(header_box)
+
+	import_character_title = Label.new()
+	import_character_title.text = "Import Character"
+	import_character_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	import_character_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	import_character_title.add_theme_color_override("font_color", color_text)
+	import_character_title.add_theme_font_size_override("font_size", 20)
+	header_box.add_child(import_character_title)
+
+	var close_button := Button.new()
+	close_button.text = "Close"
+	close_button.custom_minimum_size = Vector2(76, 36)
+	close_button.pressed.connect(func(): import_character_overlay.visible = false)
+	header_box.add_child(close_button)
+
+	import_character_scroll = ScrollContainer.new()
+	import_character_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	import_character_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	import_character_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel_content.add_child(import_character_scroll)
+
+	import_character_body = VBoxContainer.new()
+	import_character_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	import_character_body.add_theme_constant_override("separation", 14)
+	import_character_scroll.add_child(import_character_body)
+
+	var desc := Label.new()
+	desc.text = "Import saved Alternity heroes by clipboard, file load, or manual JSON paste."
+	desc.add_theme_color_override("font_color", color_muted)
+	desc.add_theme_font_size_override("font_size", 13)
+	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc.custom_minimum_size = Vector2(1, 0)
+	import_character_body.add_child(desc)
+
+	var btn_box := HBoxContainer.new()
+	btn_box.add_theme_constant_override("separation", 10)
+	btn_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	import_character_body.add_child(btn_box)
+
+	var clipboard_btn := Button.new()
+	clipboard_btn.text = "Paste from Clipboard"
+	clipboard_btn.custom_minimum_size = Vector2(160, 38)
+	clipboard_btn.add_theme_font_size_override("font_size", 12)
+	clipboard_btn.pressed.connect(_import_from_clipboard)
+	btn_box.add_child(clipboard_btn)
+
+	var file_btn := Button.new()
+	file_btn.text = "Choose File..."
+	file_btn.custom_minimum_size = Vector2(120, 38)
+	file_btn.add_theme_font_size_override("font_size", 12)
+	file_btn.pressed.connect(func(): if import_character_file_dialog: import_character_file_dialog.popup())
+	btn_box.add_child(file_btn)
+
+	var manual_label := Label.new()
+	manual_label.text = "Or paste JSON raw text below:"
+	manual_label.add_theme_color_override("font_color", color_text)
+	manual_label.add_theme_font_size_override("font_size", 13)
+	import_character_body.add_child(manual_label)
+
+	import_character_text_edit = TextEdit.new()
+	import_character_text_edit.custom_minimum_size = Vector2(0, 140)
+	import_character_text_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	import_character_text_edit.add_theme_font_size_override("font_size", 12)
+	import_character_text_edit.placeholder_text = "{\n  \"hero_name\": \"...\"\n}"
+	import_character_body.add_child(import_character_text_edit)
+
+	var import_text_btn := Button.new()
+	import_text_btn.text = "Import Paste Text"
+	import_text_btn.custom_minimum_size = Vector2(160, 38)
+	import_text_btn.add_theme_font_size_override("font_size", 12)
+	import_text_btn.pressed.connect(_import_from_text)
+	import_character_body.add_child(import_text_btn)
+
+	import_character_status_label = Label.new()
+	import_character_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	import_character_status_label.custom_minimum_size = Vector2(1, 0)
+	import_character_status_label.add_theme_font_size_override("font_size", 13)
+	import_character_body.add_child(import_character_status_label)
+
+	_build_import_character_file_dialog()
+
+
+func _build_import_character_file_dialog() -> void:
+	import_character_file_dialog = FileDialog.new()
+	import_character_file_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
+	import_character_file_dialog.access = FileDialog.ACCESS_FILESYSTEM
+	import_character_file_dialog.add_filter("*.json", "Alternity Hero JSON file")
+	import_character_file_dialog.file_selected.connect(_on_file_selected)
+	import_character_file_dialog.use_native_dialog = true
+	add_child(import_character_file_dialog)
+
+
+func _on_file_selected(path: String) -> void:
+	if not FileAccess.file_exists(path):
+		_show_import_status("File does not exist.", true)
+		return
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		_show_import_status("Could not read file.", true)
+		return
+	var content_str := file.get_as_text()
+	_process_import_json(content_str)
+
+
+func _import_from_clipboard() -> void:
+	var clip := DisplayServer.clipboard_get().strip_edges()
+	if clip.is_empty():
+		_show_import_status("Clipboard is empty.", true)
+		return
+	_process_import_json(clip)
+
+
+func _import_from_text() -> void:
+	if import_character_text_edit == null:
+		return
+	var text := import_character_text_edit.text.strip_edges()
+	if text.is_empty():
+		_show_import_status("Please paste character JSON text first.", true)
+		return
+	_process_import_json(text)
+
+
+func _process_import_json(json_text: String) -> void:
+	var json := JSON.new()
+	var err := json.parse(json_text)
+	if err != OK:
+		_show_import_status("Invalid JSON format.", true)
+		return
+	var data_parsed = json.get_data()
+	if typeof(data_parsed) != TYPE_DICTIONARY:
+		_show_import_status("JSON is not a character object.", true)
+		return
+
+	rules.ensure_character_shape(data_parsed)
+
+	var hero_name := String(data_parsed.get("hero_name", "Imported Hero")).strip_edges()
+	if hero_name.is_empty():
+		hero_name = "Imported Hero"
+
+	var safe_name := char_manager.safe_filename(hero_name)
+	if safe_name.is_empty():
+		safe_name = "imported_hero"
+
+	# Handle duplicates by auto-incrementing
+	var base_name := safe_name
+	var counter := 1
+	var filename := base_name + ".json"
+	while FileAccess.file_exists("user://" + filename):
+		filename = base_name + "_" + str(counter) + ".json"
+		counter += 1
+
+	var write_path := "user://" + filename
+	var file := FileAccess.open(write_path, FileAccess.WRITE)
+	if file == null:
+		_show_import_status("Failed to save imported character to user directory.", true)
+		return
+
+	file.store_string(JSON.stringify(data_parsed, "	"))
+	file = null # Force file release / flush in Godot
+
+	_show_import_status("Imported '" + hero_name + "' successfully as " + filename + "!", false)
+
+	if import_character_text_edit != null:
+		import_character_text_edit.text = ""
+
+	import_character_overlay.visible = false
+	_render()
+
+
+func _show_import_status(message: String, is_error: bool) -> void:
+	if import_character_status_label != null:
+		import_character_status_label.text = message
+		if is_error:
+			import_character_status_label.add_theme_color_override("font_color", color_warning)
+		else:
+			import_character_status_label.add_theme_color_override("font_color", color_accent)
 
 
 func _build_theme_overlay() -> void:
@@ -4693,6 +4952,17 @@ func _render_character_select() -> void:
 	create_btn.add_theme_color_override("font_pressed_color", color_background)
 	create_btn.pressed.connect(_create_new_character)
 	actions_bar.add_child(create_btn)
+
+	var import_btn := Button.new()
+	import_btn.text = "Import Character"
+	import_btn.custom_minimum_size = Vector2(200, 44)
+	import_btn.add_theme_font_size_override("font_size", 14)
+	import_btn.add_theme_stylebox_override("normal", UIBuilder.flat_style(color_surface, color_border, 8))
+	import_btn.add_theme_stylebox_override("hover", UIBuilder.flat_style(color_surface_soft, color_border, 8))
+	import_btn.add_theme_stylebox_override("pressed", UIBuilder.flat_style(color_surface.darkened(0.15), color_border, 8))
+	import_btn.add_theme_color_override("font_color", color_text)
+	import_btn.pressed.connect(_show_import_character)
+	actions_bar.add_child(import_btn)
 
 	var saved_heroes := _get_saved_characters()
 
