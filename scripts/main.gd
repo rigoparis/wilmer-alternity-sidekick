@@ -5004,14 +5004,21 @@ func _render_character_select() -> void:
 	welcome_desc.custom_minimum_size = Vector2(1, 0)
 	banner_box.add_child(welcome_desc)
 
-	var actions_bar := HBoxContainer.new()
+	var is_compact := get_viewport_rect().size.x < COMPACT_WIDTH
+	var actions_bar: BoxContainer
+	if is_compact:
+		actions_bar = VBoxContainer.new()
+	else:
+		actions_bar = HBoxContainer.new()
+		(actions_bar as HBoxContainer).alignment = BoxContainer.ALIGNMENT_CENTER
 	actions_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	actions_bar.alignment = BoxContainer.ALIGNMENT_CENTER
+	actions_bar.add_theme_constant_override("separation", 10)
 	main_box.add_child(actions_bar)
 
 	var create_btn := Button.new()
 	create_btn.text = "Create New Hero"
-	create_btn.custom_minimum_size = Vector2(200, 44)
+	create_btn.custom_minimum_size = Vector2(0 if is_compact else 200, 44)
+	create_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	create_btn.add_theme_font_size_override("font_size", 14)
 	create_btn.add_theme_stylebox_override("normal", UIBuilder.flat_style(color_accent, Color(0, 0, 0, 0), 8))
 	create_btn.add_theme_stylebox_override("hover", UIBuilder.flat_style(color_accent.lightened(0.15), Color(0, 0, 0, 0), 8))
@@ -5024,7 +5031,8 @@ func _render_character_select() -> void:
 
 	var import_btn := Button.new()
 	import_btn.text = "Import Character"
-	import_btn.custom_minimum_size = Vector2(200, 44)
+	import_btn.custom_minimum_size = Vector2(0 if is_compact else 200, 44)
+	import_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	import_btn.add_theme_font_size_override("font_size", 14)
 	import_btn.add_theme_stylebox_override("normal", UIBuilder.flat_style(color_surface, color_border, 8))
 	import_btn.add_theme_stylebox_override("hover", UIBuilder.flat_style(color_surface_soft, color_border, 8))
