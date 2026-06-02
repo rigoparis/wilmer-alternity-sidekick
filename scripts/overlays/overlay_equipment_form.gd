@@ -20,6 +20,10 @@ func build(parent: Node, p_main_ui: Node, color_surface: Color, color_border: Co
 	var shade := ColorRect.new()
 	shade.color = Color(0.0, 0.0, 0.0, 0.42)
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	shade.gui_input.connect(func(event: InputEvent):
+		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+			visible = false
+	)
 	add_child(shade)
 
 	var overlay_margin := MarginContainer.new()

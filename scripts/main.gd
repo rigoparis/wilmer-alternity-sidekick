@@ -457,6 +457,10 @@ func _build_import_character_overlay() -> void:
 	var shade := ColorRect.new()
 	shade.color = Color(0.0, 0.0, 0.0, 0.42)
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	shade.gui_input.connect(func(event: InputEvent):
+		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+			import_character_overlay.visible = false
+	)
 	import_character_overlay.add_child(shade)
 
 	var overlay_margin := MarginContainer.new()
@@ -680,6 +684,10 @@ func _build_theme_overlay() -> void:
 	var shade := ColorRect.new()
 	shade.color = Color(0.0, 0.0, 0.0, 0.42)
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	shade.gui_input.connect(func(event: InputEvent):
+		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+			theme_overlay.visible = false
+	)
 	theme_overlay.add_child(shade)
 
 	var overlay_margin := MarginContainer.new()
