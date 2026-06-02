@@ -114,10 +114,23 @@ static func add_indented_text(parent: VBoxContainer, text: String, font_size: in
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	return label
 
+## Wraps the portion of `text` before the first ":" in [b]…[/b] BBCode so that
+## skill / specialty names like "Stamina:" or "Computer Science - Hacking:" render bold.
+static func format_note_with_bold_prefix(text: String) -> String:
+	var colon_pos := text.find(":")
+	if colon_pos <= 0:
+		return text
+	var prefix := text.left(colon_pos)
+	# Only bold short prefixes that look like a skill/specialty name (≤ 45 chars).
+	# Prose sentences with a mid-sentence colon will have a much longer prefix.
+	if prefix.length() > 45:
+		return text
+	return "[b]%s[/b]%s" % [prefix, text.substr(colon_pos)]
+
 static func add_rich_note(parent: VBoxContainer, text: String, font_size: int, color: Color) -> RichTextLabel:
 	var label := RichTextLabel.new()
 	label.bbcode_enabled = true
-	label.text = text
+	label.text = format_note_with_bold_prefix(text)
 	label.fit_content = true
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	label.add_theme_color_override("default_color", color)

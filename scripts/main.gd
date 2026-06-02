@@ -854,7 +854,7 @@ func _refresh_skill_details_panel(skill: Dictionary) -> void:
 
 	UIBuilder.add_subheading(skill_details_body, "Roll Notes", color_text)
 	for note in detail.get("roll_notes", []):
-		UIBuilder.add_text(skill_details_body, String(note), 13, color_muted)
+		UIBuilder.add_rich_note(skill_details_body, String(note), 13, color_muted)
 
 	var complex_note := String(detail.get("complex_check", ""))
 	if not complex_note.is_empty():
@@ -911,7 +911,7 @@ func _update_achievement_form_modal_height() -> void:
 		return
 
 	var viewport_size := get_viewport_rect().size
-	var max_scroll_height := maxf(260.0, viewport_size.y - 170.0)
+	var max_scroll_height := maxf(200.0, viewport_size.y - 240.0)
 	var content_height := achievement_form_body.get_combined_minimum_size().y
 	var needs_scroll := content_height > max_scroll_height
 	achievement_form_scroll.custom_minimum_size.y = max_scroll_height if needs_scroll else content_height
@@ -923,7 +923,7 @@ func _update_perk_flaw_catalog_modal_height() -> void:
 		return
 
 	var viewport_size := get_viewport_rect().size
-	var max_scroll_height := maxf(260.0, viewport_size.y - 170.0)
+	var max_scroll_height := maxf(200.0, viewport_size.y - 240.0)
 	var content_height := perk_flaw_catalog_body.get_combined_minimum_size().y
 	var needs_scroll := content_height > max_scroll_height
 	perk_flaw_catalog_scroll.custom_minimum_size.y = max_scroll_height if needs_scroll else content_height
@@ -935,7 +935,7 @@ func _update_mutation_catalog_modal_height() -> void:
 		return
 
 	var viewport_size := get_viewport_rect().size
-	var max_scroll_height := maxf(260.0, viewport_size.y - 170.0)
+	var max_scroll_height := maxf(200.0, viewport_size.y - 240.0)
 	var content_height := mutation_catalog_body.get_combined_minimum_size().y
 	var needs_scroll := content_height > max_scroll_height
 	mutation_catalog_scroll.custom_minimum_size.y = max_scroll_height if needs_scroll else content_height
@@ -1923,7 +1923,7 @@ func _add_character_option_row(parent: VBoxContainer, option: Dictionary, select
 	meta_parts.append("Options %s SP" % "/".join(point_values))
 	UIBuilder.add_text(title_box, " | ".join(meta_parts), 12, color_muted)
 
-	var button_row: BoxContainer
+	var button_row: Container
 	if get_viewport_rect().size.x < COMPACT_WIDTH:
 		button_row = VBoxContainer.new()
 	else:
