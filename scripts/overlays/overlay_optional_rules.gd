@@ -10,8 +10,9 @@ var main_ui: Node
 func build(parent: Node, p_main_ui: Node, background: ColorRect, color_surface: Color, color_border: Color, color_text: Color) -> void:
 	main_ui = p_main_ui
 
-	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	visible = false
+	mouse_filter = Control.MOUSE_FILTER_STOP
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	parent.add_child(self)
 
 	var dim := ColorRect.new()
@@ -23,11 +24,21 @@ func build(parent: Node, p_main_ui: Node, background: ColorRect, color_surface: 
 	)
 	add_child(dim)
 
+	var overlay_margin := MarginContainer.new()
+	overlay_margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	overlay_margin.add_theme_constant_override("margin_left", 12)
+	overlay_margin.add_theme_constant_override("margin_right", 12)
+	overlay_margin.add_theme_constant_override("margin_top", 12)
+	overlay_margin.add_theme_constant_override("margin_bottom", 12)
+	add_child(overlay_margin)
+
+	var center := CenterContainer.new()
+	overlay_margin.add_child(center)
+
 	panel = PanelContainer.new()
 	panel.custom_minimum_size = Vector2(300, 400)
-	panel.set_anchors_preset(Control.PRESET_CENTER)
 	panel.add_theme_stylebox_override("panel", UIBuilder.flat_style(color_surface, color_border, 8))
-	add_child(panel)
+	center.add_child(panel)
 
 	var margin := MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 16)
