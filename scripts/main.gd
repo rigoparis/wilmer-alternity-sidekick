@@ -243,6 +243,7 @@ func _build_shell() -> void:
 		var button := Button.new()
 		button.text = tab
 		button.toggle_mode = true
+		button.action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS
 		button.mouse_filter = Control.MOUSE_FILTER_PASS
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.custom_minimum_size = Vector2(0, 42)
@@ -5715,6 +5716,17 @@ func _update_all_scrolls_mouse_filters(touch_pass: bool) -> void:
 	for sc in scroll_containers:
 		if sc != null and is_instance_valid(sc):
 			_update_mouse_filters_for_touch(sc, touch_pass)
+
+	# On desktop the ScrollContainer's drag detection can steal tab button
+	# presses when the mouse moves slightly during a click. Disabling vertical
+	# scroll mode removes that interference; mouse-wheel still works via Godot's
+	# built-in wheel handling on the ScrollContainer even in SCROLL_MODE_DISABLED.
+	# Mobile keeps SCROLL_MODE_AUTO so finger-drag scrolling works as expected.
+	if content_scroll != null and is_instance_valid(content_scroll):
+		content_scroll.vertical_scroll_mode = (
+			ScrollContainer.SCROLL_MODE_AUTO if touch_pass
+			else ScrollContainer.SCROLL_MODE_SHOW_NEVER
+		)
 
 
 func _update_mouse_filters_for_touch(node: Node, touch_pass: bool) -> void:
