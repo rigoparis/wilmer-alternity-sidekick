@@ -29,7 +29,7 @@ func _init() -> void:
 	var expected_keys = [
 		"selected_skills", "selected_perks", "selected_flaws",
 		"achievements.selected_achievements", "mutations", "cybertech",
-		"optional_rules", "species_id", "profession_id", "notes",
+		"fx", "optional_rules", "species_id", "profession_id", "notes",
 		"achievement_level", "achievement_points",
 		"achievements.achievement_points_available",
 		"achievement_points_spent_other", "damage", "last_resorts_used",
@@ -45,6 +45,12 @@ func _init() -> void:
 		_fail("Did not initialize damage tracking keys.")
 	if typeof(result_char["equipment"]) != TYPE_DICTIONARY or not result_char["equipment"].has("carried"):
 		_fail("Did not initialize equipment shape.")
+	for rule in rules.OPTIONAL_RULES:
+		var rule_id := String(rule.get("id", ""))
+		if not result_char["optional_rules"].has(rule_id):
+			_fail("Did not initialize optional rule " + rule_id)
+		if result_char["optional_rules"][rule_id] != false:
+			_fail("Optional rule " + rule_id + " should default to false")
 
 	# Test case 2: Partially populated dictionary
 	var partial_char = {
@@ -82,6 +88,32 @@ func _init() -> void:
 
 	if result_partial["achievement_level"] != rules.achievements.achievement_level_for_points(5):
 		_fail("Did not correctly calculate achievement_level based on points.")
+
+	# Test case 3: Malformed sub-dictionaries
+	var malformed_char = {
+		"damage": {},
+		"optional_rules": {
+			"2a": true
+		},
+		"fx": {},
+		"equipment": {}
+	}
+
+	var result_malformed = rules.ensure_character_shape(malformed_char)
+
+	if not result_malformed["damage"].has("stun"):
+		_fail("Did not fix malformed damage dictionary.")
+
+	if result_malformed["optional_rules"]["2a"] != true:
+		_fail("Overwrote existing optional rule.")
+
+	for rule in rules.OPTIONAL_RULES:
+		var rule_id := String(rule.get("id", ""))
+		if not result_malformed["optional_rules"].has(rule_id):
+			_fail("Did not initialize missing optional rule " + rule_id)
+
+	if not result_malformed["equipment"].has("carried"):
+		_fail("Did not fix malformed equipment dictionary.")
 
 	print("ensure_character_shape tests passed!")
 	quit(0)
