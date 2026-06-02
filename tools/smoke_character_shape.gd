@@ -83,5 +83,32 @@ func _init() -> void:
 	if result_partial["achievement_level"] != rules.achievements.achievement_level_for_points(5):
 		_fail("Did not correctly calculate achievement_level based on points.")
 
+	# Test case 3: Malformed data types
+	var malformed_char = {
+		"abilities": "invalid",
+		"selected_skills": "invalid",
+		"selected_perks": [],
+		"selected_flaws": 42,
+		"achievements.selected_achievements": {},
+		"damage": 5,
+		"equipment": "string"
+	}
+	var result_malformed = rules.ensure_character_shape(malformed_char)
+
+	if typeof(result_malformed["abilities"]) != TYPE_DICTIONARY:
+		_fail("Did not fix malformed 'abilities' data type.")
+	if typeof(result_malformed["selected_skills"]) != TYPE_DICTIONARY:
+		_fail("Did not fix malformed 'selected_skills' data type.")
+	if typeof(result_malformed["selected_perks"]) != TYPE_DICTIONARY:
+		_fail("Did not fix malformed 'selected_perks' data type.")
+	if typeof(result_malformed["selected_flaws"]) != TYPE_DICTIONARY:
+		_fail("Did not fix malformed 'selected_flaws' data type.")
+	if typeof(result_malformed["achievements.selected_achievements"]) != TYPE_ARRAY:
+		_fail("Did not fix malformed 'achievements.selected_achievements' data type.")
+	if typeof(result_malformed["damage"]) != TYPE_DICTIONARY:
+		_fail("Did not fix malformed 'damage' data type.")
+	if typeof(result_malformed["equipment"]) != TYPE_DICTIONARY:
+		_fail("Did not fix malformed 'equipment' data type.")
+
 	print("ensure_character_shape tests passed!")
 	quit(0)
