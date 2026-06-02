@@ -100,6 +100,9 @@ var import_character_text_edit: TextEdit
 var import_character_status_label: Label
 var import_character_file_dialog: FileDialog
 
+var close_char_confirm_overlay: Control
+var close_char_confirm_panel: PanelContainer
+
 var color_background: Color
 var color_surface: Color
 var color_surface_soft: Color
@@ -315,6 +318,7 @@ func _build_shell() -> void:
 
 	_build_theme_overlay()
 	_build_import_character_overlay()
+	_build_close_char_confirm_overlay()
 
 
 func _resize_modal_panel(panel: Control, available_width: float, max_width: float, height_updater: Callable) -> void:
@@ -354,6 +358,7 @@ func _apply_responsive_layout() -> void:
 	_resize_modal_panel(mutation_catalog_panel, available_width, 820.0, _update_mutation_catalog_modal_height)
 	_resize_modal_panel(theme_panel, available_width, 360.0, _update_theme_modal_height)
 	_resize_modal_panel(import_character_panel, available_width, 680.0, _update_import_character_modal_height)
+	_resize_modal_panel(close_char_confirm_panel, available_width, 420.0, func(): pass)
 	_update_all_scrolls_mouse_filters(compact)
 
 
@@ -4877,6 +4882,14 @@ func _enabled_optional_rules_label() -> String:
 
 func _close_character() -> void:
 	if not char_manager.active_character_file.is_empty():
+		close_char_confirm_overlay.visible = true
+	else:
+		_perform_close_character(false)
+
+
+func _perform_close_character(save_first: bool) -> void:
+	close_char_confirm_overlay.visible = false
+	if save_first and not char_manager.active_character_file.is_empty():
 		char_manager.save_character(notes_editing, notes_draft)
 	char_manager.active_character_file = ""
 	
@@ -5674,6 +5687,8 @@ func _on_theme_changed() -> void:
 			mutation_catalog_panel.add_theme_stylebox_override("panel", UIBuilder.flat_style(color_surface, color_border, 8))
 		if theme_panel != null:
 			theme_panel.add_theme_stylebox_override("panel", UIBuilder.flat_style(color_surface, color_border, 8))
+		if close_char_confirm_panel != null:
+			close_char_confirm_panel.add_theme_stylebox_override("panel", UIBuilder.flat_style(color_surface, color_border, 8))
 
 		_refresh_theme_panel()
 		if main_content != null:
@@ -5719,3 +5734,90 @@ func _update_mouse_filters_for_touch(node: Node, touch_pass: bool) -> void:
 
 	for child in node.get_children():
 		_update_mouse_filters_for_touch(child, touch_pass)
+
+func _build_close_char_confirm_overlay() -> void:
+	close_char_confirm_overlay = Control.new()
+	close_char_confirm_overlay.visible = false
+	close_char_confirm_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	close_char_confirm_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(close_char_confirm_overlay)
+
+	var shade := ColorRect.new()
+	shade.color = Color(0.0, 0.0, 0.0, 0.42)
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	shade.gui_input.connect(func(event: InputEvent):
+		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+			close_char_confirm_overlay.visible = false
+	)
+	close_char_confirm_overlay.add_child(shade)
+
+	var overlay_margin := MarginContainer.new()
+	overlay_margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	overlay_margin.add_theme_constant_override("margin_left", 12)
+	overlay_margin.add_theme_constant_override("margin_right", 12)
+	overlay_margin.add_theme_constant_override("margin_top", 12)
+	overlay_margin.add_theme_constant_override("margin_bottom", 12)
+	close_char_confirm_overlay.add_child(overlay_margin)
+
+	var center := CenterContainer.new()
+	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	center.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	overlay_margin.add_child(center)
+
+	close_char_confirm_panel = PanelContainer.new()
+	close_char_confirm_panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	close_char_confirm_panel.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	close_char_confirm_panel.add_theme_stylebox_override("panel", UIBuilder.flat_style(color_surface, color_border, 8))
+	center.add_child(close_char_confirm_panel)
+
+	var panel_margin := MarginContainer.new()
+	panel_margin.add_theme_constant_override("margin_left", 14)
+	panel_margin.add_theme_constant_override("margin_right", 14)
+	panel_margin.add_theme_constant_override("margin_top", 14)
+	panel_margin.add_theme_constant_override("margin_bottom", 14)
+	close_char_confirm_panel.add_child(panel_margin)
+
+	var panel_content := VBoxContainer.new()
+	panel_content.add_theme_constant_override("separation", 12)
+	panel_margin.add_child(panel_content)
+
+	var title := Label.new()
+	title.text = "Save Character"
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title.add_theme_color_override("font_color", color_text)
+	title.add_theme_font_size_override("font_size", 20)
+	panel_content.add_child(title)
+
+	var desc := Label.new()
+	desc.text = "Do you want to save the character before closing?"
+	desc.add_theme_color_override("font_color", color_muted)
+	desc.add_theme_font_size_override("font_size", 14)
+	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc.custom_minimum_size = Vector2(1, 0)
+	panel_content.add_child(desc)
+
+	var btn_box := HBoxContainer.new()
+	btn_box.add_theme_constant_override("separation", 10)
+	btn_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel_content.add_child(btn_box)
+
+	var yes_btn := Button.new()
+	yes_btn.text = "Yes"
+	yes_btn.custom_minimum_size = Vector2(0, 38)
+	yes_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	yes_btn.pressed.connect(func(): _perform_close_character(true))
+	btn_box.add_child(yes_btn)
+
+	var no_btn := Button.new()
+	no_btn.text = "No"
+	no_btn.custom_minimum_size = Vector2(0, 38)
+	no_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	no_btn.pressed.connect(func(): _perform_close_character(false))
+	btn_box.add_child(no_btn)
+
+	var cancel_btn := Button.new()
+	cancel_btn.text = "Cancel"
+	cancel_btn.custom_minimum_size = Vector2(0, 38)
+	cancel_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cancel_btn.pressed.connect(func(): close_char_confirm_overlay.visible = false)
+	btn_box.add_child(cancel_btn)
