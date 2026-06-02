@@ -1919,7 +1919,7 @@ func _add_character_option_row(parent: VBoxContainer, option: Dictionary, select
 	if get_viewport_rect().size.x < COMPACT_WIDTH:
 		button_row = VBoxContainer.new()
 	else:
-		button_row = HBoxContainer.new()
+		button_row = HFlowContainer.new()
 	button_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button_row.add_theme_constant_override("separation", 6)
 	row_box.add_child(button_row)
