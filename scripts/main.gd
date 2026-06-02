@@ -3984,14 +3984,41 @@ func _render_fx() -> void:
 		energy_label.text = "FX Energy Pool:"
 		energy_box.add_child(energy_label)
 		
-		var energy_spin := SpinBox.new()
-		energy_spin.min_value = 0
-		energy_spin.max_value = 999
-		energy_spin.value = rules.fx.energy_pool(character)
-		energy_spin.value_changed.connect(func(value):
-			rules.fx.set_energy_pool(character, int(value))
+		var energy_minus := Button.new()
+		energy_minus.text = "-"
+		energy_minus.custom_minimum_size = Vector2(42, 38)
+		energy_box.add_child(energy_minus)
+
+		var energy_edit := LineEdit.new()
+		energy_edit.text = str(rules.fx.energy_pool(character))
+		energy_edit.alignment = HORIZONTAL_ALIGNMENT_CENTER
+		energy_edit.custom_minimum_size = Vector2(60, 38)
+		energy_box.add_child(energy_edit)
+
+		var energy_plus := Button.new()
+		energy_plus.text = "+"
+		energy_plus.custom_minimum_size = Vector2(42, 38)
+		energy_box.add_child(energy_plus)
+
+		energy_minus.pressed.connect(func():
+			var val = clampi(rules.fx.energy_pool(character) - 1, 0, 999)
+			rules.fx.set_energy_pool(character, val)
+			energy_edit.text = str(val)
 		)
-		energy_box.add_child(energy_spin)
+		energy_plus.pressed.connect(func():
+			var val = clampi(rules.fx.energy_pool(character) + 1, 0, 999)
+			rules.fx.set_energy_pool(character, val)
+			energy_edit.text = str(val)
+		)
+		energy_edit.text_changed.connect(func(new_text: String):
+			if new_text.is_valid_int() or new_text.is_empty():
+				var val = int(new_text) if not new_text.is_empty() else 0
+				val = clampi(val, 0, 999)
+				rules.fx.set_energy_pool(character, val)
+		)
+		energy_edit.focus_exited.connect(func():
+			energy_edit.text = str(rules.fx.energy_pool(character))
+		)
 		
 		# FX Primary Broad Skill Group Selector
 		var current_primary_fx = String(character.get("fx", {}).get("primary_broad_group", ""))
