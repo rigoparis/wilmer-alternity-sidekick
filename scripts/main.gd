@@ -136,6 +136,7 @@ func _ready() -> void:
 				save_status_label.add_theme_color_override("font_color", color_warning)
 	)
 	_build_shell()
+	_on_theme_changed()
 	_apply_responsive_layout()
 	var loaded := false
 	if FileAccess.file_exists("user://last_character.txt"):
