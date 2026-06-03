@@ -28,7 +28,7 @@ jobs:
 
       # Setup Godot
       - name: Setup Godot Engine
-        uses: chickenandgame/setup-godot@v2
+        uses: chickensoft-games/setup-godot@v2
         with:
           version: 4.6.3-stable
           use-mono: false
