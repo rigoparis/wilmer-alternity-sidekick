@@ -204,6 +204,7 @@ func _build_shell() -> void:
 	theme_btn.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	theme_btn.expand_icon = true
 	theme_btn.custom_minimum_size = Vector2(46, 46)
+	theme_btn.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	theme_btn.add_theme_font_size_override("font_size", 12)
 	theme_btn.pressed.connect(_show_theme_selector)
 	header.add_child(theme_btn)
@@ -213,6 +214,7 @@ func _build_shell() -> void:
 	optional_rules_button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	optional_rules_button.expand_icon = true
 	optional_rules_button.custom_minimum_size = Vector2(46, 46)
+	optional_rules_button.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	optional_rules_button.add_theme_font_size_override("font_size", 12)
 	optional_rules_button.pressed.connect(_show_optional_rules)
 	header.add_child(optional_rules_button)
@@ -222,6 +224,7 @@ func _build_shell() -> void:
 	share_char_button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	share_char_button.expand_icon = true
 	share_char_button.custom_minimum_size = Vector2(46, 46)
+	share_char_button.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	share_char_button.add_theme_font_size_override("font_size", 12)
 	share_char_button.pressed.connect(func(): char_manager.share_character())
 	header.add_child(share_char_button)
@@ -231,6 +234,7 @@ func _build_shell() -> void:
 	close_char_button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	close_char_button.expand_icon = true
 	close_char_button.custom_minimum_size = Vector2(46, 46)
+	close_char_button.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	close_char_button.add_theme_font_size_override("font_size", 12)
 	close_char_button.pressed.connect(_close_character)
 	header.add_child(close_char_button)
