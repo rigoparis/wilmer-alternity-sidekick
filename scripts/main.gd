@@ -2726,6 +2726,8 @@ func _add_equipment_item_editor(parent: VBoxContainer, item: Dictionary) -> void
 					"accuracy": 0,
 					"mode": "",
 					"range": "",
+					"base_score": "",
+					"base_score": "",
 					"damage": "",
 					"damage_type": "",
 					"actions": 1,
@@ -2771,7 +2773,8 @@ func _add_equipment_item_editor(parent: VBoxContainer, item: Dictionary) -> void
 				"skill": "",
 				"accuracy": 0,
 				"mode": "",
-				"range": "",
+					"range": "",
+					"base_score": "",
 				"damage": "",
 				"damage_type": "",
 				"actions": 1,
@@ -2785,10 +2788,14 @@ func _add_equipment_item_editor(parent: VBoxContainer, item: Dictionary) -> void
 			}
 			item["combat"] = combat
 
-		_add_form_line_edit(form_parent, "Damage Formula", String(combat.get("damage", "")), func(value):
-			combat["damage"] = value
-			item["combat"] = combat
-		)
+			_add_form_split_input(form_parent, "Base Score", String(combat.get("base_score", "")), func(value):
+				combat["base_score"] = value
+				item["combat"] = combat
+			)
+			_add_form_split_input(form_parent, "Damage", String(combat.get("damage", "")), func(value):
+				combat["damage"] = value
+				item["combat"] = combat
+			)
 		_add_form_line_edit(form_parent, "Damage Type", String(combat.get("damage_type", combat.get("type", ""))), func(value):
 			combat["damage_type"] = value
 			combat["type"] = value
@@ -4879,6 +4886,66 @@ func _render_character_select() -> void:
 
 
 
+
+func _add_form_split_input(parent: Container, label_text: String, value: String, changed: Callable) -> void:
+	var hbox := HBoxContainer.new()
+	hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hbox.add_theme_constant_override("separation", 4)
+
+	var parts = value.split("/")
+	while parts.size() < 3:
+		parts.append("")
+
+	var edits = []
+	for i in range(3):
+		var edit := LineEdit.new()
+		edit.text = parts[i]
+		edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		edits.append(edit)
+		hbox.add_child(edit)
+		if i < 2:
+			var label := Label.new()
+			label.text = "/"
+			label.add_theme_color_override("font_color", color_muted)
+			hbox.add_child(label)
+
+	var update_combined = func(_text):
+		changed.call(edits[0].text + "/" + edits[1].text + "/" + edits[2].text)
+
+	for edit in edits:
+		edit.text_changed.connect(update_combined)
+
+	UIBuilder.add_form_cell(parent, label_text, hbox, color_muted)
+
+func _add_form_split_input(parent: Container, label_text: String, value: String, changed: Callable) -> void:
+	var hbox := HBoxContainer.new()
+	hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hbox.add_theme_constant_override("separation", 4)
+
+	var parts = value.split("/")
+	while parts.size() < 3:
+		parts.append("")
+
+	var edits = []
+	for i in range(3):
+		var edit := LineEdit.new()
+		edit.text = parts[i]
+		edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		edits.append(edit)
+		hbox.add_child(edit)
+		if i < 2:
+			var label := Label.new()
+			label.text = "/"
+			label.add_theme_color_override("font_color", color_muted)
+			hbox.add_child(label)
+
+	var update_combined = func(_text):
+		changed.call(edits[0].text + "/" + edits[1].text + "/" + edits[2].text)
+
+	for edit in edits:
+		edit.text_changed.connect(update_combined)
+
+	UIBuilder.add_form_cell(parent, label_text, hbox, color_muted)
 
 func _add_form_line_edit(parent: Container, label_text: String, value: String, changed: Callable) -> void:
 	var edit := LineEdit.new()

@@ -272,7 +272,7 @@ func psionic_attack_forms(character: Dictionary) -> Array:
 		var strength_bonus := strength_damage_bonus(_get_parent()._as_int(abilities.get("STR", 10)))
 		forms.append({
 			"name": "Bioweapon",
-			"score": _score_text(score),
+			"score": score_text,
 			"base_die": _get_parent().action_step_die(_get_parent()._as_int(score.get("step", 1))),
 			"type": "LI/O",
 			"range": "Personal",
@@ -291,7 +291,7 @@ func psionic_attack_forms(character: Dictionary) -> Array:
 			dmg = "d4+2s/d6+2s/d8+2s"
 		forms.append({
 			"name": "Mind Blast",
-			"score": _score_text(score),
+			"score": score_text,
 			"base_die": _get_parent().action_step_die(_get_parent()._as_int(score.get("step", 1))),
 			"type": "En/O",
 			"range": "10/20/40",
@@ -310,7 +310,7 @@ func psionic_attack_forms(character: Dictionary) -> Array:
 			dmg = "d6+2s/d4w/d4+2w"
 		forms.append({
 			"name": "Electrokinetics",
-			"score": _score_text(score),
+			"score": score_text,
 			"base_die": _get_parent().action_step_die(_get_parent()._as_int(score.get("step", 1))),
 			"type": "En/O",
 			"range": "4/8/16",
@@ -329,7 +329,7 @@ func psionic_attack_forms(character: Dictionary) -> Array:
 			dmg = "d6+2w/d8+2w/d4m"
 		forms.append({
 			"name": "Pyrokinetics",
-			"score": _score_text(score),
+			"score": score_text,
 			"base_die": _get_parent().action_step_die(_get_parent()._as_int(score.get("step", 1))),
 			"type": "En/O",
 			"range": "10/20/30",
@@ -342,7 +342,7 @@ func psionic_attack_forms(character: Dictionary) -> Array:
 		var score := _combat_skill_score(character, 90107)
 		forms.append({
 			"name": "Tire",
-			"score": _score_text(score),
+			"score": score_text,
 			"base_die": _get_parent().action_step_die(_get_parent()._as_int(score.get("step", 1))),
 			"type": "-",
 			"range": "10/20/30",
@@ -379,7 +379,7 @@ func _unarmed_attack_form(character: Dictionary) -> Dictionary:
 	var strength_bonus := strength_damage_bonus(_get_parent()._as_int(abilities.get("STR", 10)))
 	return {
 		"name": "Unarmed",
-		"score": _score_text(score),
+		"score": score_text,
 		"base_die": _get_parent().action_step_die(_get_parent()._as_int(score.get("step", 1))),
 		"type": "LI/O",
 		"range": "Personal",
@@ -400,9 +400,21 @@ func _weapon_attack_form(character: Dictionary, item: Dictionary) -> Dictionary:
 	if bool(combat.get("strength_based", false)):
 		var abilities: Dictionary = _get_parent().effective_abilities(character)
 		damage = _damage_with_bonus(damage, strength_damage_bonus(_get_parent()._as_int(abilities.get("STR", 10))))
+		var score_text := _score_text(score)
+		if combat.has("base_score") and not String(combat.get("base_score", "")).is_empty():
+			score_text = String(combat.get("base_score", ""))
+		var score_text := _score_text(score)
+		if combat.has("base_score") and not String(combat.get("base_score", "")).is_empty():
+			score_text = String(combat.get("base_score", ""))
+		var score_text := _score_text(score)
+		if combat.has("base_score") and not String(combat.get("base_score", "")).is_empty():
+			score_text = String(combat.get("base_score", ""))
+		var score_text := _score_text(score)
+		if combat.has("base_score") and not String(combat.get("base_score", "")).is_empty():
+			score_text = String(combat.get("base_score", ""))
 	return {
 		"name": String(item.get("name", "Weapon")),
-		"score": _score_text(score),
+			"score": score_text,
 		"base_die": _get_parent().action_step_die(_get_parent()._as_int(score.get("step", 0))),
 		"type": String(combat.get("damage_type", combat.get("type", ""))),
 		"range": String(combat.get("range", "")),
