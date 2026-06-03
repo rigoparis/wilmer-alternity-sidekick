@@ -29,7 +29,7 @@ func _init() -> void:
 	var expected_keys = [
 		"selected_skills", "selected_perks", "selected_flaws",
 		"achievements.selected_achievements", "mutations", "cybertech",
-		"optional_rules", "species_id", "profession_id", "notes",
+		"fx", "optional_rules", "species_id", "profession_id", "notes",
 		"achievement_level", "achievement_points",
 		"achievements.achievement_points_available",
 		"achievement_points_spent_other", "damage", "last_resorts_used",
@@ -45,6 +45,12 @@ func _init() -> void:
 		_fail("Did not initialize damage tracking keys.")
 	if typeof(result_char["equipment"]) != TYPE_DICTIONARY or not result_char["equipment"].has("carried"):
 		_fail("Did not initialize equipment shape.")
+	for rule in rules.OPTIONAL_RULES:
+		var rule_id := String(rule.get("id", ""))
+		if not result_char["optional_rules"].has(rule_id):
+			_fail("Did not initialize optional rule " + rule_id)
+		if result_char["optional_rules"][rule_id] != false:
+			_fail("Optional rule " + rule_id + " should default to false")
 
 	# Test case 2: Partially populated dictionary
 	var partial_char = {
@@ -125,15 +131,19 @@ func _init() -> void:
 
 	# Test case 4: Missing required nested elements in valid dictionaries
 	var nested_missing = {
-		"optional_rules": {},
+		"optional_rules": {
+			"2a": true
+		},
 		"damage": {},
 		"mutations": {},
 		"cybertech": {},
 		"fx": {},
 		"equipment": {}
 	}
-
 	var result_nested = rules.ensure_character_shape(nested_missing)
+
+	if result_nested["optional_rules"]["2a"] != true:
+		_fail("Overwrote existing optional rule.")
 
 	for rule in rules.OPTIONAL_RULES:
 		var rule_id := String(rule.get("id", ""))
