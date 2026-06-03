@@ -83,39 +83,45 @@ func _init() -> void:
 	if result_partial["achievement_level"] != rules.achievements.achievement_level_for_points(5):
 		_fail("Did not correctly calculate achievement_level based on points.")
 
-	# Test case 3: Malformed dictionary handling
+	# Test case 3: Malformed data types and dictionary handling
 	var malformed_char = {
-		"abilities": "not a dictionary",
-		"selected_skills": ["array", "not", "dict"],
+		"abilities": "invalid",
+		"selected_skills": "invalid",
+		"selected_perks": [],
+		"selected_flaws": 42,
+		"achievements.selected_achievements": {},
 		"achievement_points": "twenty",
 		"damage": "none",
-		"equipment": { "invalid": "structure" },
+		"equipment": "string",
 		"mutations": "mutant",
 		"cybertech": ["list"],
 		"fx": 100,
 		"optional_rules": "none"
 	}
-
 	var result_malformed = rules.ensure_character_shape(malformed_char)
 
+	if typeof(result_malformed["abilities"]) != TYPE_DICTIONARY:
+		_fail("Did not fix malformed 'abilities' data type.")
+	if typeof(result_malformed["selected_skills"]) != TYPE_DICTIONARY:
+		_fail("Did not fix malformed 'selected_skills' data type.")
+	if typeof(result_malformed["selected_perks"]) != TYPE_DICTIONARY:
+		_fail("Did not fix malformed 'selected_perks' data type.")
+	if typeof(result_malformed["selected_flaws"]) != TYPE_DICTIONARY:
+		_fail("Did not fix malformed 'selected_flaws' data type.")
+	if typeof(result_malformed["achievements.selected_achievements"]) != TYPE_ARRAY:
+		_fail("Did not fix malformed 'achievements.selected_achievements' data type.")
 	if typeof(result_malformed["mutations"]) != TYPE_DICTIONARY or not result_malformed["mutations"].has("generation_mode"):
 		_fail("Did not recover from string mutations data.")
-
 	if typeof(result_malformed["cybertech"]) != TYPE_DICTIONARY or not result_malformed["cybertech"].has("enabled"):
 		_fail("Did not recover from array cybertech data.")
-
 	if typeof(result_malformed["fx"]) != TYPE_DICTIONARY or not result_malformed["fx"].has("is_fx_talent"):
 		_fail("Did not recover from integer fx data.")
-
 	if typeof(result_malformed["equipment"]) != TYPE_DICTIONARY or not result_malformed["equipment"].has("carried"):
 		_fail("Did not recover from malformed equipment data.")
-
 	if typeof(result_malformed["damage"]) != TYPE_DICTIONARY or not result_malformed["damage"].has("stun"):
 		_fail("Did not recover from malformed damage data.")
-
 	if result_malformed["achievement_points"] != 0:
 		_fail("Did not gracefully cast malformed achievement_points string.")
-
 
 	# Test case 4: Missing required nested elements in valid dictionaries
 	var nested_missing = {
