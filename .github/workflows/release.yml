@@ -1,0 +1,55 @@
+name: "Publish Release"
+
+on:
+  push:
+    tags:
+      - "v*" # Triggers when you push a tag like v1.0.0
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      # Setup Java & Android SDK for the Android build
+      - name: Setup Java JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      # Setup Godot
+      - name: Setup Godot Engine
+        uses: chickenandgame/setup-godot@v2
+        with:
+          version: 4.6.3-stable
+          use-mono: false
+
+      # Build Windows Desktop
+      - name: Export Windows Desktop
+        run: |
+          mkdir -p builds/windows
+          godot --headless --path . --export-release "Windows Desktop" builds/windows/WilmerAlternitySidekick.exe
+
+      # Build Android APK
+      - name: Export Android APK
+        run: |
+          mkdir -p builds/android
+          godot --headless --path . --export-release "Android APK" builds/android/WilmerAlternitySidekick.apk
+
+      # Create GitHub Release and upload assets
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            builds/windows/WilmerAlternitySidekick.exe
+            builds/android/WilmerAlternitySidekick.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
