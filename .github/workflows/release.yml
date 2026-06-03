@@ -40,6 +40,11 @@ jobs:
           mkdir -p builds/windows
           godot --headless --path . --export-release "Windows Desktop" builds/windows/WilmerAlternitySidekick.exe
 
+      # Generate Debug Keystore for Android Export
+      - name: Generate Debug Keystore
+        run: |
+          keytool -keyalg RSA -genkeypair -alias androiddebugkey -keypass android -keystore debug.keystore -storepass android -dname "CN=Android Debug,O=Android,C=US" -validity 365
+
       # Build Android APK
       - name: Export Android APK
         run: |
