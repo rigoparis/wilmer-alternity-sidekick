@@ -336,38 +336,38 @@ func default_character() -> Dictionary:
 
 
 func ensure_character_shape(character: Dictionary) -> Dictionary:
-	if not character.has("abilities"):
+	if not character.has("abilities") or typeof(character["abilities"]) != TYPE_DICTIONARY:
 		character["abilities"] = {}
 	for ability in ABILITIES:
 		if not character["abilities"].has(ability):
 			character["abilities"][ability] = 10
 
-	if not character.has("selected_skills"):
+	if not character.has("selected_skills") or typeof(character["selected_skills"]) != TYPE_DICTIONARY:
 		character["selected_skills"] = {}
 	else:
 		_normalize_selected_skills(character)
-	if not character.has("selected_perks"):
+	if not character.has("selected_perks") or typeof(character["selected_perks"]) != TYPE_DICTIONARY:
 		character["selected_perks"] = {}
 	else:
 		_normalize_selected_character_options(character, "selected_perks", PERK_DEFINITIONS, "cost_options")
-	if not character.has("selected_flaws"):
+	if not character.has("selected_flaws") or typeof(character["selected_flaws"]) != TYPE_DICTIONARY:
 		character["selected_flaws"] = {}
 	else:
 		_normalize_selected_character_options(character, "selected_flaws", FLAW_DEFINITIONS, "bonus_options")
-	if not character.has("achievements.selected_achievements"):
+	if not character.has("achievements.selected_achievements") or typeof(character["achievements.selected_achievements"]) != TYPE_ARRAY:
 		character["achievements.selected_achievements"] = []
 	else:
 		achievements._normalize_selected_achievements(character)
-	if not character.has("mutations"):
+	if not character.has("mutations") or typeof(character["mutations"]) != TYPE_DICTIONARY:
 		character["mutations"] = {}
 	mutations._normalize_mutations(character)
-	if not character.has("cybertech"):
+	if not character.has("cybertech") or typeof(character["cybertech"]) != TYPE_DICTIONARY:
 		character["cybertech"] = {}
 	cybertech._normalize_cybertech(character)
-	if not character.has("fx"):
+	if not character.has("fx") or typeof(character["fx"]) != TYPE_DICTIONARY:
 		character["fx"] = {}
 	fx._normalize_fx(character)
-	if not character.has("optional_rules"):
+	if not character.has("optional_rules") or typeof(character["optional_rules"]) != TYPE_DICTIONARY:
 		character["optional_rules"] = {}
 	for rule in OPTIONAL_RULES:
 		var rule_id := String(rule.get("id", ""))
@@ -392,14 +392,14 @@ func ensure_character_shape(character: Dictionary) -> Dictionary:
 		character["achievement_points_spent_other"] = 0
 	character["achievement_points_spent_other"] = max(0, _as_int(character.get("achievement_points_spent_other", 0)))
 	character["achievements.achievement_points_available"] = achievements.achievement_points_available(character)
-	if not character.has("damage"):
+	if not character.has("damage") or typeof(character["damage"]) != TYPE_DICTIONARY:
 		character["damage"] = {}
 	for damage_type in ["stun", "wound", "mortal", "fatigue"]:
 		if not character["damage"].has(damage_type):
 			character["damage"][damage_type] = 0
 	if not character.has("last_resorts_used"):
 		character["last_resorts_used"] = 0
-	if not character.has("equipment"):
+	if not character.has("equipment") or typeof(character["equipment"]) != TYPE_DICTIONARY:
 		character["equipment"] = {}
 	equipment._normalize_equipment(character)
 	clamp_trackers(character)

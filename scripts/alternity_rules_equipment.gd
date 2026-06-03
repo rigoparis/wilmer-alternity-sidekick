@@ -409,6 +409,15 @@ func _weapon_attack_form(character: Dictionary, item: Dictionary) -> Dictionary:
 	var combat_value = item.get("combat", {})
 	var combat: Dictionary = combat_value if typeof(combat_value) == TYPE_DICTIONARY else {}
 	var score := _combat_skill_score(character, _get_parent()._as_int(combat.get("skill_id", -1)))
+	
+	var base_score_str := String(combat.get("base_score", "")).strip_edges()
+	if not base_score_str.is_empty():
+		var parts := base_score_str.split("/")
+		if parts.size() >= 3:
+			score["ordinary"] = _get_parent()._as_int(parts[0], 0)
+			score["good"] = _get_parent()._as_int(parts[1], 0)
+			score["amazing"] = _get_parent()._as_int(parts[2], 0)
+
 	var accuracy: int = _get_parent()._as_int(combat.get("accuracy", 0))
 	score["step"] = _get_parent()._as_int(score.get("step", 1)) + accuracy
 	var damage := String(combat.get("damage", ""))
