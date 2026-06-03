@@ -32,6 +32,8 @@ Developer rules and architectural guide for **Wilmer Alternity Sidekick** (Godot
 - **SDK Path**: `C:\AndroidSDK` (API 34/35, Build-tools 34.0.0/35.0.1, NDK 28b, CMake 3.10)
 - **Java Home**: `C:\Program Files\Eclipse Adoptium\jdk-17.0.19.10-hotspot` (JDK 17)
 - **Keystore**: `debug.keystore` in project root (password: `android`, alias: `androiddebugkey`).
+- **Wireless Debugging**: Connect phone to same Wi-Fi, enable *Wireless debugging* in developer options, pair with `adb pair <IP:PairingPort>`, connect with `adb connect <IP:ConnectionPort>`, and use Godot's one-click deploy Android button.
+- **GitHub Release Automation**: Version tag pushes (`v*`) trigger a GitHub Action (`.github/workflows/release.yml`) that compiles the app and publishes it with Windows/Android binaries attached as Release assets.
 
 ---
 
@@ -41,3 +43,7 @@ Developer rules and architectural guide for **Wilmer Alternity Sidekick** (Godot
 - **Mobile Labels**: Set `autowrap_mode = TextServer.AUTOWRAP_WORD_SMART` and `custom_minimum_size = Vector2(1, 0)` to prevent labels from stretching viewport width.
 - **RM Calculations**: Do not calculate Resistance Modifiers or rank step-bonuses locally in GUI code. Query `rules.character_resistance_modifier(character, ability)` for consistent evaluation.
 - **Excluding Media**: Keep builds small; `manuals/` is ignored in `export_presets.cfg`.
+- **UI SVG Assets**: All UI icons must be drawn in white (`#ffffff`) at a small size (e.g. 48px), have `mipmaps/generate = true` in their `.import` files, and use `texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS`. This allows Godot to crisp-render and dynamically tint them to match the active theme's colors using button theme overrides.
+- **Theme Overrides Safety**: When modifying button styleboxes in script dynamically (e.g. changing padding margins on theme change), always call `btn.remove_theme_stylebox_override(state)` first before fetching the stylebox. This prevents the button from locking into a duplicated stale stylebox from a previous theme.
+- **Build Exclusion**: Compiled binaries under `builds/` are git-ignored and must never be tracked or committed to the repository. Release binaries should be distributed via GitHub Releases.
+

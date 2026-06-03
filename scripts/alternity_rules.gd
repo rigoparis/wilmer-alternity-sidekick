@@ -358,16 +358,16 @@ func ensure_character_shape(character: Dictionary) -> Dictionary:
 		character["achievements.selected_achievements"] = []
 	else:
 		achievements._normalize_selected_achievements(character)
-	if not character.has("mutations"):
+	if not character.has("mutations") or typeof(character["mutations"]) != TYPE_DICTIONARY:
 		character["mutations"] = {}
 	mutations._normalize_mutations(character)
-	if not character.has("cybertech"):
+	if not character.has("cybertech") or typeof(character["cybertech"]) != TYPE_DICTIONARY:
 		character["cybertech"] = {}
 	cybertech._normalize_cybertech(character)
-	if not character.has("fx"):
+	if not character.has("fx") or typeof(character["fx"]) != TYPE_DICTIONARY:
 		character["fx"] = {}
 	fx._normalize_fx(character)
-	if not character.has("optional_rules"):
+	if not character.has("optional_rules") or typeof(character["optional_rules"]) != TYPE_DICTIONARY:
 		character["optional_rules"] = {}
 	for rule in OPTIONAL_RULES:
 		var rule_id := String(rule.get("id", ""))

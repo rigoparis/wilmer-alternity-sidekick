@@ -83,15 +83,20 @@ func _init() -> void:
 	if result_partial["achievement_level"] != rules.achievements.achievement_level_for_points(5):
 		_fail("Did not correctly calculate achievement_level based on points.")
 
-	# Test case 3: Malformed data types
+	# Test case 3: Malformed data types and dictionary handling
 	var malformed_char = {
 		"abilities": "invalid",
 		"selected_skills": "invalid",
 		"selected_perks": [],
 		"selected_flaws": 42,
 		"achievements.selected_achievements": {},
-		"damage": 5,
-		"equipment": "string"
+		"achievement_points": "twenty",
+		"damage": "none",
+		"equipment": "string",
+		"mutations": "mutant",
+		"cybertech": ["list"],
+		"fx": 100,
+		"optional_rules": "none"
 	}
 	var result_malformed = rules.ensure_character_shape(malformed_char)
 
@@ -105,10 +110,51 @@ func _init() -> void:
 		_fail("Did not fix malformed 'selected_flaws' data type.")
 	if typeof(result_malformed["achievements.selected_achievements"]) != TYPE_ARRAY:
 		_fail("Did not fix malformed 'achievements.selected_achievements' data type.")
-	if typeof(result_malformed["damage"]) != TYPE_DICTIONARY:
-		_fail("Did not fix malformed 'damage' data type.")
-	if typeof(result_malformed["equipment"]) != TYPE_DICTIONARY:
-		_fail("Did not fix malformed 'equipment' data type.")
+	if typeof(result_malformed["mutations"]) != TYPE_DICTIONARY or not result_malformed["mutations"].has("generation_mode"):
+		_fail("Did not recover from string mutations data.")
+	if typeof(result_malformed["cybertech"]) != TYPE_DICTIONARY or not result_malformed["cybertech"].has("enabled"):
+		_fail("Did not recover from array cybertech data.")
+	if typeof(result_malformed["fx"]) != TYPE_DICTIONARY or not result_malformed["fx"].has("is_fx_talent"):
+		_fail("Did not recover from integer fx data.")
+	if typeof(result_malformed["equipment"]) != TYPE_DICTIONARY or not result_malformed["equipment"].has("carried"):
+		_fail("Did not recover from malformed equipment data.")
+	if typeof(result_malformed["damage"]) != TYPE_DICTIONARY or not result_malformed["damage"].has("stun"):
+		_fail("Did not recover from malformed damage data.")
+	if result_malformed["achievement_points"] != 0:
+		_fail("Did not gracefully cast malformed achievement_points string.")
+
+	# Test case 4: Missing required nested elements in valid dictionaries
+	var nested_missing = {
+		"optional_rules": {},
+		"damage": {},
+		"mutations": {},
+		"cybertech": {},
+		"fx": {},
+		"equipment": {}
+	}
+
+	var result_nested = rules.ensure_character_shape(nested_missing)
+
+	for rule in rules.OPTIONAL_RULES:
+		var rule_id := String(rule.get("id", ""))
+		if not result_nested["optional_rules"].has(rule_id):
+			_fail("Did not create optional rule: " + rule_id)
+
+	for damage_type in ["stun", "wound", "mortal", "fatigue"]:
+		if not result_nested["damage"].has(damage_type):
+			_fail("Did not create damage tracker: " + damage_type)
+
+	if not result_nested["mutations"].has("generation_mode"):
+		_fail("Did not normalize mutations structure.")
+
+	if not result_nested["cybertech"].has("enabled"):
+		_fail("Did not normalize cybertech structure.")
+
+	if not result_nested["fx"].has("is_fx_talent"):
+		_fail("Did not normalize fx structure.")
+
+	if not result_nested["equipment"].has("carried") or not result_nested["equipment"].has("custom_items"):
+		_fail("Did not normalize equipment structure.")
 
 	print("ensure_character_shape tests passed!")
 	quit(0)

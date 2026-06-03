@@ -23,7 +23,6 @@ func set_theme(index: int):
 		current_theme_index = index
 		save_theme_config()
 		apply_theme()
-		theme_changed.emit()
 
 func apply_theme():
 	var theme_name = theme_names[current_theme_index]
@@ -66,6 +65,7 @@ func apply_theme():
 			
 	if get_tree() != null:
 		get_tree().root.theme = theme_res
+	theme_changed.emit()
 
 func load_theme_config():
 	var config = ConfigFile.new()
