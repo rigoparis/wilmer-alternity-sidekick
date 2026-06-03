@@ -5685,6 +5685,7 @@ func _on_theme_changed() -> void:
 				btn.add_theme_color_override("icon_hover_color", color_text)
 				btn.add_theme_color_override("icon_focus_color", color_text)
 				for state in ["normal", "hover", "pressed", "focus", "disabled"]:
+					btn.remove_theme_stylebox_override(state)
 					var original_style = btn.get_theme_stylebox(state)
 					if original_style is StyleBoxFlat:
 						var dup_style = original_style.duplicate()
