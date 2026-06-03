@@ -203,7 +203,7 @@ func _build_shell() -> void:
 	theme_btn.icon = load("res://assets/pallete.svg")
 	theme_btn.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	theme_btn.expand_icon = true
-	theme_btn.custom_minimum_size = Vector2(36, 36)
+	theme_btn.custom_minimum_size = Vector2(40, 40)
 	theme_btn.add_theme_font_size_override("font_size", 12)
 	theme_btn.pressed.connect(_show_theme_selector)
 	header.add_child(theme_btn)
@@ -212,7 +212,7 @@ func _build_shell() -> void:
 	optional_rules_button.icon = load("res://assets/book.svg")
 	optional_rules_button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	optional_rules_button.expand_icon = true
-	optional_rules_button.custom_minimum_size = Vector2(36, 36)
+	optional_rules_button.custom_minimum_size = Vector2(40, 40)
 	optional_rules_button.add_theme_font_size_override("font_size", 12)
 	optional_rules_button.pressed.connect(_show_optional_rules)
 	header.add_child(optional_rules_button)
@@ -221,7 +221,7 @@ func _build_shell() -> void:
 	share_char_button.icon = load("res://assets/share.svg")
 	share_char_button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	share_char_button.expand_icon = true
-	share_char_button.custom_minimum_size = Vector2(36, 36)
+	share_char_button.custom_minimum_size = Vector2(40, 40)
 	share_char_button.add_theme_font_size_override("font_size", 12)
 	share_char_button.pressed.connect(func(): char_manager.share_character())
 	header.add_child(share_char_button)
@@ -230,7 +230,7 @@ func _build_shell() -> void:
 	close_char_button.icon = load("res://assets/logout.svg")
 	close_char_button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	close_char_button.expand_icon = true
-	close_char_button.custom_minimum_size = Vector2(36, 36)
+	close_char_button.custom_minimum_size = Vector2(40, 40)
 	close_char_button.add_theme_font_size_override("font_size", 12)
 	close_char_button.pressed.connect(_close_character)
 	header.add_child(close_char_button)
@@ -395,16 +395,16 @@ func _update_header_layout(compact: bool) -> void:
 	title_label.add_theme_font_size_override("font_size", 22 if compact else 24)
 	status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT if compact else HORIZONTAL_ALIGNMENT_RIGHT
 	optional_rules_button.size_flags_horizontal = Control.SIZE_SHRINK_END
-	optional_rules_button.custom_minimum_size = Vector2(36, 36)
+	optional_rules_button.custom_minimum_size = Vector2(40, 40)
 	if theme_btn != null:
 		theme_btn.size_flags_horizontal = Control.SIZE_SHRINK_END
-		theme_btn.custom_minimum_size = Vector2(36, 36)
+		theme_btn.custom_minimum_size = Vector2(40, 40)
 	if share_char_button != null:
 		share_char_button.size_flags_horizontal = Control.SIZE_SHRINK_END
-		share_char_button.custom_minimum_size = Vector2(36, 36)
+		share_char_button.custom_minimum_size = Vector2(40, 40)
 	if close_char_button != null:
 		close_char_button.size_flags_horizontal = Control.SIZE_SHRINK_END
-		close_char_button.custom_minimum_size = Vector2(36, 36)
+		close_char_button.custom_minimum_size = Vector2(40, 40)
 
 
 func _reparent_header_children(compact: bool = false) -> void:
@@ -5680,6 +5680,15 @@ func _on_theme_changed() -> void:
 				btn.add_theme_color_override("icon_pressed_color", color_text)
 				btn.add_theme_color_override("icon_hover_color", color_text)
 				btn.add_theme_color_override("icon_focus_color", color_text)
+				for state in ["normal", "hover", "pressed", "focus", "disabled"]:
+					var original_style = btn.get_theme_stylebox(state)
+					if original_style is StyleBoxFlat:
+						var dup_style = original_style.duplicate()
+						dup_style.content_margin_left = 6
+						dup_style.content_margin_right = 6
+						dup_style.content_margin_top = 6
+						dup_style.content_margin_bottom = 6
+						btn.add_theme_stylebox_override(state, dup_style)
 
 		# Update tab buttons
 		for tab in tab_buttons.keys():
