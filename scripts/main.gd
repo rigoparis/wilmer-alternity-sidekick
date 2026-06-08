@@ -1828,6 +1828,11 @@ func _add_perk_catalog_rows(parent: VBoxContainer, filter: String) -> int:
 			_add_granted_perk_row(parent, option)
 			continue
 		var selected_value := rules.perk_cost_selected(character, perk_id)
+		var is_gm_given := false
+		for p in rules.selected_perks(character):
+			if String(p.get("id", "")) == perk_id:
+				is_gm_given = bool(p.get("gm_given", false))
+				break
 		var change_perk := func(value):
 			rules.set_perk_selected(character, perk_id, value)
 			_render()
@@ -1842,7 +1847,15 @@ func _add_perk_catalog_rows(parent: VBoxContainer, filter: String) -> int:
 				"selected_format": "Selected %d SP",
 				"changed": change_perk,
 				"can_select_new": true,
-				"warning": "Warning: You already have 3 or more standard perks." if over_limit and selected_value <= 0 else ""
+				"warning": "Warning: You already have 3 or more standard perks." if over_limit and selected_value <= 0 else "",
+				"show_gm_option": true,
+				"is_gm_given": is_gm_given,
+				"take_gm_given": func():
+					var default_val = rules._as_int(option.get("cost_options", [0])[0])
+					rules.set_perk_selected(character, perk_id, default_val)
+					rules.set_perk_gm_given(character, perk_id, true)
+					_render()
+					_refresh_perk_flaw_catalog_panel()
 			}
 		)
 	return shown
@@ -1859,6 +1872,11 @@ func _add_flaw_catalog_rows(parent: VBoxContainer, filter: String) -> int:
 		shown += 1
 		var flaw_id := String(option.get("id", ""))
 		var selected_value := rules.flaw_bonus_selected(character, flaw_id)
+		var is_gm_given := false
+		for f in rules.selected_flaws(character):
+			if String(f.get("id", "")) == flaw_id:
+				is_gm_given = bool(f.get("gm_given", false))
+				break
 		var change_flaw := func(value):
 			rules.set_flaw_selected(character, flaw_id, value)
 			_render()
@@ -1873,7 +1891,15 @@ func _add_flaw_catalog_rows(parent: VBoxContainer, filter: String) -> int:
 				"selected_format": "Selected +%d SP",
 				"changed": change_flaw,
 				"can_select_new": true,
-				"warning": "Warning: You already have 3 or more standard flaws." if over_limit and selected_value <= 0 else ""
+				"warning": "Warning: You already have 3 or more standard flaws." if over_limit and selected_value <= 0 else "",
+				"show_gm_option": true,
+				"is_gm_given": is_gm_given,
+				"take_gm_given": func():
+					var default_val = rules._as_int(option.get("bonus_options", [0])[0])
+					rules.set_flaw_selected(character, flaw_id, default_val)
+					rules.set_flaw_gm_given(character, flaw_id, true)
+					_render()
+					_refresh_perk_flaw_catalog_panel()
 			}
 		)
 	return shown
@@ -1968,6 +1994,21 @@ func _add_character_option_row(parent: VBoxContainer, option: Dictionary, select
 		remove.custom_minimum_size = Vector2(0, 34)
 		remove.pressed.connect(func(): changed.call(0))
 		button_row.add_child(remove)
+
+	if config.get("show_gm_option", false):
+		var gm_button := Button.new()
+		var is_gm_given: bool = config.get("is_gm_given", false)
+		gm_button.text = "Selected (Given by GM)" if is_gm_given else "Take as GM Given"
+		gm_button.disabled = is_gm_given or (not is_gm_given and selected_value > 0)
+		if gm_button.disabled:
+			gm_button.add_theme_color_override("font_disabled_color", Color(color_text.r, color_text.g, color_text.b, 0.6))
+		gm_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		gm_button.custom_minimum_size = Vector2(0, 34)
+		gm_button.pressed.connect(func():
+			if config.has("take_gm_given"):
+				config.take_gm_given.call()
+		)
+		button_row.add_child(gm_button)
 
 	if not can_select_new and selected_value <= 0 and not String(disabled_reason).is_empty():
 		UIBuilder.add_text(row_box, String(disabled_reason), 12, color_warning)
