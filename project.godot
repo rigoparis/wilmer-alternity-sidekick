@@ -13,7 +13,7 @@ config_version=5
 config/name="Wilmer Alternity Sidekick"
 run/main_scene="res://main.tscn"
 config/features=PackedStringArray("4.6", "Mobile")
-config/icon="res://icon.svg"
+config/icon="res://icon.png"
 
 [autoload]
 
