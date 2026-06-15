@@ -1,4 +1,4 @@
-﻿class_name AlternityRulesConstants
+class_name AlternityRulesConstants
 extends RefCounted
 
 const ABILITIES := ["STR", "DEX", "CON", "INT", "WIL", "PER"]
@@ -30,6 +30,12 @@ const OPTIONAL_RULES := [
 		"name": "Optional Rule 2C",
 		"summary": "Flat specialty advancement cost",
 		"description": "The cost to purchase rank 2 or higher in a specialty skill is either the list price or list price -1. Current ranks do not increase the cost of advancing that skill.",
+	},
+	{
+		"id": "dazed",
+		"name": "Optional Rule: Dazed",
+		"summary": "Step penalty for heavy Stun, Wound, Mortal, or Fatigue damage",
+		"description": "If your hero suffers enough Stun or Wound damage to use up more than half of those points, he is dazed (+1 step penalty each). Mortal and Fatigue damage each add +1 step penalty per point.",
 	},
 ]
 

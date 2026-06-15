@@ -459,6 +459,7 @@ func _combat_skill_score(character: Dictionary, skill_id: int) -> Dictionary:
 	var step := 1 if String(use_skill.get("type", "")) == "broad" else 0
 	step += _get_parent()._species_skill_step_bonus(character, selected_skill_id)
 	step += _get_parent().mutations.mutation_skill_step_bonus(character, selected_skill_id)
+	step += _get_parent().dazed_penalty(character)
 	
 	# Mindwalker profession bonus (-1 step to focused broad skill and its specialties)
 	if _get_parent()._as_int(character.get("profession_id", 0)) == 6:

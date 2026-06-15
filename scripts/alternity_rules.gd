@@ -301,6 +301,7 @@ func default_character() -> Dictionary:
 			"WIL": 10,
 			"PER": 10,
 		},
+		"sold_species_skills": [],
 		"selected_skills": {},
 		"selected_perks": {},
 		"selected_flaws": {},
@@ -346,6 +347,13 @@ func ensure_character_shape(character: Dictionary) -> Dictionary:
 		character["selected_skills"] = {}
 	else:
 		_normalize_selected_skills(character)
+	if not character.has("sold_species_skills") or typeof(character["sold_species_skills"]) != TYPE_ARRAY:
+		character["sold_species_skills"] = []
+	else:
+		var norm_sold := []
+		for s_id in character["sold_species_skills"]:
+			norm_sold.append(_as_int(s_id))
+		character["sold_species_skills"] = norm_sold
 	if not character.has("selected_perks") or typeof(character["selected_perks"]) != TYPE_DICTIONARY:
 		character["selected_perks"] = {}
 	else:
@@ -399,6 +407,8 @@ func ensure_character_shape(character: Dictionary) -> Dictionary:
 			character["damage"][damage_type] = 0
 	if not character.has("last_resorts_used"):
 		character["last_resorts_used"] = 0
+	if not character.has("last_resorts_rebought"):
+		character["last_resorts_rebought"] = 0
 	if not character.has("equipment") or typeof(character["equipment"]) != TYPE_DICTIONARY:
 		character["equipment"] = {}
 	equipment._normalize_equipment(character)
@@ -539,7 +549,7 @@ func achievement_adjusted_abilities(character: Dictionary) -> Dictionary:
 func effective_abilities(character: Dictionary) -> Dictionary:
 	var result := achievement_adjusted_abilities(character)
 	for ability in ABILITIES:
-		result[ability] = max(1, _as_int(result.get(ability, 10)) + mutations.mutation_ability_bonus(character, ability) + cybertech.cybertech_stat_bonus(character, ability))
+		result[ability] = max(1, _as_int(result.get(ability, 10)) + mutations.mutation_ability_bonus(character, ability) + cybertech.cybertech_stat_bonus(character, ability) + fx.permanent_fx_stat_bonus(character, ability))
 	return result
 
 
@@ -696,14 +706,28 @@ func action_check(character: Dictionary) -> Dictionary:
 	var good := int(floor(ordinary / 2.0))
 	var amazing := int(floor(good / 2.0))
 	var action_step := _as_int(current_species.get("action_step", 0)) + achievements.achievement_effect_total(character, "action_check_step") + mutations.mutation_action_check_step(character) + cybertech.cybertech_action_check_step(character)
+	var penalty := dazed_penalty(character)
 	return {
 		"marginal": ordinary + 1,
 		"ordinary": ordinary,
 		"good": good,
 		"amazing": amazing,
-		"die": action_step_die(action_step),
+		"die": action_step_die(action_step + penalty),
 		"actions": actions_per_round(character),
 	}
+
+func dazed_penalty(character: Dictionary) -> int:
+	var penalty := 0
+	if optional_rule_enabled(character, "dazed"):
+		var dmg: Dictionary = character.get("damage", {})
+		var max_durability := durability(character)
+		if _as_int(dmg.get("stun", 0)) > int(floor(_as_int(max_durability.get("stun", 0)) / 2.0)):
+			penalty += 1
+		if _as_int(dmg.get("wound", 0)) > int(floor(_as_int(max_durability.get("wound", 0)) / 2.0)):
+			penalty += 1
+		penalty += _as_int(dmg.get("mortal", 0))
+		penalty += _as_int(dmg.get("fatigue", 0))
+	return penalty
 
 
 func durability(character: Dictionary) -> Dictionary:
@@ -822,7 +846,9 @@ func starting_skill_budget(character: Dictionary) -> int:
 
 
 func skill_budget(character: Dictionary) -> int:
-	return starting_skill_budget(character) + _as_int(character.get("achievement_points", 0)) + achievements.achievement_skill_bonus(character)
+	var total_ap := _as_int(character.get("achievement_points", 0))
+	var ap_for_sp := achievements.achievement_points_for_current_level(total_ap)
+	return starting_skill_budget(character) + ap_for_sp + achievements.achievement_skill_bonus(character)
 
 
 func max_broad_skills(character: Dictionary) -> int:
@@ -905,12 +931,19 @@ func skill_rank_total_cost(character: Dictionary, skill: Dictionary) -> int:
 	return total
 
 
+func max_skill_rank_for_character(character: Dictionary) -> int:
+	if character.is_empty():
+		return MAX_SPECIALTY_RANK
+	var level := _as_int(character.get("achievement_level", 1))
+	return clampi(level + 3, 1, MAX_SPECIALTY_RANK)
+
+
 func next_skill_rank_cost(character: Dictionary, skill: Dictionary) -> int:
 	var skill_id := _as_int(skill.get("id", -1))
 	var rank := skill_rank(character, skill_id)
 	if skill.get("type", "") == "broad":
 		return skill_purchase_cost(character, skill, 1) if rank <= 0 else 0
-	if rank >= MAX_SPECIALTY_RANK:
+	if rank >= max_skill_rank_for_character(character):
 		return 0
 	return skill_purchase_cost(character, skill, rank + 1)
 
@@ -930,7 +963,7 @@ func skill_rank(character: Dictionary, skill_id: int) -> int:
 	var rank := _selected_skill_entry_rank(selected.get(str(skill_id)))
 	if skill.get("type", "") == "broad":
 		return 1 if rank > 0 or free_rank > 0 else 0
-	return max(free_rank, clampi(rank, 0, MAX_SPECIALTY_RANK))
+	return max(free_rank, clampi(rank, 0, max_skill_rank_for_character(character)))
 
 
 func is_skill_selected(character: Dictionary, skill_id: int) -> bool:
@@ -951,7 +984,7 @@ func set_skill_rank(character: Dictionary, skill_id: int, rank: int) -> void:
 		return
 
 	if rank > free_rank:
-		selected_skills[str(skill_id)] = 1 if skill.get("type", "") == "broad" else clampi(rank, 1, MAX_SPECIALTY_RANK)
+		selected_skills[str(skill_id)] = 1 if skill.get("type", "") == "broad" else clampi(rank, 1, max_skill_rank_for_character(character))
 		if skill.get("type", "") == "specialty":
 			var broad_id := _as_int(skill.get("broad_id", -1))
 			if is_normally_free_species_skill(character, broad_id):
@@ -1095,7 +1128,10 @@ func skill_purchase_points_used(character: Dictionary) -> int:
 
 
 func skill_points_used(character: Dictionary) -> int:
-	return skill_purchase_points_used(character) + perk_points_used(character) + achievements.achievement_points_spent(character) + cybertech.cybertech_skill_points_used(character) + fx.fx_skill_purchase_points_used(character)
+	var lr_rebought := _as_int(character.get("last_resorts_rebought", 0))
+	var lr_cost := _as_int(last_resorts(character).get("cost", 0))
+	var lr_spent := lr_rebought * lr_cost
+	return skill_purchase_points_used(character) + perk_points_used(character) + achievements.achievement_points_spent(character) + cybertech.cybertech_skill_points_used(character) + fx.fx_skill_purchase_points_used(character) + lr_spent
 
 
 func broad_skills_used(character: Dictionary) -> int:
@@ -1171,6 +1207,7 @@ func skill_score(character: Dictionary, skill: Dictionary) -> Dictionary:
 	var step := 1 if skill.get("type", "") == "broad" else 0
 	step += _species_skill_step_bonus(character, skill_id)
 	step += mutations.mutation_skill_step_bonus(character, skill_id)
+	step += dazed_penalty(character)
 	
 	# Mindwalker profession bonus (-1 step to focused broad skill and its specialties)
 	if _as_int(character.get("profession_id", 0)) == 6:
@@ -1247,8 +1284,9 @@ func _validate_skills(character: Dictionary, messages: Array) -> void:
 	for key in selected.keys():
 		var skill := get_skill_by_id(_as_int(key))
 		var rank := skill_rank(character, _as_int(key))
-		if skill.get("type", "") == "specialty" and rank > MAX_SPECIALTY_RANK:
-			messages.append("%s cannot exceed rank %d." % [skill_label(skill), MAX_SPECIALTY_RANK])
+		var max_rank := max_skill_rank_for_character(character)
+		if skill.get("type", "") == "specialty" and rank > max_rank:
+			messages.append("%s cannot exceed rank %d." % [skill_label(skill), max_rank])
 		if skill.get("type", "") != "specialty":
 			continue
 		var broad_id := _as_int(skill.get("broad_id", -1))
@@ -1323,15 +1361,23 @@ func summary(character: Dictionary) -> Dictionary:
 	var flaw_bonus := flaw_skill_points_bonus(character)
 	var skill_purchase_points := skill_purchase_points_used(character)
 	var achievement_spending := achievements.achievement_points_spent(character)
+	var sold_list: Array = character.get("sold_species_skills", [])
+	var sold_broads_count := 0
+	for skill_id in get_free_skill_ids(character):
+		if sold_list.has(skill_id):
+			sold_broads_count += 1
+
 	character["achievements.achievement_points_available"] = achievement_available
 	_cached_summary = {
 		"achievement_level": achievements.achievement_level_for_points(achievement_points),
 		"achievement_points": achievement_points,
+		"achievement_points_for_sp": achievements.achievement_points_for_current_level(achievement_points),
 		"achievements.achievement_points_used": achievement_used,
 		"achievements.achievement_points_available": achievement_available,
 		"achievements.achievement_next_level_points": achievements.achievement_next_level_points(achievement_points),
 		"achievements.achievement_skill_bonus": achievements.achievement_skill_bonus(character),
 		"starting_skill_budget": starting_skill_budget(character),
+		"sold_broads_count": sold_broads_count,
 		"ability_total": ability_total(character),
 		"ability_target": ability_point_total(character),
 		"effective_abilities": effective_abilities(character),
@@ -1359,6 +1405,7 @@ func summary(character: Dictionary) -> Dictionary:
 		"equipment": equipment.equipment_summary(character),
 		"mutations": mutations.mutation_summary(character),
 		"cybertech": cybertech.cybertech_summary(character),
+		"permanent_fx_effects": fx.permanent_fx_effects_summary(character),
 		"validations": validate(character),
 	}
 	_last_character_hash = current_hash
@@ -1384,7 +1431,7 @@ func skill_detail(skill: Dictionary, character: Dictionary = {}) -> Dictionary:
 		"ability_name": ABILITY_NAMES.get(ability, ability),
 		"broad_name": String(broad.get("name", "")),
 		"rank": current_rank,
-		"max_rank": MAX_SPECIALTY_RANK if skill.get("type", "") == "specialty" else 1,
+		"max_rank": max_skill_rank_for_character(character) if skill.get("type", "") == "specialty" else 1,
 		"base_price": _as_int(skill.get("base_price", 0)),
 		"rank_one_cost": skill_cost(character, skill) if not character.is_empty() else _as_int(skill.get("base_price", 0)),
 		"next_cost": next_skill_rank_cost(character, skill) if not character.is_empty() else _as_int(skill.get("base_price", 0)),
@@ -1518,9 +1565,10 @@ func skill_rank_benefit_groups(character: Dictionary) -> Array:
 
 func action_step_die(step: int) -> String:
 	var step_dice := {
-		-4: "-d20",
-		-3: "-d12",
-		-2: "-d8",
+		-5: "-d20",
+		-4: "-d12",
+		-3: "-d8",
+		-2: "-d6",
 		-1: "-d4",
 		0: "+d0",
 		1: "+d4",
@@ -1528,7 +1576,13 @@ func action_step_die(step: int) -> String:
 		3: "+d8",
 		4: "+d12",
 		5: "+d20",
+		6: "+2d20",
+		7: "+3d20",
 	}
+	if step < -5:
+		return "-d20" # Cap at -5
+	if step > 7:
+		return "+%dd20" % (step - 4) # Pattern continues: +8 is +4d20 etc.
 	return step_dice.get(step, "+d0")
 
 
@@ -1617,7 +1671,7 @@ func _normalize_selected_skills(character: Dictionary) -> void:
 		var rank := _selected_skill_entry_rank(selected[key])
 		if rank <= 0:
 			continue
-		normalized[str(skill_id)] = 1 if skill.get("type", "") == "broad" else clampi(rank, 1, MAX_SPECIALTY_RANK)
+		normalized[str(skill_id)] = 1 if skill.get("type", "") == "broad" else clampi(rank, 1, max_skill_rank_for_character(character))
 	character["selected_skills"] = normalized
 
 

@@ -46,11 +46,12 @@ static func add_section(parent: Container, title: String, theme_manager: Object 
 	box.add_theme_constant_override("separation", 8)
 	margin.add_child(box)
 
-	var label := Label.new()
-	label.text = title
-	label.add_theme_color_override("font_color", c_text)
-	label.add_theme_font_size_override("font_size", 18)
-	box.add_child(label)
+	if not title.is_empty():
+		var label := Label.new()
+		label.text = title
+		label.add_theme_color_override("font_color", c_text)
+		label.add_theme_font_size_override("font_size", 18)
+		box.add_child(label)
 	return box
 
 static func add_form_cell(parent: Container, label_text: String, control: Control, default_muted: Color = Color(0.5, 0.55, 0.6)) -> void:
@@ -100,6 +101,19 @@ static func add_text(parent: Container, text: String, font_size: int, color: Col
 	label.custom_minimum_size = Vector2(1, 0)
 	label.add_theme_color_override("font_color", color)
 	label.add_theme_font_size_override("font_size", font_size)
+	parent.add_child(label)
+	return label
+
+static func add_rich_text(parent: Container, bbcode_text: String, font_size: int, color: Color) -> RichTextLabel:
+	var label := RichTextLabel.new()
+	label.bbcode_enabled = true
+	label.text = bbcode_text
+	label.fit_content = true
+	label.scroll_active = false
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.custom_minimum_size = Vector2(1, 0)
+	label.add_theme_color_override("default_color", color)
+	label.add_theme_font_size_override("normal_font_size", font_size)
 	parent.add_child(label)
 	return label
 

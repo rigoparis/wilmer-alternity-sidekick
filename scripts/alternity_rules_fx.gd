@@ -18,6 +18,8 @@ func _normalize_fx(character: Dictionary) -> void:
 		fx_data["energy_pool"] = 0
 	if not fx_data.has("selected_skills"):
 		fx_data["selected_skills"] = {}
+	if not fx_data.has("permanent_skills"):
+		fx_data["permanent_skills"] = {}
 	character["fx"] = fx_data
 
 func is_fx_talent(character: Dictionary) -> bool:
@@ -53,6 +55,73 @@ func fx_skill_rank(character: Dictionary, skill_name: String) -> int:
 func is_fx_skill_selected(character: Dictionary, skill_name: String) -> bool:
 	return fx_skill_rank(character, skill_name) > 0
 
+func can_fx_skill_be_permanent(skill_name: String) -> bool:
+	var specialty = get_specialty_skill(skill_name)
+	return specialty.has("permanent_cost")
+
+func is_fx_skill_permanent(character: Dictionary, skill_name: String) -> bool:
+	return bool(character.get("fx", {}).get("permanent_skills", {}).get(skill_name, false))
+
+func set_fx_skill_permanent(character: Dictionary, skill_name: String, is_permanent: bool) -> void:
+	_normalize_fx(character)
+	if is_permanent:
+		character["fx"]["permanent_skills"][skill_name] = true
+	else:
+		character["fx"]["permanent_skills"].erase(skill_name)
+
+func permanent_fx_energy_drain(character: Dictionary) -> int:
+	var total_drain := 0
+	var perms: Dictionary = character.get("fx", {}).get("permanent_skills", {})
+	for skill_name in perms.keys():
+		if perms[skill_name] and is_fx_skill_selected(character, skill_name):
+			var specialty = get_specialty_skill(skill_name)
+			total_drain += _get_parent()._as_int(specialty.get("permanent_cost", 0))
+	return total_drain
+
+func permanent_fx_stat_bonus(character: Dictionary, ability: String) -> int:
+	var map := {
+		"STR": "Super Strength",
+		"DEX": "Super Dexterity",
+		"CON": "Super Constitution",
+		"INT": "Super Intelligence",
+		"WIL": "Super Will",
+		"PER": "Super Personality"
+	}
+	var skill_name = map.get(ability.to_upper(), "")
+	if skill_name.is_empty():
+		return 0
+	
+	if not is_fx_skill_permanent(character, skill_name):
+		return 0
+	
+	var rank = fx_skill_rank(character, skill_name)
+	if rank <= 0:
+		return 0
+	
+	var bonus = 1
+	if rank >= 4:
+		bonus += 1
+	if rank >= 8:
+		bonus += 1
+	if rank >= 12:
+		bonus += 1
+		
+	return bonus
+
+func permanent_fx_effects_summary(character: Dictionary) -> Array:
+	var effects := []
+	var perms: Dictionary = character.get("fx", {}).get("permanent_skills", {})
+	for skill_name in perms.keys():
+		if perms[skill_name] and is_fx_skill_selected(character, skill_name):
+			var specialty = get_specialty_skill(skill_name)
+			if not specialty.is_empty():
+				var desc = String(specialty.get("description", ""))
+				effects.append({
+					"name": skill_name,
+					"description": desc
+				})
+	return effects
+
 func add_fx_skill(character: Dictionary, skill_name: String) -> void:
 	_normalize_fx(character)
 	var broad = get_broad_skill(skill_name)
@@ -72,10 +141,12 @@ func remove_fx_skill(character: Dictionary, skill_name: String) -> void:
 	var broad = get_broad_skill(skill_name)
 	if not broad.is_empty():
 		selected.erase(skill_name)
+		character["fx"].get("permanent_skills", {}).erase(skill_name)
 		return
 	var current = fx_skill_rank(character, skill_name)
 	if current <= 1:
 		selected.erase(skill_name)
+		character["fx"].get("permanent_skills", {}).erase(skill_name)
 	else:
 		selected[skill_name] = current - 1
 		
@@ -290,7 +361,17 @@ func fx_skill_score(character: Dictionary, skill_name: String) -> Dictionary:
 		if not broad.is_empty():
 			ability = String(broad.get("ability", "WIL"))
 			
-	var ability_score = _get_parent()._as_int(abilities.get(ability, 10))
+	var ability_score = 10
+	if ability.contains("/"):
+		var parts = ability.split("/")
+		var max_val = 0
+		for part in parts:
+			var val = _get_parent()._as_int(abilities.get(part.strip_edges(), 10))
+			if val > max_val:
+				max_val = val
+		ability_score = max_val
+	else:
+		ability_score = _get_parent()._as_int(abilities.get(ability, 10))
 	var rank = fx_skill_rank(character, skill_name)
 	var base = ability_score + rank
 	var ordinary = base
@@ -302,11 +383,20 @@ func fx_skill_score(character: Dictionary, skill_name: String) -> Dictionary:
 		ordinary = base
 		good = int(floor(ordinary / 2.0))
 		amazing = int(floor(good / 2.0))
+	var step := 0 if not get_broad_skill(skill_name).is_empty() and rank > 0 else 0
+	if get_broad_skill(skill_name).is_empty():
+		step = 0 # specialty
+	else:
+		step = 1 # broad
 		
+	step += _get_parent().dazed_penalty(character)
+
 	return {
 		"marginal": ordinary + 1,
 		"ordinary": ordinary,
 		"good": good,
 		"amazing": amazing,
-		"base": base
+		"base": base,
+		"step": step,
+		"die": _get_parent().action_step_die(step)
 	}

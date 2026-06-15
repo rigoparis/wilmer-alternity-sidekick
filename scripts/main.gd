@@ -21,7 +21,10 @@ var character: Dictionary = {}
 var active_tab := "Basics"
 var skill_filter := ""
 var psionic_filter := ""
+var active_skill_ability_tab := "STR"
+var active_psionic_ability_tab := "WIL"
 var fx_filter_text := ""
+var _sticky_scroll_pos := 0
 var deleting_files: Dictionary = {}
 var close_char_button: Button
 var share_char_button: Button
@@ -66,6 +69,7 @@ var mutation_catalog_body: VBoxContainer
 var mutation_catalog_scroll: ScrollContainer
 var skills_body: HBoxContainer
 var sticky_skills_panel: VBoxContainer
+var skills_header: VBoxContainer
 var tab_buttons: Dictionary = {}
 var is_wide_layout := false
 var _tab_containers: Dictionary = {}
@@ -322,6 +326,10 @@ func _build_shell() -> void:
 	perk_flaw_catalog_body = perk_flaw_catalog_overlay.body
 	perk_flaw_catalog_scroll = perk_flaw_catalog_overlay.scroll
 	perk_flaw_filter_edit = perk_flaw_catalog_overlay.search_edit
+	perk_flaw_filter_edit.text_changed.connect(func(value):
+		perk_flaw_filter_text = value
+		_request_search_refresh("perk_flaw", String(value).length(), _refresh_perk_flaw_catalog_panel)
+	)
 
 	mutation_catalog_overlay = OverlayCatalogs.new()
 	mutation_catalog_overlay.build(self, self, color_surface, color_border, color_text, "Mutations")
@@ -329,6 +337,10 @@ func _build_shell() -> void:
 	mutation_catalog_body = mutation_catalog_overlay.body
 	mutation_catalog_scroll = mutation_catalog_overlay.scroll
 	mutation_filter_edit = mutation_catalog_overlay.search_edit
+	mutation_filter_edit.text_changed.connect(func(value):
+		mutation_filter_text = value
+		_request_search_refresh("mutation", String(value).length(), _refresh_mutation_catalog_panel)
+	)
 
 	_build_theme_overlay()
 	_build_import_character_overlay()
@@ -852,8 +864,9 @@ func _refresh_skill_details_panel(skill: Dictionary) -> void:
 	var rank := rules._as_int(detail.get("rank", 0))
 	if skill.get("type", "") == "specialty":
 		var next_cost := rules._as_int(detail.get("next_cost", 0))
-		var rank_line := "Current rank %d / %d" % [rank, rules._as_int(detail.get("max_rank", AlternityRules.MAX_SPECIALTY_RANK))]
-		if rank < AlternityRules.MAX_SPECIALTY_RANK:
+		var max_rank := rules._as_int(detail.get("max_rank", AlternityRules.MAX_SPECIALTY_RANK))
+		var rank_line := "Current rank %d / %d" % [rank, max_rank]
+		if rank < max_rank:
 			rank_line += "  |  Next rank %d SP" % next_cost
 		else:
 			rank_line += "  |  Maximum rank"
@@ -967,31 +980,18 @@ func _add_optional_rule_row(rule: Dictionary) -> void:
 	box.add_theme_constant_override("separation", 6)
 	block_margin.add_child(box)
 
-	var title_row := HBoxContainer.new()
-	title_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	title_row.add_theme_constant_override("separation", 6)
-	box.add_child(title_row)
-
-	var toggle := CheckBox.new()
 	var rule_id := String(rule.get("id", ""))
-	toggle.button_pressed = rules.optional_rule_enabled(character, rule_id)
-	toggle.custom_minimum_size = Vector2(24, 32)
-	toggle.toggled.connect(func(pressed):
-		rules.set_optional_rule(character, rule_id, pressed)
-		if not char_manager.active_character_file.is_empty():
-			char_manager.save_character(notes_editing, notes_draft)
-		_render()
-		_refresh_optional_rules_panel()
+	_add_large_checkbox(
+		box,
+		"%s: %s" % [rule.get("name", ""), rule.get("summary", "")],
+		rules.optional_rule_enabled(character, rule_id),
+		func(pressed):
+			rules.set_optional_rule(character, rule_id, pressed)
+			if not char_manager.active_character_file.is_empty():
+				char_manager.save_character(notes_editing, notes_draft)
+			_render()
+			_refresh_optional_rules_panel()
 	)
-	title_row.add_child(toggle)
-
-	var title := Label.new()
-	title.text = "%s: %s" % [rule.get("name", ""), rule.get("summary", "")]
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	title.add_theme_color_override("font_color", color_text)
-	title.add_theme_font_size_override("font_size", 15)
-	title_row.add_child(title)
 
 	UIBuilder.add_text(box, String(rule.get("description", "")), 13, color_muted)
 
@@ -1116,12 +1116,27 @@ func _render() -> void:
 		if is_instance_valid(_tab_containers[tab]):
 			_tab_containers[tab].visible = (tab == active_tab)
 
+	# Save sticky scroll position
+	if sticky_skills_panel != null and sticky_skills_panel.get_parent() is ScrollContainer:
+		_sticky_scroll_pos = sticky_skills_panel.get_parent().scroll_vertical
+
 	# Only rebuild the active tab container if it is dirty
 	if _tab_dirty.get(active_tab, true):
+		content.custom_minimum_size.y = content.size.y
 		for child in content.get_children():
+			child.visible = false
 			child.queue_free()
+			
 		if sticky_skills_panel != null:
+			sticky_skills_panel.custom_minimum_size.y = sticky_skills_panel.size.y
 			for child in sticky_skills_panel.get_children():
+				child.visible = false
+				child.queue_free()
+				
+		if skills_header != null:
+			skills_header.custom_minimum_size.y = skills_header.size.y
+			for child in skills_header.get_children():
+				child.visible = false
 				child.queue_free()
 
 		match active_tab:
@@ -1154,8 +1169,20 @@ func _render() -> void:
 
 
 func _restore_scroll_position() -> void:
+	await get_tree().process_frame
+	await get_tree().process_frame
+	
+	if is_instance_valid(content):
+		content.custom_minimum_size.y = 0
+	if is_instance_valid(sticky_skills_panel):
+		sticky_skills_panel.custom_minimum_size.y = 0
+	if is_instance_valid(skills_header):
+		skills_header.custom_minimum_size.y = 0
+
 	if content_scroll != null:
 		content_scroll.scroll_vertical = _tab_scroll_positions.get(active_tab, 0)
+	if is_instance_valid(sticky_skills_panel) and sticky_skills_panel.get_parent() is ScrollContainer:
+		sticky_skills_panel.get_parent().scroll_vertical = _sticky_scroll_pos
 
 
 func _set_sticky_skills_layout(enabled: bool) -> void:
@@ -1170,26 +1197,46 @@ func _set_sticky_skills_layout(enabled: bool) -> void:
 		shell.add_child(skills_body)
 		shell.move_child(skills_body, scroll_index)
 
+		var left_col := VBoxContainer.new()
+		left_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		left_col.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		left_col.size_flags_stretch_ratio = 0.64
+		skills_body.add_child(left_col)
+
+		skills_header = VBoxContainer.new()
+		skills_header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		left_col.add_child(skills_header)
+
 		content_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		content_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		content_scroll.size_flags_stretch_ratio = 0.64
-		skills_body.add_child(content_scroll)
+		content_scroll.size_flags_stretch_ratio = 1.0
+		left_col.add_child(content_scroll)
+
+		var sticky_scroll := ScrollContainer.new()
+		sticky_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		sticky_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		sticky_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		sticky_scroll.size_flags_stretch_ratio = 0.36
+		skills_body.add_child(sticky_scroll)
 
 		sticky_skills_panel = VBoxContainer.new()
 		sticky_skills_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		sticky_skills_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		sticky_skills_panel.size_flags_stretch_ratio = 0.36
 		sticky_skills_panel.add_theme_constant_override("separation", 10)
-		skills_body.add_child(sticky_skills_panel)
+		sticky_scroll.add_child(sticky_skills_panel)
 	elif not enabled and skills_body != null:
 		var body_index := shell.get_children().find(skills_body)
-		skills_body.remove_child(content_scroll)
+		content_scroll.get_parent().remove_child(content_scroll)
 		shell.add_child(content_scroll)
 		shell.move_child(content_scroll, body_index)
 		content_scroll.size_flags_stretch_ratio = 1.0
 		sticky_skills_panel = null
 		skills_body.queue_free()
 		skills_body = null
+		if skills_header != null:
+			skills_header.queue_free()
+			skills_header = null
+		_tab_dirty["Skills"] = true
 
 
 func _refresh_status() -> void:
@@ -1230,8 +1277,8 @@ func _achievement_next_level_label(points: int) -> String:
 
 func _achievement_usage_text(summary: Dictionary) -> String:
 	return "Used AP: %d    Available AP: %d" % [
-		rules._as_int(summary.get("achievement_points_used", 0)),
-		rules._as_int(summary.get("achievement_points_available", 0)),
+		rules._as_int(summary.get("achievements.achievement_points_used", 0)),
+		rules._as_int(summary.get("achievements.achievement_points_available", 0)),
 	]
 
 
@@ -1254,20 +1301,20 @@ func _render_basics() -> void:
 	var achievement_hbox := HBoxContainer.new()
 	achievement_hbox.add_theme_constant_override("separation", 12)
 	basics.add_child(achievement_hbox)
+	var achievement_usage_label: Label = null
 	var achievement_input := _add_number_input(achievement_hbox, "Achievement Points", achievement_points, 0, 9999, func(value):
 		rules.achievements.set_achievement_points(character, value)
 		level_label.text = _achievement_level_label(value)
 		next_level_label.text = _achievement_next_level_label(value)
+		if achievement_usage_label != null:
+			achievement_usage_label.text = _achievement_usage_text(rules.summary(character))
 		_refresh_status()
 	)
 	achievement_input.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	achievement_input.custom_minimum_size = Vector2(120, 42)
 	var achievement_summary := rules.summary(character)
-	var achievement_usage_label := UIBuilder.add_text(
+	achievement_usage_label = UIBuilder.add_text(
 		basics, _achievement_usage_text(achievement_summary), 13, color_text
-	)
-	achievement_input.text_changed.connect(func(_text):
-		achievement_usage_label.text = _achievement_usage_text(rules.summary(character))
 	)
 
 	var setting := OptionButton.new()
@@ -1530,9 +1577,7 @@ func _add_ability_row(parent: Container, ability: String) -> void:
 	detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label_box.add_child(detail)
 
-	var minus := Button.new()
-	minus.text = "-"
-	minus.custom_minimum_size = Vector2(42, 42)
+	var minus := _create_icon_button(MINUS_ICON, Vector2(34, 34))
 	minus.pressed.connect(func(): char_manager.apply_change_ability(ability, -1))
 	row.add_child(minus)
 
@@ -1545,23 +1590,24 @@ func _add_ability_row(parent: Container, ability: String) -> void:
 	value.add_theme_color_override("font_color", color_text)
 	row.add_child(value)
 
-	var plus := Button.new()
-	plus.text = "+"
-	plus.custom_minimum_size = Vector2(42, 42)
+	var plus := _create_icon_button(PLUS_ICON, Vector2(34, 34))
 	plus.pressed.connect(func(): char_manager.apply_change_ability(ability, 1))
 	row.add_child(plus)
 
 
 func _render_skills() -> void:
 	var summary := rules.summary(character)
-	if is_wide_layout and sticky_skills_panel != null:
-		var picker_box := UIBuilder.add_section(content, "Skill Budget", null, color_surface, color_border, color_text)
-		_render_skill_picker(picker_box, summary, false)
+	if is_wide_layout and sticky_skills_panel != null and skills_header != null:
+		var budget_box := UIBuilder.add_section(skills_header, "", null, color_surface, color_border, color_text)
+		var catalog_box := UIBuilder.add_section(content, "", null, color_surface, color_border, color_text)
+		_render_skill_picker(budget_box, catalog_box, summary, false)
+		
 		_render_selected_skill_panel(sticky_skills_panel)
 		return
 
-	var box := UIBuilder.add_section(content, "Skill Budget", null, color_surface, color_border, color_text)
-	_render_skill_picker(box, summary, false)
+	var budget_box := UIBuilder.add_section(content, "", null, color_surface, color_border, color_text)
+	var catalog_box := UIBuilder.add_section(content, "", null, color_surface, color_border, color_text)
+	_render_skill_picker(budget_box, catalog_box, summary, false)
 
 
 func _render_perks_flaws() -> void:
@@ -1685,14 +1731,14 @@ func _add_selected_perk_row(parent: VBoxContainer, perk: Dictionary, add_separat
 		top_row.add_child(remove)
 
 	if not bool(perk.get("granted_by_achievement", false)):
-		var gm_checkbox := CheckBox.new()
-		gm_checkbox.text = "Given by GM"
-		gm_checkbox.button_pressed = bool(perk.get("gm_given", false))
-		gm_checkbox.toggled.connect(func(pressed):
-			rules.set_perk_gm_given(character, String(perk.get("id", "")), pressed)
-			_render()
+		_add_large_checkbox(
+			row_box,
+			"Given by GM",
+			bool(perk.get("gm_given", false)),
+			func(pressed):
+				rules.set_perk_gm_given(character, String(perk.get("id", "")), pressed)
+				_render()
 		)
-		row_box.add_child(gm_checkbox)
 
 	UIBuilder.add_text(row_box, String(perk.get("summary", "")), 13, color_text)
 	UIBuilder.add_text(row_box, "Source: %s" % String(perk.get("source", "")), 11, color_muted)
@@ -1734,14 +1780,15 @@ func _add_selected_flaw_row(parent: VBoxContainer, flaw: Dictionary, add_separat
 	)
 	top_row.add_child(remove)
 
-	var gm_checkbox := CheckBox.new()
-	gm_checkbox.text = "Given by GM"
-	gm_checkbox.button_pressed = bool(flaw.get("gm_given", false))
-	gm_checkbox.toggled.connect(func(pressed):
-		rules.set_flaw_gm_given(character, String(flaw.get("id", "")), pressed)
-		_render()
-	)
-	row_box.add_child(gm_checkbox)
+	if not bool(flaw.get("granted_by_achievement", false)):
+		_add_large_checkbox(
+			row_box,
+			"Given by GM",
+			bool(flaw.get("gm_given", false)),
+			func(pressed):
+				rules.set_flaw_gm_given(character, String(flaw.get("id", "")), pressed)
+				_render()
+		)
 
 	UIBuilder.add_text(row_box, String(flaw.get("summary", "")), 13, color_text)
 	UIBuilder.add_text(row_box, "Source: %s" % String(flaw.get("source", "")), 11, color_muted)
@@ -1763,8 +1810,10 @@ func _show_flaw_catalog_modal() -> void:
 func _show_perk_flaw_catalog_modal(kind: String) -> void:
 	perk_flaw_catalog_kind = "flaw" if kind == "flaw" else "perk"
 	perk_flaw_filter_text = ""
+	perk_flaw_filter_edit.text = ""
 	_refresh_perk_flaw_catalog_panel()
 	perk_flaw_catalog_overlay.visible = true
+	perk_flaw_filter_edit.grab_focus.call_deferred()
 	_apply_responsive_layout()
 	_update_perk_flaw_catalog_modal_height.call_deferred()
 
@@ -1775,16 +1824,7 @@ func _refresh_perk_flaw_catalog_panel() -> void:
 
 	var is_flaw_catalog := perk_flaw_catalog_kind == "flaw"
 	perk_flaw_catalog_overlay.title_label.text = "Add Flaw" if is_flaw_catalog else "Add Perk"
-	var search := LineEdit.new()
-	search.text = perk_flaw_filter_text
-	search.placeholder_text = "Search flaws" if is_flaw_catalog else "Search perks"
-	search.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	search.text_changed.connect(func(value):
-		perk_flaw_filter_text = value
-		_request_search_refresh("perk_flaw", String(value).length(), _refresh_perk_flaw_catalog_panel)
-	)
-	UIBuilder.add_field(perk_flaw_catalog_body, "Search", search, color_muted)
-	_restore_search_focus(search, "perk_flaw")
+	perk_flaw_filter_edit.placeholder_text = "Search flaws" if is_flaw_catalog else "Search perks"
 
 	if is_flaw_catalog:
 		UIBuilder.add_text(perk_flaw_catalog_body, "Flaws add skill points. A starting hero can choose up to three flaws. Source: Player's Handbook p. 107.", 12, color_muted)
@@ -1988,8 +2028,8 @@ func _render_achievements() -> void:
 	_add_metric(box, "Hero Level", str(rules._as_int(summary.get("achievement_level", 1))))
 	_add_metric(box, "Achievement Points", "%d total, %d used, %d available" % [
 		rules._as_int(summary.get("achievement_points", 0)),
-		rules._as_int(summary.get("achievement_points_used", 0)),
-		rules._as_int(summary.get("achievement_points_available", 0)),
+		rules._as_int(summary.get("achievements.achievement_points_used", 0)),
+		rules._as_int(summary.get("achievements.achievement_points_available", 0)),
 	])
 	_add_metric(box, "Skill Points Used/Available", "%d/%d" % [
 		rules._as_int(summary.get("skill_points_used", 0)),
@@ -2476,8 +2516,10 @@ func _add_selected_mutation_row(parent: VBoxContainer, mutation: Dictionary, kin
 func _show_mutation_catalog_modal(kind: String) -> void:
 	mutation_catalog_kind = "drawback" if kind == "drawback" else "advantage"
 	mutation_filter_text = ""
+	mutation_filter_edit.text = ""
 	_refresh_mutation_catalog_panel()
 	mutation_catalog_overlay.visible = true
+	mutation_filter_edit.grab_focus.call_deferred()
 	_apply_responsive_layout()
 	_update_mutation_catalog_modal_height.call_deferred()
 
@@ -2488,16 +2530,7 @@ func _refresh_mutation_catalog_panel() -> void:
 
 	var is_drawback := mutation_catalog_kind == "drawback"
 	mutation_catalog_overlay.title_label.text = "Add Mutation Drawback" if is_drawback else "Add Advantageous Mutation"
-	var search := LineEdit.new()
-	search.text = mutation_filter_text
-	search.placeholder_text = "Search drawbacks" if is_drawback else "Search mutations"
-	search.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	search.text_changed.connect(func(value):
-		mutation_filter_text = value
-		_request_search_refresh("mutation", String(value).length(), _refresh_mutation_catalog_panel)
-	)
-	UIBuilder.add_field(mutation_catalog_body, "Search", search, color_muted)
-	_restore_search_focus(search, "mutation")
+	mutation_filter_edit.placeholder_text = "Search drawbacks" if is_drawback else "Search mutations"
 
 	var distribution_label := rules.mutations.mutation_distribution_label(character, mutation_catalog_kind)
 	UIBuilder.add_text(mutation_catalog_body, "Showing mutations that fit the selected distribution: %s." % distribution_label, 12, color_muted)
@@ -2717,19 +2750,14 @@ func _add_equipment_filters(parent: VBoxContainer, modal := false) -> void:
 	UIBuilder.add_text(sources_box, "Sources", 12, color_muted)
 	for source in rules.equipment.equipment_source_options():
 		var source_id := String(source.get("id", ""))
-		var toggle := CheckBox.new()
-		toggle.text = String(source.get("name", source_id))
-		toggle.button_pressed = bool(equipment_filter_sources.get(source_id, true))
-		toggle.add_theme_color_override("font_color", color_text)
-		toggle.add_theme_color_override("font_pressed_color", color_text)
-		toggle.add_theme_color_override("font_hover_color", color_text)
-		toggle.add_theme_color_override("font_hover_pressed_color", color_text)
-		toggle.add_theme_color_override("font_focus_color", color_text)
-		toggle.toggled.connect(func(pressed):
-			equipment_filter_sources[source_id] = pressed
-			_refresh_equipment_browser(modal)
+		_add_large_checkbox(
+			sources_box,
+			String(source.get("name", source_id)),
+			bool(equipment_filter_sources.get(source_id, true)),
+			func(pressed):
+				equipment_filter_sources[source_id] = pressed
+				_refresh_equipment_browser(modal)
 		)
-		sources_box.add_child(toggle)
 
 
 func _add_equipment_catalog(parent: VBoxContainer, modal := false) -> void:
@@ -2965,16 +2993,12 @@ func _refresh_equipment_form_panel() -> void:
 		equipment_form_state["quantity"] = value
 	)
 
-	var equipped := CheckBox.new()
-	equipped.text = "Equipped"
-	equipped.button_pressed = bool(equipment_form_state.get("equipped", false))
-	equipped.add_theme_color_override("font_color", color_text)
-	equipped.add_theme_color_override("font_pressed_color", color_text)
-	equipped.add_theme_color_override("font_hover_color", color_text)
-	equipped.add_theme_color_override("font_hover_pressed_color", color_text)
-	equipped.add_theme_color_override("font_focus_color", color_text)
-	equipped.toggled.connect(func(pressed): equipment_form_state["equipped"] = pressed)
-	equipment_form_body.add_child(equipped)
+	_add_large_checkbox(
+		equipment_form_body,
+		"Equipped",
+		bool(equipment_form_state.get("equipped", false)),
+		func(pressed): equipment_form_state["equipped"] = pressed
+	)
 
 	_add_line_edit(equipment_form_body, "Slot", String(equipment_form_state.get("slot", "")), func(value): equipment_form_state["slot"] = value)
 
@@ -3393,48 +3417,111 @@ func _add_table_label(parent: GridContainer, text: String, header_cell: bool) ->
 	return label
 
 
-func _render_skill_picker(box: VBoxContainer, summary: Dictionary, is_psionics := false) -> void:
-	_add_progress_metric(box, "Skill Points Used/Available", summary["skill_points_used"], summary["skill_budget"], "%d / %d" % [summary["skill_points_used"], summary["skill_points_remaining"]])
+func _render_skill_picker(budget_box: VBoxContainer, catalog_box: VBoxContainer, summary: Dictionary, is_psionics := false) -> void:
+	_add_progress_metric(budget_box, "Skill Points Used/Available", summary["skill_points_used"], summary["skill_budget"], "%d / %d" % [summary["skill_points_used"], summary["skill_points_remaining"]])
 	if rules._as_int(summary.get("perk_points_used", 0)) > 0 or rules._as_int(summary.get("flaw_skill_points_bonus", 0)) > 0:
-		_add_metric(box, "Skill Purchases / Perks", "%d / %d SP" % [
+		_add_metric(budget_box, "Skill Purchases / Perks", "%d / %d SP" % [
 			rules._as_int(summary.get("skill_purchase_points_used", 0)),
 			rules._as_int(summary.get("perk_points_used", 0)),
 		])
-		_add_metric(box, "Flaw Skill Point Bonus", "+%d SP" % rules._as_int(summary.get("flaw_skill_points_bonus", 0)))
+		_add_metric(budget_box, "Flaw Skill Point Bonus", "+%d SP" % rules._as_int(summary.get("flaw_skill_points_bonus", 0)))
 	
 	if rules.optional_rule_enabled(character, "2b"):
-		_add_progress_metric(box, "Additional Broad Used/Available", summary["additional_broad_skills_used"], summary["additional_broad_skills_used"] + summary["additional_broad_skills_remaining"], "%d / %d" % [summary["additional_broad_skills_used"], summary["additional_broad_skills_remaining"]])
+		_add_progress_metric(budget_box, "Additional Broad Used/Available", summary["additional_broad_skills_used"], summary["additional_broad_skills_used"] + summary["additional_broad_skills_remaining"], "%d / %d" % [summary["additional_broad_skills_used"], summary["additional_broad_skills_remaining"]])
 	else:
-		_add_progress_metric(box, "Broad Skills Used/Available", summary["broad_skills_used"], summary["max_broad_skills"], "%d / %d" % [summary["broad_skills_used"], summary["broad_skills_remaining"]])
-	var budget_note := "Starting %d + achievement %d" % [
-		rules._as_int(summary.get("starting_skill_budget", 0)),
-		rules._as_int(summary.get("achievement_points", 0)),
+		_add_progress_metric(budget_box, "Broad Skills Used/Available", summary["broad_skills_used"], summary["max_broad_skills"], "%d / %d" % [summary["broad_skills_used"], summary["broad_skills_remaining"]])
+	var sold_count := rules._as_int(summary.get("sold_broads_count", 0))
+	var base_starting := rules._as_int(summary.get("starting_skill_budget", 0)) - (sold_count * 3)
+	var budget_note := "Starting %d + %d AP" % [
+		base_starting,
+		rules._as_int(summary.get("achievement_points_for_sp", 0)),
 	]
-	if rules._as_int(summary.get("achievement_skill_bonus", 0)) > 0:
-		budget_note += " + Tech Op bonus %d" % rules._as_int(summary.get("achievement_skill_bonus", 0))
+	if sold_count > 0:
+		budget_note += " + %d by selling broads" % (sold_count * 3)
+		
+	if rules._as_int(summary.get("achievements.achievement_skill_bonus", 0)) > 0:
+		budget_note += " + Tech Op bonus %d" % rules._as_int(summary.get("achievements.achievement_skill_bonus", 0))
 	if rules._as_int(summary.get("flaw_skill_points_bonus", 0)) > 0:
 		budget_note += " (includes flaw bonus %d)" % rules._as_int(summary.get("flaw_skill_points_bonus", 0))
 	if rules._as_int(summary.get("perk_points_used", 0)) > 0:
 		budget_note += "; perks spend %d SP" % rules._as_int(summary.get("perk_points_used", 0))
 	if rules._as_int(summary.get("achievement_benefit_points_used", 0)) > 0:
 		budget_note += "; achievements spend %d SP" % rules._as_int(summary.get("achievement_benefit_points_used", 0))
-	UIBuilder.add_text(box, budget_note, 12, color_muted)
+
+	var err_msg := ""
 	if summary["skill_points_remaining"] < 0:
-		UIBuilder.add_text(box, "Skill points are overspent by %d." % abs(summary["skill_points_remaining"]), 13, color_warning)
+		err_msg += "Skill points are overspent by %d. " % abs(summary["skill_points_remaining"])
 	if summary["broad_skills_remaining"] < 0:
-		UIBuilder.add_text(box, "Broad skills exceed the limit by %d." % abs(summary["broad_skills_remaining"]), 13, color_warning)
+		err_msg += "Broad skills exceed the limit by %d." % abs(summary["broad_skills_remaining"])
+
+	var info_row := HBoxContainer.new()
+	info_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	info_row.add_theme_constant_override("separation", 10)
+	budget_box.add_child(info_row)
+
+	var note_label := Label.new()
+	note_label.text = budget_note
+	note_label.add_theme_font_size_override("font_size", 12)
+	note_label.add_theme_color_override("font_color", color_muted)
+	note_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	info_row.add_child(note_label)
+
+	var msg_label := Label.new()
+	msg_label.text = err_msg.strip_edges()
+	msg_label.add_theme_font_size_override("font_size", 13)
+	msg_label.add_theme_color_override("font_color", color_warning)
+	msg_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	msg_label.custom_minimum_size = Vector2(0, 18)
+	info_row.add_child(msg_label)
+
 	if rules.optional_rule_enabled(character, "2b"):
-		UIBuilder.add_text(box, "Racial broad skills do not count against this limit: %d." % summary["racial_broad_skills"], 13, color_muted)
+		UIBuilder.add_text(budget_box, "Racial broad skills do not count against this limit: %d." % summary["racial_broad_skills"], 13, color_muted)
+
+	var tab_container := HBoxContainer.new()
+	tab_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tab_container.add_theme_constant_override("separation", 6)
+	budget_box.add_child(tab_container)
+	
+	for ability in AlternityRules.ABILITIES:
+		var btn := Button.new()
+		btn.text = ability
+		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		btn.custom_minimum_size = Vector2(0, 32)
+		var is_active: bool = ability == (active_psionic_ability_tab if is_psionics else active_skill_ability_tab)
+		if is_active:
+			btn.add_theme_color_override("font_color", color_background)
+			var sb := StyleBoxFlat.new()
+			sb.bg_color = color_accent
+			sb.set_corner_radius_all(4)
+			btn.add_theme_stylebox_override("normal", sb)
+			btn.add_theme_stylebox_override("hover", sb)
+			btn.add_theme_stylebox_override("pressed", sb)
+			btn.add_theme_stylebox_override("focus", sb)
+		else:
+			btn.add_theme_color_override("font_color", color_text)
+			var sb := StyleBoxFlat.new()
+			sb.bg_color = color_surface_soft
+			sb.set_corner_radius_all(4)
+			btn.add_theme_stylebox_override("normal", sb)
+			
+		btn.pressed.connect(func():
+			if is_psionics:
+				active_psionic_ability_tab = ability
+			else:
+				active_skill_ability_tab = ability
+			_render()
+		)
+		tab_container.add_child(btn)
 
 	var search := LineEdit.new()
 	search.text = psionic_filter if is_psionics else skill_filter
 	search.placeholder_text = "Search psionic skills" if is_psionics else "Search core skills"
 	search.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	box.add_child(search)
+	budget_box.add_child(search)
 
 	var list := VBoxContainer.new()
 	list.add_theme_constant_override("separation", 4)
-	box.add_child(list)
+	catalog_box.add_child(list)
 
 	search.text_changed.connect(func(value):
 		if is_psionics:
@@ -3468,7 +3555,7 @@ func _add_selected_skill_table(parent: VBoxContainer, selected: Array) -> void:
 	_add_selected_skill_cell(grid, "Cost", true, HORIZONTAL_ALIGNMENT_LEFT, 34 if compact else 62)
 	_add_selected_skill_cell(grid, "Rank", true, HORIZONTAL_ALIGNMENT_LEFT, 36 if compact else 58)
 	_add_selected_skill_cell(grid, "Skill", true, HORIZONTAL_ALIGNMENT_LEFT, 50 if compact else 170, true)
-	_add_selected_skill_cell(grid, "Score", true, HORIZONTAL_ALIGNMENT_LEFT, 64 if compact else 86)
+	_add_selected_skill_cell(grid, "Score", true, HORIZONTAL_ALIGNMENT_LEFT, 86 if compact else 100)
 	_add_selected_skill_cell(grid, "Die", true, HORIZONTAL_ALIGNMENT_LEFT, 30 if compact else 42)
 
 	# Group selected skills: broad flush-left, specialties indented
@@ -3511,10 +3598,11 @@ func _add_selected_skill_table(parent: VBoxContainer, selected: Array) -> void:
 		var spent := rules._as_int(skill.get("cost", 0))
 		var cost_text := "Free" if bool(skill.get("free", false)) and spent <= 0 else ("Free+%d" % spent if bool(skill.get("free", false)) else "%d SP" % spent)
 		var rank_text := "Broad" if skill.get("type", "") == "broad" else "R%d" % rules._as_int(skill.get("rank", 0))
-		var score_text := "O%d/G%d/A%d" % [
-			rules._as_int(score.get("ordinary", 0)),
-			rules._as_int(score.get("good", 0)),
-			rules._as_int(score.get("amazing", 0)),
+		var m := color_muted.to_html(false)
+		var score_text := "[color=#%s]O[/color]%d [color=#%s]/[/color] [color=#%s]G[/color]%d [color=#%s]/[/color] [color=#%s]A[/color]%d" % [
+			m, rules._as_int(score.get("ordinary", 0)),
+			m, m, rules._as_int(score.get("good", 0)),
+			m, m, rules._as_int(score.get("amazing", 0)),
 		]
 		
 		var skill_name = String(skill.get("name", ""))
@@ -3523,7 +3611,7 @@ func _add_selected_skill_table(parent: VBoxContainer, selected: Array) -> void:
 		_add_selected_skill_cell(grid, cost_text, false, HORIZONTAL_ALIGNMENT_LEFT, 34 if compact else 62)
 		_add_selected_skill_cell(grid, rank_text, false, HORIZONTAL_ALIGNMENT_LEFT, 36 if compact else 58)
 		_add_selected_skill_cell(grid, display_name, false, HORIZONTAL_ALIGNMENT_LEFT, 50 if compact else 170, true)
-		_add_selected_skill_cell(grid, score_text, false, HORIZONTAL_ALIGNMENT_LEFT, 64 if compact else 86)
+		_add_selected_skill_cell(grid, score_text, false, HORIZONTAL_ALIGNMENT_LEFT, 86 if compact else 100, false, true)
 		_add_selected_skill_cell(grid, String(score.get("die", "")), false, HORIZONTAL_ALIGNMENT_LEFT, 30 if compact else 42)
 
 
@@ -3539,7 +3627,7 @@ func _add_selected_fx_skill_table(parent: VBoxContainer, fx_skills: Array) -> vo
 	_add_selected_skill_cell(grid, "Cost", true, HORIZONTAL_ALIGNMENT_LEFT, 34 if compact else 62)
 	_add_selected_skill_cell(grid, "Rank", true, HORIZONTAL_ALIGNMENT_LEFT, 36 if compact else 58)
 	_add_selected_skill_cell(grid, "Skill", true, HORIZONTAL_ALIGNMENT_LEFT, 50 if compact else 170, true)
-	_add_selected_skill_cell(grid, "Score", true, HORIZONTAL_ALIGNMENT_LEFT, 64 if compact else 86)
+	_add_selected_skill_cell(grid, "Score", true, HORIZONTAL_ALIGNMENT_LEFT, 86 if compact else 100)
 	_add_selected_skill_cell(grid, "Die", true, HORIZONTAL_ALIGNMENT_LEFT, 30 if compact else 42)
 
 	# Group selected FX skills: broad flush-left, specialties indented
@@ -3585,10 +3673,11 @@ func _add_selected_fx_skill_table(parent: VBoxContainer, fx_skills: Array) -> vo
 		var spent = rules.fx.fx_skill_total_cost(character, skill_name)
 		var cost_text: String = "%d SP" % spent
 		var rank_text := "Broad" if skill.get("type", "") == "broad" else "R%d" % rules.fx.fx_skill_rank(character, skill_name)
-		var score_text := "O%d/G%d/A%d" % [
-			rules._as_int(score.get("ordinary", 0)),
-			rules._as_int(score.get("good", 0)),
-			rules._as_int(score.get("amazing", 0)),
+		var m := color_muted.to_html(false)
+		var score_text := "[color=#%s]O[/color]%d [color=#%s]/[/color] [color=#%s]G[/color]%d [color=#%s]/[/color] [color=#%s]A[/color]%d" % [
+			m, rules._as_int(score.get("ordinary", 0)),
+			m, m, rules._as_int(score.get("good", 0)),
+			m, m, rules._as_int(score.get("amazing", 0)),
 		]
 		
 		var display_name = "    " + skill_name if indented else skill_name
@@ -3597,21 +3686,35 @@ func _add_selected_fx_skill_table(parent: VBoxContainer, fx_skills: Array) -> vo
 		_add_selected_skill_cell(grid, cost_text, false, HORIZONTAL_ALIGNMENT_LEFT, 34 if compact else 62)
 		_add_selected_skill_cell(grid, rank_text, false, HORIZONTAL_ALIGNMENT_LEFT, 36 if compact else 58)
 		_add_selected_skill_cell(grid, display_name, false, HORIZONTAL_ALIGNMENT_LEFT, 50 if compact else 170, true)
-		_add_selected_skill_cell(grid, score_text, false, HORIZONTAL_ALIGNMENT_LEFT, 64 if compact else 86)
+		_add_selected_skill_cell(grid, score_text, false, HORIZONTAL_ALIGNMENT_LEFT, 86 if compact else 100, false, true)
 		_add_selected_skill_cell(grid, die_text, false, HORIZONTAL_ALIGNMENT_LEFT, 30 if compact else 42)
 
 
-func _add_selected_skill_cell(parent: GridContainer, text: String, header_cell: bool, alignment: HorizontalAlignment, min_width: int, expand := false) -> Label:
-	var label := Label.new()
-	label.text = text
-	label.horizontal_alignment = alignment
-	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	label.custom_minimum_size.x = min_width
-	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL if expand else Control.SIZE_SHRINK_BEGIN
-	label.add_theme_color_override("font_color", color_muted if header_cell else color_text)
-	label.add_theme_font_size_override("font_size", 11 if header_cell else 12)
-	parent.add_child(label)
-	return label
+func _add_selected_skill_cell(parent: GridContainer, text: String, header_cell: bool, alignment: HorizontalAlignment, min_width: int, expand := false, bbcode := false) -> Control:
+	if bbcode:
+		var label := RichTextLabel.new()
+		label.bbcode_enabled = true
+		label.text = text
+		label.fit_content = true
+		label.scroll_active = false
+		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		label.custom_minimum_size.x = min_width
+		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL if expand else Control.SIZE_SHRINK_BEGIN
+		label.add_theme_color_override("default_color", color_muted if header_cell else color_text)
+		label.add_theme_font_size_override("normal_font_size", 11 if header_cell else 12)
+		parent.add_child(label)
+		return label
+	else:
+		var label := Label.new()
+		label.text = text
+		label.horizontal_alignment = alignment
+		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		label.custom_minimum_size.x = min_width
+		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL if expand else Control.SIZE_SHRINK_BEGIN
+		label.add_theme_color_override("font_color", color_muted if header_cell else color_text)
+		label.add_theme_font_size_override("font_size", 11 if header_cell else 12)
+		parent.add_child(label)
+		return label
 
 
 func _get_filtered_specialties(broad_id: int, filter: String) -> Array:
@@ -3647,11 +3750,12 @@ func _populate_ability_skills(list: VBoxContainer, ability: String, is_psionics:
 	if rows_for_ability.is_empty():
 		return
 
-	var ability_label := Label.new()
-	ability_label.text = "%s  %s" % [ability, AlternityRules.ABILITY_NAMES.get(ability, ability)]
-	ability_label.add_theme_color_override("font_color", color_accent)
-	ability_label.add_theme_font_size_override("font_size", 16)
-	list.add_child(ability_label)
+	if not filter.is_empty():
+		var ability_label := Label.new()
+		ability_label.text = "%s  %s" % [ability, AlternityRules.ABILITY_NAMES.get(ability, ability)]
+		ability_label.add_theme_color_override("font_color", color_accent)
+		ability_label.add_theme_font_size_override("font_size", 16)
+		list.add_child(ability_label)
 
 	for row in rows_for_ability:
 		var broad: Dictionary = row["broad"]
@@ -3666,8 +3770,12 @@ func _refresh_skill_rows(list: VBoxContainer, is_psionics := false) -> void:
 		child.queue_free()
 
 	var filter := (psionic_filter if is_psionics else skill_filter).strip_edges().to_lower()
-	for ability in AlternityRules.ABILITIES:
+	if filter.is_empty():
+		var ability: String = active_psionic_ability_tab if is_psionics else active_skill_ability_tab
 		_populate_ability_skills(list, ability, is_psionics, filter)
+	else:
+		for ability in AlternityRules.ABILITIES:
+			_populate_ability_skills(list, ability, is_psionics, filter)
 
 
 func _add_skill_row(parent: VBoxContainer, skill: Dictionary, indented: bool) -> void:
@@ -3696,10 +3804,8 @@ func _add_skill_row(parent: VBoxContainer, skill: Dictionary, indented: bool) ->
 		spacer.custom_minimum_size = Vector2(18, 1)
 		top_row.add_child(spacer)
 
-	var check := CheckBox.new()
-	check.button_pressed = selected
+	var check := _create_custom_checkbox(selected)
 	check.disabled = is_specialty
-	check.custom_minimum_size = Vector2(38, 38)
 	top_row.add_child(check)
 
 	var name := Label.new()
@@ -3710,10 +3816,27 @@ func _add_skill_row(parent: VBoxContainer, skill: Dictionary, indented: bool) ->
 	name.add_theme_font_size_override("font_size", 14 if indented else 15)
 	top_row.add_child(name)
 
-	var info := Button.new()
-	info.text = "?"
+	if is_specialty:
+		var minus := _create_icon_button(MINUS_ICON, Vector2(36, 34) if is_wide_layout else Vector2(44, 44))
+		minus.disabled = rank <= free_rank
+		minus.pressed.connect(func():
+			rules.change_skill_rank(character, skill_id, -1)
+			char_manager.save_character(notes_editing, notes_draft)
+			_render()
+		)
+		top_row.add_child(minus)
+
+		var plus := _create_icon_button(PLUS_ICON, Vector2(36, 34) if is_wide_layout else Vector2(44, 44))
+		plus.disabled = rank >= rules.max_skill_rank_for_character(character)
+		plus.pressed.connect(func():
+			rules.change_skill_rank(character, skill_id, 1)
+			char_manager.save_character(notes_editing, notes_draft)
+			_render()
+		)
+		top_row.add_child(plus)
+
+	var info := _create_icon_button(QUESTION_ICON)
 	info.tooltip_text = "Skill details"
-	info.custom_minimum_size = Vector2(34, 34)
 	info.pressed.connect(func(): _show_skill_details(skill_id))
 	top_row.add_child(info)
 
@@ -3742,74 +3865,31 @@ func _add_skill_row(parent: VBoxContainer, skill: Dictionary, indented: bool) ->
 
 	if not is_specialty:
 		check.toggled.connect(func(pressed):
-			if normally_free:
-				var sold_list: Array = character.get("sold_species_skills", [])
-				if pressed:
-					if sold_list.has(skill_id):
-						sold_list.erase(skill_id)
+			var task := func():
+				if normally_free:
+					var sold_list: Array = character.get("sold_species_skills", [])
+					if pressed:
+						if sold_list.has(skill_id):
+							sold_list.erase(skill_id)
+					else:
+						if not sold_list.has(skill_id):
+							sold_list.append(skill_id)
+						var selected_skills: Dictionary = character.get("selected_skills", {})
+						for specialty in rules.specialty_skills_by_broad_id.get(skill_id, []):
+							selected_skills.erase(str(rules._as_int(specialty.get("id", -1))))
+						character["selected_skills"] = selected_skills
+					character["sold_species_skills"] = sold_list
 				else:
-					if not sold_list.has(skill_id):
-						sold_list.append(skill_id)
-					var selected_skills: Dictionary = character.get("selected_skills", {})
-					for specialty in rules.specialty_skills_by_broad_id.get(skill_id, []):
-						selected_skills.erase(str(rules._as_int(specialty.get("id", -1))))
-					character["selected_skills"] = selected_skills
-				character["sold_species_skills"] = sold_list
-			else:
-				rules.set_skill_selected(character, skill_id, pressed)
-			_render()
+					rules.set_skill_selected(character, skill_id, pressed)
+				char_manager.save_character(notes_editing, notes_draft)
+				_render()
+			task.call_deferred()
 		)
 
 	if is_specialty:
-		var controls_container: Container
-		if is_wide_layout:
-			controls_container = HBoxContainer.new()
-		else:
-			controls_container = VBoxContainer.new()
-		controls_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row_box.add_child(controls_container)
-
-		var controls := HBoxContainer.new()
-		controls.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		controls.add_theme_constant_override("separation", 6)
-		controls_container.add_child(controls)
-
-		var control_spacer := Control.new()
-		control_spacer.custom_minimum_size = Vector2(56, 1) if indented else Vector2(38, 1)
-		controls.add_child(control_spacer)
-
-		var minus := Button.new()
-		minus.text = "-"
-		minus.disabled = rank <= free_rank
-		minus.custom_minimum_size = Vector2(36, 34) if is_wide_layout else Vector2(44, 44)
-		minus.pressed.connect(func():
-			rules.change_skill_rank(character, skill_id, -1)
-			_render()
-		)
-		controls.add_child(minus)
-
-		var rank_label := Label.new()
-		rank_label.text = "Rank %d" % rank
-		rank_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		rank_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		rank_label.custom_minimum_size = Vector2(62, 34) if is_wide_layout else Vector2(62, 44)
-		rank_label.add_theme_color_override("font_color", color_text if rank > 0 else color_muted)
-		rank_label.add_theme_font_size_override("font_size", 13)
-		controls.add_child(rank_label)
-
-		var plus := Button.new()
-		plus.text = "+"
-		plus.disabled = rank >= AlternityRules.MAX_SPECIALTY_RANK
-		plus.custom_minimum_size = Vector2(36, 34) if is_wide_layout else Vector2(44, 44)
-		plus.pressed.connect(func():
-			rules.change_skill_rank(character, skill_id, 1)
-			_render()
-		)
-		controls.add_child(plus)
-
 		var next_cost := rules.next_skill_rank_cost(character, skill)
 		var cost_note := Label.new()
-		if rank >= AlternityRules.MAX_SPECIALTY_RANK:
+		if rank >= rules.max_skill_rank_for_character(character):
 			cost_note.text = "Max rank"
 		elif free and rank <= free_rank:
 			cost_note.text = "Free rank %d  |  Next %d SP" % [free_rank, next_cost]
@@ -3823,15 +3903,12 @@ func _add_skill_row(parent: VBoxContainer, skill: Dictionary, indented: bool) ->
 		cost_note.add_theme_color_override("font_color", color_muted)
 		cost_note.add_theme_font_size_override("font_size", 12)
 		
-		if is_wide_layout:
-			controls.add_child(cost_note)
-		else:
-			var cost_box := HBoxContainer.new()
-			var cost_spacer := Control.new()
-			cost_spacer.custom_minimum_size = Vector2(56, 1) if indented else Vector2(38, 1)
-			cost_box.add_child(cost_spacer)
-			cost_box.add_child(cost_note)
-			controls_container.add_child(cost_box)
+		var cost_box := HBoxContainer.new()
+		var cost_spacer := Control.new()
+		cost_spacer.custom_minimum_size = Vector2(56, 1) if indented else Vector2(38, 1)
+		cost_box.add_child(cost_spacer)
+		cost_box.add_child(cost_note)
+		row_box.add_child(cost_box)
 
 
 func _render_cybertech() -> void:
@@ -3957,7 +4034,7 @@ func _render_fx_psionics() -> void:
 
 	var skills_box := UIBuilder.add_section(content, "Psionic Skills", null, color_surface, color_border, color_text)
 	if is_psionic:
-		_render_skill_picker(skills_box, summary, true)
+		_render_skill_picker(skills_box, skills_box, summary, true)
 	else:
 		UIBuilder.add_text(skills_box, "Psionic skills are locked.", 13, color_muted)
 
@@ -3981,19 +4058,14 @@ func _render_fx() -> void:
 
 	var overview := UIBuilder.add_section(right_parent, "FX Talent Status", null, color_surface, color_border, color_text)
 	
-	var talent_box := HBoxContainer.new()
-	talent_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	talent_box.add_theme_constant_override("separation", 10)
-	overview.add_child(talent_box)
-	
-	var talent_check := CheckBox.new()
-	talent_check.text = "Character is an FX Talent"
-	talent_check.button_pressed = is_talent
-	talent_check.toggled.connect(func(toggled_on):
-		rules.fx.set_fx_talent(character, toggled_on)
-		_render()
+	_add_large_checkbox(
+		overview,
+		"Character is an FX Talent",
+		is_talent,
+		func(toggled_on):
+			rules.fx.set_fx_talent(character, toggled_on)
+			_render()
 	)
-	talent_box.add_child(talent_check)
 	
 	if is_talent:
 		var energy_box := HBoxContainer.new()
@@ -4004,9 +4076,7 @@ func _render_fx() -> void:
 		energy_label.text = "FX Energy Pool:"
 		energy_box.add_child(energy_label)
 		
-		var energy_minus := Button.new()
-		energy_minus.text = "-"
-		energy_minus.custom_minimum_size = Vector2(42, 38)
+		var energy_minus := _create_icon_button(MINUS_ICON, Vector2(34, 34))
 		energy_box.add_child(energy_minus)
 
 		var energy_edit := LineEdit.new()
@@ -4015,29 +4085,44 @@ func _render_fx() -> void:
 		energy_edit.custom_minimum_size = Vector2(60, 38)
 		energy_box.add_child(energy_edit)
 
-		var energy_plus := Button.new()
-		energy_plus.text = "+"
-		energy_plus.custom_minimum_size = Vector2(42, 38)
+		var energy_plus := _create_icon_button(PLUS_ICON, Vector2(34, 34))
 		energy_box.add_child(energy_plus)
+		
+		var drain := rules.fx.permanent_fx_energy_drain(character)
+		var effective_lbl := Label.new()
+		if drain > 0:
+			var effective_pool = max(0, rules.fx.energy_pool(character) - drain)
+			effective_lbl.text = " Effective: %d" % effective_pool
+			effective_lbl.add_theme_color_override("font_color", color_accent)
+			energy_box.add_child(effective_lbl)
+
+		var update_effective = func():
+			if drain > 0:
+				var effective_pool = max(0, rules.fx.energy_pool(character) - drain)
+				effective_lbl.text = " Effective: %d" % effective_pool
 
 		energy_minus.pressed.connect(func():
 			var val = clampi(rules.fx.energy_pool(character) - 1, 0, 999)
 			rules.fx.set_energy_pool(character, val)
 			energy_edit.text = str(val)
+			update_effective.call()
 		)
 		energy_plus.pressed.connect(func():
 			var val = clampi(rules.fx.energy_pool(character) + 1, 0, 999)
 			rules.fx.set_energy_pool(character, val)
 			energy_edit.text = str(val)
+			update_effective.call()
 		)
 		energy_edit.text_changed.connect(func(new_text: String):
 			if new_text.is_valid_int() or new_text.is_empty():
 				var val = int(new_text) if not new_text.is_empty() else 0
 				val = clampi(val, 0, 999)
 				rules.fx.set_energy_pool(character, val)
+				update_effective.call()
 		)
 		energy_edit.focus_exited.connect(func():
 			energy_edit.text = str(rules.fx.energy_pool(character))
+			update_effective.call()
 		)
 		
 		# FX Primary Broad Skill Group Selector
@@ -4135,7 +4220,13 @@ func _add_fx_selected_row(parent: VBoxContainer, skill: Dictionary, indented: bo
 	row.add_child(name_box)
 	
 	var score = rules.fx.fx_skill_score(character, skill_name)
-	var score_label = UIBuilder.add_text(row, "O%d/G%d/A%d" % [score.get("ordinary", 0), score.get("good", 0), score.get("amazing", 0)], 13, color_text)
+	var m := color_muted.to_html(false)
+	var score_text := "[color=#%s]O[/color]%d [color=#%s]/[/color] [color=#%s]G[/color]%d [color=#%s]/[/color] [color=#%s]A[/color]%d" % [
+		m, score.get("ordinary", 0),
+		m, m, score.get("good", 0),
+		m, m, score.get("amazing", 0),
+	]
+	var score_label = UIBuilder.add_rich_text(row, score_text, 13, color_text)
 	score_label.custom_minimum_size.x = 90
 	var die_label = UIBuilder.add_text(row, "+d0" if is_specialty else "+d4", 13, color_text)
 	die_label.custom_minimum_size.x = 40
@@ -4227,10 +4318,8 @@ func _add_fx_skill_row(parent: VBoxContainer, skill: Dictionary, indented: bool)
 		spacer.custom_minimum_size = Vector2(18, 1)
 		top_row.add_child(spacer)
 
-	var check := CheckBox.new()
-	check.button_pressed = selected
+	var check := _create_custom_checkbox(selected)
 	check.disabled = is_specialty
-	check.custom_minimum_size = Vector2(38, 38)
 	top_row.add_child(check)
 
 	var name := Label.new()
@@ -4241,10 +4330,8 @@ func _add_fx_skill_row(parent: VBoxContainer, skill: Dictionary, indented: bool)
 	name.add_theme_font_size_override("font_size", 14 if indented else 15)
 	top_row.add_child(name)
 
-	var info := Button.new()
-	info.text = "?"
+	var info := _create_icon_button(QUESTION_ICON)
 	info.tooltip_text = "Skill details"
-	info.custom_minimum_size = Vector2(34, 34)
 	info.pressed.connect(func(): _show_fx_skill_details(skill))
 	top_row.add_child(info)
 
@@ -4262,18 +4349,44 @@ func _add_fx_skill_row(parent: VBoxContainer, skill: Dictionary, indented: bool)
 	cost.add_theme_font_size_override("font_size", 13)
 	top_row.add_child(cost)
 
+	if is_specialty and selected and rules.fx.can_fx_skill_be_permanent(skill_name):
+		var perm_row := HBoxContainer.new()
+		perm_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var perm_spacer := Control.new()
+		perm_spacer.custom_minimum_size = Vector2(40 if not indented else 58, 1)
+		perm_row.add_child(perm_spacer)
+		
+		var perm_check := _create_custom_checkbox(rules.fx.is_fx_skill_permanent(character, skill_name))
+		perm_row.add_child(perm_check)
+		
+		var perm_label := Label.new()
+		perm_label.text = "Permanent (Drain %d max FX energy)" % (rules._as_int(skill.get("permanent_cost", 0)))
+		perm_label.add_theme_color_override("font_color", color_text)
+		perm_label.add_theme_font_size_override("font_size", 13)
+		perm_row.add_child(perm_label)
+		
+		perm_check.toggled.connect(func(pressed):
+			var task := func():
+				rules.fx.set_fx_skill_permanent(character, skill_name, pressed)
+				_render()
+			task.call_deferred()
+		)
+		row_box.add_child(perm_row)
+
 	if not is_specialty:
 		check.toggled.connect(func(pressed):
-			if pressed:
-				rules.fx.add_fx_skill(character, skill_name)
-			else:
-				rules.fx.remove_fx_skill(character, skill_name)
-				var specialties = rules.fx.get_specialty_skills_for_broad(skill_name)
-				for spec in specialties:
-					var spec_name = String(spec.get("name", ""))
-					while rules.fx.fx_skill_rank(character, spec_name) > 0:
-						rules.fx.remove_fx_skill(character, spec_name)
-			_render()
+			var task := func():
+				if pressed:
+					rules.fx.add_fx_skill(character, skill_name)
+				else:
+					rules.fx.remove_fx_skill(character, skill_name)
+					var specialties = rules.fx.get_specialty_skills_for_broad(skill_name)
+					for spec in specialties:
+						var spec_name = String(spec.get("name", ""))
+						while rules.fx.fx_skill_rank(character, spec_name) > 0:
+							rules.fx.remove_fx_skill(character, spec_name)
+				_render()
+			task.call_deferred()
 		)
 
 	if is_specialty:
@@ -4294,10 +4407,8 @@ func _add_fx_skill_row(parent: VBoxContainer, skill: Dictionary, indented: bool)
 		control_spacer.custom_minimum_size = Vector2(56, 1) if indented else Vector2(38, 1)
 		controls.add_child(control_spacer)
 
-		var minus := Button.new()
-		minus.text = "-"
+		var minus := _create_icon_button(MINUS_ICON, Vector2(36, 34) if is_wide_layout else Vector2(44, 44))
 		minus.disabled = rank <= 0
-		minus.custom_minimum_size = Vector2(36, 34) if is_wide_layout else Vector2(44, 44)
 		minus.pressed.connect(func():
 			rules.fx.remove_fx_skill(character, skill_name)
 			_render()
@@ -4313,10 +4424,8 @@ func _add_fx_skill_row(parent: VBoxContainer, skill: Dictionary, indented: bool)
 		rank_label.add_theme_font_size_override("font_size", 13)
 		controls.add_child(rank_label)
 
-		var plus := Button.new()
-		plus.text = "+"
-		plus.disabled = rank >= AlternityRules.MAX_SPECIALTY_RANK
-		plus.custom_minimum_size = Vector2(36, 34) if is_wide_layout else Vector2(44, 44)
+		var plus := _create_icon_button(PLUS_ICON, Vector2(36, 34) if is_wide_layout else Vector2(44, 44))
+		plus.disabled = rank >= rules.max_skill_rank_for_character(character)
 		plus.pressed.connect(func():
 			var broad_name = String(skill.get("broad_skill", ""))
 			if not rules.fx.is_fx_skill_selected(character, broad_name):
@@ -4329,7 +4438,7 @@ func _add_fx_skill_row(parent: VBoxContainer, skill: Dictionary, indented: bool)
 		var broad_name = String(skill.get("broad_skill", ""))
 		var next_cost := rules.fx.fx_skill_cost(character, skill_name)
 		var cost_note := Label.new()
-		if rank >= AlternityRules.MAX_SPECIALTY_RANK:
+		if rank >= rules.max_skill_rank_for_character(character):
 			cost_note.text = "Max rank"
 		elif rank <= 0:
 			cost_note.text = "Buy %d SP" % next_cost
@@ -4364,88 +4473,134 @@ func _refresh_fx_skill_details_panel(skill: Dictionary) -> void:
 
 	var skill_name = String(skill.get("name", ""))
 	var is_specialty := skill.has("broad_skill")
-	var category = String(skill.get("category", ""))
-	var ability = String(skill.get("ability", "WIL"))
 	var rank = rules.fx.fx_skill_rank(character, skill_name)
-	
+	var ability = String(skill.get("ability", "WIL"))
+
 	skill_details_overlay.title_label.text = skill_name
 
-	var type_label = "Specialty skill" if is_specialty else "Broad skill"
-	var meta := "%s  |  %s (%s)  |  Category: %s" % [
-		type_label,
-		AlternityRules.ABILITY_NAMES.get(ability, ability),
-		ability,
-		category
-	]
-	UIBuilder.add_text(skill_details_body, meta, 13, color_muted)
-
-	if is_specialty:
-		var next_cost := rules.fx.fx_skill_cost(character, skill_name)
-		var rank_line: String = "Current rank %d" % rank
-		if rank < AlternityRules.MAX_SPECIALTY_RANK:
-			rank_line += "  |  Next rank %d SP" % next_cost
-		else:
-			rank_line += "  |  Maximum rank"
-		UIBuilder.add_text(skill_details_body, rank_line, 13, color_accent)
-	else:
-		UIBuilder.add_text(skill_details_body, "Cost %d SP" % rules.fx.fx_skill_cost(character, skill_name), 13, color_accent)
-
-	UIBuilder.add_subheading(skill_details_body, "Check Scores", color_text)
-	
+	# Common Helper to get Check Scores text
+	var check_scores_str = ""
 	var is_broad_selected := false
 	if is_specialty:
 		var broad_name = String(skill.get("broad_skill", ""))
 		is_broad_selected = rules.fx.is_fx_skill_selected(character, broad_name)
-	
+
 	if (not is_specialty and rank > 0) or (is_specialty and rank > 0):
 		var score := rules.fx.fx_skill_score(character, skill_name)
-		var die_str = "+d0" if is_specialty else "+d4"
-		var check_line := "Ordinary %d  |  Good %d  |  Amazing %d  |  Die: %s" % [
+		var die_str = String(score.get("die", "+d4" if not is_specialty else "+d0"))
+		check_scores_str = "Ordinary %d / Good %d / Amazing %d (Die: %s)" % [
 			score.get("ordinary", 0),
 			score.get("good", 0),
 			score.get("amazing", 0),
 			die_str
 		]
-		UIBuilder.add_text(skill_details_body, check_line, 14, color_text)
 	elif is_specialty and is_broad_selected:
 		var abilities := rules.effective_abilities(character)
-		var ability_score = rules._as_int(abilities.get(ability, 10))
+		var ability_score = 10
+		if ability.contains("/"):
+			var parts = ability.split("/")
+			var max_val = 0
+			for part in parts:
+				var val = rules._as_int(abilities.get(part.strip_edges(), 10))
+				if val > max_val:
+					max_val = val
+			ability_score = max_val
+		else:
+			ability_score = rules._as_int(abilities.get(ability, 10))
 		var base = int(floor(ability_score / 2.0))
 		var ordinary = base
 		var good = int(floor(ordinary / 2.0))
 		var amazing = int(floor(good / 2.0))
-		var check_line := "Untrained: Ordinary %d  |  Good %d  |  Amazing %d  |  Die: +d4" % [
+		check_scores_str = "Untrained: Ordinary %d / Good %d / Amazing %d (Die: +d4)" % [
 			ordinary,
 			good,
 			amazing
 		]
-		UIBuilder.add_text(skill_details_body, check_line, 14, color_muted)
-		UIBuilder.add_text(skill_details_body, "Note: Untrained FX specialty use, if allowed by GM, increases activation cost by +1 FX energy point.", 12, color_muted)
 	else:
-		UIBuilder.add_text(skill_details_body, "Locked (Requires purchasing broad skill first)", 13, color_warning)
+		check_scores_str = "Locked (Requires purchasing broad skill first)" if is_specialty else "Locked (Not purchased)"
 
-	var skill_meta = String(skill.get("meta", ""))
-	if not skill_meta.is_empty():
-		UIBuilder.add_subheading(skill_details_body, "Type & Activation", color_text)
-		UIBuilder.add_text(skill_details_body, skill_meta, 13, color_text)
+	if is_specialty:
+		# Specialty Skills:
+		# Broad Skill: [Category]
+		var broad_name = String(skill.get("broad_skill", ""))
 
-	var description = String(skill.get("description", ""))
-	if not description.is_empty():
-		UIBuilder.add_subheading(skill_details_body, "Description", color_text)
-		UIBuilder.add_text(skill_details_body, description, 13, color_text)
+		# Cost: [Cost]
+		var cost = int(skill.get("cost", 0))
+		UIBuilder.add_rich_text(skill_details_body, "[b]Cost:[/b] %d SP" % cost, 14, color_text)
 
-	var rank_benefits: Dictionary = skill.get("rank_benefits", {})
-	if not rank_benefits.is_empty():
-		UIBuilder.add_subheading(skill_details_body, "Rank Benefits", color_text)
-		var thresholds := rank_benefits.keys()
-		thresholds.sort_custom(func(a, b): return int(a) < int(b))
-		for threshold in thresholds:
-			var required_rank := int(threshold)
-			var color := color_accent if rank >= required_rank else color_muted
-			UIBuilder.add_text(skill_details_body, "Rank %d: %s" % [required_rank, String(rank_benefits[threshold])], 13, color)
+		# Governing Abilities: [Abilities]
+		UIBuilder.add_rich_text(skill_details_body, "[b]Governing Abilities:[/b] %s" % ability, 14, color_text)
 
-	UIBuilder.add_subheading(skill_details_body, "Source", color_text)
-	UIBuilder.add_text(skill_details_body, "Alternity Beyond Science: A Guide to FX", 12, color_muted)
+		# Check Scores: [Ordinary/Good/Amazing]
+		UIBuilder.add_rich_text(skill_details_body, "[b]Check Scores:[/b] %s" % check_scores_str, 14, color_text)
+
+		# Meta Information: [Cost / Trained Status / Spell Type]
+		var trained_status = "Trained" if rank > 0 else "Untrained"
+		var spell_type = "Power"
+		var meta_str = String(skill.get("meta", ""))
+		for part in meta_str.split(";"):
+			var trimmed = part.strip_edges()
+			if "spell" in trimmed.to_lower() or "miracle" in trimmed.to_lower() or "power" in trimmed.to_lower():
+				spell_type = trimmed
+				break
+		UIBuilder.add_rich_text(skill_details_body, "[b]Meta Information:[/b] Cost %d / %s / %s" % [cost, trained_status, spell_type], 14, color_text)
+
+		# Description: [Full text description]
+		var desc = String(skill.get("description", ""))
+		UIBuilder.add_rich_text(skill_details_body, "[b]Description:[/b] %s" % desc, 14, color_text)
+
+		# Rank Benefits: * [Rank X Benefit]
+		var rank_benefits: Dictionary = skill.get("rank_benefits", {})
+		if not rank_benefits.is_empty():
+			UIBuilder.add_rich_text(skill_details_body, "[b]Rank Benefits:[/b]", 14, color_text)
+			var thresholds := rank_benefits.keys()
+			thresholds.sort_custom(func(a, b): return int(a) < int(b))
+			var seen_benefits := {}
+			for threshold in thresholds:
+				var benefit_text = String(rank_benefits[threshold]).strip_edges()
+				if not seen_benefits.has(benefit_text):
+					seen_benefits[benefit_text] = true
+					UIBuilder.add_rich_text(skill_details_body, "* %s" % benefit_text, 14, color_text)
+
+		# Source: Beyond Science: A Guide to FX, pg. [X]
+		var source = String(skill.get("source", ""))
+		if source.is_empty():
+			source = "Beyond Science: A Guide to FX, pg. X"
+			var pg_index = meta_str.to_lower().find("beyond science p")
+			if pg_index != -1:
+				var pg_part = meta_str.substr(pg_index).strip_edges()
+				pg_part = pg_part.replace("Beyond Science p. ", "Beyond Science: A Guide to FX, pg. ")
+				pg_part = pg_part.replace("Beyond Science pp. ", "Beyond Science: A Guide to FX, pg. ")
+				pg_part = pg_part.replace("Beyond Science p.", "Beyond Science: A Guide to FX, pg. ")
+				source = pg_part
+		UIBuilder.add_rich_text(skill_details_body, "[b]Source:[/b] %s" % source, 14, color_text)
+
+	else:
+		# Broad Skills:
+		# Cost: [Cost]
+		var cost = int(skill.get("cost", 0))
+		UIBuilder.add_rich_text(skill_details_body, "[b]Cost:[/b] %d SP" % cost, 14, color_text)
+
+		# Governing Abilities: [Abilities]
+		UIBuilder.add_rich_text(skill_details_body, "[b]Governing Abilities:[/b] %s" % ability, 14, color_text)
+
+		# Check Scores: [Ordinary/Good/Amazing]
+		UIBuilder.add_rich_text(skill_details_body, "[b]Check Scores:[/b] %s" % check_scores_str, 14, color_text)
+
+		# Description: [Full text description]
+		var desc = String(skill.get("description", ""))
+		UIBuilder.add_rich_text(skill_details_body, "[b]Description:[/b] %s" % desc, 14, color_text)
+
+		# Specialty Skills: [List of associated skills]
+		var specialties = rules.fx.get_specialty_skills_for_broad(skill_name)
+		var spec_names := []
+		for spec in specialties:
+			spec_names.append(String(spec.get("name", "")))
+		UIBuilder.add_rich_text(skill_details_body, "[b]Specialty Skills:[/b] %s" % ", ".join(spec_names), 14, color_text)
+
+		# Source: Beyond Science: A Guide to FX, pg. [X]
+		var source = String(skill.get("source", "Beyond Science: A Guide to FX, pg. X"))
+		UIBuilder.add_rich_text(skill_details_body, "[b]Source:[/b] %s" % source, 14, color_text)
 
 
 func _render_summary() -> void:
@@ -4470,10 +4625,10 @@ func _render_summary() -> void:
 	UIBuilder.add_text(overview, "Level %d  |  AP %d total, %d used, %d available" % [
 		rules._as_int(summary.get("achievement_level", 1)),
 		rules._as_int(summary.get("achievement_points", 0)),
-		rules._as_int(summary.get("achievement_points_used", 0)),
-		rules._as_int(summary.get("achievement_points_available", 0)),
+		rules._as_int(summary.get("achievements.achievement_points_used", 0)),
+		rules._as_int(summary.get("achievements.achievement_points_available", 0)),
 	], 13, color_muted)
-	UIBuilder.add_text(overview, "Next level at %d AP" % rules._as_int(summary.get("achievement_next_level_points", 0)), 12, color_muted)
+	UIBuilder.add_text(overview, "Next level at %d AP" % rules._as_int(summary.get("achievements.achievement_next_level_points", 0)), 12, color_muted)
 	_add_compact_abilities(overview)
 	var action: Dictionary = summary["action_check"]
 	_add_metric(overview, "Action Check Score", "M%d / O%d / G%d / A%d  %s" % [
@@ -4490,15 +4645,50 @@ func _render_summary() -> void:
 		overview,
 		"Last Resorts",
 		rules._as_int(last_resorts.get("max", 0)),
-		rules._as_int(last_resorts.get("used", 0)),
+		rules._as_int(last_resorts.get("available", 0)),
 		func(value):
-			rules.set_last_resorts_used(character, value)
+			var max_lr = rules._as_int(last_resorts.get("max", 0))
+			rules.set_last_resorts_used(character, max_lr - value)
 			_render()
 	)
-	UIBuilder.add_text(overview, "%d available of %d max. Replacement cost: %d skill points." % [
+	var lr_cost = rules._as_int(last_resorts.get("cost", 0))
+	var lr_rebought = rules._as_int(character.get("last_resorts_rebought", 0))
+	var rebought_text = ""
+	if lr_rebought > 0:
+		rebought_text = " (Rebought %d times for %d SP)" % [lr_rebought, lr_rebought * lr_cost]
+	
+	UIBuilder.add_text(overview, "%d available of %d max. Replacement cost: %d SP.%s" % [
 		rules._as_int(last_resorts.get("available", 0)), rules._as_int(last_resorts.get("max", 0)),
-		rules._as_int(last_resorts.get("cost", 0)),
+		lr_cost, rebought_text
 	], 13, color_muted)
+	
+	if rules._as_int(last_resorts.get("available", 0)) == 0 or lr_rebought > 0:
+		var rebuy_box := HBoxContainer.new()
+		rebuy_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		overview.add_child(rebuy_box)
+
+		if rules._as_int(last_resorts.get("available", 0)) == 0:
+			var rebuy_btn := Button.new()
+			rebuy_btn.text = "Rebuy Last Resort (Spend %d SP)" % lr_cost
+			rebuy_btn.pressed.connect(func():
+				character["last_resorts_rebought"] = lr_rebought + 1
+				var used = rules._as_int(character.get("last_resorts_used", 0))
+				rules.set_last_resorts_used(character, max(0, used - 1))
+				_render()
+			)
+			rebuy_box.add_child(rebuy_btn)
+			
+		if lr_rebought > 0:
+			var undo_btn := Button.new()
+			undo_btn.text = "Undo Rebuy"
+			undo_btn.pressed.connect(func():
+				character["last_resorts_rebought"] = max(0, lr_rebought - 1)
+				var used = rules._as_int(character.get("last_resorts_used", 0))
+				rules.set_last_resorts_used(character, min(rules._as_int(last_resorts.get("max", 0)), used + 1))
+				_render()
+			)
+			rebuy_box.add_child(undo_btn)
+
 	if rules._as_int(last_resorts.get("profession_bonus", 0)) > 0:
 		UIBuilder.add_text(overview, "Free Agent maximum includes +%d and may spend 2 points on one action." % rules._as_int(last_resorts.get("profession_bonus", 0)), 13, color_muted)
 
@@ -4537,16 +4727,22 @@ func _render_summary() -> void:
 
 	var durability_box := UIBuilder.add_section(left_parent, "Durability", null, color_surface, color_border, color_text)
 	var durability: Dictionary = summary["durability"]
+	var dazed_enabled := rules.optional_rule_enabled(character, "dazed")
 	for damage_type in ["stun", "wound", "mortal", "fatigue"]:
 		var damage_key := String(damage_type)
+		var max_dur := rules._as_int(durability.get(damage_key, 0))
+		var threshold := -1
+		if dazed_enabled and (damage_key == "stun" or damage_key == "wound"):
+			threshold = int(floor(max_dur / 2.0))
 		_add_tracker_row(
 			durability_box,
 			damage_key.capitalize(),
-			rules._as_int(durability.get(damage_key, 0)),
+			max_dur,
 			rules._as_int(character.get("damage", {}).get(damage_key, 0)),
 			func(value):
 				rules.set_damage_used(character, damage_key, value)
-				_render()
+				_render(),
+			threshold
 		)
 
 	var movement_box := UIBuilder.add_section(left_parent, "Combat Movement", null, color_surface, color_border, color_text)
@@ -4584,6 +4780,10 @@ func _render_summary() -> void:
 	else:
 		for message in summary["validations"]:
 			UIBuilder.add_text(validation_box, String(message), 14, color_warning)
+			
+	var dazed_pen := rules.dazed_penalty(character)
+	if dazed_pen > 0:
+		UIBuilder.add_text(validation_box, "Dazed: +%d step penalty to all actions. This is already accounted for in all displayed die modifiers." % dazed_pen, 14, color_warning)
 
 	var all_selected := rules.selected_skills(character)
 	var standard_skills := []
@@ -4609,6 +4809,16 @@ func _render_summary() -> void:
 		if not fx_skills.is_empty():
 			var fx_box := UIBuilder.add_section(right_parent, "Selected FX", null, color_surface, color_border, color_text)
 			_add_selected_fx_skill_table(fx_box, fx_skills)
+			
+			var perm_effects: Array = summary.get("permanent_fx_effects", [])
+			if not perm_effects.is_empty():
+				var perm_box := UIBuilder.add_section(right_parent, "Permanent FX Effects", null, color_surface, color_border, color_text)
+				for i in range(perm_effects.size()):
+					var effect = perm_effects[i]
+					UIBuilder.add_text(perm_box, String(effect.get("name", "")), 14, color_accent)
+					UIBuilder.add_text(perm_box, String(effect.get("description", "")), 12, color_muted)
+					if i < perm_effects.size() - 1:
+						UIBuilder.add_thin_separator(perm_box, color_border)
 
 	var perks_box := UIBuilder.add_section(right_parent, "Perks", null, color_surface, color_border, color_text)
 	_add_selected_perks_summary(perks_box)
@@ -4639,7 +4849,7 @@ func _render_summary() -> void:
 				if i < installed.size() - 1:
 					UIBuilder.add_thin_separator(cybertech_box, color_border)
 	var achievements_box := UIBuilder.add_section(right_parent, "Achievements", null, color_surface, color_border, color_text)
-	var selected_achievements: Array = summary.get("selected_achievements", [])
+	var selected_achievements: Array = summary.get("achievements.selected_achievements", [])
 	if selected_achievements.is_empty():
 		UIBuilder.add_text(achievements_box, "No achievement benefits purchased.", 14, color_muted)
 	else:
@@ -5378,17 +5588,20 @@ func _add_number_input(parent: Container, label_text: String, value: int, minimu
 	edit.text = str(clampi(value, minimum, maximum))
 	edit.placeholder_text = str(minimum)
 	edit.alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	var state := {"value": clampi(value, minimum, maximum)}
+	var state := {"value": clampi(value, minimum, maximum), "last_notified": clampi(value, minimum, maximum)}
 	edit.text_changed.connect(func(text):
-		state["value"] = UIBuilder.number_input_value(text, rules._as_int(state.get("value", value)), minimum, maximum)
-		changed.call(state["value"])
+		state["value"] = UIBuilder.number_input_value(text, rules._as_int(state.get("last_notified", value)), minimum, maximum)
 	)
-	edit.text_submitted.connect(func(_text):
-		edit.text = str(rules._as_int(state.get("value", value)))
-	)
-	edit.focus_exited.connect(func():
-		edit.text = str(rules._as_int(state.get("value", value)))
-	)
+	var apply_changes = func():
+		var current = rules._as_int(state["value"])
+		var last = rules._as_int(state["last_notified"])
+		if current != last:
+			state["last_notified"] = current
+			changed.call(current)
+		edit.text = str(current)
+
+	edit.text_submitted.connect(func(_text): apply_changes.call())
+	edit.focus_exited.connect(apply_changes)
 	UIBuilder.add_field(parent, label_text, edit, color_muted)
 	return edit
 
@@ -5398,19 +5611,22 @@ func _add_float_input(parent: VBoxContainer, label_text: String, value: float, c
 	edit.text = UIBuilder.format_number(value)
 	edit.placeholder_text = "0"
 	edit.alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	var state := {"value": maxf(0.0, value)}
+	var state := {"value": maxf(0.0, value), "last_notified": maxf(0.0, value)}
 	edit.text_changed.connect(func(text):
 		var stripped := String(text).strip_edges()
 		if stripped.is_valid_float():
 			state["value"] = maxf(0.0, float(stripped))
-			changed.call(state["value"])
 	)
-	edit.text_submitted.connect(func(_text):
-		edit.text = UIBuilder.format_number(rules._as_float(state.get("value", value)))
-	)
-	edit.focus_exited.connect(func():
-		edit.text = UIBuilder.format_number(rules._as_float(state.get("value", value)))
-	)
+	var apply_changes = func():
+		var current = rules._as_float(state["value"])
+		var last = rules._as_float(state["last_notified"])
+		if not is_equal_approx(current, last):
+			state["last_notified"] = current
+			changed.call(current)
+		edit.text = UIBuilder.format_number(current)
+
+	edit.text_submitted.connect(func(_text): apply_changes.call())
+	edit.focus_exited.connect(apply_changes)
 	UIBuilder.add_field(parent, label_text, edit, color_muted)
 	return edit
 
@@ -5431,9 +5647,7 @@ func _add_number_stepper(parent: VBoxContainer, label_text: String, value: int, 
 	row.add_theme_constant_override("separation", 8)
 	parent.add_child(row)
 
-	var minus := Button.new()
-	minus.text = "-"
-	minus.custom_minimum_size = Vector2(42, 38)
+	var minus := _create_icon_button(MINUS_ICON, Vector2(34, 34))
 	minus.disabled = value <= minimum
 	minus.pressed.connect(func():
 		changed.call(clampi(value - 1, minimum, maximum))
@@ -5451,9 +5665,7 @@ func _add_number_stepper(parent: VBoxContainer, label_text: String, value: int, 
 	value_label.add_theme_font_size_override("font_size", 18)
 	row.add_child(value_label)
 
-	var plus := Button.new()
-	plus.text = "+"
-	plus.custom_minimum_size = Vector2(42, 38)
+	var plus := _create_icon_button(PLUS_ICON, Vector2(34, 34))
 	plus.disabled = value >= maximum
 	plus.pressed.connect(func():
 		changed.call(clampi(value + 1, minimum, maximum))
@@ -5609,24 +5821,82 @@ func _add_large_checkbox(parent: Container, label_text: String, is_checked: bool
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.add_theme_font_size_override("font_size", 14)
 	label.add_theme_color_override("font_color", color_text)
-	var button := Button.new()
-	button.toggle_mode = true
-	button.button_pressed = is_checked
-	button.text = "✔" if is_checked else ""
-	button.custom_minimum_size = Vector2(24, 24)
-	button.add_theme_stylebox_override("normal", UIBuilder.flat_style(color_surface, color_border, 4))
-	button.add_theme_stylebox_override("hover", UIBuilder.flat_style(color_surface_soft, color_border, 4))
-	button.add_theme_stylebox_override("pressed", UIBuilder.flat_style(color_accent, color_accent, 4))
-	button.toggled.connect(func(c):
-		button.text = "✔" if c else ""
-		changed.call(c)
-	)
+	var button := _create_custom_checkbox(is_checked)
+	button.toggled.connect(func(c): changed.call_deferred(c))
 	row.add_child(label)
 	row.add_child(button)
 	parent.add_child(row)
 
+const CHECKBOX_ICON_ON := preload("res://assets/check-square.svg")
+const CHECKBOX_ICON_OFF := preload("res://assets/check-square-empty.svg")
+const QUESTION_ICON := preload("res://assets/question-square.svg")
+const PLUS_ICON := preload("res://assets/add-square.svg")
+const MINUS_ICON := preload("res://assets/minus-square.svg")
 
-func _add_tracker_row(parent: VBoxContainer, name: String, total: int, used: int, changed: Callable) -> void:
+func _create_custom_checkbox(is_checked: bool) -> Button:
+	var button := Button.new()
+	button.toggle_mode = true
+	button.button_pressed = is_checked
+	button.icon = CHECKBOX_ICON_ON if is_checked else CHECKBOX_ICON_OFF
+	button.expand_icon = true
+	button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	button.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	button.custom_minimum_size = Vector2(28, 28)
+	button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	
+	var empty_style := StyleBoxEmpty.new()
+	button.add_theme_stylebox_override("normal", empty_style)
+	button.add_theme_stylebox_override("hover", empty_style)
+	button.add_theme_stylebox_override("pressed", empty_style)
+	button.add_theme_stylebox_override("disabled", empty_style)
+	button.add_theme_stylebox_override("focus", empty_style)
+	
+	var apply_colors = func(c: bool):
+		if c:
+			button.add_theme_color_override("icon_normal_color", color_accent)
+			button.add_theme_color_override("icon_hover_color", color_accent)
+		else:
+			button.add_theme_color_override("icon_normal_color", color_muted)
+			button.add_theme_color_override("icon_hover_color", color_text)
+	
+	apply_colors.call(is_checked)
+	button.add_theme_color_override("icon_pressed_color", color_accent)
+	button.add_theme_color_override("icon_hover_pressed_color", color_accent)
+	button.add_theme_color_override("icon_disabled_color", Color(color_muted, 0.5))
+	
+	button.toggled.connect(func(c):
+		button.icon = CHECKBOX_ICON_ON if c else CHECKBOX_ICON_OFF
+		apply_colors.call(c)
+	)
+	return button
+
+func _create_icon_button(icon: Texture2D, size: Vector2 = Vector2(28, 28)) -> Button:
+	var button := Button.new()
+	button.icon = icon
+	button.expand_icon = true
+	button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	button.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	button.custom_minimum_size = size
+	button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	
+	var empty_style := StyleBoxEmpty.new()
+	button.add_theme_stylebox_override("normal", empty_style)
+	button.add_theme_stylebox_override("hover", empty_style)
+	button.add_theme_stylebox_override("pressed", empty_style)
+	button.add_theme_stylebox_override("disabled", empty_style)
+	button.add_theme_stylebox_override("focus", empty_style)
+	
+	button.add_theme_color_override("icon_normal_color", color_muted)
+	button.add_theme_color_override("icon_hover_color", color_text)
+	button.add_theme_color_override("icon_pressed_color", color_accent)
+	button.add_theme_color_override("icon_disabled_color", Color(color_muted, 0.5))
+	
+	return button
+
+
+func _add_tracker_row(parent: VBoxContainer, name: String, total: int, used: int, changed: Callable, dazed_threshold: int = -1) -> void:
 	var box := VBoxContainer.new()
 	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	box.add_theme_constant_override("separation", 4)
@@ -5650,6 +5920,14 @@ func _add_tracker_row(parent: VBoxContainer, name: String, total: int, used: int
 	box.add_child(grid)
 
 	for index in range(total):
+		if dazed_threshold > 0 and index == dazed_threshold:
+			var sep := ColorRect.new()
+			sep.color = color_warning
+			sep.custom_minimum_size = Vector2(2, 24)
+			sep.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			sep.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+			grid.add_child(sep)
+
 		var box_number := index + 1
 		var button := Button.new()
 		button.toggle_mode = true
@@ -5663,8 +5941,22 @@ func _add_tracker_row(parent: VBoxContainer, name: String, total: int, used: int
 		button.add_theme_stylebox_override("pressed", UIBuilder.flat_style(color_warning, color_warning, 4))
 		button.pressed.connect(func():
 			var next_used := box_number
-			if box_number <= used:
+			if box_number == used:
 				next_used = box_number - 1
+				
+			# Visually update all buttons in the grid immediately so there is no perceived lag
+			var current_idx := 1
+			for child in grid.get_children():
+				if child is Button:
+					child.button_pressed = current_idx <= next_used
+					current_idx += 1
+					
+			# Update the label immediately
+			label.text = "%s  %d / %d" % [name, next_used, total]
+					
+			# Wait briefly to let the UI visually update the button state before freezing for _render
+			await button.get_tree().process_frame
+			await button.get_tree().process_frame
 			changed.call(next_used)
 		)
 		grid.add_child(button)

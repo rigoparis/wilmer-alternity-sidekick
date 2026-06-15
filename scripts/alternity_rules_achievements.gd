@@ -25,6 +25,10 @@ func achievement_next_level_points(points: int) -> int:
 	return achievement_points_for_level(achievement_level_for_points(points) + 1)
 
 
+func achievement_points_for_current_level(points: int) -> int:
+	return achievement_points_for_level(achievement_level_for_points(points))
+
+
 func set_achievement_points(character: Dictionary, points: int) -> void:
 	character["achievement_points"] = max(0, points)
 	character["achievement_level"] = achievement_level_for_points(_get_parent()._as_int(character["achievement_points"]))
