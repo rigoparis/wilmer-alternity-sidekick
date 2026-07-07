@@ -297,7 +297,7 @@ func _build_shell() -> void:
 
 
 	optional_rules_overlay = OverlayOptionalRules.new()
-	optional_rules_overlay.build(self, self, background_rect, color_surface, color_border, color_text)
+	optional_rules_overlay.build(self, self, color_surface, color_border, color_text)
 	optional_rules_panel = optional_rules_overlay.panel
 	optional_rules_body = optional_rules_overlay.body
 	optional_rules_scroll = optional_rules_overlay.scroll
@@ -996,14 +996,6 @@ func _add_optional_rule_row(rule: Dictionary) -> void:
 	UIBuilder.add_text(box, String(rule.get("description", "")), 13, color_muted)
 
 
-func _visible_tab_count() -> int:
-	var count := 0
-	for tab in TABS:
-		if _tab_visible(tab):
-			count += 1
-	return max(1, count)
-
-
 func _tab_visible(tab: String) -> bool:
 	if tab == "Mutations":
 		return rules != null and rules.mutations.mutations_enabled(character)
@@ -1486,10 +1478,6 @@ func _render_basics() -> void:
 		)
 		UIBuilder.add_field(profession_box, "Select starting skill for Diplomat bonus (Free broad skill)", dip_option, color_muted)
 		
-
-
-func _render_abilities() -> void:
-	_render_abilities_to(content)
 
 
 func _render_abilities_to(parent: Container) -> void:
@@ -2471,46 +2459,6 @@ func _add_selected_mutation_table(parent: VBoxContainer, rows: Array, kind: Stri
 			_render()
 		)
 		grid.add_child(remove)
-
-
-func _add_selected_mutation_row(parent: VBoxContainer, mutation: Dictionary, kind: String, add_separator: bool) -> void:
-	var row := VBoxContainer.new()
-	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_theme_constant_override("separation", 5)
-	parent.add_child(row)
-
-	var top := HBoxContainer.new()
-	top.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	top.add_theme_constant_override("separation", 8)
-	row.add_child(top)
-
-	var title_box := VBoxContainer.new()
-	title_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	title_box.add_theme_constant_override("separation", 2)
-	top.add_child(title_box)
-	UIBuilder.add_text(title_box, String(mutation.get("name", "Mutation")), 15, color_text)
-	UIBuilder.add_text(title_box, "%s  |  %d points  |  %s" % [
-		String(mutation.get("tier", "")), rules._as_int(mutation.get("points", 0)),
-		String(mutation.get("related_ability", "")),
-	], 12, color_muted)
-
-	var remove := Button.new()
-	remove.text = "Remove"
-	remove.custom_minimum_size = Vector2(82, 34)
-	remove.pressed.connect(func():
-		if kind == "drawback":
-			rules.mutations.remove_mutation_drawback(character, String(mutation.get("id", "")))
-		else:
-			rules.mutations.remove_mutation_advantage(character, String(mutation.get("id", "")))
-		_render()
-	)
-	top.add_child(remove)
-
-	UIBuilder.add_text(row, String(mutation.get("summary", "")), 13, color_text)
-	UIBuilder.add_text(row, String(mutation.get("reference", "")), 11, color_muted)
-
-	if add_separator:
-		UIBuilder.add_thin_separator(row, color_border)
 
 
 func _show_mutation_catalog_modal(kind: String) -> void:
@@ -5008,20 +4956,6 @@ func _render_notes_section(parent: Container) -> void:
 	box.add_child(edit)
 
 
-func _add_selected_character_options_summary(parent: VBoxContainer) -> void:
-	var perks := rules.selected_perks(character)
-	var flaws := rules.selected_flaws(character)
-	if perks.is_empty() and flaws.is_empty():
-		UIBuilder.add_text(parent, "No perks or flaws selected.", 14, color_muted)
-		return
-
-	if not perks.is_empty():
-		_add_selected_perks_summary(parent)
-
-	if not flaws.is_empty():
-		_add_selected_flaws_summary(parent)
-
-
 func _add_selected_perks_summary(parent: VBoxContainer) -> void:
 	var perks := rules.selected_perks(character)
 	if perks.is_empty():
@@ -5096,15 +5030,6 @@ func _add_mutation_summary_row(parent: VBoxContainer, mutation: Dictionary) -> v
 	UIBuilder.add_text(parent, String(mutation.get("reference", "")), 11, color_muted)
 
 
-func _enabled_optional_rules_label() -> String:
-	var enabled := []
-	for rule in AlternityRules.OPTIONAL_RULES:
-		var rule_id := String(rule.get("id", ""))
-		if rules.optional_rule_enabled(character, rule_id):
-			enabled.append(String(rule.get("name", "")))
-	return "Standard" if enabled.is_empty() else ", ".join(enabled)
-
-
 func _close_character() -> void:
 	if not char_manager.active_character_file.is_empty():
 		close_char_confirm_overlay.visible = true
@@ -5144,6 +5069,7 @@ func _create_new_character() -> void:
 		display_name = "%s %d" % [base_name, counter]
 	character["hero_name"] = display_name
 	
+	char_manager.set_character(character)
 	char_manager.active_character_file = final_filename
 	char_manager.save_character(notes_editing, notes_draft)
 	active_tab = "Basics"
@@ -5544,45 +5470,6 @@ func _add_line_edit(parent: VBoxContainer, label_text: String, value: String, ch
 	UIBuilder.add_field(parent, label_text, edit, color_muted)
 
 
-func _add_readonly_number_pair(parent: VBoxContainer, left_label_text: String, left_value: int, right_label_text: String, right_value: int) -> Array:
-	var row: BoxContainer
-	if get_viewport_rect().size.x < COMPACT_WIDTH:
-		row = VBoxContainer.new()
-	else:
-		row = HBoxContainer.new()
-	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_theme_constant_override("separation", 8)
-	parent.add_child(row)
-
-	var left_edit := _add_readonly_number_cell(row, left_label_text, left_value)
-	var right_edit := _add_readonly_number_cell(row, right_label_text, right_value)
-	return [left_edit, right_edit]
-
-
-func _add_readonly_number_cell(parent: BoxContainer, label_text: String, value: int) -> LineEdit:
-	var box := VBoxContainer.new()
-	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	box.add_theme_constant_override("separation", 4)
-	parent.add_child(box)
-
-	var label := Label.new()
-	label.text = label_text
-	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	label.custom_minimum_size = Vector2(1, 0)
-	label.add_theme_color_override("font_color", color_muted)
-	label.add_theme_font_size_override("font_size", 12)
-	box.add_child(label)
-
-	var edit := LineEdit.new()
-	edit.text = str(value)
-	edit.editable = false
-	edit.alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	edit.custom_minimum_size = Vector2(0, 42)
-	box.add_child(edit)
-	return edit
-
-
 func _add_number_input(parent: Container, label_text: String, value: int, minimum: int, maximum: int, changed: Callable) -> LineEdit:
 	var edit := LineEdit.new()
 	edit.text = str(clampi(value, minimum, maximum))
@@ -5604,33 +5491,6 @@ func _add_number_input(parent: Container, label_text: String, value: int, minimu
 	edit.focus_exited.connect(apply_changes)
 	UIBuilder.add_field(parent, label_text, edit, color_muted)
 	return edit
-
-
-func _add_float_input(parent: VBoxContainer, label_text: String, value: float, changed: Callable) -> LineEdit:
-	var edit := LineEdit.new()
-	edit.text = UIBuilder.format_number(value)
-	edit.placeholder_text = "0"
-	edit.alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	var state := {"value": maxf(0.0, value), "last_notified": maxf(0.0, value)}
-	edit.text_changed.connect(func(text):
-		var stripped := String(text).strip_edges()
-		if stripped.is_valid_float():
-			state["value"] = maxf(0.0, float(stripped))
-	)
-	var apply_changes = func():
-		var current = rules._as_float(state["value"])
-		var last = rules._as_float(state["last_notified"])
-		if not is_equal_approx(current, last):
-			state["last_notified"] = current
-			changed.call(current)
-		edit.text = UIBuilder.format_number(current)
-
-	edit.text_submitted.connect(func(_text): apply_changes.call())
-	edit.focus_exited.connect(apply_changes)
-	UIBuilder.add_field(parent, label_text, edit, color_muted)
-	return edit
-
-
 
 
 
@@ -5676,31 +5536,6 @@ func _add_number_stepper(parent: VBoxContainer, label_text: String, value: int, 
 
 
 
-
-
-
-
-func _format_note_bbcode(text: String) -> String:
-	var rank_index := text.find(" rank ")
-	var separator_index := text.find(":")
-	var source_index := text.find("Source:")
-	if source_index >= 0 and separator_index >= source_index:
-		separator_index = -1
-	if rank_index > 0 and separator_index > rank_index:
-		return "[b]%s[/b]%s" % [
-			_escape_bbcode(text.substr(0, rank_index)),
-			_escape_bbcode(text.substr(rank_index)),
-		]
-	if separator_index > 0:
-		return "[b]%s[/b]%s" % [
-			_escape_bbcode(text.substr(0, separator_index)),
-			_escape_bbcode(text.substr(separator_index)),
-		]
-	return _escape_bbcode(text)
-
-
-func _escape_bbcode(text: String) -> String:
-	return text.replace("[", "[lb]").replace("]", "[rb]")
 
 
 

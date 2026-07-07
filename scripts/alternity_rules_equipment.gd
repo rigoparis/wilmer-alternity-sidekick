@@ -1,9 +1,10 @@
+class_name AlternityRulesEquipment
 extends RefCounted
 
 var _parent_ref: WeakRef
 
-func _init(parent) -> void:
-	_parent_ref = weakref(parent)
+func _init(p_parent: RefCounted) -> void:
+	_parent_ref = weakref(p_parent)
 
 func _get_parent():
 	return _parent_ref.get_ref()

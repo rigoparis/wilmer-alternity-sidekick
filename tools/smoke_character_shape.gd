@@ -28,10 +28,10 @@ func _init() -> void:
 	# Verify other keys are created
 	var expected_keys = [
 		"selected_skills", "selected_perks", "selected_flaws",
-		"achievements.selected_achievements", "mutations", "cybertech",
+		"selected_achievements", "mutations", "cybertech",
 		"fx", "optional_rules", "species_id", "profession_id", "notes",
 		"achievement_level", "achievement_points",
-		"achievements.achievement_points_available",
+		"achievement_points_available",
 		"achievement_points_spent_other", "damage", "last_resorts_used",
 		"equipment"
 	]
@@ -114,8 +114,10 @@ func _init() -> void:
 		_fail("Did not fix malformed 'selected_perks' data type.")
 	if typeof(result_malformed["selected_flaws"]) != TYPE_DICTIONARY:
 		_fail("Did not fix malformed 'selected_flaws' data type.")
-	if typeof(result_malformed["achievements.selected_achievements"]) != TYPE_ARRAY:
-		_fail("Did not fix malformed 'achievements.selected_achievements' data type.")
+	if result_malformed.has("achievements.selected_achievements"):
+		_fail("Did not migrate away the legacy 'achievements.selected_achievements' key.")
+	if typeof(result_malformed["selected_achievements"]) != TYPE_ARRAY:
+		_fail("Did not fix malformed 'selected_achievements' data type.")
 	if typeof(result_malformed["mutations"]) != TYPE_DICTIONARY or not result_malformed["mutations"].has("generation_mode"):
 		_fail("Did not recover from string mutations data.")
 	if typeof(result_malformed["cybertech"]) != TYPE_DICTIONARY or not result_malformed["cybertech"].has("enabled"):

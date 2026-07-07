@@ -289,7 +289,7 @@ func default_character() -> Dictionary:
 		"setting": data.get("setting", "Core"),
 		"achievement_level": 1,
 		"achievement_points": 0,
-		"achievements.achievement_points_available": 0,
+		"achievement_points_available": 0,
 		"achievement_points_spent_other": 0,
 		"species_id": 0,
 		"profession_id": 0,
@@ -305,7 +305,7 @@ func default_character() -> Dictionary:
 		"selected_skills": {},
 		"selected_perks": {},
 		"selected_flaws": {},
-		"achievements.selected_achievements": [],
+		"selected_achievements": [],
 		"mutations": {
 			"generation_mode": "random",
 			"origin": "engineered",
@@ -343,6 +343,19 @@ func ensure_character_shape(character: Dictionary) -> Dictionary:
 		if not character["abilities"].has(ability):
 			character["abilities"][ability] = 10
 
+	# Normalize achievement points and level first: skill rank clamping below
+	# depends on the achievement level being up to date.
+	character["achievement_points"] = max(0, _as_int(character.get("achievement_points", 0)))
+	character["achievement_level"] = achievements.achievement_level_for_points(_as_int(character.get("achievement_points", 0)))
+	character["achievement_points_spent_other"] = max(0, _as_int(character.get("achievement_points_spent_other", 0)))
+
+	# Migrate saves written with the old dotted character keys.
+	if character.has("achievements.selected_achievements"):
+		if not character.has("selected_achievements") and typeof(character["achievements.selected_achievements"]) == TYPE_ARRAY:
+			character["selected_achievements"] = character["achievements.selected_achievements"]
+		character.erase("achievements.selected_achievements")
+	character.erase("achievements.achievement_points_available")
+
 	if not character.has("selected_skills") or typeof(character["selected_skills"]) != TYPE_DICTIONARY:
 		character["selected_skills"] = {}
 	else:
@@ -362,8 +375,8 @@ func ensure_character_shape(character: Dictionary) -> Dictionary:
 		character["selected_flaws"] = {}
 	else:
 		_normalize_selected_character_options(character, "selected_flaws", FLAW_DEFINITIONS, "bonus_options")
-	if not character.has("achievements.selected_achievements") or typeof(character["achievements.selected_achievements"]) != TYPE_ARRAY:
-		character["achievements.selected_achievements"] = []
+	if not character.has("selected_achievements") or typeof(character["selected_achievements"]) != TYPE_ARRAY:
+		character["selected_achievements"] = []
 	else:
 		achievements._normalize_selected_achievements(character)
 	if not character.has("mutations") or typeof(character["mutations"]) != TYPE_DICTIONARY:
@@ -388,18 +401,7 @@ func ensure_character_shape(character: Dictionary) -> Dictionary:
 	if not character.has("notes"):
 		character["notes"] = ""
 	character["notes"] = String(character.get("notes", ""))
-	if not character.has("achievement_level"):
-		character["achievement_level"] = 1
-	if not character.has("achievement_points"):
-		character["achievement_points"] = 0
-	character["achievement_points"] = max(0, _as_int(character.get("achievement_points", 0)))
-	character["achievement_level"] = achievements.achievement_level_for_points(_as_int(character.get("achievement_points", 0)))
-	if not character.has("achievements.achievement_points_available"):
-		character["achievements.achievement_points_available"] = 0
-	if not character.has("achievement_points_spent_other"):
-		character["achievement_points_spent_other"] = 0
-	character["achievement_points_spent_other"] = max(0, _as_int(character.get("achievement_points_spent_other", 0)))
-	character["achievements.achievement_points_available"] = achievements.achievement_points_available(character)
+	character["achievement_points_available"] = achievements.achievement_points_available(character)
 	if not character.has("damage") or typeof(character["damage"]) != TYPE_DICTIONARY:
 		character["damage"] = {}
 	for damage_type in ["stun", "wound", "mortal", "fatigue"]:
@@ -869,7 +871,6 @@ func racial_broad_skills_count(character: Dictionary) -> int:
 
 
 func additional_broad_skill_limit(character: Dictionary) -> int:
-	var abilities := effective_abilities(character)
 	if optional_rule_enabled(character, "2b"):
 		var intelligence_rm := character_resistance_modifier(character, "INT")
 		return max(0, 6 + intelligence_rm)
@@ -1367,7 +1368,7 @@ func summary(character: Dictionary) -> Dictionary:
 		if sold_list.has(skill_id):
 			sold_broads_count += 1
 
-	character["achievements.achievement_points_available"] = achievement_available
+	character["achievement_points_available"] = achievement_available
 	_cached_summary = {
 		"achievement_level": achievements.achievement_level_for_points(achievement_points),
 		"achievement_points": achievement_points,
@@ -1498,18 +1499,6 @@ func skill_roll_notes_for_character(character: Dictionary) -> Array:
 	return _unique_strings(notes)
 
 
-func skill_rank_benefit_summary(character: Dictionary) -> Array:
-	var notes := []
-	for group in skill_rank_benefit_groups(character):
-		for entry in group.get("entries", []):
-			notes.append("%s rank %d: %s" % [
-				String(group.get("skill", "")),
-				_as_int(entry.get("rank", 0)),
-				String(entry.get("text", "")),
-			])
-	return notes
-
-
 func skill_rank_benefit_groups(character: Dictionary) -> Array:
 	var groups := []
 	for skill in selected_skills(character):
@@ -1638,25 +1627,6 @@ func _index_achievements() -> void:
 		achievements_by_id[item_id] = item
 
 
-
-
-func _remove_unused_custom_equipment(character: Dictionary, item_id: String) -> void:
-	if item_id.is_empty() or not item_id.begins_with("custom_"):
-		return
-	var equipment: Dictionary = character.get("equipment", {})
-	for row in equipment.get("carried", []):
-		if typeof(row) == TYPE_DICTIONARY and String(row.get("item_id", "")) == item_id:
-			return
-	var custom_items := []
-	for item in equipment.get("custom_items", []):
-		if typeof(item) != TYPE_DICTIONARY:
-			continue
-		if String(item.get("id", "")) == item_id:
-			continue
-		custom_items.append(item)
-	equipment["custom_items"] = custom_items
-	equipment.erase("_custom_items_by_id")
-	character["equipment"] = equipment
 
 
 func _normalize_selected_skills(character: Dictionary) -> void:
@@ -1812,9 +1782,7 @@ func _skill_roll_notes(skill: Dictionary) -> Array:
 	return notes
 
 
-func _skill_summary_roll_notes(skill: Dictionary) -> Array:
-	var skill_id := _as_int(skill.get("id", -1))
-	var notes := {
+const SKILL_SUMMARY_ROLL_NOTES := {
 		0: ["Armor can impose action check and Dexterity resistance penalties; Armor Operation can reduce those penalties."],
 		1: ["Combat armor ranks reduce armor penalties for standard combat armor."],
 		2: ["Powered armor ranks reduce armor penalties for powered armor."],
@@ -1875,10 +1843,14 @@ func _skill_summary_roll_notes(skill: Dictionary) -> Array:
 		90308: ["Receive unconscious future impressions up to (rank) hours/days. Ordinary=vague images, Good=brief flashes, Amazing=experience brief encounter. Forcing a flash doubles cost, applies a +3 penalty, and blocks use for 2d6 days."],
 		90309: ["Touch object to read OWNER'S psychic impressions. Ordinary=simple emotions, Good=simple images, Amazing=experience ownership/use encounter."],
 		90310: ["Detect psionic use within 20 meters. Persists for 1 minute (extendable at 1 point/minute). Ordinary=tells who, Good=identifies broad skill, Amazing=identifies exact specialty skill."]
-	}
+}
+
+
+func _skill_summary_roll_notes(skill: Dictionary) -> Array:
+	var skill_id := _as_int(skill.get("id", -1))
 	var sourced_notes := []
 	var source_text := _source_text_for_skill(skill)
-	for note in notes.get(skill_id, []):
+	for note in SKILL_SUMMARY_ROLL_NOTES.get(skill_id, []):
 		var text := String(note)
 		if text.contains("Source:"):
 			sourced_notes.append(text)

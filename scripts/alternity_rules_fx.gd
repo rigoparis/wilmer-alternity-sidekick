@@ -1,9 +1,10 @@
+class_name AlternityRulesFx
 extends RefCounted
 
 var _parent_ref: WeakRef
 
-func _init(parent) -> void:
-	_parent_ref = weakref(parent)
+func _init(p_parent: RefCounted) -> void:
+	_parent_ref = weakref(p_parent)
 
 func _get_parent():
 	return _parent_ref.get_ref()
@@ -378,17 +379,13 @@ func fx_skill_score(character: Dictionary, skill_name: String) -> Dictionary:
 	var good = int(floor(ordinary / 2.0))
 	var amazing = int(floor(good / 2.0))
 	
-	if not get_broad_skill(skill_name).is_empty() and rank > 0:
+	var is_broad := not get_broad_skill(skill_name).is_empty()
+	if is_broad and rank > 0:
 		base = int(floor(ability_score / 2.0))
 		ordinary = base
 		good = int(floor(ordinary / 2.0))
 		amazing = int(floor(good / 2.0))
-	var step := 0 if not get_broad_skill(skill_name).is_empty() and rank > 0 else 0
-	if get_broad_skill(skill_name).is_empty():
-		step = 0 # specialty
-	else:
-		step = 1 # broad
-		
+	var step := 1 if is_broad else 0
 	step += _get_parent().dazed_penalty(character)
 
 	return {

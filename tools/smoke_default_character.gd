@@ -13,10 +13,10 @@ func _init() -> void:
 
 	var expected_keys = [
 		"hero_name", "player_name", "career", "notes", "setting",
-		"achievement_level", "achievement_points", "achievements.achievement_points_available",
+		"achievement_level", "achievement_points", "achievement_points_available",
 		"achievement_points_spent_other", "species_id", "profession_id",
 		"abilities", "selected_skills", "selected_perks", "selected_flaws",
-		"achievements.selected_achievements", "mutations", "optional_rules",
+		"selected_achievements", "mutations", "optional_rules",
 		"damage", "last_resorts_used", "equipment"
 	]
 
@@ -38,8 +38,8 @@ func _init() -> void:
 		_fail("achievement_level should be 1, got " + str(character["achievement_level"]))
 	if character["achievement_points"] != 0:
 		_fail("achievement_points should be 0, got " + str(character["achievement_points"]))
-	if character["achievements.achievement_points_available"] != 0:
-		_fail("achievements.achievement_points_available should be 0, got " + str(character["achievements.achievement_points_available"]))
+	if character["achievement_points_available"] != 0:
+		_fail("achievement_points_available should be 0, got " + str(character["achievement_points_available"]))
 	if character["achievement_points_spent_other"] != 0:
 		_fail("achievement_points_spent_other should be 0, got " + str(character["achievement_points_spent_other"]))
 	if character["species_id"] != 0:
@@ -60,8 +60,8 @@ func _init() -> void:
 		_fail("selected_perks should be an empty dictionary")
 	if typeof(character["selected_flaws"]) != TYPE_DICTIONARY or not character["selected_flaws"].is_empty():
 		_fail("selected_flaws should be an empty dictionary")
-	if typeof(character["achievements.selected_achievements"]) != TYPE_ARRAY or not character["achievements.selected_achievements"].is_empty():
-		_fail("achievements.selected_achievements should be an empty array")
+	if typeof(character["selected_achievements"]) != TYPE_ARRAY or not character["selected_achievements"].is_empty():
+		_fail("selected_achievements should be an empty array")
 
 	var mutations = character["mutations"]
 	if mutations["generation_mode"] != "random":

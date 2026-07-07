@@ -7,7 +7,7 @@ var body: VBoxContainer
 var scroll: ScrollContainer
 var main_ui: Node
 
-func build(parent: Node, p_main_ui: Node, background: ColorRect, color_surface: Color, color_border: Color, color_text: Color) -> void:
+func build(parent: Node, p_main_ui: Node, color_surface: Color, color_border: Color, color_text: Color) -> void:
 	main_ui = p_main_ui
 
 	visible = false

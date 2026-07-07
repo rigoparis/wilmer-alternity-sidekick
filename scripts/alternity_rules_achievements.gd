@@ -1,9 +1,10 @@
+class_name AlternityRulesAchievements
 extends RefCounted
 
 var _parent_ref: WeakRef
 
-func _init(parent) -> void:
-	_parent_ref = weakref(parent)
+func _init(p_parent: RefCounted) -> void:
+	_parent_ref = weakref(p_parent)
 
 func _get_parent():
 	return _parent_ref.get_ref()
@@ -238,15 +239,15 @@ func can_purchase_achievement(character: Dictionary, achievement: Dictionary, ta
 		var abilities: Dictionary = _get_parent().achievement_adjusted_abilities(character)
 		var limits: Array = _get_parent().ability_limits(character, ability)
 		if _get_parent()._as_int(abilities.get(ability, 10)) >= _get_parent()._as_int(limits[1]):
-			return {"allowed": false, "reason": "%s is already at the _get_parent().species maximum." % ability}
+			return {"allowed": false, "reason": "%s is already at the species maximum." % ability}
 	if effect_type == "extra_action" and _get_parent().actions_per_round(character) >= 4:
 		return {"allowed": false, "reason": "Actions per round are already at the maximum of 4."}
 	if effect_type == "new_perk":
 		var perk_id := String(effect.get("perk_id", ""))
 		if _get_parent().is_perk_selected(character, perk_id):
 			return {"allowed": false, "reason": "That perk is already selected."}
-		if _get_parent().selected_perk_count(character) >= 3:
-			return {"allowed": false, "reason": "The hero already has three perks."}
+		if _get_parent().non_gm_perk_count(character) >= 3:
+			return {"allowed": false, "reason": "The hero already has three standard perks."}
 	if effect_type == "remove_flaw":
 		if String(target_id).is_empty():
 			return {"allowed": false, "reason": "Choose a flaw to remove."}

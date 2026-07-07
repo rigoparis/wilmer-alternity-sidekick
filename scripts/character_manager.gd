@@ -69,8 +69,11 @@ func save_character(notes_editing: bool = false, notes_draft: String = "") -> vo
 	active_character_file = filename
 	var tracker := FileAccess.open("user://last_character.txt", FileAccess.WRITE)
 	if tracker != null: tracker.store_string(filename)
+	# Compute the summary first: it normalizes the character in place and strips
+	# internal caches (e.g. equipment "_custom_items_by_id") before duplication.
+	var summary_data: Dictionary = rules.summary(character) if rules else {}
 	var payload := character.duplicate(true)
-	if rules: payload["summary"] = rules.summary(character)
+	if rules: payload["summary"] = summary_data
 	var file := FileAccess.open(path, FileAccess.WRITE)
 	if file == null:
 		save_completed.emit("", false)
@@ -88,8 +91,9 @@ func safe_filename(name: String) -> String:
 
 func share_character() -> void:
 	if character.is_empty(): return
+	var summary_data: Dictionary = rules.summary(character) if rules else {}
 	var payload := character.duplicate(true)
-	if rules: payload["summary"] = rules.summary(character)
+	if rules: payload["summary"] = summary_data
 	var json_str := JSON.stringify(payload, "	")
 
 	if DisplayServer.has_feature(DisplayServer.FEATURE_NATIVE_DIALOG):
