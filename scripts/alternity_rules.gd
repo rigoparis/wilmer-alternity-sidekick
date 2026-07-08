@@ -785,6 +785,28 @@ func actions_per_round(character: Dictionary) -> int:
 	return min(4, base + bonus)
 
 
+func is_psionic_character(character: Dictionary) -> bool:
+	if _as_int(character.get("species_id", 0)) == 1: # Fraal
+		return true
+	var profession := get_profession_by_id(_as_int(character.get("profession_id", 0)))
+	return String(profession.get("code", "")) == "M" or String(profession.get("secondary_code", "")) == "M"
+
+
+func psionic_energy_points(character: Dictionary) -> int:
+	if not is_psionic_character(character):
+		return 0
+	var will := _as_int(effective_abilities(character).get("WIL", 10))
+	var is_fraal := _as_int(character.get("species_id", 0)) == 1
+	var profession := get_profession_by_id(_as_int(character.get("profession_id", 0)))
+	var is_primary_mindwalker := String(profession.get("code", "")) == "M"
+	# Fraal Mindwalkers use WIL x 1.5. Fraal talents, Mindwalkers, and Diplomats
+	# with Mindwalker as secondary profession use full WIL instead of one-half
+	# WIL. Source: Player's Handbook p. 22 and Chapter 14.
+	if is_fraal and is_primary_mindwalker:
+		return int(will * 1.5)
+	return will
+
+
 func last_resorts(character: Dictionary) -> Dictionary:
 	var abilities := effective_abilities(character)
 	var profession := get_profession_by_id(_as_int(character.get("profession_id", 0)))

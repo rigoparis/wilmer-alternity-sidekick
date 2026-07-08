@@ -1250,6 +1250,25 @@ const PROFESSION_DEFINITIONS := [
 		],
 	},
 	{
+		"id": 7,
+		"name": "Diplomat (Mindwalker)",
+		"code": "D",
+		"secondary_code": "M",
+		"action_bonus": 1,
+		"last_resort_bonus": 0,
+		"ability_minimums": {
+			"WIL": 9,
+			"PER": 11,
+		},
+		"notes": [
+			"Action check score increased by 1.",
+			"Starts with either Contacts or Resources.",
+			"Secondary profession receives the skill cost bonus.",
+			"Gains access to psionic broad skills and uses full WIL for psionic energy points instead of one-half WIL. Source: Player's Handbook p. 22 and Chapter 14.",
+			"Profession requirements: WIL 9, PER 11. Source: Player's Handbook Table P1 p. 30.",
+		],
+	},
+	{
 		"id": 4,
 		"name": "Free Agent",
 		"code": "F",
@@ -1287,7 +1306,7 @@ const PROFESSION_DEFINITIONS := [
 	{
 		"id": 6,
 		"name": "Mindwalker",
-		"code": "",
+		"code": "M",
 		"secondary_code": "",
 		"action_bonus": 1,
 		"last_resort_bonus": 0,

@@ -1460,8 +1460,8 @@ func _render_basics() -> void:
 		)
 		UIBuilder.add_field(profession_box, "Select Psionic Broad skill for Mindwalker Focus (-1 step)", mw_option, color_muted)
 		
-	# 4. Diplomat Bonus (Primary Diplomat dual-professions = ids 1, 2, 3)
-	elif primary_prof_id in [1, 2, 3]:
+	# 4. Diplomat Bonus (Primary Diplomat dual-professions = ids 1, 2, 3, 7)
+	elif primary_prof_id in [1, 2, 3, 7]:
 		var current_diplomat_bonus = String(character.get("diplomat_bonus", ""))
 		if current_diplomat_bonus.is_empty():
 			current_diplomat_bonus = "Contacts"
@@ -3962,23 +3962,14 @@ func _render_cybertech() -> void:
 func _render_fx_psionics() -> void:
 	var overview := UIBuilder.add_section(content, "Psionic Energy & Mindwalker Status", null, color_surface, color_border, color_text)
 	
-	var is_psionic: bool = rules._as_int(character.get("species_id", 0)) == 1 or character.get("profession_id", 0) == 6 # Fraal or Mindwalker
+	var is_psionic := rules.is_psionic_character(character)
 	var summary := rules.summary(character)
 	if is_psionic:
-		var base_wil := rules._as_int(rules.effective_abilities(character).get("WIL", 10))
-		var is_fraal: bool = rules._as_int(character.get("species_id", 0)) == 1
-		var is_mindwalker: bool = character.get("profession_id", 0) == 6
-		
-		var energy_points := base_wil / 2
-		if is_fraal and is_mindwalker:
-			energy_points = int(base_wil * 1.5)
-		elif is_fraal or is_mindwalker:
-			energy_points = base_wil
-			
+		var energy_points := rules.psionic_energy_points(character)
 		_add_progress_metric(overview, "Psionic Energy Points", energy_points, energy_points, "%d / %d" % [energy_points, energy_points])
 		UIBuilder.add_text(overview, "Your Psionic Energy is derived from your Will score. Use these points to power psionic abilities.", 12, color_muted)
 	else:
-		UIBuilder.add_text(overview, "You do not currently possess psionic potential. Only Fraal or heroes with the Mindwalker profession/perk can access these powers.", 13, color_warning)
+		UIBuilder.add_text(overview, "You do not currently possess psionic potential. Only Fraal or heroes with the Mindwalker profession (primary, or secondary as a Diplomat) can access these powers.", 13, color_warning)
 
 	var skills_box := UIBuilder.add_section(content, "Psionic Skills", null, color_surface, color_border, color_text)
 	if is_psionic:
@@ -4662,7 +4653,7 @@ func _render_summary() -> void:
 				mw_name = String(skill.get("name", ""))
 				break
 		specials_info.append("Mindwalker Focus: -1 step bonus to %s and its specialties" % mw_name)
-	elif primary_prof_id in [1, 2, 3]:
+	elif primary_prof_id in [1, 2, 3, 7]:
 		var dip_bonus = String(character.get("diplomat_bonus", "Contacts"))
 		specials_info.append("Diplomat Bonus: Free %s broad skill" % dip_bonus)
 		
