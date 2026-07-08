@@ -613,9 +613,8 @@ func untrained_score(score: int) -> int:
 	return int(floor(score / 2.0))
 
 
+# Table P2: Resistance Modifiers. Source: Player's Handbook p. 32.
 func resistance_modifier(score: int) -> int:
-	if score <= 2:
-		return -3
 	if score <= 4:
 		return -2
 	if score <= 6:
@@ -626,7 +625,11 @@ func resistance_modifier(score: int) -> int:
 		return 1
 	if score <= 14:
 		return 2
-	return 3
+	if score <= 16:
+		return 3
+	if score <= 18:
+		return 4
+	return 5
 
 
 func character_resistance_modifier(character: Dictionary, ability: String) -> int:

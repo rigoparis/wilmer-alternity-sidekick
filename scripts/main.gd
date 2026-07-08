@@ -1382,7 +1382,9 @@ func _render_basics() -> void:
 			character["free_agent_rm_bonus"] = current_rm_bonus
 			
 		var rm_option := OptionButton.new()
-		var stats := ["STR", "DEX", "INT", "WIL"]
+		# Any ability with a resistance modifier qualifies; CON has none.
+		# Source: Player's Handbook p. 31-32.
+		var stats := ["STR", "DEX", "INT", "WIL", "PER"]
 		for stat in stats:
 			rm_option.add_item(stat)
 		rm_option.select(stats.find(current_rm_bonus))
@@ -1396,7 +1398,9 @@ func _render_basics() -> void:
 	elif primary_prof_id == 0:
 		var current_cs_id = rules._as_int(character.get("combat_spec_bonus_specialty", -1))
 		var combat_specialties := []
-		var combat_broad_ids := [8, 11, 15, 30, 34]
+		# Armor Operation, Heavy Weapons, Melee Weapons, Unarmed Attack,
+		# Modern Ranged Weapons, Primitive Ranged Weapons. Source: Player's Handbook p. 30.
+		var combat_broad_ids := [0, 8, 11, 15, 30, 34]
 		for skill in rules.skills:
 			if skill.get("type", "") == "specialty":
 				var broad_id = rules._as_int(skill.get("broad_id", -1))

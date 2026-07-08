@@ -467,7 +467,12 @@ func _combat_skill_score(character: Dictionary, skill_id: int) -> Dictionary:
 		var broad_id: int = selected_skill_id if String(use_skill.get("type", "")) == "broad" else _get_parent()._as_int(use_skill.get("broad_id", -1))
 		if _get_parent()._as_int(character.get("mindwalker_psionic_focus", -1)) == broad_id:
 			step -= 1
-			
+
+	# Combat Spec profession bonus (-1 step to the chosen combat specialty skill)
+	if _get_parent()._as_int(character.get("profession_id", 0)) == 0:
+		if String(use_skill.get("type", "")) == "specialty" and _get_parent()._as_int(character.get("combat_spec_bonus_specialty", -1)) == selected_skill_id:
+			step -= 1
+
 	return _combat_score_from_ordinary(ordinary, step)
 
 
