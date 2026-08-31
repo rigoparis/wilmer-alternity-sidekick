@@ -563,6 +563,18 @@ func age_adjusted_abilities(character: Dictionary) -> Dictionary:
 
 func achievement_adjusted_abilities(character: Dictionary) -> Dictionary:
 	var result := age_adjusted_abilities(character)
+
+	# Heightened Ability perk bonus (+1 to chosen ability, clamped to species max)
+	if is_perk_selected(character, "heightened_ability"):
+		var target_stat := String(character.get("heightened_ability_stat", character.get("heightened_ability_target", "")))
+		if target_stat.is_empty():
+			var perk_raw = character.get("selected_perks", {}).get("heightened_ability", {})
+			if typeof(perk_raw) == TYPE_DICTIONARY:
+				target_stat = String(perk_raw.get("target_ability", perk_raw.get("target_stat", "")))
+		if ABILITIES.has(target_stat):
+			var limits := ability_limits(character, target_stat)
+			result[target_stat] = clampi(_as_int(result.get(target_stat, 10)) + 1, _as_int(limits[0]), _as_int(limits[1]))
+
 	for entry in achievements.selected_achievements(character):
 		var achievement: Dictionary = entry.get("achievement", {})
 		var effect: Dictionary = achievement.get("effect", {})
@@ -660,7 +672,14 @@ func resistance_modifier(score: int) -> int:
 	return 5
 
 
+func is_passive_resistance_ability(ability: String) -> bool:
+	return PASSIVE_RESISTANCE_ABILITIES.has(ability)
+
+
 func character_resistance_modifier(character: Dictionary, ability: String) -> int:
+	if ability == "CON":
+		return 0
+
 	var score = 10
 	var abilities := effective_abilities(character)
 	if abilities.has(ability):
@@ -734,6 +753,91 @@ func character_resistance_modifier(character: Dictionary, ability: String) -> in
 		rm -= _as_int(enc.get("penalty", 0))
 
 	return rm
+
+
+## Returns the untrained score (floor(Ability Score / 2)) used for untrained skill checks.
+func untrained_ability_score(character: Dictionary, ability: String) -> int:
+	var abilities := effective_abilities(character)
+	var score := _as_int(abilities.get(ability, 10))
+	return int(floor(score / 2.0))
+
+
+## Calculates the target score, degrees of success thresholds, and situation die for an Ability Feat Check.
+## Target Score: Full effective ability score. Base situation die: +d4 (step 1).
+## Degrees: Ordinary <= Score, Good <= floor(Score / 2), Amazing <= floor(Score / 4), Marginal = Score + 1.
+func feat_check_score(character: Dictionary, ability: String) -> Dictionary:
+	var abilities := effective_abilities(character)
+	var score := _as_int(abilities.get(ability, 10))
+	var step := 1 # Base +d4
+	if ability == "STR" or ability == "DEX":
+		var enc := encumbrance(character)
+		step += _as_int(enc.get("penalty", 0))
+	return {
+		"ability": ability,
+		"target_score": score,
+		"ordinary": score,
+		"good": int(floor(score / 2.0)),
+		"amazing": int(floor(score / 4.0)),
+		"marginal": score + 1,
+		"step": step,
+		"base_die": action_step_die(step),
+	}
+
+
+## Resolves an Ability Feat Check given a control die (1-20), situation die roll, and extra modifier steps.
+func resolve_feat_check(character: Dictionary, ability: String, control_die: int, situation_roll: int, extra_steps: int = 0) -> Dictionary:
+	var feat_info := feat_check_score(character, ability)
+	var total_step := _as_int(feat_info.get("step", 1)) + extra_steps
+	var die_str := action_step_die(total_step)
+	var target := _as_int(feat_info.get("target_score", 10))
+	return resolve_check(control_die, situation_roll, target, die_str)
+
+
+## Calculates lifting thresholds based on Strength score.
+## Automatic lift: STR * 2 kg (no check).
+## Marginal feat: STR * 3 kg (+d0).
+## Slight feat: STR * 5 kg (+d4).
+## Max lift: STR * 6 kg (+d6 / +d8).
+func lifting_capacity(character_or_str) -> Dictionary:
+	var str_score := 10
+	if typeof(character_or_str) == TYPE_DICTIONARY:
+		var abilities := effective_abilities(character_or_str)
+		str_score = _as_int(abilities.get("STR", 10))
+	else:
+		str_score = _as_int(character_or_str)
+	return {
+		"automatic_lift_kg": str_score * 2.0,
+		"marginal_feat_kg": str_score * 3.0,
+		"slight_feat_kg": str_score * 5.0,
+		"max_lift_kg": str_score * 6.0,
+	}
+
+
+## Table G21: Resolves Strength Feat parameters for breaking objects.
+func breaking_object_feat(character_or_str, toughness: String = "ordinary") -> Dictionary:
+	var str_score := 10
+	if typeof(character_or_str) == TYPE_DICTIONARY:
+		var abilities := effective_abilities(character_or_str)
+		str_score = _as_int(abilities.get("STR", 10))
+	else:
+		str_score = _as_int(character_or_str)
+
+	var key := toughness.to_lower()
+	var obj_data: Dictionary = BREAKING_OBJECTS_TABLE.get(key, BREAKING_OBJECTS_TABLE.get("ordinary", {}))
+	var base_step := 1 # Base feat check is +d4
+	var total_step := base_step + _as_int(obj_data.get("step_modifier", 0))
+	return {
+		"target_score": str_score,
+		"ordinary": str_score,
+		"good": int(floor(str_score / 2.0)),
+		"amazing": int(floor(str_score / 4.0)),
+		"marginal": str_score + 1,
+		"step": total_step,
+		"situation_die": action_step_die(total_step),
+		"toughness": String(obj_data.get("toughness", "Ordinary")),
+		"durability": String(obj_data.get("durability", "Fragile")),
+		"examples": String(obj_data.get("examples", "")),
+	}
 
 
 func action_check(character: Dictionary) -> Dictionary:

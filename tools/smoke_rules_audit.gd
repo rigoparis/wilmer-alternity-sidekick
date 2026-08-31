@@ -1,7 +1,7 @@
-﻿extends SceneTree
+extends SceneTree
 
-# Exhaustive rules audit testing all Core tables (P1-P30, G1-G3), Species & Profession mechanics,
-# Age modifiers, Encumbrance, Check resolution, and Damage propagation.
+# Exhaustive rules audit testing all Core tables (P1-P30, G1-G21), Species & Profession mechanics,
+# Ability feats, Passive/Active architecture, Encumbrance, Check resolution, and Damage propagation.
 
 func _init() -> void:
 	print("--- Running Alternity Rules Engine Audit ---")
@@ -367,6 +367,98 @@ func _init() -> void:
 		if m.contains("Fraal Psionic Talents"):
 			found_fraal_msg = true
 	assert_true.call(found_fraal_msg, "Fraal non-Mindwalker talent with non-telepathy specialty triggers validation warning")
+
+	# --- 16. Ability Feat Checks vs Untrained Scores ---
+	print("Testing Ability Feat Checks vs Untrained Scores...")
+	var feat_hero: Dictionary = rules.default_character()
+	feat_hero["species_id"] = 1 # Fraal (INT limits 9-15)
+	feat_hero["abilities"]["STR"] = 11
+	feat_hero["abilities"]["INT"] = 15
+	rules.ensure_character_shape(feat_hero)
+
+	# Feat Check Scores
+	var str_feat: Dictionary = rules.feat_check_score(feat_hero, "STR")
+	assert_eq.call(str_feat.target_score, 11, "STR 11 feat target score is 11")
+	assert_eq.call(str_feat.ordinary, 11, "STR 11 feat ordinary is 11")
+	assert_eq.call(str_feat.good, 5, "STR 11 feat good is 5")
+	assert_eq.call(str_feat.amazing, 2, "STR 11 feat amazing is 2")
+	assert_eq.call(str_feat.marginal, 12, "STR 11 feat marginal is 12")
+	assert_eq.call(str_feat.base_die, "+d4", "Feat base situation die is +d4")
+
+	var int_feat: Dictionary = rules.feat_check_score(feat_hero, "INT")
+	assert_eq.call(int_feat.target_score, 15, "INT 15 feat target score is 15")
+	assert_eq.call(int_feat.ordinary, 15, "INT 15 feat ordinary is 15")
+	assert_eq.call(int_feat.good, 7, "INT 15 feat good is 7")
+	assert_eq.call(int_feat.amazing, 3, "INT 15 feat amazing is 3")
+
+	# Untrained Ability Scores (floor(Stat / 2))
+	assert_eq.call(rules.untrained_ability_score(feat_hero, "STR"), 5, "STR 11 untrained score is 5")
+	assert_eq.call(rules.untrained_ability_score(feat_hero, "INT"), 7, "INT 15 untrained score is 7")
+
+	# Feat Check Resolution
+	var feat_res: Dictionary = rules.resolve_feat_check(feat_hero, "STR", 5, 0) # Control 5 + Sit 0 = 5 <= 5 (Good)
+	assert_eq.call(feat_res.degree, "Good", "5 + 0 = 5 vs 11 is Good")
+
+	# --- 17. Active vs Passive Ability Architecture ---
+	print("Testing Active vs Passive Ability Architecture...")
+	# Passive Resistance: STR, DEX, INT, WIL
+	assert_true.call(rules.is_passive_resistance_ability("STR"), "STR is passive resistance ability")
+	assert_true.call(rules.is_passive_resistance_ability("DEX"), "DEX is passive resistance ability")
+	assert_true.call(rules.is_passive_resistance_ability("INT"), "INT is passive resistance ability")
+	assert_true.call(rules.is_passive_resistance_ability("WIL"), "WIL is passive resistance ability")
+	assert_eq.call(rules.is_passive_resistance_ability("CON"), false, "CON is NOT passive resistance ability")
+	assert_eq.call(rules.is_passive_resistance_ability("PER"), false, "PER is NOT passive resistance ability")
+
+	# Passive RM for CON is 0 (CON has no RM). STR and PER evaluate Table P2.
+	var hero_passive: Dictionary = rules.default_character()
+	hero_passive["abilities"]["STR"] = 14 # RM +2
+	hero_passive["abilities"]["CON"] = 14 # Passive RM = 0
+	hero_passive["abilities"]["PER"] = 14 # RM +2 (Active social)
+	rules.ensure_character_shape(hero_passive)
+	assert_eq.call(rules.character_resistance_modifier(hero_passive, "STR"), 2, "STR 14 passive RM is +2")
+	assert_eq.call(rules.character_resistance_modifier(hero_passive, "CON"), 0, "CON 14 RM is 0 (no RM)")
+	assert_eq.call(rules.character_resistance_modifier(hero_passive, "PER"), 2, "PER 14 RM is +2")
+
+	# --- 18. Raw Strength Feats & Breaking Objects (Table G21) ---
+	print("Testing Raw Strength Feats & Breaking Objects...")
+	var str12_lifts: Dictionary = rules.lifting_capacity(12)
+	assert_eq.call(str12_lifts.automatic_lift_kg, 24.0, "STR 12 automatic lift = 24kg (2x)")
+	assert_eq.call(str12_lifts.marginal_feat_kg, 36.0, "STR 12 marginal feat = 36kg (3x)")
+	assert_eq.call(str12_lifts.slight_feat_kg, 60.0, "STR 12 slight feat = 60kg (5x)")
+	assert_eq.call(str12_lifts.max_lift_kg, 72.0, "STR 12 max lift = 72kg (6x)")
+
+	# Breaking Objects Table G21
+	var brk_ord: Dictionary = rules.breaking_object_feat(12, "ordinary")
+	assert_eq.call(brk_ord.step, 1, "Ordinary breaking object step = 1 (+d4)")
+	assert_eq.call(brk_ord.situation_die, "+d4", "Ordinary breaking object die = +d4")
+
+	var brk_good: Dictionary = rules.breaking_object_feat(12, "good")
+	assert_eq.call(brk_good.step, 2, "Good breaking object step = 2 (+d6)")
+	assert_eq.call(brk_good.situation_die, "+d6", "Good breaking object die = +d6")
+
+	var brk_amaz: Dictionary = rules.breaking_object_feat(12, "amazing")
+	assert_eq.call(brk_amaz.step, 4, "Amazing breaking object step = 4 (+d12)")
+	assert_eq.call(brk_amaz.situation_die, "+d12", "Amazing breaking object die = +d12")
+
+	# --- 19. Heightened Ability Perk & Cascading Advancement ---
+	print("Testing Heightened Ability Perk & Cascading Advancement...")
+	var perk_char: Dictionary = rules.default_character()
+	perk_char["species_id"] = 0 # Human (limits 4-14)
+	perk_char["abilities"]["STR"] = 12
+	perk_char["selected_perks"] = {"heightened_ability": 10}
+	perk_char["heightened_ability_stat"] = "STR"
+	rules.ensure_character_shape(perk_char)
+	var eff_perk: Dictionary = rules.effective_abilities(perk_char)
+	assert_eq.call(eff_perk.STR, 13, "STR 12 + Heightened Ability = 13")
+
+	# Clamped to species max
+	var perk_max_char: Dictionary = rules.default_character()
+	perk_max_char["species_id"] = 0
+	perk_max_char["abilities"]["STR"] = 14
+	perk_max_char["selected_perks"] = {"heightened_ability": 10}
+	perk_max_char["heightened_ability_stat"] = "STR"
+	rules.ensure_character_shape(perk_max_char)
+	assert_eq.call(rules.effective_abilities(perk_max_char).STR, 14, "Heightened Ability clamped to species max 14")
 
 	print("\n--- Audit Summary: %d Passed, %d Failed ---" % [results["pass"], results["fail"]])
 	if results["fail"] == 0:

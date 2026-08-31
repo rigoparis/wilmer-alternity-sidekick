@@ -115,6 +115,16 @@ const STARTING_FUNDS_BY_PROFESSION := {
 	7: "5d12",  # Diplomat (Mindwalker)
 }
 
+## Passive Resistance Abilities (Table P2): STR, DEX, INT, WIL. CON and PER have no passive RM.
+const PASSIVE_RESISTANCE_ABILITIES := ["STR", "DEX", "INT", "WIL"]
+
+## Table G21: Breaking Objects via Strength Feats. Source: Gamemaster Guide p. 21.
+const BREAKING_OBJECTS_TABLE := {
+	"ordinary": {"toughness": "Ordinary", "durability": "Fragile", "step_modifier": 0, "situation_die": "+d4", "examples": "Standard doors, furniture, glass"},
+	"good":     {"toughness": "Good",     "durability": "Average", "step_modifier": 1, "situation_die": "+d6", "examples": "Reinforced doors, light metal bulkheads"},
+	"amazing":  {"toughness": "Amazing",  "durability": "High",    "step_modifier": 3, "situation_die": "+d12", "examples": "Armored airlocks, reinforced steel"},
+}
+
 const ENCUMBRANCE_TIERS := [
 	{"name": "Normal", "limit_multiplier": 2.0, "movement_multiplier": 1.0, "penalty": 0},
 	{"name": "Heavy", "limit_multiplier": 4.0, "movement_multiplier": 0.75, "penalty": 1},
