@@ -66,6 +66,17 @@ static func serialize(snapshot_data: Dictionary) -> String:
 	return JSON.stringify(snapshot_data, "\t", true) + "\n"
 
 
+## Serialized form with numeric types normalized, for comparing a live value
+## against one parsed back from a golden file.
+##
+## Godot's JSON parser returns a float for every number, so a live Dictionary
+## holding int 9 and the same value parsed from disk (9.0) serialize as "9" and
+## "9.0". Pushing both through an encode/decode cycle puts them in the same
+## representation, so a comparison reports real differences only.
+static func canonical(value: Variant) -> String:
+	return JSON.stringify(JSON.parse_string(JSON.stringify(value)), "\t", true)
+
+
 ## Recursively collect human-readable differences, most useful first.
 ## Returns paths like: summary/durability/stun
 static func diff(expected: Variant, actual: Variant, path: String = "") -> Array:
