@@ -10,7 +10,7 @@
 		},
 		"achievement_level": 5,
 		"achievement_points": 30,
-		"achievement_points_available": 30,
+		"achievement_points_available": 0,
 		"achievement_points_spent_other": 0,
 		"age_category": "young_adult",
 		"career": "Marine",
@@ -126,8 +126,9 @@
 		"achievement_points": 30,
 		"achievement_points_for_sp": 30,
 		"achievements.achievement_next_level_points": 40,
-		"achievements.achievement_points_available": 30,
-		"achievements.achievement_points_used": 0,
+		"achievements.achievement_points_available": 0,
+		"achievements.achievement_points_to_next_level": 10,
+		"achievements.achievement_points_used": 30,
 		"achievements.achievement_skill_bonus": 0,
 		"achievements.selected_achievements": [
 			{

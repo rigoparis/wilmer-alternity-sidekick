@@ -20,6 +20,7 @@ func _init() -> void:
 	_test_event_log()
 	_test_private_chat()
 	_test_reconnect_flow()
+	_test_ap_awards()
 	_test_persistence()
 
 	finish()
@@ -160,6 +161,41 @@ func _test_reconnect_flow() -> void:
 	# An unknown id is a new player, not a reconnect -- the caller needs that
 	# distinction to decide between seating them and resuming them.
 	check_false(restored.mark_seen(Session.new_id()), "an unknown id is not a reconnect")
+
+
+func _test_ap_awards() -> void:
+	var session := Session.new("AP Test Campaign")
+	var gm := session.add_seat("GM")
+	var bob := session.add_seat("Bob", "Bob_Hero.json")
+	var carol := session.add_seat("Carol", "Carol_Hero.json")
+	session.set_gm(gm)
+
+	# 1. Direct AP Award to individual seat
+	var award_event := session.award_ap(bob, 3, Session.AP_REASON_COMPLETION)
+	check_eq(award_event["kind"], Session.EVENT_AP_AWARD, "award event recorded")
+	check_eq(session.get_seat_ap(bob), 3, "Bob has 3 AP after award")
+	check_eq(session.get_pending_ap_awards(bob).size(), 1, "Bob has 1 pending award")
+
+	# 2. Table-wide AP Award (e.g. roleplaying bonus for everyone)
+	session.award_table_ap(1, Session.AP_REASON_ROLEPLAYING)
+	check_eq(session.get_seat_ap(bob), 4, "Bob now has 4 AP (3 + 1)")
+	check_eq(session.get_seat_ap(carol), 1, "Carol has 1 AP from table award")
+	check_eq(session.get_seat_ap(gm), 0, "GM does not receive player AP awards")
+
+	# 3. Disconnected Player persistence: awards survive disconnection & serialization
+	var serialized := session.to_dict()
+	var restored := Session.from_dict(JSON.parse_string(JSON.stringify(serialized)))
+	check_eq(restored.get_seat_ap(bob), 4, "Bob AP survives persistence")
+	check_eq(restored.get_pending_ap_awards(bob).size(), 2, "Pending awards survive persistence")
+
+	# 4. Claiming pending awards
+	var claimed := restored.claim_pending_ap_awards(bob)
+	check_eq(claimed.size(), 2, "Claimed 2 awards for Bob")
+	check_eq(restored.get_pending_ap_awards(bob).size(), 0, "Pending awards cleared after claim")
+
+	# 5. GM Manual AP override
+	session.set_seat_ap(carol, 15, "GM Level Set")
+	check_eq(session.get_seat_ap(carol), 15, "Carol AP manually overridden to 15")
 
 
 func _test_persistence() -> void:

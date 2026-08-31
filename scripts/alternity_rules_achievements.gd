@@ -37,13 +37,18 @@ func set_achievement_points(character: Dictionary, points: int) -> void:
 
 
 func achievement_points_used(character: Dictionary) -> int:
-	var skill_points_from_achievements: int = max(0, _get_parent().skill_points_used(character) - _get_parent().starting_skill_budget(character) - achievement_skill_bonus(character))
-	var other_spending: int = max(0, AlternityNum.as_int(character.get("achievement_points_spent_other", 0)))
-	return skill_points_from_achievements + other_spending
+	var total_ap := AlternityNum.as_int(character.get("achievement_points", 0))
+	return achievement_points_for_current_level(total_ap)
 
 
 func achievement_points_available(character: Dictionary) -> int:
-	return AlternityNum.as_int(character.get("achievement_points", 0)) - achievement_points_used(character)
+	var total_ap := AlternityNum.as_int(character.get("achievement_points", 0))
+	return max(0, total_ap - achievement_points_used(character))
+
+
+func achievement_points_to_next_level(character: Dictionary) -> int:
+	var total_ap := AlternityNum.as_int(character.get("achievement_points", 0))
+	return max(0, achievement_next_level_points(total_ap) - total_ap)
 
 
 func achievement_skill_bonus(character: Dictionary) -> int:

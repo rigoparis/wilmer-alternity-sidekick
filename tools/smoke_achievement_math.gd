@@ -30,4 +30,21 @@ func _init() -> void:
 			"achievement_next_level_points(%d)" % case[0]
 		)
 
+	# AP used, available, and to_next_level calculations
+	var char_data := rules.default_character()
+	rules.ensure_character_shape(char_data)
+
+	# Level 1 (0 AP)
+	rules.achievements.set_achievement_points(char_data, 0)
+	check_eq(achievements.achievement_points_used(char_data), 0, "Level 1 used AP is 0")
+	check_eq(achievements.achievement_points_available(char_data), 0, "Level 1 available AP is 0")
+	check_eq(achievements.achievement_points_to_next_level(char_data), 6, "Level 1 needs 6 AP for Level 2")
+
+	# Level 2 with rollover (10 AP: 6 used for Level 2, 4 progress towards Level 3)
+	rules.achievements.set_achievement_points(char_data, 10)
+	check_eq(char_data["achievement_level"], 2, "10 AP is Level 2")
+	check_eq(achievements.achievement_points_used(char_data), 6, "10 AP character uses 6 AP for Level 2")
+	check_eq(achievements.achievement_points_available(char_data), 4, "10 AP character has 4 AP available progress")
+	check_eq(achievements.achievement_points_to_next_level(char_data), 3, "10 AP character needs 3 AP for Level 3 (at 13)")
+
 	finish()

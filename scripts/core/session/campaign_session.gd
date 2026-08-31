@@ -24,6 +24,14 @@ const EVENT_ROLL := "roll"
 const EVENT_CHAT := "chat"
 const EVENT_NOTE := "note"
 const EVENT_JOIN := "join"
+const EVENT_AP_AWARD := "ap_award"
+const EVENT_AP_SET := "ap_set"
+
+## AP Award reasons based on core Alternity GM guidelines
+const AP_REASON_COMPLETION := "Adventure Completion"
+const AP_REASON_ROLEPLAYING := "Roleplaying Bonus"
+const AP_REASON_HEROISM := "Heroism Bonus"
+const AP_REASON_CUSTOM := "Custom Award"
 
 var campaign_id: String = ""
 var display_name: String = "New Campaign"
@@ -69,6 +77,8 @@ func add_seat(player_name: String, character_file: String = "") -> String:
 		"player_name": player_name,
 		"character_file": character_file,
 		"is_gm": false,
+		"achievement_points": 0,
+		"pending_ap_awards": [],
 		"joined_at": int(Time.get_unix_time_from_system()),
 		"last_seen": 0,
 	})
@@ -181,6 +191,77 @@ func recent_events(count: int) -> Array:
 	if count <= 0 or events.is_empty():
 		return []
 	return events.slice(maxi(0, events.size() - count))
+
+
+## Award achievement points to a player seat.
+## Works whether the player is currently connected or disconnected.
+func award_ap(player_id: String, amount: int, reason: String = AP_REASON_COMPLETION) -> Dictionary:
+	var safe_amount: int = max(0, amount)
+	var seat := seat_for(player_id)
+	var prev_ap: int = AlternityNum.as_int(seat.get("achievement_points", 0)) if not seat.is_empty() else 0
+	var new_ap: int = prev_ap + safe_amount
+
+	if not seat.is_empty():
+		seat["achievement_points"] = new_ap
+		var pending: Array = seat.get("pending_ap_awards", [])
+		pending.append({
+			"amount": safe_amount,
+			"reason": reason,
+			"at": int(Time.get_unix_time_from_system()),
+		})
+		seat["pending_ap_awards"] = pending
+
+	return append_event(EVENT_AP_AWARD, player_id, {
+		"amount": safe_amount,
+		"reason": reason,
+		"previous_ap": prev_ap,
+		"new_ap": new_ap,
+	})
+
+
+## Award achievement points to all seats (e.g. all heroes completing an adventure).
+func award_table_ap(amount: int, reason: String = AP_REASON_COMPLETION) -> Array:
+	var events_out: Array = []
+	for seat in seats:
+		var pid := String(seat.get("player_id", ""))
+		if not pid.is_empty() and not bool(seat.get("is_gm", false)):
+			events_out.append(award_ap(pid, amount, reason))
+	return events_out
+
+
+## Manually set a seat's total achievement points.
+func set_seat_ap(player_id: String, total_ap: int, reason: String = "GM Adjustment") -> Dictionary:
+	var safe_ap: int = max(0, total_ap)
+	var seat := seat_for(player_id)
+	var prev_ap: int = AlternityNum.as_int(seat.get("achievement_points", 0)) if not seat.is_empty() else 0
+
+	if not seat.is_empty():
+		seat["achievement_points"] = safe_ap
+
+	return append_event(EVENT_AP_SET, player_id, {
+		"previous_ap": prev_ap,
+		"new_ap": safe_ap,
+		"reason": reason,
+	})
+
+
+func get_seat_ap(player_id: String) -> int:
+	var seat := seat_for(player_id)
+	return AlternityNum.as_int(seat.get("achievement_points", 0)) if not seat.is_empty() else 0
+
+
+func get_pending_ap_awards(player_id: String) -> Array:
+	var seat := seat_for(player_id)
+	return seat.get("pending_ap_awards", []).duplicate(true) if not seat.is_empty() else []
+
+
+func claim_pending_ap_awards(player_id: String) -> Array:
+	var seat := seat_for(player_id)
+	if seat.is_empty():
+		return []
+	var pending: Array = seat.get("pending_ap_awards", []).duplicate(true)
+	seat["pending_ap_awards"] = []
+	return pending
 
 
 func set_campaign_optional_rule(rule_id: String, enabled: bool) -> void:

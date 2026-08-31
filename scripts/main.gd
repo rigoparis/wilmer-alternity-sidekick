@@ -1239,7 +1239,10 @@ func _achievement_level_label(points: int) -> String:
 
 
 func _achievement_next_level_label(points: int) -> String:
-	return "Next level at %d achievement points" % rules.achievements.achievement_next_level_points(points)
+	var next_pts: int = rules.achievements.achievement_next_level_points(points)
+	var needed: int = maxi(0, next_pts - points)
+	var next_lvl: int = rules.achievements.achievement_level_for_points(points) + 1
+	return "%d AP needed for Level %d (at %d total AP)" % [needed, next_lvl, next_pts]
 
 
 func _achievement_usage_text(summary: Dictionary) -> String:
@@ -2015,14 +2018,20 @@ func _render_achievements() -> void:
 	var summary := rules.summary(character)
 	var box := UIBuilder.add_section(content, "Achievements", null, color_surface, color_border, color_text)
 	_add_metric(box, "Hero Level", str(rules._as_int(summary.get("achievement_level", 1))))
-	_add_metric(box, "Achievement Points", "%d total, %d used, %d available" % [
+	_add_metric(box, "Achievement Points (AP)", "%d total, %d used for levels, %d available" % [
 		rules._as_int(summary.get("achievement_points", 0)),
 		rules._as_int(summary.get("achievements.achievement_points_used", 0)),
 		rules._as_int(summary.get("achievements.achievement_points_available", 0)),
 	])
-	_add_metric(box, "Skill Points Used/Available", "%d/%d" % [
+	_add_metric(box, "Next Level Goal", "%d AP needed for Level %d (at %d total AP)" % [
+		rules._as_int(summary.get("achievements.achievement_points_to_next_level", 0)),
+		rules._as_int(summary.get("achievement_level", 1)) + 1,
+		rules._as_int(summary.get("achievements.achievement_next_level_points", 6)),
+	])
+	_add_metric(box, "Skill Points (SP)", "%d Used / %d Available (Budget: %d SP)" % [
 		rules._as_int(summary.get("skill_points_used", 0)),
 		rules._as_int(summary.get("skill_points_remaining", 0)),
+		rules._as_int(summary.get("skill_budget", 0)),
 	])
 	_add_metric(box, "Achievement Benefit Cost", "%d SP" % rules._as_int(summary.get("achievement_benefit_points_used", 0)))
 
@@ -3381,7 +3390,7 @@ func _render_skill_picker(budget_box: VBoxContainer, catalog_box: VBoxContainer,
 		_add_progress_metric(budget_box, "Broad Skills Used/Available", summary["broad_skills_used"], summary["max_broad_skills"], "%d / %d" % [summary["broad_skills_used"], summary["broad_skills_remaining"]])
 	var sold_count := rules._as_int(summary.get("sold_broads_count", 0))
 	var base_starting := rules._as_int(summary.get("starting_skill_budget", 0)) - (sold_count * 3)
-	var budget_note := "Starting %d + %d AP" % [
+	var budget_note := "Starting %d + %d Level SP" % [
 		base_starting,
 		rules._as_int(summary.get("achievement_points_for_sp", 0)),
 	]
@@ -4562,13 +4571,17 @@ func _render_summary() -> void:
 	], 18, color_text)
 	if not String(character.get("career", "")).is_empty():
 		UIBuilder.add_text(overview, String(character.get("career", "")), 13, color_muted)
-	UIBuilder.add_text(overview, "Level %d  |  AP %d total, %d used, %d available" % [
+	UIBuilder.add_text(overview, "Level %d  |  AP: %d total (%d used, %d available)" % [
 		rules._as_int(summary.get("achievement_level", 1)),
 		rules._as_int(summary.get("achievement_points", 0)),
 		rules._as_int(summary.get("achievements.achievement_points_used", 0)),
 		rules._as_int(summary.get("achievements.achievement_points_available", 0)),
 	], 13, color_muted)
-	UIBuilder.add_text(overview, "Next level at %d AP" % rules._as_int(summary.get("achievements.achievement_next_level_points", 0)), 12, color_muted)
+	UIBuilder.add_text(overview, "%d AP needed for Level %d (at %d AP)" % [
+		rules._as_int(summary.get("achievements.achievement_points_to_next_level", 0)),
+		rules._as_int(summary.get("achievement_level", 1)) + 1,
+		rules._as_int(summary.get("achievements.achievement_next_level_points", 0)),
+	], 12, color_muted)
 	_add_compact_abilities(overview)
 	var action: Dictionary = summary["action_check"]
 	_add_metric(overview, "Action Check Score", "M%d / O%d / G%d / A%d  %s" % [

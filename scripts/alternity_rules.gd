@@ -1682,6 +1682,7 @@ func summary(character: Dictionary) -> Dictionary:
 		"achievements.achievement_points_used": achievement_used,
 		"achievements.achievement_points_available": achievement_available,
 		"achievements.achievement_next_level_points": achievements.achievement_next_level_points(achievement_points),
+		"achievements.achievement_points_to_next_level": achievements.achievement_points_to_next_level(character),
 		"achievements.achievement_skill_bonus": achievements.achievement_skill_bonus(character),
 		"starting_skill_budget": starting_skill_budget(character),
 		"sold_broads_count": sold_broads_count,

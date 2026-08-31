@@ -626,6 +626,43 @@ func _init() -> void:
 	for d in dice_pool:
 		assert_true.call(d >= 1 and d <= 6, "Each Method III die is between 1 and 6")
 
+	# --- 24. Table P28 Achievement Points & Leveling Economy ---
+	print("Testing Table P28 AP & Leveling Economy...")
+	var ap_char: Dictionary = rules.default_character()
+	rules.ensure_character_shape(ap_char)
+
+	# Level 1 (0 AP) -> 0 AP used, 0 AP available, 6 AP needed for Level 2
+	rules.achievements.set_achievement_points(ap_char, 0)
+	var ap_sum_1 := rules.summary(ap_char)
+	assert_eq.call(ap_sum_1["achievement_level"], 1, "0 AP is Level 1")
+	assert_eq.call(ap_sum_1["achievements.achievement_points_used"], 0, "Level 1 used AP is 0")
+	assert_eq.call(ap_sum_1["achievements.achievement_points_available"], 0, "Level 1 available AP is 0")
+	assert_eq.call(ap_sum_1["achievements.achievement_points_to_next_level"], 6, "Level 1 needs 6 AP for Level 2")
+
+	# Level 2 (6 AP) -> 6 AP used, 0 AP available, 7 AP needed for Level 3 (at 13 AP)
+	rules.achievements.set_achievement_points(ap_char, 6)
+	var ap_sum_2 := rules.summary(ap_char)
+	assert_eq.call(ap_sum_2["achievement_level"], 2, "6 AP is Level 2")
+	assert_eq.call(ap_sum_2["achievements.achievement_points_used"], 6, "Level 2 used AP is 6")
+	assert_eq.call(ap_sum_2["achievements.achievement_points_available"], 0, "Level 2 available AP is 0")
+	assert_eq.call(ap_sum_2["achievements.achievement_points_to_next_level"], 7, "Level 2 needs 7 AP for Level 3 (at 13)")
+
+	# Level 2 with Rollover (10 AP) -> 6 AP used, 4 AP available progress, 3 AP needed for Level 3
+	rules.achievements.set_achievement_points(ap_char, 10)
+	var ap_sum_3 := rules.summary(ap_char)
+	assert_eq.call(ap_sum_3["achievement_level"], 2, "10 AP is Level 2")
+	assert_eq.call(ap_sum_3["achievements.achievement_points_used"], 6, "10 AP uses 6 AP for Level 2")
+	assert_eq.call(ap_sum_3["achievements.achievement_points_available"], 4, "10 AP has 4 AP available progress")
+	assert_eq.call(ap_sum_3["achievements.achievement_points_to_next_level"], 3, "10 AP needs 3 AP for Level 3 (at 13)")
+
+	# Level 5 (30 AP) -> 30 AP used, 0 AP available, 10 AP needed for Level 6 (at 40 AP)
+	rules.achievements.set_achievement_points(ap_char, 30)
+	var ap_sum_4 := rules.summary(ap_char)
+	assert_eq.call(ap_sum_4["achievement_level"], 5, "30 AP is Level 5")
+	assert_eq.call(ap_sum_4["achievements.achievement_points_used"], 30, "30 AP uses 30 AP for Level 5")
+	assert_eq.call(ap_sum_4["achievements.achievement_points_available"], 0, "30 AP has 0 AP available progress")
+	assert_eq.call(ap_sum_4["achievements.achievement_points_to_next_level"], 10, "30 AP needs 10 AP for Level 6 (at 40)")
+
 	print("\n--- Audit Summary: %d Passed, %d Failed ---" % [results["pass"], results["fail"]])
 	if results["fail"] == 0:
 		print("ALL ALTERNITY RULES AUDIT TESTS PASSED SUCCESSFULLY!")
