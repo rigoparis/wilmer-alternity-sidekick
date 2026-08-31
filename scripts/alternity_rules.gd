@@ -1416,6 +1416,17 @@ func _validate_skills(character: Dictionary, messages: Array) -> void:
 			messages.append("Broad skills exceed the allowed maximum by %d." % abs(broad_remaining))
 
 	var selected: Dictionary = character.get("selected_skills", {})
+	var species_info := get_species_by_id(_as_int(character.get("species_id", 0)))
+	var prof_id := _as_int(character.get("profession_id", 0))
+	if String(species_info.get("name", "")) == "Fraal" and prof_id != 6 and prof_id != 7:
+		for key in selected.keys():
+			var skill := get_skill_by_id(_as_int(key))
+			if skill.get("category", "") == "psionic" or skill.get("source", "") == "psionics":
+				var broad_id := _as_int(skill.get("broad_id", -1))
+				if skill.get("type", "") == "specialty" and broad_id != 525 and broad_id != 901:
+					messages.append("Fraal Psionic Talents (non-Mindwalkers) must select all specialty skills from the Telepathy discipline. Source: Player's Handbook p. 22.")
+					break
+
 	for key in selected.keys():
 		var skill := get_skill_by_id(_as_int(key))
 		var rank := skill_rank(character, _as_int(key))
@@ -1453,6 +1464,15 @@ func _validate_achievements(character: Dictionary, messages: Array) -> void:
 
 
 func _validate_mutations(character: Dictionary, messages: Array) -> void:
+	var raw_mutations: Dictionary = character.get("mutations", {})
+	var raw_adv: Array = raw_mutations.get("advantages", [])
+	var raw_drawbacks: Array = raw_mutations.get("drawbacks", [])
+	var has_mutation_data: bool = not raw_adv.is_empty() or not raw_drawbacks.is_empty()
+	var species_info := get_species_by_id(_as_int(character.get("species_id", 0)))
+	var species_name := String(species_info.get("name", ""))
+	if (mutations.mutations_enabled(character) or has_mutation_data) and (species_name != "Human" and species_name != "Mutant"):
+		messages.append("Mutations are only available to human heroes. Source: Player's Handbook Chapter 13.")
+
 	if mutations.mutations_enabled(character):
 		var advantages := mutations.selected_mutation_advantages(character)
 		var drawbacks := mutations.selected_mutation_drawbacks(character)
@@ -1664,6 +1684,96 @@ func apply_damage(character: Dictionary, attack_damage: int, damage_type: String
 		"secondary_wound": secondary_wound,
 		"damage": damage,
 	}
+
+
+## Table G1: Returns the age category boundary thresholds for a species and Progress Level.
+## Progress Levels supported: 0 to 9. Source: Gamemaster Guide p. 21.
+func age_thresholds_for_species(species_val, pl: int = 5) -> Dictionary:
+	var species_key := "human"
+	if typeof(species_val) == TYPE_INT:
+		var sp := get_species_by_id(species_val)
+		species_key = String(sp.get("name", "human")).to_lower().replace("'", "_")
+	elif typeof(species_val) == TYPE_STRING:
+		species_key = species_val.to_lower().replace("'", "_")
+
+	var species_data: Dictionary = AGE_THRESHOLDS_TABLE.get(species_key, AGE_THRESHOLDS_TABLE.get("human", {}))
+	var pl_idx := 0
+	if pl <= 3:
+		pl_idx = 0
+	elif pl == 4:
+		pl_idx = 1
+	elif pl == 5:
+		pl_idx = 2
+	elif pl == 6:
+		pl_idx = 3
+	elif pl == 7:
+		pl_idx = 4
+	elif pl == 8:
+		pl_idx = 5
+	else:
+		pl_idx = 6
+
+	var ad_list: Array = species_data.get("adolescent", [17, 17, 17, 17, 17, 17, 17])
+	var ya_list: Array = species_data.get("young_adult", [25, 25, 25, 35, 50, 72, 99])
+	var ma_list: Array = species_data.get("mature", [40, 40, 40, 79, 122, 229, 549])
+	var md_list: Array = species_data.get("middle_aged", [62, 62, 62, 130, 172, 304, 849])
+	var od_list: Array = species_data.get("old", [85, 85, 85, 153, 201, 349, 999])
+	var an_dice: Array = species_data.get("ancient_die", ["+2d12", "+2d12", "+2d12", "+3d12", "+4d12", "+6d12", "+10d12"])
+
+	return {
+		"adolescent": _as_int(ad_list[pl_idx]),
+		"young_adult": _as_int(ya_list[pl_idx]),
+		"mature": _as_int(ma_list[pl_idx]),
+		"middle_aged": _as_int(md_list[pl_idx]),
+		"old": _as_int(od_list[pl_idx]),
+		"ancient_die": String(an_dice[pl_idx]),
+	}
+
+
+## Determines the age category string for a hero's chronological age in years at a given PL.
+func age_category_for_years(species_val, age_years: int, pl: int = 5) -> String:
+	var thresholds := age_thresholds_for_species(species_val, pl)
+	if age_years < _as_int(thresholds.get("adolescent", 17)):
+		return "adolescent"
+	elif age_years < _as_int(thresholds.get("young_adult", 25)):
+		return "young_adult"
+	elif age_years < _as_int(thresholds.get("mature", 40)):
+		return "mature"
+	elif age_years < _as_int(thresholds.get("middle_aged", 62)):
+		return "middle_aged"
+	elif age_years < _as_int(thresholds.get("old", 85)):
+		return "old"
+	else:
+		return "ancient"
+
+
+## Table P30: Returns starting funds dice expression for a profession.
+func starting_funds_dice(character_or_prof_id) -> String:
+	var prof_id := 0
+	if typeof(character_or_prof_id) == TYPE_DICTIONARY:
+		prof_id = _as_int(character_or_prof_id.get("profession_id", 0))
+	else:
+		prof_id = _as_int(character_or_prof_id)
+	return String(STARTING_FUNDS_BY_PROFESSION.get(prof_id, "5d6"))
+
+
+## Table G2: Returns the random ability roll formulas for a profession.
+func roll_random_abilities_by_profession(profession_id: int) -> Dictionary:
+	var prof_key := "combat_spec"
+	match profession_id:
+		0: prof_key = "combat_spec"
+		1, 2, 3, 7: prof_key = "diplomat"
+		4: prof_key = "free_agent"
+		5: prof_key = "tech_op"
+		6: prof_key = "mindwalker"
+	return RANDOM_ABILITY_ROLLS_BY_PROFESSION.get(prof_key, {})
+
+
+## Table G3: Returns the random ability roll formulas for a species.
+func roll_random_abilities_by_species(species_id: int) -> Dictionary:
+	var sp := get_species_by_id(species_id)
+	var sp_key := String(sp.get("name", "human")).to_lower().replace("'", "_")
+	return RANDOM_ABILITY_ROLLS_BY_SPECIES.get(sp_key, RANDOM_ABILITY_ROLLS_BY_SPECIES.get("human", {}))
 
 
 func skill_detail(skill: Dictionary, character: Dictionary = {}) -> Dictionary:

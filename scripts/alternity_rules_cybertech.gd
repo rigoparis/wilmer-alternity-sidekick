@@ -32,15 +32,11 @@ func cyber_tolerance_total(character: Dictionary) -> int:
 	var abilities: Dictionary = _get_parent().effective_abilities(character)
 	var con: int = AlternityNum.as_int(abilities.get("CON", 10))
 	var species_id: int = AlternityNum.as_int(character.get("species_id", -1))
-	# Mechalus species_id is typically 5 (assuming based on Alternity lore, but we'll check name)
-	var is_mechalus = false
-	for item in _get_parent().species:
-		if String(item.get("name", "")) == "Mechalus" and AlternityNum.as_int(item.get("id", -1)) == species_id:
-			is_mechalus = true
-			break
-	if is_mechalus:
+	var species_info: Dictionary = _get_parent().get_species_by_id(species_id)
+	if String(species_info.get("name", "")) == "Mechalus":
 		return con + 4
 	return con
+
 
 func cyber_tolerance_breakdown(character: Dictionary) -> Dictionary:
 	var total := cyber_tolerance_total(character)

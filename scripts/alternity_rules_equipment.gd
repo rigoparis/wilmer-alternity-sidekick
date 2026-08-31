@@ -230,6 +230,9 @@ func equipment_summary(character: Dictionary) -> Dictionary:
 			combat_armor.append(row)
 			if bool(row.get("equipped", false)):
 				equipped_armor.append(row)
+	for natural_armor in species_armor_rows(character):
+		combat_armor.append(natural_armor)
+		equipped_armor.append(natural_armor)
 	for mutation_armor in _get_parent().mutations.mutation_armor_rows(character):
 		combat_armor.append(mutation_armor)
 		equipped_armor.append(mutation_armor)
@@ -248,8 +251,54 @@ func equipment_summary(character: Dictionary) -> Dictionary:
 	}
 
 
+func species_armor_rows(character: Dictionary) -> Array:
+	var rows := []
+	var species_id := AlternityNum.as_int(character.get("species_id", -1))
+	var species_info: Dictionary = _get_parent().get_species_by_id(species_id)
+	if String(species_info.get("name", "")) == "T'sa":
+		rows.append({
+			"name": "Natural Scaled Hide",
+			"type": "armor",
+			"equipped": true,
+			"slot": "Natural",
+			"total_mass": 0.0,
+			"total_cost": 0,
+			"item": {
+				"name": "Natural Scaled Hide",
+				"armor_li": "d4+1",
+				"armor_hi": "d4",
+				"armor_en": "d4-1",
+			}
+		})
+	return rows
+
+
+func species_attack_forms(character: Dictionary) -> Array:
+	var forms := []
+	var species_id := AlternityNum.as_int(character.get("species_id", -1))
+	var species_info: Dictionary = _get_parent().get_species_by_id(species_id)
+	if String(species_info.get("name", "")) == "Weren":
+		var score := _combat_skill_score(character, 15) # Unarmed Attack-brawl
+		var abilities: Dictionary = _get_parent().effective_abilities(character)
+		var strength_bonus := strength_damage_bonus(AlternityNum.as_int(abilities.get("STR", 10)))
+		forms.append({
+			"name": "Natural Claws",
+			"score": _score_text(score),
+			"base_die": _get_parent().action_step_die(AlternityNum.as_int(score.get("step", 0))),
+			"type": "LI/O",
+			"range": "Personal",
+			"damage": _damage_with_bonus("d4w/d4+2w/d4m", strength_bonus),
+			"hide": "-",
+			"clip_size": "-",
+			"mass": "",
+		})
+	return forms
+
+
 func attack_forms_for_character(character: Dictionary) -> Array:
 	var forms := [_unarmed_attack_form(character)]
+	for form in species_attack_forms(character):
+		forms.append(form)
 	for row in carried_equipment(character):
 		var item: Dictionary = row.get("item", {})
 		if not equipment_has_combat_role(item, "weapon"):

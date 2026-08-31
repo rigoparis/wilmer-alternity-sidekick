@@ -30,6 +30,91 @@ const AGE_MODIFIERS := {
 	"ancient": {"STR": -1, "CON": -1, "DEX": -1},
 }
 
+## Table G1: Age Thresholds by Species and Progress Level (PL 0-3 through PL 9).
+## Source: Gamemaster Guide p. 21.
+## Format: [PL 0-3, PL 4, PL 5, PL 6, PL 7, PL 8, PL 9]
+const AGE_THRESHOLDS_TABLE := {
+	"human": {
+		"adolescent": [12, 15, 17, 17, 17, 17, 17],
+		"young_adult": [15, 21, 25, 35, 50, 72, 99],
+		"mature": [28, 35, 40, 79, 122, 229, 549],
+		"middle_aged": [41, 51, 62, 130, 172, 304, 849],
+		"old": [50, 63, 85, 153, 201, 349, 999],
+		"ancient_die": ["+2d12", "+2d12", "+2d12", "+3d12", "+4d12", "+6d12", "+10d12"],
+	},
+	"fraal": {
+		"adolescent": [17, 22, 27, 27, 27, 27, 27],
+		"young_adult": [32, 49, 61, 85, 113, 147, 169],
+		"mature": [50, 77, 100, 136, 195, 259, 272],
+		"middle_aged": [78, 118, 153, 205, 287, 362, 386],
+		"old": [119, 176, 225, 287, 389, 489, 517],
+		"ancient_die": ["+2d12", "+3d12", "+2d20", "+3d20", "+4d20", "+5d20", "+6d20"],
+	},
+	"mechalus": {
+		"adolescent": [14, 17, 23, 23, 23, 23, 23],
+		"young_adult": [23, 27, 41, 57, 72, 95, 121],
+		"mature": [32, 47, 69, 95, 124, 159, 201],
+		"middle_aged": [49, 69, 94, 134, 175, 223, 275],
+		"old": [64, 89, 123, 178, 231, 296, 366],
+		"ancient_die": ["+d8", "+d12", "+3d12", "+4d12", "+6d12", "+4d20", "+6d20"],
+	},
+	"sesheyan": {
+		"adolescent": [13, 15, 18, 18, 18, 18, 18],
+		"young_adult": [21, 25, 31, 37, 53, 75, 89],
+		"mature": [33, 41, 48, 62, 94, 131, 163],
+		"middle_aged": [49, 56, 69, 91, 131, 187, 221],
+		"old": [64, 76, 91, 123, 173, 252, 302],
+		"ancient_die": ["+2d6", "+2d6", "+2d12", "+3d12", "+4d12", "+5d12", "+6d12"],
+	},
+	"t_sa": {
+		"adolescent": [7, 9, 12, 12, 12, 12, 12],
+		"young_adult": [12, 15, 19, 24, 29, 39, 49],
+		"mature": [18, 24, 31, 38, 46, 66, 81],
+		"middle_aged": [25, 34, 41, 52, 64, 94, 111],
+		"old": [33, 45, 54, 69, 81, 119, 141],
+		"ancient_die": ["+d6", "+d6", "+d6", "+d8", "+2d8", "+2d12", "+4d12"],
+	},
+	"weren": {
+		"adolescent": [10, 13, 15, 15, 15, 15, 15],
+		"young_adult": [20, 25, 29, 37, 45, 55, 71],
+		"mature": [35, 40, 47, 64, 76, 83, 112],
+		"middle_aged": [51, 65, 73, 94, 115, 121, 167],
+		"old": [71, 88, 98, 119, 151, 167, 219],
+		"ancient_die": ["+d8", "+d8", "+d12", "+2d12", "+3d12", "+4d12", "+6d12"],
+	},
+}
+
+## Table G2: Random Ability Rolls by Profession. Source: Gamemaster Guide p. 21.
+const RANDOM_ABILITY_ROLLS_BY_PROFESSION := {
+	"combat_spec": {"STR": "10+d4", "DEX": "8+d4",  "CON": "8+d6", "INT": "4+d8",  "WIL": "6+d6", "PER": "4+d8"},
+	"diplomat":    {"STR": "4+d8",  "DEX": "4+d8",  "CON": "4+d8", "INT": "8+d6",  "WIL": "8+d6", "PER": "10+d4"},
+	"free_agent":  {"STR": "6+d6",  "DEX": "10+d4", "CON": "6+d6", "INT": "8+d6",  "WIL": "6+d6", "PER": "6+d6"},
+	"tech_op":     {"STR": "4+d6",  "DEX": "8+d6",  "CON": "4+d6", "INT": "10+d4", "WIL": "8+d6", "PER": "6+d6"},
+	"mindwalker":  {"STR": "4+d6",  "DEX": "4+d8",  "CON": "8+d6", "INT": "8+d6",  "WIL": "10+d4", "PER": "6+d6"},
+}
+
+## Table G3: Random Ability Rolls by Species. Source: Gamemaster Guide p. 21.
+const RANDOM_ABILITY_ROLLS_BY_SPECIES := {
+	"human":    {"STR": "4+d10", "DEX": "4+d10", "CON": "4+d10", "INT": "4+d10", "WIL": "4+d10", "PER": "4+d10"},
+	"fraal":    {"STR": "3+d6",  "DEX": "5+d6",  "CON": "3+d6",  "INT": "11+d4", "WIL": "8+d8",  "PER": "9+d6"},
+	"mechalus": {"STR": "8+d6",  "DEX": "8+d6",  "CON": "4+d8",  "INT": "11+d4", "WIL": "5+d6",  "PER": "3+d8"},
+	"weren":    {"STR": "10+d6", "DEX": "4+d6",  "CON": "9+d6",  "INT": "4+d8",  "WIL": "4+d6",  "PER": "5+d6"},
+	"sesheyan": {"STR": "6+d6",  "DEX": "11+d4", "CON": "4+d6",  "INT": "4+d8",  "WIL": "7+d8",  "PER": "6+d6"},
+	"t_sa":     {"STR": "3+d6",  "DEX": "10+d6", "CON": "4+d6",  "INT": "10+d4", "WIL": "4+d8",  "PER": "7+d6"},
+}
+
+## Table P30: Starting Funds by Profession. Source: Player's Handbook p. 132.
+const STARTING_FUNDS_BY_PROFESSION := {
+	0: "5d6",   # Combat Spec
+	1: "5d12",  # Diplomat (Combat Spec)
+	2: "5d12",  # Diplomat (Free Agent)
+	3: "5d12",  # Diplomat (Tech Op)
+	4: "5d8",   # Free Agent
+	5: "5d8",   # Tech Op
+	6: "5d4",   # Mindwalker
+	7: "5d12",  # Diplomat (Mindwalker)
+}
+
 const ENCUMBRANCE_TIERS := [
 	{"name": "Normal", "limit_multiplier": 2.0, "movement_multiplier": 1.0, "penalty": 0},
 	{"name": "Heavy", "limit_multiplier": 4.0, "movement_multiplier": 0.75, "penalty": 1},
