@@ -30,12 +30,12 @@ func set_cybertech_skill_purchased(character: Dictionary, purchased: bool) -> vo
 
 func cyber_tolerance_total(character: Dictionary) -> int:
 	var abilities: Dictionary = _get_parent().effective_abilities(character)
-	var con: int = _get_parent()._as_int(abilities.get("CON", 10))
-	var species_id: int = _get_parent()._as_int(character.get("species_id", -1))
+	var con: int = AlternityNum.as_int(abilities.get("CON", 10))
+	var species_id: int = AlternityNum.as_int(character.get("species_id", -1))
 	# Mechalus species_id is typically 5 (assuming based on Alternity lore, but we'll check name)
 	var is_mechalus = false
 	for item in _get_parent().species:
-		if String(item.get("name", "")) == "Mechalus" and _get_parent()._as_int(item.get("id", -1)) == species_id:
+		if String(item.get("name", "")) == "Mechalus" and AlternityNum.as_int(item.get("id", -1)) == species_id:
 			is_mechalus = true
 			break
 	if is_mechalus:
@@ -52,7 +52,7 @@ func cyber_tolerance_breakdown(character: Dictionary) -> Dictionary:
 		right = total - left - center
 	var used := 0
 	for item in installed_cybertech(character):
-		var size = _get_parent()._as_int(item.get("item", {}).get("size", item.get("item", {}).get("size_%s" % String(item.get("quality", "ordinary")), 0)))
+		var size = AlternityNum.as_int(item.get("item", {}).get("size", item.get("item", {}).get("size_%s" % String(item.get("quality", "ordinary")), 0)))
 		used += size
 
 	return {
@@ -65,11 +65,11 @@ func cyber_tolerance_breakdown(character: Dictionary) -> Dictionary:
 
 func cykosis_total(character: Dictionary) -> int:
 	var abilities: Dictionary = _get_parent().effective_abilities(character)
-	var will: int = _get_parent()._as_int(abilities.get("WIL", 10))
+	var will: int = AlternityNum.as_int(abilities.get("WIL", 10))
 	return int(ceil(will / 2.0))
 
 func cykosis_used(character: Dictionary) -> int:
-	return _get_parent()._as_int(character.get("cybertech", {}).get("cykosis", 0))
+	return AlternityNum.as_int(character.get("cybertech", {}).get("cykosis", 0))
 
 func set_cykosis_used(character: Dictionary, used: int) -> void:
 	var cybertech_data := _cybertech_data(character)
@@ -136,7 +136,7 @@ func cybertech_stat_bonus(character: Dictionary, stat: String) -> int:
 		var quality = String(row.get("quality", "ordinary"))
 		var effects = item.get("effects", {})
 		if effects.has("stat_bonus") and effects["stat_bonus"].has(stat):
-			total += _get_parent()._as_int(effects["stat_bonus"][stat].get(quality, 0))
+			total += AlternityNum.as_int(effects["stat_bonus"][stat].get(quality, 0))
 	return total
 
 func cybertech_durability_bonus(character: Dictionary, track: String) -> int:
@@ -148,7 +148,7 @@ func cybertech_durability_bonus(character: Dictionary, track: String) -> int:
 		var quality = String(row.get("quality", "ordinary"))
 		var effects = item.get("effects", {})
 		if effects.has("durability"):
-			total += _get_parent()._as_int(effects["durability"].get(quality, {}).get(track, 0))
+			total += AlternityNum.as_int(effects["durability"].get(quality, {}).get(track, 0))
 	return total
 
 func cybertech_action_check_step(character: Dictionary) -> int:
@@ -160,7 +160,7 @@ func cybertech_action_check_step(character: Dictionary) -> int:
 		var quality = String(row.get("quality", "ordinary"))
 		var effects = item.get("effects", {})
 		if effects.has("action_step"):
-			total += _get_parent()._as_int(effects["action_step"].get(quality, 0))
+			total += AlternityNum.as_int(effects["action_step"].get(quality, 0))
 	return total
 
 func cybertech_armor_rows(character: Dictionary) -> Array:
@@ -225,7 +225,7 @@ func cybertech_attack_forms(character: Dictionary) -> Array:
 		var effects = item.get("effects", {})
 		var combat = effects.get("combat", {})
 		if not combat.is_empty():
-			var skill_id: int = _get_parent()._as_int(combat.get("skill_id", 15))
+			var skill_id: int = AlternityNum.as_int(combat.get("skill_id", 15))
 			var score: Dictionary = _get_parent().equipment._combat_skill_score(character, skill_id)
 			var damage := "d4w/d4+1w/d4+2w" # Default Ordinary BattleKlaw
 			if String(item.get("id", "")) == "battleklaw":
@@ -236,7 +236,7 @@ func cybertech_attack_forms(character: Dictionary) -> Array:
 			var form := {
 				"name": String(item.get("name", "Cybertech Attack")),
 				"score": _get_parent().equipment._score_text(score),
-				"base_die": _get_parent().action_step_die(_get_parent()._as_int(score.get("step", 0))),
+				"base_die": _get_parent().action_step_die(AlternityNum.as_int(score.get("step", 0))),
 				"type": String(combat.get("type", "")),
 				"range": String(combat.get("range", "Personal")),
 				"damage": damage,
@@ -264,7 +264,7 @@ func _normalize_cybertech(character: Dictionary) -> void:
 	character["cybertech"] = {
 		"enabled": bool(cybertech_data.get("enabled", false)),
 		"skill_purchased": bool(cybertech_data.get("skill_purchased", false)),
-		"cykosis": _get_parent()._as_int(cybertech_data.get("cykosis", 0)),
+		"cykosis": AlternityNum.as_int(cybertech_data.get("cykosis", 0)),
 		"installed": cybertech_data.get("installed", []) if typeof(cybertech_data.get("installed")) == TYPE_ARRAY else []
 	}
 

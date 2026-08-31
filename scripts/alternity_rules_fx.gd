@@ -31,7 +31,7 @@ func set_fx_talent(character: Dictionary, enabled: bool) -> void:
 	character["fx"]["is_fx_talent"] = enabled
 
 func energy_pool(character: Dictionary) -> int:
-	return _get_parent()._as_int(character.get("fx", {}).get("energy_pool", 0))
+	return AlternityNum.as_int(character.get("fx", {}).get("energy_pool", 0))
 
 func set_energy_pool(character: Dictionary, amount: int) -> void:
 	_normalize_fx(character)
@@ -51,7 +51,7 @@ func get_specialty_skill(skill_name: String) -> Dictionary:
 
 func fx_skill_rank(character: Dictionary, skill_name: String) -> int:
 	var selected: Dictionary = character.get("fx", {}).get("selected_skills", {})
-	return _get_parent()._as_int(selected.get(skill_name, 0))
+	return AlternityNum.as_int(selected.get(skill_name, 0))
 
 func is_fx_skill_selected(character: Dictionary, skill_name: String) -> bool:
 	return fx_skill_rank(character, skill_name) > 0
@@ -76,7 +76,7 @@ func permanent_fx_energy_drain(character: Dictionary) -> int:
 	for skill_name in perms.keys():
 		if perms[skill_name] and is_fx_skill_selected(character, skill_name):
 			var specialty = get_specialty_skill(skill_name)
-			total_drain += _get_parent()._as_int(specialty.get("permanent_cost", 0))
+			total_drain += AlternityNum.as_int(specialty.get("permanent_cost", 0))
 	return total_drain
 
 func permanent_fx_stat_bonus(character: Dictionary, ability: String) -> int:
@@ -165,7 +165,7 @@ func selected_fx_skills(character: Dictionary) -> Array:
 			var specialty = get_specialty_skill(skill_name)
 			if not specialty.is_empty():
 				var entry = specialty.duplicate(true)
-				entry["rank"] = _get_parent()._as_int(selected.get(skill_name, 0))
+				entry["rank"] = AlternityNum.as_int(selected.get(skill_name, 0))
 				entry["type"] = "specialty"
 				result.append(entry)
 	
@@ -175,7 +175,7 @@ func selected_fx_skills(character: Dictionary) -> Array:
 func fx_skill_cost(character: Dictionary, skill_name: String) -> int:
 	var broad = get_broad_skill(skill_name)
 	if not broad.is_empty():
-		return _get_parent()._as_int(broad.get("cost", 0))
+		return AlternityNum.as_int(broad.get("cost", 0))
 	var specialty = get_specialty_skill(skill_name)
 	if not specialty.is_empty():
 		var rank = fx_skill_rank(character, skill_name)
@@ -185,10 +185,10 @@ func fx_skill_cost(character: Dictionary, skill_name: String) -> int:
 func fx_skill_cost_for_rank(character: Dictionary, skill_name: String, rank: int) -> int:
 	var broad = get_broad_skill(skill_name)
 	if not broad.is_empty():
-		return _get_parent()._as_int(broad.get("cost", 0)) if rank == 1 else 0
+		return AlternityNum.as_int(broad.get("cost", 0)) if rank == 1 else 0
 	var specialty = get_specialty_skill(skill_name)
 	if not specialty.is_empty():
-		var base_cost = _get_parent()._as_int(specialty.get("cost", 0))
+		var base_cost = AlternityNum.as_int(specialty.get("cost", 0))
 		var primary_group = String(character.get("fx", {}).get("primary_broad_group", ""))
 		var skill_broad = String(specialty.get("broad_skill", ""))
 		if not primary_group.is_empty() and skill_broad != primary_group:
@@ -204,7 +204,7 @@ func fx_skill_total_cost(character: Dictionary, skill_name: String) -> int:
 		return 0
 	var broad = get_broad_skill(skill_name)
 	if not broad.is_empty():
-		return _get_parent()._as_int(broad.get("cost", 0))
+		return AlternityNum.as_int(broad.get("cost", 0))
 	var specialty = get_specialty_skill(skill_name)
 	if not specialty.is_empty():
 		var total := 0
@@ -367,12 +367,12 @@ func fx_skill_score(character: Dictionary, skill_name: String) -> Dictionary:
 		var parts = ability.split("/")
 		var max_val = 0
 		for part in parts:
-			var val = _get_parent()._as_int(abilities.get(part.strip_edges(), 10))
+			var val = AlternityNum.as_int(abilities.get(part.strip_edges(), 10))
 			if val > max_val:
 				max_val = val
 		ability_score = max_val
 	else:
-		ability_score = _get_parent()._as_int(abilities.get(ability, 10))
+		ability_score = AlternityNum.as_int(abilities.get(ability, 10))
 	var rank = fx_skill_rank(character, skill_name)
 	var base = ability_score + rank
 	var ordinary = base

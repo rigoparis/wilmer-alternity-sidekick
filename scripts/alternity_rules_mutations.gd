@@ -20,12 +20,12 @@ func get_mutation_drawback_by_id(drawback_id: String) -> Dictionary:
 func mutant_species_id() -> int:
 	for item in _get_parent().species:
 		if String(item.get("name", "")) == "Mutant":
-			return _get_parent()._as_int(item.get("id", -1))
+			return AlternityNum.as_int(item.get("id", -1))
 	return 6
 
 
 func mutations_enabled(character: Dictionary) -> bool:
-	return _get_parent()._as_int(character.get("species_id", -1)) == mutant_species_id()
+	return AlternityNum.as_int(character.get("species_id", -1)) == mutant_species_id()
 
 
 func mutation_origin_options() -> Array:
@@ -172,7 +172,7 @@ func set_mutation_distribution(character: Dictionary, kind: String, distribution
 	var mutations := _mutation_data(character)
 	var points_key := "drawback_points" if kind == "drawback" else "advantage_points"
 	var distribution_key := "drawback_distribution" if kind == "drawback" else "advantage_distribution"
-	var options := mutation_distribution_options(kind, _get_parent()._as_int(mutations.get(points_key, 0)))
+	var options := mutation_distribution_options(kind, AlternityNum.as_int(mutations.get(points_key, 0)))
 	for option_value in options:
 		if typeof(option_value) != TYPE_DICTIONARY:
 			continue
@@ -186,7 +186,7 @@ func set_mutation_distribution(character: Dictionary, kind: String, distribution
 func roll_mutation_distribution(character: Dictionary, kind: String) -> Dictionary:
 	var mutations := _mutation_data(character)
 	var points_key := "drawback_points" if kind == "drawback" else "advantage_points"
-	var options := mutation_distribution_options(kind, _get_parent()._as_int(mutations.get(points_key, 0)))
+	var options := mutation_distribution_options(kind, AlternityNum.as_int(mutations.get(points_key, 0)))
 	if options.is_empty():
 		return {}
 	var option: Dictionary = options[randi_range(0, options.size() - 1)]
@@ -233,25 +233,25 @@ func selected_mutation_drawbacks(character: Dictionary) -> Array:
 func mutation_advantage_points_used(character: Dictionary) -> int:
 	var total := 0
 	for mutation in selected_mutation_advantages(character):
-		total += _get_parent()._as_int(mutation.get("points", 0))
+		total += AlternityNum.as_int(mutation.get("points", 0))
 	return total
 
 
 func mutation_drawback_points_used(character: Dictionary) -> int:
 	var total := 0
 	for drawback in selected_mutation_drawbacks(character):
-		total += _get_parent()._as_int(drawback.get("points", 0))
+		total += AlternityNum.as_int(drawback.get("points", 0))
 	return total
 
 
 func mutation_advantage_points_remaining(character: Dictionary) -> int:
 	var mutations := _mutation_data(character)
-	return _get_parent()._as_int(mutations.get("advantage_points", 0)) - mutation_advantage_points_used(character)
+	return AlternityNum.as_int(mutations.get("advantage_points", 0)) - mutation_advantage_points_used(character)
 
 
 func mutation_drawback_points_remaining(character: Dictionary) -> int:
 	var mutations := _mutation_data(character)
-	return _get_parent()._as_int(mutations.get("drawback_points", 0)) - mutation_drawback_points_used(character)
+	return AlternityNum.as_int(mutations.get("drawback_points", 0)) - mutation_drawback_points_used(character)
 
 
 func can_add_mutation_advantage(character: Dictionary, mutation: Dictionary) -> Dictionary:
@@ -263,12 +263,12 @@ func can_add_mutation_advantage(character: Dictionary, mutation: Dictionary) -> 
 	if _mutation_selected(character, "advantages", mutation_id):
 		return {"allowed": false, "reason": "Already selected."}
 	var remaining := mutation_advantage_points_remaining(character)
-	var points: int = _get_parent()._as_int(mutation.get("points", 0))
+	var points: int = AlternityNum.as_int(mutation.get("points", 0))
 	if remaining < points:
 		return {"allowed": false, "reason": "Requires %d available advantageous mutation points." % points}
 	var tier := String(mutation.get("tier", "Ordinary"))
 	var distribution := mutation_distribution(character, "advantage")
-	var allowed_count: int = _get_parent()._as_int(distribution.get(tier, 0))
+	var allowed_count: int = AlternityNum.as_int(distribution.get(tier, 0))
 	if allowed_count <= 0:
 		return {"allowed": false, "reason": "The point distribution has no %s mutation slot." % tier}
 	if _mutation_tier_count(selected_mutation_advantages(character), tier) >= allowed_count:
@@ -288,12 +288,12 @@ func can_add_mutation_drawback(character: Dictionary, drawback: Dictionary) -> D
 	if _mutation_selected(character, "drawbacks", drawback_id):
 		return {"allowed": false, "reason": "Already selected."}
 	var remaining := mutation_drawback_points_remaining(character)
-	var points: int = _get_parent()._as_int(drawback.get("points", 0))
+	var points: int = AlternityNum.as_int(drawback.get("points", 0))
 	if remaining < points:
 		return {"allowed": false, "reason": "Requires %d available drawback mutation points." % points}
 	var tier := String(drawback.get("tier", "Slight"))
 	var distribution := mutation_distribution(character, "drawback")
-	var allowed_count: int = _get_parent()._as_int(distribution.get(tier, 0))
+	var allowed_count: int = AlternityNum.as_int(distribution.get(tier, 0))
 	if allowed_count <= 0:
 		return {"allowed": false, "reason": "The point distribution has no %s drawback slot." % tier}
 	if _mutation_tier_count(selected_mutation_drawbacks(character), tier) >= allowed_count:
@@ -355,8 +355,8 @@ func mutation_summary(character: Dictionary) -> Dictionary:
 		"generation_mode": String(mutations.get("generation_mode", "random")),
 		"origin": get_mutation_origin_by_id(origin_id),
 		"uniqueness": get_mutation_uniqueness_by_id(origin_id, uniqueness_id),
-		"advantage_points": _get_parent()._as_int(mutations.get("advantage_points", 0)),
-		"drawback_points": _get_parent()._as_int(mutations.get("drawback_points", 0)),
+		"advantage_points": AlternityNum.as_int(mutations.get("advantage_points", 0)),
+		"drawback_points": AlternityNum.as_int(mutations.get("drawback_points", 0)),
 		"advantage_points_used": mutation_advantage_points_used(character),
 		"drawback_points_used": mutation_drawback_points_used(character),
 		"advantage_points_remaining": mutation_advantage_points_remaining(character),
@@ -375,7 +375,7 @@ func mutation_ability_bonus(character: Dictionary, ability: String) -> int:
 	for mutation in _selected_mutation_effect_sources(character):
 		for effect in _mutation_effects(mutation, "ability"):
 			if String(effect.get("ability", "")) == ability:
-				total += _get_parent()._as_int(effect.get("amount", 0))
+				total += AlternityNum.as_int(effect.get("amount", 0))
 	return total
 
 
@@ -384,7 +384,7 @@ func mutation_durability_bonus(character: Dictionary, track: String) -> int:
 	for mutation in _selected_mutation_effect_sources(character):
 		for effect in _mutation_effects(mutation, "durability"):
 			if String(effect.get("track", "")) == track:
-				total += _get_parent()._as_int(effect.get("amount", 0))
+				total += AlternityNum.as_int(effect.get("amount", 0))
 	return total
 
 
@@ -392,7 +392,7 @@ func mutation_action_check_step(character: Dictionary) -> int:
 	var total := 0
 	for mutation in _selected_mutation_effect_sources(character):
 		for effect in _mutation_effects(mutation, "action_check_step"):
-			total += _get_parent()._as_int(effect.get("amount", 0))
+			total += AlternityNum.as_int(effect.get("amount", 0))
 	return total
 
 
@@ -402,8 +402,8 @@ func mutation_skill_step_bonus(character: Dictionary, skill_id: int) -> int:
 		for effect in _mutation_effects(mutation, "skill_step"):
 			var skill_ids: Array = effect.get("skill_ids", [])
 			for effect_skill_id in skill_ids:
-				if _get_parent()._as_int(effect_skill_id) == skill_id:
-					total += _get_parent()._as_int(effect.get("step", 0))
+				if AlternityNum.as_int(effect_skill_id) == skill_id:
+					total += AlternityNum.as_int(effect.get("step", 0))
 	return total
 
 
@@ -462,7 +462,7 @@ func mutation_armor_rows(character: Dictionary) -> Array:
 				"cost": 0,
 				"combat": {
 					"role": "armor",
-					"action_penalty": _get_parent()._as_int(effect.get("ap", 0)),
+					"action_penalty": AlternityNum.as_int(effect.get("ap", 0)),
 					"toughness": String(effect.get("toughness", "O")),
 					"li": String(effect.get("li", "")),
 					"hi": String(effect.get("hi", "")),
@@ -489,17 +489,17 @@ func mutation_attack_forms(character: Dictionary) -> Array:
 		return forms
 	for mutation in selected_mutation_advantages(character):
 		for effect in _mutation_effects(mutation, "attack"):
-			var skill_id: int = _get_parent()._as_int(effect.get("skill_id", 16))
+			var skill_id: int = AlternityNum.as_int(effect.get("skill_id", 16))
 			var score: Dictionary = _get_parent().equipment._combat_skill_score(character, skill_id)
-			score["step"] = _get_parent()._as_int(score.get("step", 0)) + _get_parent()._as_int(effect.get("step", 0))
+			score["step"] = AlternityNum.as_int(score.get("step", 0)) + AlternityNum.as_int(effect.get("step", 0))
 			var damage := String(effect.get("damage", ""))
 			if bool(effect.get("strength_bonus", false)):
 				var abilities: Dictionary = _get_parent().effective_abilities(character)
-				damage = _get_parent().equipment._damage_with_bonus(damage, _get_parent().equipment.strength_damage_bonus(_get_parent()._as_int(abilities.get("STR", 10))))
+				damage = _get_parent().equipment._damage_with_bonus(damage, _get_parent().equipment.strength_damage_bonus(AlternityNum.as_int(abilities.get("STR", 10))))
 			var form := {
 				"name": String(effect.get("name", mutation.get("name", "Mutation Attack"))),
 				"score": _get_parent().equipment._score_text(score),
-				"base_die": _get_parent().action_step_die(_get_parent()._as_int(score.get("step", 0))),
+				"base_die": _get_parent().action_step_die(AlternityNum.as_int(score.get("step", 0))),
 				"type": String(effect.get("damage_type", "")),
 				"range": String(effect.get("range", "Personal")),
 				"damage": damage,
@@ -532,10 +532,10 @@ func _normalize_mutations(character: Dictionary) -> void:
 		"generation_mode": "player" if String(mutations.get("generation_mode", "random")) == "player" else "random",
 		"origin": origin_id,
 		"uniqueness": uniqueness_id,
-		"advantage_points": max(0, _get_parent()._as_int(mutations.get("advantage_points", 0))),
-		"drawback_points": max(0, _get_parent()._as_int(mutations.get("drawback_points", 0))),
-		"advantage_distribution": _normalized_mutation_distribution(mutations.get("advantage_distribution", {}), "advantage", max(0, _get_parent()._as_int(mutations.get("advantage_points", 0)))),
-		"drawback_distribution": _normalized_mutation_distribution(mutations.get("drawback_distribution", {}), "drawback", max(0, _get_parent()._as_int(mutations.get("drawback_points", 0)))),
+		"advantage_points": max(0, AlternityNum.as_int(mutations.get("advantage_points", 0))),
+		"drawback_points": max(0, AlternityNum.as_int(mutations.get("drawback_points", 0))),
+		"advantage_distribution": _normalized_mutation_distribution(mutations.get("advantage_distribution", {}), "advantage", max(0, AlternityNum.as_int(mutations.get("advantage_points", 0)))),
+		"drawback_distribution": _normalized_mutation_distribution(mutations.get("drawback_distribution", {}), "drawback", max(0, AlternityNum.as_int(mutations.get("drawback_points", 0)))),
 		"advantages": _normalized_mutation_id_list(mutations.get("advantages", []), _get_parent().mutation_advantages_by_id),
 		"drawbacks": _normalized_mutation_id_list(mutations.get("drawbacks", []), _get_parent().mutation_drawbacks_by_id),
 	}
@@ -571,7 +571,7 @@ func _normalized_mutation_distribution(value, kind: String, points: int) -> Dict
 	var raw: Dictionary = value if typeof(value) == TYPE_DICTIONARY else {}
 	var result := {}
 	for tier in order:
-		result[tier] = max(0, _get_parent()._as_int(raw.get(tier, 0)))
+		result[tier] = max(0, AlternityNum.as_int(raw.get(tier, 0)))
 	var options := mutation_distribution_options(kind, points)
 	var id := _mutation_distribution_id(result, order)
 	for option_value in options:
@@ -592,7 +592,7 @@ func _ensure_mutation_distribution(character: Dictionary, kind: String) -> void:
 	var mutations: Dictionary = character.get("mutations", {})
 	var points_key := "drawback_points" if kind == "drawback" else "advantage_points"
 	var distribution_key := "drawback_distribution" if kind == "drawback" else "advantage_distribution"
-	mutations[distribution_key] = _normalized_mutation_distribution(mutations.get(distribution_key, {}), kind, _get_parent()._as_int(mutations.get(points_key, 0)))
+	mutations[distribution_key] = _normalized_mutation_distribution(mutations.get(distribution_key, {}), kind, AlternityNum.as_int(mutations.get(points_key, 0)))
 	character["mutations"] = mutations
 
 
@@ -638,7 +638,7 @@ func _mutation_distribution_id(counts: Dictionary, order: Array) -> String:
 	var parts := []
 	for tier_value in order:
 		var tier := String(tier_value)
-		parts.append("%s:%d" % [tier, _get_parent()._as_int(counts.get(tier, 0))])
+		parts.append("%s:%d" % [tier, AlternityNum.as_int(counts.get(tier, 0))])
 	return "|".join(parts)
 
 
@@ -646,7 +646,7 @@ func _mutation_distribution_label(counts: Dictionary, order: Array) -> String:
 	var parts := []
 	for tier_value in order:
 		var tier := String(tier_value)
-		var count: int = _get_parent()._as_int(counts.get(tier, 0))
+		var count: int = AlternityNum.as_int(counts.get(tier, 0))
 		if count <= 0:
 			continue
 		parts.append("%d %s" % [count, tier])
@@ -709,7 +709,7 @@ func _roll_mutation_selection(character: Dictionary, selected_key: String, catal
 	var failed := []
 	for tier_value in order:
 		var tier := String(tier_value)
-		var needed: int = _get_parent()._as_int(distribution.get(tier, 0))
+		var needed: int = AlternityNum.as_int(distribution.get(tier, 0))
 		for _index in range(needed):
 			var mutation := _random_mutation_from_tier(catalog, tier, selected)
 			if mutation.is_empty():
@@ -776,9 +776,9 @@ func _roll_mutation_formula(formula: String) -> int:
 	if clean.begins_with("d"):
 		var die_length := sign_index - 1 if sign_index > 0 else clean.length() - 1
 		var die_text := clean.substr(1, die_length)
-		var die_size: int = max(1, _get_parent()._as_int(die_text, 1))
+		var die_size: int = max(1, AlternityNum.as_int(die_text, 1))
 		var modifier := 0
 		if sign_index > 0:
-			modifier = sign * _get_parent()._as_int(clean.substr(sign_index + 1), 0)
+			modifier = sign * AlternityNum.as_int(clean.substr(sign_index + 1), 0)
 		return max(0, randi_range(1, die_size) + modifier)
-	return max(0, _get_parent()._as_int(clean, 0))
+	return max(0, AlternityNum.as_int(clean, 0))

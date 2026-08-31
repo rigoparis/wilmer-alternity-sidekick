@@ -1926,34 +1926,16 @@ func _last_resort_base(personality: int) -> Dictionary:
 	return {"max": 4, "cost": 2}
 
 
+## Deprecated forwarders. The implementations moved to AlternityNum (see
+## scripts/core/num.gd) because they are pure and were being reached from the
+## sub-modules through a weakref dereference. These remain so the existing call
+## sites keep working; new code should call AlternityNum.as_int / as_float.
 func _as_int(value: Variant, default_value: int = 0) -> int:
-	if value == null:
-		return default_value
-		
-	match typeof(value):
-		TYPE_INT:
-			return value as int
-		TYPE_FLOAT:
-			return int(value as float)
-		TYPE_STRING:
-			var str_val = value as String
-			if str_val.is_valid_int():
-				return str_val.to_int()
-			if str_val.is_valid_float():
-				return int(str_val.to_float())
-	return default_value
+	return AlternityNum.as_int(value, default_value)
 
 
 func _as_float(value, default_value := 0.0) -> float:
-	match typeof(value):
-		TYPE_INT:
-			return float(value)
-		TYPE_FLOAT:
-			return value
-		TYPE_STRING:
-			if String(value).is_valid_float():
-				return float(value)
-	return default_value
+	return AlternityNum.as_float(value, default_value)
 
 
 func psionic_armor_rows(character: Dictionary) -> Array:

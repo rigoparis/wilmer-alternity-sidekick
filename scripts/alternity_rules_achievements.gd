@@ -32,27 +32,27 @@ func achievement_points_for_current_level(points: int) -> int:
 
 func set_achievement_points(character: Dictionary, points: int) -> void:
 	character["achievement_points"] = max(0, points)
-	character["achievement_level"] = achievement_level_for_points(_get_parent()._as_int(character["achievement_points"]))
+	character["achievement_level"] = achievement_level_for_points(AlternityNum.as_int(character["achievement_points"]))
 	character["achievement_points_available"] = achievement_points_available(character)
 
 
 func achievement_points_used(character: Dictionary) -> int:
 	var skill_points_from_achievements: int = max(0, _get_parent().skill_points_used(character) - _get_parent().starting_skill_budget(character) - achievement_skill_bonus(character))
-	var other_spending: int = max(0, _get_parent()._as_int(character.get("achievement_points_spent_other", 0)))
+	var other_spending: int = max(0, AlternityNum.as_int(character.get("achievement_points_spent_other", 0)))
 	return skill_points_from_achievements + other_spending
 
 
 func achievement_points_available(character: Dictionary) -> int:
-	return _get_parent()._as_int(character.get("achievement_points", 0)) - achievement_points_used(character)
+	return AlternityNum.as_int(character.get("achievement_points", 0)) - achievement_points_used(character)
 
 
 func achievement_skill_bonus(character: Dictionary) -> int:
-	var profession: Dictionary = _get_parent().get_profession_by_id(_get_parent()._as_int(character.get("profession_id", 0)))
+	var profession: Dictionary = _get_parent().get_profession_by_id(AlternityNum.as_int(character.get("profession_id", 0)))
 	if String(profession.get("name", "")) != "Tech Op":
 		return 0
 
 	var bonus := 0
-	var current_level := achievement_level_for_points(_get_parent()._as_int(character.get("achievement_points", 0)))
+	var current_level := achievement_level_for_points(AlternityNum.as_int(character.get("achievement_points", 0)))
 	for level in range(2, current_level + 1):
 		if level <= 5:
 			bonus += 1
@@ -69,7 +69,7 @@ func achievement_skill_bonus(character: Dictionary) -> int:
 
 
 func achievement_profile_key(character: Dictionary) -> String:
-	var profession: Dictionary = _get_parent().get_profession_by_id(_get_parent()._as_int(character.get("profession_id", 0)))
+	var profession: Dictionary = _get_parent().get_profession_by_id(AlternityNum.as_int(character.get("profession_id", 0)))
 	var profession_name := String(profession.get("name", ""))
 	if profession_name.begins_with("Diplomat"):
 		return "diplomat"
@@ -100,8 +100,8 @@ func achievement_cost_entry(achievement: Dictionary, character: Dictionary) -> D
 	var row = costs[index]
 	if typeof(row) != TYPE_ARRAY or row.size() < 2:
 		return {"cost": 0, "min_level": 99}
-	var cost: int = _get_parent()._as_int(row[0])
-	var min_level: int = _get_parent()._as_int(row[1])
+	var cost: int = AlternityNum.as_int(row[0])
+	var min_level: int = AlternityNum.as_int(row[1])
 	var effect: Dictionary = achievement.get("effect", {})
 	if String(effect.get("type", "")) == "remove_flaw":
 		cost = 0
@@ -114,8 +114,8 @@ func achievement_cost_entry(achievement: Dictionary, character: Dictionary) -> D
 func achievement_purchase_cost(character: Dictionary, achievement: Dictionary, target_value := 0) -> int:
 	var effect: Dictionary = achievement.get("effect", {})
 	if String(effect.get("type", "")) == "remove_flaw":
-		return max(0, _get_parent()._as_int(target_value)) * max(1, _get_parent()._as_int(effect.get("cost_multiplier", 2)))
-	return _get_parent()._as_int(achievement_cost_entry(achievement, character).get("cost", 0))
+		return max(0, AlternityNum.as_int(target_value)) * max(1, AlternityNum.as_int(effect.get("cost_multiplier", 2)))
+	return AlternityNum.as_int(achievement_cost_entry(achievement, character).get("cost", 0))
 
 
 
@@ -132,7 +132,7 @@ func selected_achievements(character: Dictionary) -> Array:
 			continue
 		var row := entry.duplicate(true)
 		row["achievement"] = achievement
-		row["cost"] = _get_parent()._as_int(row.get("cost", achievement_purchase_cost(character, achievement, row.get("target_value", 0))))
+		row["cost"] = AlternityNum.as_int(row.get("cost", achievement_purchase_cost(character, achievement, row.get("target_value", 0))))
 		row["name"] = achievement_display_name(achievement, row)
 		row["summary"] = achievement_effect_summary(achievement, row)
 		rows.append(row)
@@ -153,7 +153,7 @@ func achievement_effect_total(character: Dictionary, effect_type: String) -> int
 		var achievement: Dictionary = entry.get("achievement", {})
 		var effect: Dictionary = achievement.get("effect", {})
 		if String(effect.get("type", "")) == effect_type:
-			total += _get_parent()._as_int(effect.get("amount", 1))
+			total += AlternityNum.as_int(effect.get("amount", 1))
 	return total
 
 
@@ -163,14 +163,14 @@ func achievement_durability_bonus(character: Dictionary, track: String) -> int:
 		var achievement: Dictionary = entry.get("achievement", {})
 		var effect: Dictionary = achievement.get("effect", {})
 		if String(effect.get("type", "")) == "durability" and String(effect.get("track", "")) == track:
-			total += _get_parent()._as_int(effect.get("amount", 1))
+			total += AlternityNum.as_int(effect.get("amount", 1))
 	return total
 
 
 func achievement_points_spent(character: Dictionary) -> int:
 	var total := 0
 	for entry in selected_achievements(character):
-		total += _get_parent()._as_int(entry.get("cost", 0))
+		total += AlternityNum.as_int(entry.get("cost", 0))
 	return total
 
 
@@ -205,7 +205,7 @@ func achievement_granted_perks(character: Dictionary) -> Array:
 		row["cost"] = 0
 		row["granted_by_achievement"] = true
 		row["achievement_name"] = String(achievement.get("name", "Achievement"))
-		row["perk_value"] = _get_parent()._as_int(effect.get("perk_value", 0))
+		row["perk_value"] = AlternityNum.as_int(effect.get("perk_value", 0))
 		rows.append(row)
 	return rows
 
@@ -213,19 +213,19 @@ func achievement_granted_perks(character: Dictionary) -> Array:
 func can_purchase_achievement(character: Dictionary, achievement: Dictionary, target_id := "", target_value := 0) -> Dictionary:
 	var achievement_id := String(achievement.get("id", ""))
 	var cost_info := achievement_cost_entry(achievement, character)
-	var min_level: int = _get_parent()._as_int(cost_info.get("min_level", 99))
-	var current_level := achievement_level_for_points(_get_parent()._as_int(character.get("achievement_points", 0)))
+	var min_level: int = AlternityNum.as_int(cost_info.get("min_level", 99))
+	var current_level := achievement_level_for_points(AlternityNum.as_int(character.get("achievement_points", 0)))
 	if current_level < min_level:
 		return {"allowed": false, "reason": "Requires hero level %d." % min_level}
 
 	var effect: Dictionary = achievement.get("effect", {})
 	var effect_type := String(effect.get("type", ""))
-	var max_purchases: int = _get_parent()._as_int(achievement.get("max", 1))
+	var max_purchases: int = AlternityNum.as_int(achievement.get("max", 1))
 	if effect_type == "monetary":
 		var eligible_levels: Array = effect.get("levels", [])
 		var eligible_count := 0
 		for level_value in eligible_levels:
-			if current_level >= _get_parent()._as_int(level_value):
+			if current_level >= AlternityNum.as_int(level_value):
 				eligible_count += 1
 		max_purchases = eligible_count
 	if effect_type != "remove_flaw" and max_purchases >= 0 and achievement_purchase_count(character, achievement_id) >= max_purchases:
@@ -233,12 +233,12 @@ func can_purchase_achievement(character: Dictionary, achievement: Dictionary, ta
 
 	if effect_type == "ability":
 		var ability := String(effect.get("ability", ""))
-		var tier: int = _get_parent()._as_int(effect.get("tier", 1))
+		var tier: int = AlternityNum.as_int(effect.get("tier", 1))
 		if tier > 1 and achievement_ability_purchase_count(character, ability) < tier - 1:
 			return {"allowed": false, "reason": "%s Increase %d requires the previous increase first." % [ability, tier]}
 		var abilities: Dictionary = _get_parent().achievement_adjusted_abilities(character)
 		var limits: Array = _get_parent().ability_limits(character, ability)
-		if _get_parent()._as_int(abilities.get(ability, 10)) >= _get_parent()._as_int(limits[1]):
+		if AlternityNum.as_int(abilities.get(ability, 10)) >= AlternityNum.as_int(limits[1]):
 			return {"allowed": false, "reason": "%s is already at the species maximum." % ability}
 	if effect_type == "extra_action" and _get_parent().actions_per_round(character) >= 4:
 		return {"allowed": false, "reason": "Actions per round are already at the maximum of 4."}
@@ -262,7 +262,7 @@ func can_purchase_achievement(character: Dictionary, achievement: Dictionary, ta
 	var cost := achievement_purchase_cost(character, achievement, target_value)
 	var available_points: int = _get_parent().skill_budget(character) - _get_parent().skill_points_used(character)
 	if effect_type == "remove_flaw":
-		available_points -= max(0, _get_parent()._as_int(target_value))
+		available_points -= max(0, AlternityNum.as_int(target_value))
 	if available_points < cost:
 		return {"allowed": false, "reason": "Requires %d available skill points." % cost}
 	return {"allowed": true, "reason": "", "cost": cost, "min_level": min_level}
@@ -293,9 +293,9 @@ func add_achievement_purchase(character: Dictionary, achievement_id: String, tar
 		"line_id": line_id,
 		"achievement_id": achievement_id,
 		"cost": cost,
-		"level": achievement_level_for_points(_get_parent()._as_int(character.get("achievement_points", 0))),
+		"level": achievement_level_for_points(AlternityNum.as_int(character.get("achievement_points", 0))),
 		"target_id": String(target_id),
-		"target_value": _get_parent()._as_int(target_value),
+		"target_value": AlternityNum.as_int(target_value),
 		"notes": String(notes),
 	}
 	selected.append(entry)
@@ -327,7 +327,7 @@ func remove_achievement_purchase(character: Dictionary, line_id: String) -> void
 			continue
 
 		var target_id := String(entry.get("target_id", ""))
-		var target_value: int = _get_parent()._as_int(entry.get("target_value", 0))
+		var target_value: int = AlternityNum.as_int(entry.get("target_value", 0))
 		if target_id.is_empty() or target_value <= 0:
 			continue
 
@@ -359,14 +359,14 @@ func achievement_effect_summary(achievement: Dictionary, entry: Dictionary = {})
 		if not perk.is_empty():
 			return "Grants %s as a %d-point perk without charging the normal perk cost." % [
 				String(perk.get("name", "Perk")),
-				_get_parent()._as_int(effect.get("perk_value", 0)),
+				AlternityNum.as_int(effect.get("perk_value", 0)),
 			]
 	if effect_type == "remove_flaw":
 		var flaw: Dictionary = _get_parent().get_flaw_by_id(String(entry.get("target_id", "")))
 		if not flaw.is_empty():
 			return "Removes %s and its +%d skill point flaw bonus." % [
 				String(flaw.get("name", "Flaw")),
-				_get_parent()._as_int(entry.get("target_value", 0)),
+				AlternityNum.as_int(entry.get("target_value", 0)),
 			]
 	if effect_type == "contact":
 		return "Adds one campaign contact. Contacts provide information, resources, or expert help when the GM agrees."
@@ -389,10 +389,10 @@ func _normalize_selected_achievements(character: Dictionary) -> void:
 		normalized.append({
 			"line_id": String(entry.get("line_id", _next_achievement_line_id_from_list(normalized))),
 			"achievement_id": achievement_id,
-			"cost": max(0, _get_parent()._as_int(entry.get("cost", achievement_purchase_cost(character, achievement, entry.get("target_value", 0))))),
-			"level": max(1, _get_parent()._as_int(entry.get("level", achievement_level_for_points(_get_parent()._as_int(character.get("achievement_points", 0)))))),
+			"cost": max(0, AlternityNum.as_int(entry.get("cost", achievement_purchase_cost(character, achievement, entry.get("target_value", 0))))),
+			"level": max(1, AlternityNum.as_int(entry.get("level", achievement_level_for_points(AlternityNum.as_int(character.get("achievement_points", 0)))))),
 			"target_id": String(entry.get("target_id", "")),
-			"target_value": max(0, _get_parent()._as_int(entry.get("target_value", 0))),
+			"target_value": max(0, AlternityNum.as_int(entry.get("target_value", 0))),
 			"notes": String(entry.get("notes", "")),
 		})
 	character["selected_achievements"] = normalized
@@ -404,5 +404,5 @@ func _next_achievement_line_id_from_list(selected: Array) -> String:
 			continue
 		var line_id := String(item.get("line_id", ""))
 		if line_id.begins_with("ach_"):
-			max_id = maxi(max_id, _get_parent()._as_int(line_id.substr(4), 0))
+			max_id = maxi(max_id, AlternityNum.as_int(line_id.substr(4), 0))
 	return "ach_%04d" % (max_id + 1)

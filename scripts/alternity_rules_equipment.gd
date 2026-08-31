@@ -67,8 +67,8 @@ func equipment_class_options(category := "") -> Array:
 
 func filtered_equipment(filters: Dictionary) -> Array:
 	var search := String(filters.get("search", "")).strip_edges().to_lower()
-	var pl_min: int = _get_parent()._as_int(filters.get("pl_min", 0))
-	var pl_max: int = _get_parent()._as_int(filters.get("pl_max", 8))
+	var pl_min: int = AlternityNum.as_int(filters.get("pl_min", 0))
+	var pl_max: int = AlternityNum.as_int(filters.get("pl_max", 8))
 	if pl_min > pl_max:
 		var swap: int = pl_min
 		pl_min = pl_max
@@ -83,7 +83,7 @@ func filtered_equipment(filters: Dictionary) -> Array:
 	for item in _get_parent().equipment_catalog:
 		if typeof(item) != TYPE_DICTIONARY:
 			continue
-		var item_pl: int = _get_parent()._as_int(item.get("pl", 0))
+		var item_pl: int = AlternityNum.as_int(item.get("pl", 0))
 		if item_pl < pl_min or item_pl > pl_max:
 			continue
 		var source_id := String(item.get("source_code", item.get("source", ""))).to_lower()
@@ -200,12 +200,12 @@ func carried_equipment(character: Dictionary) -> Array:
 		var item: Dictionary = get_character_equipment_item(character, String(row.get("item_id", "")))
 		if item.is_empty():
 			continue
-		var quantity: int = max(1, _get_parent()._as_int(row.get("quantity", 1)))
+		var quantity: int = max(1, AlternityNum.as_int(row.get("quantity", 1)))
 		var result: Dictionary = row.duplicate(true)
 		result["item"] = item
 		result["quantity"] = quantity
-		result["total_mass"] = _get_parent()._as_float(item.get("mass", 0.0)) * float(quantity)
-		result["total_cost"] = _get_parent()._as_int(item.get("cost", 0)) * quantity
+		result["total_mass"] = AlternityNum.as_float(item.get("mass", 0.0)) * float(quantity)
+		result["total_cost"] = AlternityNum.as_int(item.get("cost", 0)) * quantity
 		rows.append(result)
 	return rows
 
@@ -219,8 +219,8 @@ func equipment_summary(character: Dictionary) -> Dictionary:
 	var equipped_weapons := []
 	var equipped_armor := []
 	for row in rows:
-		total_mass += _get_parent()._as_float(row.get("total_mass", 0.0))
-		total_cost += _get_parent()._as_int(row.get("total_cost", 0))
+		total_mass += AlternityNum.as_float(row.get("total_mass", 0.0))
+		total_cost += AlternityNum.as_int(row.get("total_cost", 0))
 		var item: Dictionary = row.get("item", {})
 		if equipment_has_combat_role(item, "weapon"):
 			combat_weapons.append(row)
@@ -255,7 +255,7 @@ func attack_forms_for_character(character: Dictionary) -> Array:
 		if not equipment_has_combat_role(item, "weapon"):
 			continue
 		var form := _weapon_attack_form(character, item)
-		form["quantity"] = _get_parent()._as_int(row.get("quantity", 1))
+		form["quantity"] = AlternityNum.as_int(row.get("quantity", 1))
 		form["equipped"] = bool(row.get("equipped", false))
 		form["slot"] = String(row.get("slot", ""))
 		forms.append(form)
@@ -270,11 +270,11 @@ func psionic_attack_forms(character: Dictionary) -> Array:
 	if _get_parent().is_skill_selected(character, 90001): # Bioweapon
 		var score := _combat_skill_score(character, 90001)
 		var abilities: Dictionary = _get_parent().effective_abilities(character)
-		var strength_bonus := strength_damage_bonus(_get_parent()._as_int(abilities.get("STR", 10)))
+		var strength_bonus := strength_damage_bonus(AlternityNum.as_int(abilities.get("STR", 10)))
 		forms.append({
 			"name": "Bioweapon",
 			"score": _score_text(score),
-			"base_die": _get_parent().action_step_die(_get_parent()._as_int(score.get("step", 1))),
+			"base_die": _get_parent().action_step_die(AlternityNum.as_int(score.get("step", 1))),
 			"type": "LI/O",
 			"range": "Personal",
 			"damage": _damage_with_bonus("d4s/d4+2w/d6+2m", strength_bonus), # Ordinary: stun, Good: wound, Amazing: mortal
@@ -293,7 +293,7 @@ func psionic_attack_forms(character: Dictionary) -> Array:
 		forms.append({
 			"name": "Mind Blast",
 			"score": _score_text(score),
-			"base_die": _get_parent().action_step_die(_get_parent()._as_int(score.get("step", 1))),
+			"base_die": _get_parent().action_step_die(AlternityNum.as_int(score.get("step", 1))),
 			"type": "En/O",
 			"range": "10/20/40",
 			"damage": dmg,
@@ -312,7 +312,7 @@ func psionic_attack_forms(character: Dictionary) -> Array:
 		forms.append({
 			"name": "Electrokinetics",
 			"score": _score_text(score),
-			"base_die": _get_parent().action_step_die(_get_parent()._as_int(score.get("step", 1))),
+			"base_die": _get_parent().action_step_die(AlternityNum.as_int(score.get("step", 1))),
 			"type": "En/O",
 			"range": "4/8/16",
 			"damage": dmg,
@@ -331,7 +331,7 @@ func psionic_attack_forms(character: Dictionary) -> Array:
 		forms.append({
 			"name": "Pyrokinetics",
 			"score": _score_text(score),
-			"base_die": _get_parent().action_step_die(_get_parent()._as_int(score.get("step", 1))),
+			"base_die": _get_parent().action_step_die(AlternityNum.as_int(score.get("step", 1))),
 			"type": "En/O",
 			"range": "10/20/30",
 			"damage": dmg,
@@ -344,7 +344,7 @@ func psionic_attack_forms(character: Dictionary) -> Array:
 		forms.append({
 			"name": "Tire",
 			"score": _score_text(score),
-			"base_die": _get_parent().action_step_die(_get_parent()._as_int(score.get("step", 1))),
+			"base_die": _get_parent().action_step_die(AlternityNum.as_int(score.get("step", 1))),
 			"type": "-",
 			"range": "10/20/30",
 			"damage": "1f/2f/3f",
@@ -377,7 +377,7 @@ func equipment_has_combat_role(item: Dictionary, role: String) -> bool:
 func _unarmed_attack_form(character: Dictionary) -> Dictionary:
 	var score := _combat_skill_score(character, 15)
 	var abilities: Dictionary = _get_parent().effective_abilities(character)
-	var strength_bonus := strength_damage_bonus(_get_parent()._as_int(abilities.get("STR", 10)))
+	var strength_bonus := strength_damage_bonus(AlternityNum.as_int(abilities.get("STR", 10)))
 
 	var base_damage := "d4s/d4+1s/d4+2s"
 	if _get_parent().skill_rank(character, 17) > 0:
@@ -386,7 +386,7 @@ func _unarmed_attack_form(character: Dictionary) -> Dictionary:
 		base_damage = "d6s/d6+2s/d4w"
 	if _get_parent().skill_rank(character, 17) >= 7:
 		base_damage = "d6+2s/d4w/d4+2w"
-	if _get_parent()._as_int(character.get("species_id", 0)) == 5:
+	if AlternityNum.as_int(character.get("species_id", 0)) == 5:
 		base_damage = "d4w/d4+2w/d4m"
 
 	var extra_bonus := 0
@@ -396,7 +396,7 @@ func _unarmed_attack_form(character: Dictionary) -> Dictionary:
 	return {
 		"name": "Unarmed",
 		"score": _score_text(score),
-		"base_die": _get_parent().action_step_die(_get_parent()._as_int(score.get("step", 1))),
+		"base_die": _get_parent().action_step_die(AlternityNum.as_int(score.get("step", 1))),
 		"type": "LI/O",
 		"range": "Personal",
 		"damage": _damage_with_bonus(base_damage, strength_bonus + extra_bonus),
@@ -409,32 +409,32 @@ func _unarmed_attack_form(character: Dictionary) -> Dictionary:
 func _weapon_attack_form(character: Dictionary, item: Dictionary) -> Dictionary:
 	var combat_value = item.get("combat", {})
 	var combat: Dictionary = combat_value if typeof(combat_value) == TYPE_DICTIONARY else {}
-	var score := _combat_skill_score(character, _get_parent()._as_int(combat.get("skill_id", -1)))
+	var score := _combat_skill_score(character, AlternityNum.as_int(combat.get("skill_id", -1)))
 	
 	var base_score_str := String(combat.get("base_score", "")).strip_edges()
 	if not base_score_str.is_empty():
 		var parts := base_score_str.split("/")
 		if parts.size() >= 3:
-			score["ordinary"] = _get_parent()._as_int(parts[0], 0)
-			score["good"] = _get_parent()._as_int(parts[1], 0)
-			score["amazing"] = _get_parent()._as_int(parts[2], 0)
+			score["ordinary"] = AlternityNum.as_int(parts[0], 0)
+			score["good"] = AlternityNum.as_int(parts[1], 0)
+			score["amazing"] = AlternityNum.as_int(parts[2], 0)
 
-	var accuracy: int = _get_parent()._as_int(combat.get("accuracy", 0))
-	score["step"] = _get_parent()._as_int(score.get("step", 1)) + accuracy
+	var accuracy: int = AlternityNum.as_int(combat.get("accuracy", 0))
+	score["step"] = AlternityNum.as_int(score.get("step", 1)) + accuracy
 	var damage := String(combat.get("damage", ""))
 	if bool(combat.get("strength_based", false)):
 		var abilities: Dictionary = _get_parent().effective_abilities(character)
-		damage = _damage_with_bonus(damage, strength_damage_bonus(_get_parent()._as_int(abilities.get("STR", 10))))
+		damage = _damage_with_bonus(damage, strength_damage_bonus(AlternityNum.as_int(abilities.get("STR", 10))))
 	return {
 		"name": String(item.get("name", "Weapon")),
 		"score": _score_text(score),
-		"base_die": _get_parent().action_step_die(_get_parent()._as_int(score.get("step", 0))),
+		"base_die": _get_parent().action_step_die(AlternityNum.as_int(score.get("step", 0))),
 		"type": String(combat.get("damage_type", combat.get("type", ""))),
 		"range": String(combat.get("range", "")),
 		"damage": damage,
 		"hide": _dash_for_empty_or_hidden(combat.get("hide", "")),
 		"clip_size": _dash_for_empty_or_zero(combat.get("clip_size", "")),
-		"mass": _format_rules_number(_get_parent()._as_float(item.get("mass", 0.0))),
+		"mass": _format_rules_number(AlternityNum.as_float(item.get("mass", 0.0))),
 	}
 
 
@@ -446,7 +446,7 @@ func _combat_skill_score(character: Dictionary, skill_id: int) -> Dictionary:
 	var use_skill: Dictionary = skill
 	var rank: int = _get_parent().skill_rank(character, skill_id)
 	if rank <= 0:
-		var broad_id: int = _get_parent()._as_int(skill.get("broad_id", skill_id))
+		var broad_id: int = AlternityNum.as_int(skill.get("broad_id", skill_id))
 		var broad: Dictionary = _get_parent().get_skill_by_id(broad_id)
 		if String(skill.get("type", "")) == "specialty" and not broad.is_empty() and _get_parent().skill_rank(character, broad_id) > 0 and bool(skill.get("untrained", true)):
 			use_skill = broad
@@ -454,23 +454,23 @@ func _combat_skill_score(character: Dictionary, skill_id: int) -> Dictionary:
 			return _untrained_combat_score(character, String(skill.get("stat", "STR")), 1)
 
 	var abilities: Dictionary = _get_parent().effective_abilities(character)
-	var selected_skill_id: int = _get_parent()._as_int(use_skill.get("id", skill_id))
+	var selected_skill_id: int = AlternityNum.as_int(use_skill.get("id", skill_id))
 	var rank_bonus: int = 0 if String(use_skill.get("type", "")) == "broad" else _get_parent().skill_rank(character, selected_skill_id)
-	var ordinary: int = _get_parent()._as_int(abilities.get(String(use_skill.get("stat", "STR")), 10)) + rank_bonus
+	var ordinary: int = AlternityNum.as_int(abilities.get(String(use_skill.get("stat", "STR")), 10)) + rank_bonus
 	var step := 1 if String(use_skill.get("type", "")) == "broad" else 0
 	step += _get_parent()._species_skill_step_bonus(character, selected_skill_id)
 	step += _get_parent().mutations.mutation_skill_step_bonus(character, selected_skill_id)
 	step += _get_parent().dazed_penalty(character)
 	
 	# Mindwalker profession bonus (-1 step to focused broad skill and its specialties)
-	if _get_parent()._as_int(character.get("profession_id", 0)) == 6:
-		var broad_id: int = selected_skill_id if String(use_skill.get("type", "")) == "broad" else _get_parent()._as_int(use_skill.get("broad_id", -1))
-		if _get_parent()._as_int(character.get("mindwalker_psionic_focus", -1)) == broad_id:
+	if AlternityNum.as_int(character.get("profession_id", 0)) == 6:
+		var broad_id: int = selected_skill_id if String(use_skill.get("type", "")) == "broad" else AlternityNum.as_int(use_skill.get("broad_id", -1))
+		if AlternityNum.as_int(character.get("mindwalker_psionic_focus", -1)) == broad_id:
 			step -= 1
 
 	# Combat Spec profession bonus (-1 step to the chosen combat specialty skill)
-	if _get_parent()._as_int(character.get("profession_id", 0)) == 0:
-		if String(use_skill.get("type", "")) == "specialty" and _get_parent()._as_int(character.get("combat_spec_bonus_specialty", -1)) == selected_skill_id:
+	if AlternityNum.as_int(character.get("profession_id", 0)) == 0:
+		if String(use_skill.get("type", "")) == "specialty" and AlternityNum.as_int(character.get("combat_spec_bonus_specialty", -1)) == selected_skill_id:
 			step -= 1
 
 	return _combat_score_from_ordinary(ordinary, step)
@@ -478,7 +478,7 @@ func _combat_skill_score(character: Dictionary, skill_id: int) -> Dictionary:
 
 func _untrained_combat_score(character: Dictionary, ability: String, step: int) -> Dictionary:
 	var abilities: Dictionary = _get_parent().effective_abilities(character)
-	return _combat_score_from_ordinary(_get_parent().untrained_score(_get_parent()._as_int(abilities.get(ability, 10))), step)
+	return _combat_score_from_ordinary(_get_parent().untrained_score(AlternityNum.as_int(abilities.get(ability, 10))), step)
 
 
 func _combat_score_from_ordinary(ordinary: int, step: int) -> Dictionary:
@@ -493,9 +493,9 @@ func _combat_score_from_ordinary(ordinary: int, step: int) -> Dictionary:
 
 func _score_text(score: Dictionary) -> String:
 	return "%d/%d/%d" % [
-		_get_parent()._as_int(score.get("ordinary", 0)),
-		_get_parent()._as_int(score.get("good", 0)),
-		_get_parent()._as_int(score.get("amazing", 0)),
+		AlternityNum.as_int(score.get("ordinary", 0)),
+		AlternityNum.as_int(score.get("good", 0)),
+		AlternityNum.as_int(score.get("amazing", 0)),
 	]
 
 
@@ -539,7 +539,7 @@ func _damage_segment_with_bonus(segment: String, bonus: int) -> String:
 	var current_modifier := 0
 	if modifier_index >= 0:
 		base = core.left(modifier_index)
-		current_modifier = _get_parent()._as_int(core.substr(modifier_index), 0)
+		current_modifier = AlternityNum.as_int(core.substr(modifier_index), 0)
 	var next_modifier := current_modifier + bonus
 	if next_modifier == 0:
 		return "%s%s" % [base, suffix]
@@ -554,15 +554,15 @@ func _dash_for_empty_or_zero(value) -> String:
 			return "-"
 		if not text.is_valid_int() and not text.is_valid_float():
 			return text
-	if _get_parent()._as_int(value, 0) <= 0:
+	if AlternityNum.as_int(value, 0) <= 0:
 		return "-"
-	return str(_get_parent()._as_int(value, 0))
+	return str(AlternityNum.as_int(value, 0))
 
 
 func _dash_for_empty_or_hidden(value) -> String:
-	if _get_parent()._as_int(value, -1000) <= -1000:
+	if AlternityNum.as_int(value, -1000) <= -1000:
 		return "-"
-	return str(_get_parent()._as_int(value, 0))
+	return str(AlternityNum.as_int(value, 0))
 
 
 func _format_rules_number(value: float) -> String:
@@ -599,7 +599,7 @@ func _normalize_equipment(character: Dictionary) -> void:
 		var normalized_row := {
 			"line_id": String(row.get("line_id", _next_equipment_line_id_from_list(carried))),
 			"item_id": item_id,
-			"quantity": max(1, _get_parent()._as_int(row.get("quantity", 1))),
+			"quantity": max(1, AlternityNum.as_int(row.get("quantity", 1))),
 			"equipped": bool(row.get("equipped", false)),
 			"slot": String(row.get("slot", "")),
 			"notes": String(row.get("notes", "")),
@@ -622,12 +622,12 @@ func _normalize_equipment_item(item: Dictionary, fallback_id: String) -> Diction
 		"reference": String(item.get("reference", "Character custom equipment.")),
 		"page": String(item.get("page", "")),
 		"table": String(item.get("table", "")),
-		"pl": clampi(_get_parent()._as_int(item.get("pl", 0)), 0, 9),
+		"pl": clampi(AlternityNum.as_int(item.get("pl", 0)), 0, 9),
 		"category": String(item.get("category", "Custom")),
 		"class": String(item.get("class", "Custom")),
 		"availability": String(item.get("availability", "Com")),
-		"mass": max(0.0, _get_parent()._as_float(item.get("mass", 0.0))),
-		"cost": max(0, _get_parent()._as_int(item.get("cost", 0))),
+		"mass": max(0.0, AlternityNum.as_float(item.get("mass", 0.0))),
+		"cost": max(0, AlternityNum.as_int(item.get("cost", 0))),
 		"combat": combat,
 	}
 	return normalized
@@ -671,7 +671,7 @@ func _next_equipment_line_id_from_list(carried: Array) -> String:
 			continue
 		var line_id := String(row.get("line_id", ""))
 		if line_id.begins_with("line_"):
-			max_id = maxi(max_id, _get_parent()._as_int(line_id.substr(5), 0))
+			max_id = maxi(max_id, AlternityNum.as_int(line_id.substr(5), 0))
 	return "line_%04d" % (max_id + 1)
 
 
@@ -687,7 +687,7 @@ func _next_custom_equipment_id_from_list(custom_items: Array) -> String:
 			continue
 		var item_id := String(item.get("id", ""))
 		if item_id.begins_with("custom_"):
-			max_id = maxi(max_id, _get_parent()._as_int(item_id.substr(7), 0))
+			max_id = maxi(max_id, AlternityNum.as_int(item_id.substr(7), 0))
 	return "custom_%04d" % (max_id + 1)
 
 
