@@ -14,4 +14,12 @@
 
 # Scratch and temp files
 /scratch/
-*.uid
+/temp_*
+
+# Godot AI MCP addon: a local editor-only dev tool, not part of the app.
+# Scoped to godot_ai so genuine project addons stay trackable.
+# NOTE: enabling it in the editor re-adds an autoload + [editor_plugins] block
+# to project.godot. Those must NOT be committed - the autoload is a *runtime*
+# dependency and breaks CI exports. Run tools/clean_project_settings.ps1 first.
+/addons/godot_ai/
+/godot-ai-LICENSE.txt

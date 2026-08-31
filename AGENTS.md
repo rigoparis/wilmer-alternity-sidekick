@@ -47,3 +47,22 @@ Developer rules and architectural guide for **Wilmer Alternity Sidekick** (Godot
 - **Theme Overrides Safety**: When modifying button styleboxes in script dynamically (e.g. changing padding margins on theme change), always call `btn.remove_theme_stylebox_override(state)` first before fetching the stylebox. This prevents the button from locking into a duplicated stale stylebox from a previous theme.
 - **Build Exclusion**: Compiled binaries under `builds/` are git-ignored and must never be tracked or committed to the repository. Release binaries should be distributed via GitHub Releases.
 
+
+---
+
+## 6. Local Tooling vs. Committed State
+
+- **Godot AI MCP addon**: `/addons/godot_ai/` is a local, editor-only development tool and is
+  git-ignored, along with `godot-ai-LICENSE.txt`. It is not part of the app.
+- **Never commit its `project.godot` entries.** Enabling the addon in the editor writes an
+  `_mcp_game_helper` autoload and an `[editor_plugins]` block into `project.godot`. The
+  autoload is a **runtime** dependency: committing it without `addons/` breaks every clone
+  and every CI export with an unresolvable autoload path.
+- **Before committing**, if `project.godot` shows unexpected changes, run:
+  ```
+  pwsh tools/clean_project_settings.ps1
+  ```
+  It is idempotent and safe to run any time; `-WhatIf` previews without writing.
+- **`.uid` files are tracked.** Godot 4.4+ uses them to keep resource references stable
+  across machines. Do not add them to `.gitignore`. Delete a `.uid` only when its script is
+  deleted.
