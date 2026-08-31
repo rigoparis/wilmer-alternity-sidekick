@@ -257,7 +257,9 @@
 			"2a": true,
 			"2b": false,
 			"2c": true,
-			"dazed": true
+			"dazed": true,
+			"firepower_scaling": false,
+			"psionic_talents": false
 		},
 		"player_name": "Fixture",
 		"profession_id": 5.0,

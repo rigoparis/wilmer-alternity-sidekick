@@ -67,7 +67,9 @@
 			"2a": true,
 			"2b": true,
 			"2c": true,
-			"dazed": true
+			"dazed": true,
+			"firepower_scaling": false,
+			"psionic_talents": false
 		},
 		"player_name": "Fixture",
 		"profession_id": 5.0,
@@ -105,11 +107,11 @@
 			"marginal": 13,
 			"ordinary": 12
 		},
-		"additional_broad_skill_limit": 7,
-		"additional_broad_skills_remaining": 6,
+		"additional_broad_skill_limit": 8,
+		"additional_broad_skills_remaining": 7,
 		"additional_broad_skills_used": 1,
 		"age_category": "young_adult",
-		"broad_skills_remaining": 6,
+		"broad_skills_remaining": 7,
 		"broad_skills_used": 7,
 		"cybertech": {
 			"cykosis": 0,
@@ -182,7 +184,7 @@
 			"profession_bonus": 0,
 			"used": 0
 		},
-		"max_broad_skills": 13,
+		"max_broad_skills": 14,
 		"movement": {
 			"easy_swim": 2,
 			"effects": [

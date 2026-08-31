@@ -37,11 +37,15 @@ var seats: Array = []
 ## be replayed or audited months later.
 var events: Array = []
 
+## Campaign-level optional rules set by the GM and synced to all players at the table.
+var optional_rules: Dictionary = {}
+
 
 func _init(name: String = "New Campaign") -> void:
 	campaign_id = new_id()
 	display_name = name
 	created_at = int(Time.get_unix_time_from_system())
+	optional_rules = {}
 
 
 ## Random identifier, used for both campaigns and players.
@@ -179,6 +183,14 @@ func recent_events(count: int) -> Array:
 	return events.slice(maxi(0, events.size() - count))
 
 
+func set_campaign_optional_rule(rule_id: String, enabled: bool) -> void:
+	optional_rules[rule_id] = enabled
+
+
+func get_campaign_optional_rules() -> Dictionary:
+	return optional_rules.duplicate(true)
+
+
 # --- Persistence -----------------------------------------------------------
 
 func to_dict() -> Dictionary:
@@ -189,6 +201,7 @@ func to_dict() -> Dictionary:
 		"created_at": created_at,
 		"seats": seats.duplicate(true),
 		"events": events.duplicate(true),
+		"optional_rules": optional_rules.duplicate(true),
 	}
 
 
@@ -204,4 +217,7 @@ static func from_dict(data: Dictionary) -> CampaignSession:
 
 	var events_data = data.get("events", [])
 	session.events = events_data.duplicate(true) if typeof(events_data) == TYPE_ARRAY else []
+
+	var rules_data = data.get("optional_rules", {})
+	session.optional_rules = rules_data.duplicate(true) if typeof(rules_data) == TYPE_DICTIONARY else {}
 	return session

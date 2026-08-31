@@ -167,6 +167,8 @@ func _test_persistence() -> void:
 	var gm := session.add_seat("GM")
 	var player := session.add_seat("Player", "Hero.json")
 	session.set_gm(gm)
+	session.set_campaign_optional_rule("psionic_talents", true)
+	session.set_campaign_optional_rule("dazed", true)
 	var source = Rng.new(7)
 	session.append_roll(player, source.roll(Notation.parse("2d20"), "Attack").to_dict())
 	session.append_chat(player, "hello")
@@ -181,6 +183,8 @@ func _test_persistence() -> void:
 	check_eq(restored.seats.size(), 2, "seats survive")
 	check_eq(restored.events.size(), 2, "events survive")
 	check_eq(String(restored.gm_seat().get("player_id", "")), gm, "GM assignment survives")
+	check_eq(bool(restored.get_campaign_optional_rules().get("psionic_talents", false)), true, "campaign optional rule psionic_talents survives")
+	check_eq(bool(restored.get_campaign_optional_rules().get("dazed", false)), true, "campaign optional rule dazed survives")
 	check_eq(
 		restored.events[0]["payload"]["dice"].size(), 2,
 		"the recorded dice faces survive, so the GM sees what the player saw"

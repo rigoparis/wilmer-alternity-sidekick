@@ -861,15 +861,19 @@ func action_check(character: Dictionary) -> Dictionary:
 
 func dazed_penalty(character: Dictionary) -> int:
 	var penalty := 0
+	var dmg: Dictionary = character.get("damage", {})
+	# Core: Mortal and Fatigue damage always add +1 step penalty per marked point (PHB Chapter 8 p. 88)
+	penalty += _as_int(dmg.get("mortal", 0))
+	penalty += _as_int(dmg.get("fatigue", 0))
+
+	# Optional Rule: Dazed (> 50% Stun or Wound adds +1 step each)
 	if optional_rule_enabled(character, "dazed"):
-		var dmg: Dictionary = character.get("damage", {})
 		var max_durability := durability(character)
 		if _as_int(dmg.get("stun", 0)) > int(floor(_as_int(max_durability.get("stun", 0)) / 2.0)):
 			penalty += 1
 		if _as_int(dmg.get("wound", 0)) > int(floor(_as_int(max_durability.get("wound", 0)) / 2.0)):
 			penalty += 1
-		penalty += _as_int(dmg.get("mortal", 0))
-		penalty += _as_int(dmg.get("fatigue", 0))
+
 	return penalty
 
 
@@ -986,26 +990,55 @@ func actions_per_round(character: Dictionary) -> int:
 	return min(4, base + bonus)
 
 
-func is_psionic_character(character: Dictionary) -> bool:
-	if _as_int(character.get("species_id", 0)) == 1: # Fraal
+func is_psionic_skill(skill: Dictionary) -> bool:
+	if String(skill.get("category", "")) == "psionic" or String(skill.get("source", "")) == "psionics":
 		return true
-	var profession := get_profession_by_id(_as_int(character.get("profession_id", 0)))
-	return String(profession.get("code", "")) == "M" or String(profession.get("secondary_code", "")) == "M"
+	var broad_id := _as_int(skill.get("broad_id", -1))
+	var id := _as_int(skill.get("id", -1))
+	return broad_id in [525, 901, 902, 903, 904, 905] or id in [525, 901, 902, 903, 904, 905]
+
+
+func is_mindwalker_profession(character: Dictionary) -> bool:
+	var prof_id := _as_int(character.get("profession_id", 0))
+	var profession := get_profession_by_id(prof_id)
+	return String(profession.get("code", "")) == "M" or String(profession.get("secondary_code", "")) == "M" or prof_id == 6 or prof_id == 7
+
+
+func is_psionic_character(character: Dictionary) -> bool:
+	var species_info := get_species_by_id(_as_int(character.get("species_id", 0)))
+	if String(species_info.get("name", "")) == "Fraal" or _as_int(character.get("species_id", 0)) == 1:
+		return true
+	if is_mindwalker_profession(character):
+		return true
+	if optional_rule_enabled(character, "psionic_talents"):
+		return true
+	var selected: Dictionary = character.get("selected_skills", {})
+	for key in selected.keys():
+		var sk := get_skill_by_id(_as_int(key))
+		if is_psionic_skill(sk):
+			return true
+	return false
 
 
 func psionic_energy_points(character: Dictionary) -> int:
 	if not is_psionic_character(character):
 		return 0
 	var will := _as_int(effective_abilities(character).get("WIL", 10))
-	var is_fraal := _as_int(character.get("species_id", 0)) == 1
-	var profession := get_profession_by_id(_as_int(character.get("profession_id", 0)))
-	var is_primary_mindwalker := String(profession.get("code", "")) == "M"
+	var is_fraal := _as_int(character.get("species_id", 0)) == 1 or String(get_species_by_id(_as_int(character.get("species_id", 0))).get("name", "")) == "Fraal"
+	var is_mw := is_mindwalker_profession(character)
+	var prof_id := _as_int(character.get("profession_id", 0))
+	var is_primary_mindwalker := prof_id == 6 or (is_mw and String(get_profession_by_id(prof_id).get("code", "")) == "M")
+
 	# Fraal Mindwalkers use WIL x 1.5. Fraal talents, Mindwalkers, and Diplomats
 	# with Mindwalker as secondary profession use full WIL instead of one-half
-	# WIL. Source: Player's Handbook p. 22 and Chapter 14.
+	# WIL. Standard species talents use ceil(WIL * 0.5).
+	# Source: Player's Handbook p. 22 and Chapter 14.
 	if is_fraal and is_primary_mindwalker:
 		return int(will * 1.5)
-	return will
+	elif is_mw or is_fraal:
+		return will
+	else:
+		return int(ceil(will * 0.5))
 
 
 func last_resorts(character: Dictionary) -> Dictionary:
@@ -1095,14 +1128,14 @@ func racial_broad_skills_count(character: Dictionary) -> int:
 
 ## Table P5: Additional Broad Skills Allowance (excluding racial). Source: Player's Handbook p. 34.
 func additional_broad_skill_limit(character: Dictionary) -> int:
+	var current_species := get_species_by_id(_as_int(character.get("species_id", 0)))
+	var is_human := String(current_species.get("name", "")) == "Human" or _as_int(character.get("species_id", 0)) == 0
+	var human_bonus := 1 if is_human else 0
 	if optional_rule_enabled(character, "2b"):
 		var intelligence_rm := character_resistance_modifier(character, "INT")
-		return max(0, 6 + intelligence_rm)
+		return max(0, 6 + intelligence_rm + human_bonus)
 	var abilities := effective_abilities(character)
 	var int_score := _as_int(abilities.get("INT", 10))
-	var current_species := get_species_by_id(_as_int(character.get("species_id", 0)))
-	var is_human := String(current_species.get("name", "")) == "Human"
-	var human_bonus := 1 if is_human else 0
 	return int(floor(int_score / 2.0)) + human_bonus
 
 
@@ -1124,10 +1157,18 @@ func skill_cost(character: Dictionary, skill: Dictionary) -> int:
 
 	var cost := _as_int(skill.get("base_price", 0))
 	var skill_professions := String(skill.get("professions", ""))
+	var matches_prof := false
 	for code in profession_codes(character):
 		if skill_professions.contains(String(code)):
-			cost -= 1
+			matches_prof = true
 			break
+
+	if matches_prof:
+		cost -= 1
+	elif is_psionic_skill(skill) and not is_mindwalker_profession(character):
+		# Psionic Talents surcharge: +1 SP above listed cost (PHB Ch. 14)
+		cost += 1
+
 	return max(1, cost)
 
 
@@ -1189,11 +1230,12 @@ func skill_rank(character: Dictionary, skill_id: int) -> int:
 	var free_rank := free_species_skill_rank(character, skill_id)
 
 	var selected: Dictionary = character.get("selected_skills", {})
-	if not selected.has(str(skill_id)):
+	var raw_val = selected.get(str(skill_id), selected.get(skill_id, null))
+	if raw_val == null:
 		return free_rank
 
 	var skill := get_skill_by_id(skill_id)
-	var rank := _selected_skill_entry_rank(selected.get(str(skill_id)))
+	var rank := _selected_skill_entry_rank(raw_val)
 	if skill.get("type", "") == "broad":
 		return 1 if rank > 0 or free_rank > 0 else 0
 	return max(free_rank, clampi(rank, 0, max_skill_rank_for_character(character)))
@@ -1530,6 +1572,12 @@ func _validate_skills(character: Dictionary, messages: Array) -> void:
 				if skill.get("type", "") == "specialty" and broad_id != 525 and broad_id != 901:
 					messages.append("Fraal Psionic Talents (non-Mindwalkers) must select all specialty skills from the Telepathy discipline. Source: Player's Handbook p. 22.")
 					break
+	elif String(species_info.get("name", "")) != "Fraal" and not is_mindwalker_profession(character) and not optional_rule_enabled(character, "psionic_talents"):
+		for key in selected.keys():
+			var skill := get_skill_by_id(_as_int(key))
+			if is_psionic_skill(skill):
+				messages.append("Psionic skills are only available to Mindwalkers or when the Psionic Talents optional rule is permitted. Source: Player's Handbook Chapter 14.")
+				break
 
 	for key in selected.keys():
 		var skill := get_skill_by_id(_as_int(key))
@@ -1878,6 +1926,45 @@ func roll_random_abilities_by_species(species_id: int) -> Dictionary:
 	var sp := get_species_by_id(species_id)
 	var sp_key := String(sp.get("name", "human")).to_lower().replace("'", "_")
 	return RANDOM_ABILITY_ROLLS_BY_SPECIES.get(sp_key, RANDOM_ABILITY_ROLLS_BY_SPECIES.get("human", {}))
+
+
+## Method III: Die Allocation Pool (Gamemaster Guide Chapter 2 p. 14).
+## Rolls 7d6. All 6 Ability Scores start at a baseline of 5.
+## The player distributes the 7 rolled die values freely among the abilities.
+func roll_method_3_dice(rng: RandomNumberGenerator = null) -> Array:
+	var dice := []
+	for i in range(7):
+		if rng != null:
+			dice.append(rng.randi_range(1, 6))
+		else:
+			dice.append(randi_range(1, 6))
+	return dice
+
+
+## Table G13 / Chapter 3: Firepower vs Toughness Damage Degradation (Gamemaster Guide p. 48).
+## When weapon firepower is lower than armor/target toughness:
+## 1 step difference: Mortal -> Wound, Wound -> Stun, Stun -> None.
+## 2 steps difference: Mortal -> Stun, Wound -> None, Stun -> None.
+func degrade_damage_grade(damage_type: String, weapon_grade: String, target_toughness: String) -> String:
+	var w_idx := FIREPOWER_GRADES.find(weapon_grade.to_upper())
+	var t_idx := FIREPOWER_GRADES.find(target_toughness.to_upper())
+	if w_idx == -1 or t_idx == -1 or w_idx >= t_idx:
+		return damage_type
+	var diff := t_idx - w_idx
+	var dt := damage_type.to_lower()
+	if diff == 1:
+		if dt == "mortal" or dt == "m":
+			return "wound"
+		elif dt == "wound" or dt == "w":
+			return "stun"
+		else:
+			return "none"
+	elif diff >= 2:
+		if dt == "mortal" or dt == "m":
+			return "stun"
+		else:
+			return "none"
+	return damage_type
 
 
 func skill_detail(skill: Dictionary, character: Dictionary = {}) -> Dictionary:

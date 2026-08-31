@@ -138,27 +138,41 @@ const OPTIONAL_RULES := [
 		"id": "2a",
 		"name": "Optional Rule 2A",
 		"summary": "Alternate starting skill points",
-		"description": "New characters have skill points equal to 30 plus 3 times their INT score. Human heroes receive 5 additional skill points at character creation.",
+		"description": "New characters receive a starting Skill Point pool equal to 30 plus 3 times their Intelligence score (30 + 3 * INT). Human heroes receive 5 additional skill points at character creation (35 + 3 * INT). Source: Gamemaster Guide Chapter 4 p. 68.",
 	},
 	{
 		"id": "2b",
 		"name": "Optional Rule 2B",
 		"summary": "Alternate broad skill limit",
-		"description": "During initial skill purchase, a character may not learn more than six additional broad skills, not counting racial broad skills. Modify this number by the hero's INT resistance modifier.",
+		"description": "During initial skill purchase, a character may not learn more than six additional broad skills, not counting racial broad skills. This cap is modified directly by the hero's INT resistance modifier (6 + INT RM, plus 1 for Humans). Source: Gamemaster Guide Chapter 4 p. 68.",
 	},
 	{
 		"id": "2c",
 		"name": "Optional Rule 2C",
 		"summary": "Flat specialty advancement cost",
-		"description": "The cost to purchase rank 2 or higher in a specialty skill is either the list price or list price -1. Current ranks do not increase the cost of advancing that skill.",
+		"description": "The cost to purchase rank 2 or higher in a specialty skill is either the list price or list price -1 (if matching profession). Current ranks do not increase the cost of advancing that skill. Source: Gamemaster Guide Table G5 p. 31.",
 	},
 	{
 		"id": "dazed",
 		"name": "Optional Rule: Dazed",
-		"summary": "Step penalty for heavy Stun, Wound, Mortal, or Fatigue damage",
-		"description": "If your hero suffers enough Stun or Wound damage to use up more than half of those points, he is dazed (+1 step penalty each). Mortal and Fatigue damage each add +1 step penalty per point.",
+		"summary": "Step penalty for heavy Stun or Wound damage",
+		"description": "If your hero suffers enough Stun or Wound damage to use up more than half of those points (> 50%), he is dazed (+1 step penalty each). Mortal and Fatigue damage always add +1 step penalty per point. Source: Player's Handbook Chapter 8 p. 88.",
+	},
+	{
+		"id": "psionic_talents",
+		"name": "Optional Rule: Psionic Talents",
+		"summary": "Allow non-Mindwalker heroes to purchase Psionics",
+		"description": "Permits characters of any profession to learn Psionic broad and specialty skills with a +1 SP cost surcharge above the listed price. Psionic energy pool is ceil(WIL * 0.5) (or full WIL for Fraal). Source: Player's Handbook Chapter 14.",
+	},
+	{
+		"id": "firepower_scaling",
+		"name": "Optional Rule: Firepower Scaling",
+		"summary": "Firepower vs Toughness damage degradation",
+		"description": "When an Ordinary weapon hits Good armor or toughness, its damage degrades one step (Mortal to Wound, Wound to Stun). When hitting Amazing toughness, it degrades two steps. Source: Gamemaster Guide Chapter 3 p. 48.",
 	},
 ]
+
+const FIREPOWER_GRADES := ["O", "G", "A"] # Ordinary, Good, Amazing
 
 const COMPLEX_CHECK_RULES := {
 	"summary": "Complex skill checks are used for tasks that take more than one roll or where the GM wants tension over time.",

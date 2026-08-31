@@ -460,6 +460,172 @@ func _init() -> void:
 	rules.ensure_character_shape(perk_max_char)
 	assert_eq.call(rules.effective_abilities(perk_max_char).STR, 14, "Heightened Ability clamped to species max 14")
 
+	# --- 20. Optional Rules 2A, 2B, and 2C Exhaustive Tests ---
+	print("Testing Optional Rules 2A, 2B, and 2C...")
+	# Optional Rule 2A: 30 + 3*INT (+5 for Human)
+	var expected_2a := {
+		4: [42, 47],
+		6: [48, 53],
+		8: [54, 59],
+		10: [60, 65],
+		12: [66, 71],
+		14: [72, 77],
+		16: [78, 83],
+	}
+	for stat_int in expected_2a.keys():
+		assert_eq.call(30 + (3 * stat_int), expected_2a[stat_int][0], "Rule 2A Alien Formula INT %d = %d" % [stat_int, expected_2a[stat_int][0]])
+		assert_eq.call(35 + (3 * stat_int), expected_2a[stat_int][1], "Rule 2A Human Formula INT %d = %d" % [stat_int, expected_2a[stat_int][1]])
+
+	# Test on actual character documents within species limits
+	for stat_int in [4, 6, 8, 10, 12]:
+		var weren_2a: Dictionary = rules.default_character()
+		weren_2a["species_id"] = 5 # Weren (Alien, limits 4-13)
+		weren_2a["abilities"]["INT"] = stat_int
+		weren_2a["optional_rules"] = {"2a": true}
+		rules.ensure_character_shape(weren_2a)
+		assert_eq.call(rules.starting_skill_budget(weren_2a), expected_2a[stat_int][0], "Rule 2A Weren INT %d SP = %d" % [stat_int, expected_2a[stat_int][0]])
+
+	for stat_int in [4, 6, 8, 10, 12, 14]:
+		var human_2a: Dictionary = rules.default_character()
+		human_2a["species_id"] = 0 # Human (limits 4-14)
+		human_2a["abilities"]["INT"] = stat_int
+		human_2a["optional_rules"] = {"2a": true}
+		rules.ensure_character_shape(human_2a)
+		assert_eq.call(rules.starting_skill_budget(human_2a), expected_2a[stat_int][1], "Rule 2A Human INT %d SP = %d" % [stat_int, expected_2a[stat_int][1]])
+
+	# Optional Rule 2B: 6 + INT RM (+1 for Human)
+	var expected_2b := {
+		4: [4, 5],
+		6: [5, 6],
+		8: [6, 7],
+		10: [6, 7],
+		12: [7, 8],
+		14: [8, 9],
+		16: [9, 10],
+	}
+	for stat_int in expected_2b.keys():
+		var int_rm := rules.resistance_modifier(stat_int)
+		assert_eq.call(6 + int_rm, expected_2b[stat_int][0], "Rule 2B Alien Formula INT %d = %d" % [stat_int, expected_2b[stat_int][0]])
+		assert_eq.call(6 + int_rm + 1, expected_2b[stat_int][1], "Rule 2B Human Formula INT %d = %d" % [stat_int, expected_2b[stat_int][1]])
+
+	for stat_int in [4, 6, 8, 10, 12]:
+		var weren_2b: Dictionary = rules.default_character()
+		weren_2b["species_id"] = 5 # Weren (Alien)
+		weren_2b["abilities"]["INT"] = stat_int
+		weren_2b["optional_rules"] = {"2b": true}
+		rules.ensure_character_shape(weren_2b)
+		assert_eq.call(rules.additional_broad_skill_limit(weren_2b), expected_2b[stat_int][0], "Rule 2B Weren INT %d Broad Limit = %d" % [stat_int, expected_2b[stat_int][0]])
+
+	for stat_int in [4, 6, 8, 10, 12, 14]:
+		var human_2b: Dictionary = rules.default_character()
+		human_2b["species_id"] = 0 # Human
+		human_2b["abilities"]["INT"] = stat_int
+		human_2b["optional_rules"] = {"2b": true}
+		rules.ensure_character_shape(human_2b)
+		assert_eq.call(rules.additional_broad_skill_limit(human_2b), expected_2b[stat_int][1], "Rule 2B Human INT %d Broad Limit = %d" % [stat_int, expected_2b[stat_int][1]])
+
+	# Optional Rule 2C: Flat Specialty Advancement Cost
+	var skill_base3 := rules.get_skill_by_id(12) # Blade (Specialty, base 3, Combat Spec)
+	var skill_base5 := rules.get_skill_by_id(89) # Surgery (Specialty, base 5, Tech Op)
+
+	var char_core: Dictionary = rules.default_character() # Core rules (2c disabled)
+	char_core["profession_id"] = 4 # Free Agent (no discount on either Blade or Surgery)
+	char_core["achievement_level"] = 5 # Allows rank 5
+
+	var char_2c: Dictionary = rules.default_character()
+	char_2c["profession_id"] = 4 # Free Agent
+	char_2c["achievement_level"] = 5 # Allows rank 5
+	char_2c["optional_rules"] = {"2c": true}
+
+	# Test each rank individually
+	assert_eq.call(rules.skill_purchase_cost(char_core, skill_base3, 1), 3, "Core base 3 rank 1 = 3")
+	assert_eq.call(rules.skill_purchase_cost(char_core, skill_base3, 2), 4, "Core base 3 rank 2 = 4")
+	assert_eq.call(rules.skill_purchase_cost(char_core, skill_base3, 3), 5, "Core base 3 rank 3 = 5")
+	assert_eq.call(rules.skill_purchase_cost(char_core, skill_base3, 4), 6, "Core base 3 rank 4 = 6")
+	assert_eq.call(rules.skill_purchase_cost(char_core, skill_base3, 5), 7, "Core base 3 rank 5 = 7")
+
+	assert_eq.call(rules.skill_purchase_cost(char_2c, skill_base3, 1), 3, "Rule 2C base 3 rank 1 = 3")
+	assert_eq.call(rules.skill_purchase_cost(char_2c, skill_base3, 2), 3, "Rule 2C base 3 rank 2 = 3")
+	assert_eq.call(rules.skill_purchase_cost(char_2c, skill_base3, 3), 3, "Rule 2C base 3 rank 3 = 3")
+	assert_eq.call(rules.skill_purchase_cost(char_2c, skill_base3, 4), 3, "Rule 2C base 3 rank 4 = 3")
+	assert_eq.call(rules.skill_purchase_cost(char_2c, skill_base3, 5), 3, "Rule 2C base 3 rank 5 = 3")
+
+	# Test total cumulative cost to Rank 5
+	char_core["selected_skills"] = {12: 5, 89: 5}
+	char_2c["selected_skills"] = {12: 5, 89: 5}
+	assert_eq.call(rules.skill_rank_total_cost(char_core, skill_base3), 25, "Core base 3 cumulative 1-5 total = 25 SP")
+	assert_eq.call(rules.skill_rank_total_cost(char_core, skill_base5), 35, "Core base 5 cumulative 1-5 total = 35 SP")
+	assert_eq.call(rules.skill_rank_total_cost(char_2c, skill_base3), 15, "Rule 2C base 3 cumulative 1-5 total = 15 SP")
+	assert_eq.call(rules.skill_rank_total_cost(char_2c, skill_base5), 25, "Rule 2C base 5 cumulative 1-5 total = 25 SP")
+
+	# --- 21. Optional Rule: Psionic Talents ---
+	print("Testing Optional Rule: Psionic Talents...")
+	var psi_broad := {"id": 901, "broad_id": 901, "type": "broad", "base_price": 6, "professions": "M", "source": "psionics"}
+	var psi_spec := {"id": 90101, "broad_id": 901, "type": "specialty", "base_price": 3, "professions": "M", "source": "psionics"}
+
+	var mw_hero: Dictionary = rules.default_character()
+	mw_hero["profession_id"] = 6 # Mindwalker
+	mw_hero["abilities"]["WIL"] = 12
+	rules.ensure_character_shape(mw_hero)
+	assert_eq.call(rules.skill_cost(mw_hero, psi_broad), 5, "Mindwalker broad psionic cost = 6 - 1 = 5 SP")
+	assert_eq.call(rules.skill_cost(mw_hero, psi_spec), 2, "Mindwalker specialty psionic cost = 3 - 1 = 2 SP")
+	assert_eq.call(rules.psionic_energy_points(mw_hero), 12, "Mindwalker psionic energy pool = WIL (12)")
+
+	# Non-Mindwalker Talent (Combat Spec)
+	var talent_hero: Dictionary = rules.default_character()
+	talent_hero["profession_id"] = 0 # Combat Spec
+	talent_hero["abilities"]["WIL"] = 11
+	talent_hero["optional_rules"] = {"psionic_talents": true}
+	rules.ensure_character_shape(talent_hero)
+	assert_eq.call(rules.skill_cost(talent_hero, psi_broad), 7, "Talent broad psionic cost = 6 + 1 = 7 SP (+1 surcharge)")
+	assert_eq.call(rules.skill_cost(talent_hero, psi_spec), 4, "Talent specialty psionic cost = 3 + 1 = 4 SP (+1 surcharge)")
+	assert_eq.call(rules.psionic_energy_points(talent_hero), 6, "Talent psionic energy pool = ceil(11 * 0.5) = 6")
+
+	# Non-Mindwalker without psionic_talents rule enabled triggers validation warning
+	var illegal_talent: Dictionary = rules.default_character()
+	illegal_talent["profession_id"] = 0 # Combat Spec
+	illegal_talent["species_id"] = 0 # Human
+	illegal_talent["selected_skills"] = {901: 1} # Has psionic skill
+	rules.ensure_character_shape(illegal_talent)
+	var val_psi: Array = rules.validate(illegal_talent)
+	var found_psi_warn := false
+	for m in val_psi:
+		if m.contains("Psionic skills are only available to Mindwalkers"):
+			found_psi_warn = true
+	assert_true.call(found_psi_warn, "Non-Mindwalker with psionics without psionic_talents triggers validation warning")
+
+	# --- 22. Optional Rule: Dazed & Firepower Scaling ---
+	print("Testing Dazed Rule & Firepower Scaling...")
+	var dazed_char: Dictionary = rules.default_character()
+	dazed_char["abilities"]["CON"] = 10 # Stun 10, Wound 10
+	rules.ensure_character_shape(dazed_char)
+	dazed_char["damage"] = {"stun": 6, "wound": 0, "mortal": 0, "fatigue": 0} # Stun > 50% (6/10)
+	assert_eq.call(rules.dazed_penalty(dazed_char), 0, "Without dazed rule, >50% stun penalty is 0")
+	dazed_char["optional_rules"] = {"dazed": true}
+	assert_eq.call(rules.dazed_penalty(dazed_char), 1, "With dazed rule, >50% stun penalty is +1 step")
+	dazed_char["damage"]["wound"] = 6 # Both Stun and Wound > 50%
+	assert_eq.call(rules.dazed_penalty(dazed_char), 2, "With dazed rule, both >50% stun & wound penalty is +2 steps")
+	dazed_char["damage"]["mortal"] = 1 # Core mortal adds +1
+	assert_eq.call(rules.dazed_penalty(dazed_char), 3, "Dazed (+2) + Mortal (+1) = +3 steps penalty")
+
+	# Firepower Degradation (GMG Chapter 3)
+	assert_eq.call(rules.degrade_damage_grade("mortal", "O", "O"), "mortal", "O vs O -> no degradation")
+	assert_eq.call(rules.degrade_damage_grade("mortal", "O", "G"), "wound", "O vs G -> Mortal degrades to Wound (1 step)")
+	assert_eq.call(rules.degrade_damage_grade("wound", "O", "G"), "stun", "O vs G -> Wound degrades to Stun (1 step)")
+	assert_eq.call(rules.degrade_damage_grade("stun", "O", "G"), "none", "O vs G -> Stun degrades to None (1 step)")
+	assert_eq.call(rules.degrade_damage_grade("mortal", "O", "A"), "stun", "O vs A -> Mortal degrades to Stun (2 steps)")
+	assert_eq.call(rules.degrade_damage_grade("wound", "O", "A"), "none", "O vs A -> Wound degrades to None (2 steps)")
+	assert_eq.call(rules.degrade_damage_grade("mortal", "A", "G"), "mortal", "A vs G -> higher firepower, no degradation")
+
+	# --- 23. Method III Random Ability Allocation Pool ---
+	print("Testing Method III Die Allocation Pool...")
+	var test_rng := RandomNumberGenerator.new()
+	test_rng.seed = 12345
+	var dice_pool: Array = rules.roll_method_3_dice(test_rng)
+	assert_eq.call(dice_pool.size(), 7, "Method III rolls exactly 7 dice")
+	for d in dice_pool:
+		assert_true.call(d >= 1 and d <= 6, "Each Method III die is between 1 and 6")
+
 	print("\n--- Audit Summary: %d Passed, %d Failed ---" % [results["pass"], results["fail"]])
 	if results["fail"] == 0:
 		print("ALL ALTERNITY RULES AUDIT TESTS PASSED SUCCESSFULLY!")
@@ -467,3 +633,4 @@ func _init() -> void:
 	else:
 		printerr("SOME ALTERNITY RULES AUDIT TESTS FAILED!")
 		quit(1)
+
