@@ -752,6 +752,10 @@ func character_resistance_modifier(character: Dictionary, ability: String) -> in
 		var enc := encumbrance(character)
 		rm -= _as_int(enc.get("penalty", 0))
 
+	# Armor Operation penalty to DEX Resistance Modifier
+	if ability == "DEX":
+		rm -= equipment.equipped_armor_action_penalty(character)
+
 	return rm
 
 
@@ -849,7 +853,8 @@ func action_check(character: Dictionary) -> Dictionary:
 	var good := int(floor(ordinary / 2.0))
 	var amazing := int(floor(ordinary / 4.0))
 	var action_step := _as_int(current_species.get("action_step", 0)) + achievements.achievement_effect_total(character, "action_check_step") + mutations.mutation_action_check_step(character) + cybertech.cybertech_action_check_step(character)
-	var penalty := dazed_penalty(character)
+	var armor_penalty := equipment.equipped_armor_action_penalty(character)
+	var penalty := dazed_penalty(character) + armor_penalty
 	return {
 		"marginal": ordinary + 1,
 		"ordinary": ordinary,

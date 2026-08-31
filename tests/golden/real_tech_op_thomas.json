@@ -217,14 +217,14 @@
 		"equipment": {
 			"attack_forms": [
 				{
-					"base_die": "+d4",
+					"base_die": "+d0",
 					"clip_size": "-",
 					"damage": "d6s/d6+2s/d4w",
 					"hide": "3",
 					"mass": "",
-					"name": "Unarmed",
+					"name": "Power Martial Arts",
 					"range": "Personal",
-					"score": "8/4/2",
+					"score": "9/4/2",
 					"type": "LI/O"
 				},
 				{

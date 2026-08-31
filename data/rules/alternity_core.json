@@ -419,7 +419,7 @@
       "stat_id": 1,
       "type": "broad",
       "broad_id": 3,
-      "base_price": 1,
+      "base_price": 3,
       "untrained": true,
       "multi": false,
       "custom_name": false,
@@ -591,7 +591,7 @@
       "untrained": true,
       "multi": false,
       "custom_name": false,
-      "professions": "",
+      "professions": "C",
       "source": "core"
     },
     {

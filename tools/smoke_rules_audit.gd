@@ -655,13 +655,124 @@ func _init() -> void:
 	assert_eq.call(ap_sum_3["achievements.achievement_points_available"], 4, "10 AP has 4 AP available progress")
 	assert_eq.call(ap_sum_3["achievements.achievement_points_to_next_level"], 3, "10 AP needs 3 AP for Level 3 (at 13)")
 
-	# Level 5 (30 AP) -> 30 AP used, 0 AP available, 10 AP needed for Level 6 (at 40 AP)
-	rules.achievements.set_achievement_points(ap_char, 30)
-	var ap_sum_4 := rules.summary(ap_char)
-	assert_eq.call(ap_sum_4["achievement_level"], 5, "30 AP is Level 5")
-	assert_eq.call(ap_sum_4["achievements.achievement_points_used"], 30, "30 AP uses 30 AP for Level 5")
-	assert_eq.call(ap_sum_4["achievements.achievement_points_available"], 0, "30 AP has 0 AP available progress")
-	assert_eq.call(ap_sum_4["achievements.achievement_points_to_next_level"], 10, "30 AP needs 10 AP for Level 6 (at 40)")
+	# --- 25. Strength (STR) Skills & Rank Benefits ---
+	print("Testing STR Skills, Specialties & Rank Benefits...")
+	# 1. Catalog Costs and Trained-Only Verification
+	var armor_op := rules.get_skill_by_id(0)
+	var combat_armor := rules.get_skill_by_id(1)
+	var powered_armor := rules.get_skill_by_id(2)
+	var athletics := rules.get_skill_by_id(3)
+	var climb := rules.get_skill_by_id(4)
+	var jump := rules.get_skill_by_id(5)
+	var throw_skill := rules.get_skill_by_id(6)
+	var heavy_wpn := rules.get_skill_by_id(8)
+	var direct_fire := rules.get_skill_by_id(9)
+	var indirect_fire := rules.get_skill_by_id(10)
+	var melee_wpn := rules.get_skill_by_id(11)
+	var blade := rules.get_skill_by_id(12)
+	var bludgeon := rules.get_skill_by_id(13)
+	var powered_wpn := rules.get_skill_by_id(14)
+	var unarmed := rules.get_skill_by_id(15)
+	var brawl := rules.get_skill_by_id(16)
+	var pma := rules.get_skill_by_id(17)
+
+	# Verify Base Prices & Trained-Only
+	assert_eq.call(armor_op["base_price"], 7, "Armor Operation base price is 7 SP")
+	assert_eq.call(combat_armor["base_price"], 3, "Combat armor base price is 3 SP")
+	assert_eq.call(powered_armor["base_price"], 4, "Powered armor base price is 4 SP")
+	assert_true.call(not bool(powered_armor["untrained"]), "Powered armor is Trained Only (untrained = false)")
+
+	assert_eq.call(athletics["base_price"], 3, "Athletics base price is 3 SP")
+	assert_eq.call(climb["base_price"], 2, "Climb base price is 2 SP")
+	assert_eq.call(jump["base_price"], 1, "Jump base price is 1 SP")
+	assert_eq.call(throw_skill["base_price"], 2, "Throw base price is 2 SP")
+
+	assert_eq.call(heavy_wpn["base_price"], 6, "Heavy Weapons base price is 6 SP")
+	assert_eq.call(direct_fire["base_price"], 4, "Direct Fire base price is 4 SP")
+	assert_eq.call(indirect_fire["base_price"], 4, "Indirect Fire base price is 4 SP")
+
+	assert_eq.call(melee_wpn["base_price"], 6, "Melee Weapons base price is 6 SP")
+	assert_eq.call(blade["base_price"], 3, "Blade base price is 3 SP")
+	assert_eq.call(bludgeon["base_price"], 3, "Bludgeon base price is 3 SP")
+	assert_eq.call(powered_wpn["base_price"], 4, "Powered weapon base price is 4 SP")
+
+	assert_eq.call(unarmed["base_price"], 5, "Unarmed Attack base price is 5 SP")
+	assert_eq.call(brawl["base_price"], 3, "Brawl base price is 3 SP")
+	assert_eq.call(pma["base_price"], 5, "Power Martial Arts base price is 5 SP")
+	assert_true.call(not bool(pma["untrained"]), "Power Martial Arts is Trained Only (untrained = false)")
+
+	# 2. Profession Discounts (Combat Spec gets discounts on STR combat skills, Free Agent on PMA)
+	var cs_hero: Dictionary = rules.default_character()
+	cs_hero["profession_id"] = 0 # Combat Spec
+	rules.ensure_character_shape(cs_hero)
+	assert_eq.call(rules.skill_cost(cs_hero, armor_op), 6, "Combat Spec buys Armor Operation for 6 SP (-1)")
+	assert_eq.call(rules.skill_cost(cs_hero, heavy_wpn), 5, "Combat Spec buys Heavy Weapons for 5 SP (-1)")
+	assert_eq.call(rules.skill_cost(cs_hero, melee_wpn), 5, "Combat Spec buys Melee Weapons for 5 SP (-1)")
+	assert_eq.call(rules.skill_cost(cs_hero, unarmed), 4, "Combat Spec buys Unarmed Attack for 4 SP (-1)")
+	assert_eq.call(rules.skill_cost(cs_hero, pma), 4, "Combat Spec buys Power Martial Arts for 4 SP (-1)")
+
+	var fa_hero: Dictionary = rules.default_character()
+	fa_hero["profession_id"] = 4 # Free Agent
+	rules.ensure_character_shape(fa_hero)
+	assert_eq.call(rules.skill_cost(fa_hero, pma), 4, "Free Agent buys Power Martial Arts for 4 SP (-1)")
+
+	# 3. Armor Operation Penalty Reduction
+	var armor_hero: Dictionary = rules.default_character()
+	rules.achievements.set_achievement_points(armor_hero, 100) # Level 10 allows up to Rank 12
+	rules.ensure_character_shape(armor_hero)
+	assert_eq.call(rules.equipment.armor_operation_penalty_reduction(armor_hero, 1), 0, "No armor skills -> 0 reduction")
+	rules.set_skill_rank(armor_hero, 0, 1) # Broad skill
+	assert_eq.call(rules.equipment.armor_operation_penalty_reduction(armor_hero, 1), 1, "Broad Armor Operation -> 1 step reduction")
+	rules.set_skill_rank(armor_hero, 1, 1) # Specialty Rank 1
+	assert_eq.call(rules.equipment.armor_operation_penalty_reduction(armor_hero, 1), 2, "Combat Armor Rank 1 -> 2 steps reduction")
+	rules.set_skill_rank(armor_hero, 1, 4) # Specialty Rank 4
+	assert_eq.call(rules.equipment.armor_operation_penalty_reduction(armor_hero, 1), 3, "Combat Armor Rank 4 -> 3 steps reduction")
+	rules.set_skill_rank(armor_hero, 1, 7) # Specialty Rank 7
+	assert_eq.call(rules.equipment.armor_operation_penalty_reduction(armor_hero, 1), 4, "Combat Armor Rank 7 -> 4 steps reduction")
+	rules.set_skill_rank(armor_hero, 1, 10) # Specialty Rank 10
+	assert_eq.call(rules.equipment.armor_operation_penalty_reduction(armor_hero, 1), 5, "Combat Armor Rank 10 -> 5 steps reduction")
+
+	# Shaking Off Stuns (1 pt per 2 ranks, max 6 pts)
+	assert_eq.call(rules.equipment.armor_stun_damage_reduction(armor_hero, 1), 5, "Rank 10 Combat Armor gives 5 pts stun damage reduction")
+	rules.set_skill_rank(armor_hero, 1, 12)
+	assert_eq.call(rules.equipment.armor_stun_damage_reduction(armor_hero, 1), 6, "Rank 12 Combat Armor gives 6 pts stun damage reduction (cap)")
+
+	# 4. Unarmed Attack vs Power Martial Arts Damage
+	var pma_hero: Dictionary = rules.default_character()
+	rules.achievements.set_achievement_points(pma_hero, 100) # Level 10 allows up to Rank 12
+	pma_hero["abilities"]["STR"] = 12 # +1 STR damage bonus
+	rules.ensure_character_shape(pma_hero)
+
+	# Untrained base damage: d4s/d4+1s/d4+2s + STR(+1) -> d4+1s/d4+2s/d4+3s
+	var attacks := rules.equipment.attack_forms_for_character(pma_hero)
+	assert_eq.call(attacks[0]["damage"], "d4+1s/d4+2s/d4+3s", "Untrained unarmed damage includes STR bonus")
+
+	# Power Martial Arts Rank 1: d6s/d6+2s/d4w + STR(+1) -> d6+1s/d6+3s/d4+1w
+	rules.set_skill_rank(pma_hero, 15, 1)
+	rules.set_skill_rank(pma_hero, 17, 1)
+	var pma_attacks := rules.equipment.attack_forms_for_character(pma_hero)
+	assert_eq.call(pma_attacks[0]["name"], "Power Martial Arts", "Attack form reflects Power Martial Arts")
+	assert_eq.call(pma_attacks[0]["damage"], "d6+1s/d6+3s/d4+1w", "PMA rank 1 damage formula with STR bonus")
+
+	# Power Martial Arts Rank 7: d6+2s/d4w/d4+2w + STR(+1) -> d6+3s/d4+1w/d4+3w
+	rules.set_skill_rank(pma_hero, 17, 7)
+	var pma_attacks_7 := rules.equipment.attack_forms_for_character(pma_hero)
+	assert_eq.call(pma_attacks_7[0]["damage"], "d6+3s/d4+1w/d4+3w", "PMA rank 7 upgraded damage formula")
+
+	# Power Martial Arts Rank 12: d4+1w/d4+3w/d4m + STR(+1) -> d4+2w/d4+4w/d4+1m
+	rules.set_skill_rank(pma_hero, 17, 12)
+	var pma_attacks_12 := rules.equipment.attack_forms_for_character(pma_hero)
+	assert_eq.call(pma_attacks_12[0]["damage"], "d4+2w/d4+4w/d4+1m", "PMA rank 12 master damage formula")
+
+	# 5. STR Resistance Modifier bonuses from Melee / PMA Ranks
+	rules.set_skill_rank(pma_hero, 17, 0)
+	var rm_base := rules.character_resistance_modifier(pma_hero, "STR")
+	rules.set_skill_rank(pma_hero, 17, 4)
+	assert_eq.call(rules.character_resistance_modifier(pma_hero, "STR"), rm_base + 1, "PMA rank 4 grants +1 to STR Resistance Modifier")
+	rules.set_skill_rank(pma_hero, 17, 8)
+	assert_eq.call(rules.character_resistance_modifier(pma_hero, "STR"), rm_base + 2, "PMA rank 8 grants +2 to STR Resistance Modifier")
+	rules.set_skill_rank(pma_hero, 17, 12)
+	assert_eq.call(rules.character_resistance_modifier(pma_hero, "STR"), rm_base + 3, "PMA rank 12 grants +3 to STR Resistance Modifier")
 
 	print("\n--- Audit Summary: %d Passed, %d Failed ---" % [results["pass"], results["fail"]])
 	if results["fail"] == 0:

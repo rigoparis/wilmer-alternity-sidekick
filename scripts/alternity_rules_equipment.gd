@@ -424,17 +424,28 @@ func equipment_has_combat_role(item: Dictionary, role: String) -> bool:
 
 
 func _unarmed_attack_form(character: Dictionary) -> Dictionary:
-	var score := _combat_skill_score(character, 15)
+	var skill_id := 15
+	var attack_name := "Unarmed"
+	if _get_parent().skill_rank(character, 17) > 0:
+		skill_id = 17
+		attack_name = "Power Martial Arts"
+	elif _get_parent().skill_rank(character, 16) > 0:
+		skill_id = 16
+		attack_name = "Brawl"
+
+	var score := _combat_skill_score(character, skill_id)
 	var abilities: Dictionary = _get_parent().effective_abilities(character)
 	var strength_bonus := strength_damage_bonus(AlternityNum.as_int(abilities.get("STR", 10)))
 
 	var base_damage := "d4s/d4+1s/d4+2s"
 	if _get_parent().skill_rank(character, 17) > 0:
 		base_damage = "d6s/d6+2s/d4w"
-	if _get_parent().skill_rank(character, 16) >= 8:
+		if _get_parent().skill_rank(character, 17) >= 12:
+			base_damage = "d4+1w/d4+3w/d4m"
+		elif _get_parent().skill_rank(character, 17) >= 7:
+			base_damage = "d6+2s/d4w/d4+2w"
+	elif _get_parent().skill_rank(character, 16) >= 8:
 		base_damage = "d6s/d6+2s/d4w"
-	if _get_parent().skill_rank(character, 17) >= 7:
-		base_damage = "d6+2s/d4w/d4+2w"
 	if AlternityNum.as_int(character.get("species_id", 0)) == 5:
 		base_damage = "d4w/d4+2w/d4m"
 
@@ -443,7 +454,7 @@ func _unarmed_attack_form(character: Dictionary) -> Dictionary:
 		extra_bonus = 1
 
 	return {
-		"name": "Unarmed",
+		"name": attack_name,
 		"score": _score_text(score),
 		"base_die": _get_parent().action_step_die(AlternityNum.as_int(score.get("step", 1))),
 		"type": "LI/O",
@@ -453,6 +464,52 @@ func _unarmed_attack_form(character: Dictionary) -> Dictionary:
 		"clip_size": "-",
 		"mass": "",
 	}
+
+
+## Armor Operation penalty reduction (Player's Handbook p. 49).
+## Broad skill reduces by 1 step. Specialty (Combat/Powered Armor) reduces by 1 (Ranks 1-3),
+## 2 (Ranks 4-6), 3 (Ranks 7-9), or 4 (Ranks 10-12) additional steps.
+func armor_operation_penalty_reduction(character: Dictionary, armor_skill_id: int) -> int:
+	var reduction := 0
+	if _get_parent().skill_rank(character, 0) > 0:
+		reduction += 1
+
+	var specialty_rank: int = _get_parent().skill_rank(character, armor_skill_id)
+	if specialty_rank >= 10:
+		reduction += 4
+	elif specialty_rank >= 7:
+		reduction += 3
+	elif specialty_rank >= 4:
+		reduction += 2
+	elif specialty_rank >= 1:
+		reduction += 1
+
+	return reduction
+
+
+## Net action check and DEX resistance modifier penalty from all equipped armor suits.
+func equipped_armor_action_penalty(character: Dictionary) -> int:
+	var net_penalty := 0
+	for row in carried_equipment(character):
+		if not bool(row.get("equipped", false)):
+			continue
+		var item: Dictionary = row.get("item", {})
+		if not equipment_has_combat_role(item, "armor"):
+			continue
+		var combat: Dictionary = item.get("combat", {})
+		var raw_penalty := AlternityNum.as_int(combat.get("action_penalty", 0))
+		if raw_penalty <= 0:
+			continue
+		var skill_id := AlternityNum.as_int(combat.get("skill_id", 0))
+		var reduction := armor_operation_penalty_reduction(character, skill_id)
+		net_penalty += maxi(0, raw_penalty - reduction)
+	return net_penalty
+
+
+## Shaking Off Stuns rank benefit: reduces incoming stun damage by 1 pt per 2 ranks (max 6 pts).
+func armor_stun_damage_reduction(character: Dictionary, armor_skill_id: int) -> int:
+	var rank: int = _get_parent().skill_rank(character, armor_skill_id)
+	return mini(6, int(floor(rank / 2.0)))
 
 
 func _weapon_attack_form(character: Dictionary, item: Dictionary) -> Dictionary:
