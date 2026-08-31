@@ -1,0 +1,722 @@
+{
+	"normalized": {
+		"abilities": {
+			"CON": 9.0,
+			"DEX": 10.0,
+			"INT": 12.0,
+			"PER": 8.0,
+			"STR": 13.0,
+			"WIL": 10.0
+		},
+		"achievement_level": 1,
+		"achievement_points": 0,
+		"achievement_points_available": -25,
+		"achievement_points_spent_other": 0,
+		"career": "Apt Maintenance",
+		"combat_spec_bonus_specialty": 12.0,
+		"custom_ability_target": 55.0,
+		"cybertech": {
+			"cykosis": 0,
+			"enabled": false,
+			"installed": [],
+			"skill_purchased": false
+		},
+		"damage": {
+			"fatigue": 0,
+			"mortal": 0,
+			"stun": 2,
+			"wound": 4
+		},
+		"equipment": {
+			"carried": [
+				{
+					"equipped": false,
+					"item_id": "equip_core_035",
+					"line_id": "line_0001",
+					"notes": "",
+					"quantity": 1,
+					"slot": ""
+				},
+				{
+					"equipped": false,
+					"item_id": "equip_core_053",
+					"line_id": "line_0002",
+					"notes": "",
+					"quantity": 1,
+					"slot": ""
+				},
+				{
+					"equipped": false,
+					"item_id": "equip_core_005",
+					"line_id": "line_0003",
+					"notes": "",
+					"quantity": 1,
+					"slot": ""
+				},
+				{
+					"equipped": false,
+					"item_id": "custom_0001",
+					"line_id": "line_0004",
+					"notes": "",
+					"quantity": 1,
+					"slot": ""
+				},
+				{
+					"equipped": false,
+					"item_id": "custom_0002",
+					"line_id": "line_0005",
+					"notes": "",
+					"quantity": 1,
+					"slot": ""
+				},
+				{
+					"equipped": false,
+					"item_id": "custom_0003",
+					"line_id": "line_0006",
+					"notes": "",
+					"quantity": 1,
+					"slot": ""
+				},
+				{
+					"equipped": false,
+					"item_id": "equip_core_015",
+					"line_id": "line_0007",
+					"notes": "",
+					"quantity": 1,
+					"slot": ""
+				},
+				{
+					"equipped": false,
+					"item_id": "custom_0004",
+					"line_id": "line_0008",
+					"notes": "",
+					"quantity": 1,
+					"slot": ""
+				},
+				{
+					"equipped": false,
+					"item_id": "equip_core_054",
+					"line_id": "line_0009",
+					"notes": "",
+					"quantity": 1,
+					"slot": ""
+				},
+				{
+					"equipped": false,
+					"item_id": "custom_0005",
+					"line_id": "line_0010",
+					"notes": "",
+					"quantity": 1,
+					"slot": ""
+				},
+				{
+					"equipped": false,
+					"item_id": "weapon_core_033",
+					"line_id": "line_0011",
+					"notes": "",
+					"quantity": 1,
+					"slot": ""
+				}
+			],
+			"custom_items": [
+				{
+					"availability": "Com",
+					"category": "",
+					"class": "",
+					"combat": null,
+					"cost": 0,
+					"id": "custom_0001",
+					"kind": "equipment",
+					"mass": 0.0,
+					"name": "Multitool",
+					"page": "",
+					"pl": 0,
+					"reference": "Character custom equipment.",
+					"source": "Custom",
+					"source_code": "custom",
+					"table": ""
+				},
+				{
+					"availability": "Com",
+					"category": "",
+					"class": "",
+					"combat": null,
+					"cost": 0,
+					"id": "custom_0002",
+					"kind": "equipment",
+					"mass": 0.0,
+					"name": "respirator / dust mask",
+					"page": "",
+					"pl": 0,
+					"reference": "Character custom equipment.",
+					"source": "Custom",
+					"source_code": "custom",
+					"table": ""
+				},
+				{
+					"availability": "Com",
+					"category": "",
+					"class": "",
+					"combat": null,
+					"cost": 0,
+					"id": "custom_0003",
+					"kind": "equipment",
+					"mass": 0.0,
+					"name": "Portable Battery Pack",
+					"page": "",
+					"pl": 0,
+					"reference": "Character custom equipment.",
+					"source": "Custom",
+					"source_code": "custom",
+					"table": ""
+				},
+				{
+					"availability": "Com",
+					"category": "",
+					"class": "",
+					"combat": null,
+					"cost": 0,
+					"id": "custom_0004",
+					"kind": "equipment",
+					"mass": 0.0,
+					"name": "Duct tape, Zip ties, Electrical tape",
+					"page": "",
+					"pl": 0,
+					"reference": "Character custom equipment.",
+					"source": "Custom",
+					"source_code": "custom",
+					"table": ""
+				},
+				{
+					"availability": "Com",
+					"category": "",
+					"class": "",
+					"combat": null,
+					"cost": 0,
+					"id": "custom_0005",
+					"kind": "equipment",
+					"mass": 0.0,
+					"name": "Apartment Keys",
+					"page": "",
+					"pl": 0,
+					"reference": "Character custom equipment.",
+					"source": "Custom",
+					"source_code": "custom",
+					"table": ""
+				}
+			]
+		},
+		"fx": {
+			"energy_pool": 5.0,
+			"is_fx_talent": true,
+			"permanent_skills": {
+				"Super Strength": true
+			},
+			"primary_broad_group": "Alienism",
+			"selected_skills": {
+				"Brick": 1.0,
+				"Druidism": 1.0,
+				"Super Strength": 1.0
+			}
+		},
+		"hero_name": "Marco Mendez",
+		"last_resorts_rebought": 0.0,
+		"last_resorts_used": 1,
+		"mutations": {
+			"advantage_distribution": {
+				"Amazing": 0,
+				"Good": 2,
+				"Ordinary": 2
+			},
+			"advantage_points": 6,
+			"advantages": [
+				"enhanced_wil",
+				"enhanced_senses",
+				"night_vision",
+				"improved_reflexes"
+			],
+			"drawback_distribution": {
+				"Extreme": 0,
+				"Moderate": 2,
+				"Slight": 2
+			},
+			"drawback_points": 6,
+			"drawbacks": [
+				"susceptible_to_damage",
+				"light_sensitivity",
+				"inefficient_metabolism",
+				"thermal_intolerance"
+			],
+			"generation_mode": "player",
+			"origin": "natural",
+			"uniqueness": "natural_unique"
+		},
+		"notes": "",
+		"optional_rules": {
+			"2a": true,
+			"2b": false,
+			"2c": true,
+			"dazed": true
+		},
+		"player_name": "Fixture",
+		"profession_id": 5.0,
+		"selected_achievements": [],
+		"selected_flaws": {
+
+		},
+		"selected_perks": {
+
+		},
+		"selected_skills": {
+			"114": 1,
+			"116": 2,
+			"117": 2,
+			"127": 2,
+			"134": 1,
+			"135": 3,
+			"136": 3,
+			"157": 2,
+			"158": 2,
+			"30": 1,
+			"31": 3,
+			"72": 1
+		},
+		"setting": "Core",
+		"sold_species_skills": [
+			43,
+			43,
+			3
+		],
+		"species_id": 0.0
+	},
+	"summary": {
+		"ability_target": 55,
+		"ability_total": 62,
+		"achievement_benefit_points_used": 0,
+		"achievement_level": 1,
+		"achievement_points": 0,
+		"achievement_points_for_sp": 0,
+		"achievements.achievement_next_level_points": 6,
+		"achievements.achievement_points_available": -25,
+		"achievements.achievement_points_used": 25,
+		"achievements.achievement_skill_bonus": 0,
+		"achievements.selected_achievements": [],
+		"action_check": {
+			"actions": 2,
+			"amazing": 3,
+			"die": "+d0",
+			"good": 6,
+			"marginal": 13,
+			"ordinary": 12
+		},
+		"additional_broad_skill_limit": 8,
+		"additional_broad_skills_remaining": 5,
+		"additional_broad_skills_used": 3,
+		"broad_skills_remaining": 5,
+		"broad_skills_used": 9,
+		"cybertech": {
+			"cykosis": 0,
+			"cykosis_total": 5,
+			"enabled": false,
+			"installed": [],
+			"skill_purchased": false,
+			"tolerance": {
+				"center": 2,
+				"left": 5,
+				"right": 2,
+				"total": 9,
+				"used": 0
+			}
+		},
+		"durability": {
+			"fatigue": 5,
+			"mortal": 5,
+			"stun": 9,
+			"wound": 9
+		},
+		"effective_abilities": {
+			"CON": 9,
+			"DEX": 10,
+			"INT": 12,
+			"PER": 8,
+			"STR": 14,
+			"WIL": 10
+		},
+		"equipment": {
+			"attack_forms": [
+				{
+					"base_die": "+d4",
+					"clip_size": "-",
+					"damage": "d4+1s/d4+2s/d4+3s",
+					"hide": "3",
+					"mass": "",
+					"name": "Unarmed",
+					"range": "Personal",
+					"score": "7/3/1",
+					"type": "LI/O"
+				},
+				{
+					"base_die": "+d4",
+					"clip_size": "6",
+					"damage": "d4+1w/d4+2w/d6m",
+					"equipped": false,
+					"hide": "2",
+					"mass": "1",
+					"name": "Pistol, .45 rev.",
+					"quantity": 1,
+					"range": "4/10/40",
+					"score": "13/6/3",
+					"slot": "",
+					"type": "HI/O"
+				}
+			],
+			"carried_count": 11,
+			"combat_armor": [],
+			"combat_weapons": [
+				{
+					"equipped": false,
+					"item": {
+						"availability": "Com",
+						"category": "Weapons",
+						"class": "Modern Ranged Weapons",
+						"combat": {
+							"accuracy": 1.0,
+							"actions": 3.0,
+							"clip_cost": 15.0,
+							"clip_size": "6",
+							"damage": "d4+1w/d4+2w/d6m",
+							"damage_type": "HI/O",
+							"hide": 2.0,
+							"melee": false,
+							"mode": "F",
+							"range": "4/10/40",
+							"skill": "Modern Ranged Weapons - Pistol",
+							"skill_id": 31.0,
+							"strength_based": false,
+							"thrown": false,
+							"type": "HI/O"
+						},
+						"cost": 250.0,
+						"id": "weapon_core_033",
+						"kind": "weapon",
+						"mass": 1.0,
+						"name": "Pistol, .45 rev.",
+						"page": "176-177",
+						"pl": 4.0,
+						"reference": "Player's Handbook p. 176-177, Table P39: Ranged Weapons",
+						"references": [
+							{
+								"book": "Player's Handbook",
+								"page": "176-177",
+								"table": "P39",
+								"title": "Ranged Weapons"
+							}
+						],
+						"source": "Player's Handbook",
+						"source_code": "phb",
+						"table": "P39"
+					},
+					"item_id": "weapon_core_033",
+					"line_id": "line_0011",
+					"notes": "",
+					"quantity": 1,
+					"slot": "",
+					"total_cost": 250,
+					"total_mass": 1.0
+				}
+			],
+			"equipped_armor": [],
+			"equipped_weapons": [],
+			"total_cost": 455,
+			"total_mass": 14.0
+		},
+		"flaw_count": 0,
+		"flaw_skill_points_bonus": 0,
+		"last_resorts": {
+			"available": 0,
+			"base_max": 1,
+			"cost": 3,
+			"max": 1,
+			"personality": 8,
+			"profession_bonus": 0,
+			"used": 1
+		},
+		"max_broad_skills": 14,
+		"movement": {
+			"easy_swim": 2,
+			"effects": [
+				{
+					"effect": "No penalty when moving and acting in the same phase.",
+					"mode": "Walk"
+				},
+				{
+					"effect": "+2 step penalty to another action in the same phase.",
+					"mode": "Run"
+				},
+				{
+					"effect": "+3 step penalty to another action in the same phase.",
+					"mode": "Sprint"
+				},
+				{
+					"effect": "+2 step penalty to another action in the same phase.",
+					"mode": "Easy Swim"
+				},
+				{
+					"effect": "No other actions in the same phase.",
+					"mode": "Swim"
+				},
+				{
+					"effect": "+1 step penalty to another action in the same phase.",
+					"mode": "Glide"
+				},
+				{
+					"effect": "+2 step penalty to another action in the same phase.",
+					"mode": "Fly"
+				},
+				{
+					"effect": "Movement only; after stopping, no other action for the rest of the round.",
+					"mode": "All-out"
+				}
+			],
+			"fly": "-",
+			"glide": "-",
+			"run": 16,
+			"sprint": 24,
+			"swim": 4,
+			"total": 24,
+			"walk": 4
+		},
+		"mutations": {
+			"advantage_distribution": {
+				"Amazing": 0,
+				"Good": 2,
+				"Ordinary": 2
+			},
+			"advantage_distribution_label": "2 Good + 2 Ordinary",
+			"advantage_points": 6,
+			"advantage_points_remaining": 0,
+			"advantage_points_used": 6,
+			"advantages": [
+				{
+					"effects": [
+						{
+							"ability": "WIL",
+							"amount": 2.0,
+							"type": "ability"
+						}
+					],
+					"id": "enhanced_wil",
+					"name": "Enhanced WIL",
+					"points": 2.0,
+					"reference": "Player's Handbook p. 220; Table P49 p. 215.",
+					"related_ability": "WIL",
+					"summary": "Permanently raises Will by 2.",
+					"tier": "Good"
+				},
+				{
+					"effects": [
+						{
+							"skill_ids": [
+								127.0,
+								130.0,
+								132.0
+							],
+							"step": -2.0,
+							"type": "skill_step"
+						},
+						{
+							"text": "Enhanced Senses: relevant Awareness-perception and Investigate checks gain -2 steps.",
+							"type": "roll_note"
+						}
+					],
+					"id": "enhanced_senses",
+					"name": "Enhanced Senses",
+					"points": 2.0,
+					"reference": "Player's Handbook p. 220; Table P49 p. 215.",
+					"related_ability": "WIL",
+					"summary": "Awareness-perception and Investigate checks involving touch, taste, smell, sight, or hearing gain -2 steps.",
+					"tier": "Good"
+				},
+				{
+					"effects": [
+						{
+							"text": "Night Vision: reduce low-light obscurity penalties by 2 steps; no help in total darkness.",
+							"type": "roll_note"
+						}
+					],
+					"id": "night_vision",
+					"name": "Night Vision",
+					"points": 1.0,
+					"reference": "Player's Handbook p. 219; Table P49 p. 215.",
+					"related_ability": "WIL",
+					"summary": "Reduces obscurity penalties from low light by 2 steps; no benefit in total darkness.",
+					"tier": "Ordinary"
+				},
+				{
+					"effects": [
+						{
+							"amount": -1.0,
+							"type": "action_check_step"
+						}
+					],
+					"id": "improved_reflexes",
+					"name": "Improved Reflexes",
+					"points": 1.0,
+					"reference": "Player's Handbook p. 218; Table P49 p. 215.",
+					"related_ability": "DEX",
+					"summary": "Action checks gain a -1 step bonus.",
+					"tier": "Ordinary"
+				}
+			],
+			"drawback_distribution": {
+				"Extreme": 0,
+				"Moderate": 2,
+				"Slight": 2
+			},
+			"drawback_distribution_label": "2 Moderate + 2 Slight",
+			"drawback_points": 6,
+			"drawback_points_remaining": 0,
+			"drawback_points_used": 6,
+			"drawbacks": [
+				{
+					"effects": [
+						{
+							"text": "Susceptible to Damage: choose En, LI, or HI; increase primary damage of that type by 1.",
+							"type": "damage_note"
+						}
+					],
+					"id": "susceptible_to_damage",
+					"name": "Susceptible to Damage",
+					"points": 2.0,
+					"reference": "Player's Handbook p. 224; Table P50.",
+					"summary": "Choose energy, low impact, or high impact. Primary damage of that type is increased by 1 point.",
+					"tier": "Moderate"
+				},
+				{
+					"effects": [
+						{
+							"text": "Light Sensitivity: Ordinary/Good/Amazing light imposes +1/+2/+3 steps; goggles can reduce but not below +1.",
+							"type": "roll_note"
+						}
+					],
+					"id": "light_sensitivity",
+					"name": "Light Sensitivity",
+					"points": 1.0,
+					"reference": "Player's Handbook p. 222-223; Table P50 p. 223.",
+					"summary": "In light brighter than twilight, actions suffer +1/+2/+3 steps in Ordinary/Good/Amazing light; goggles can reduce but never below +1.",
+					"tier": "Slight"
+				},
+				{
+					"effects": [
+						{
+							"skill_ids": [
+								3.0,
+								4.0,
+								5.0,
+								6.0,
+								11.0,
+								12.0,
+								13.0,
+								14.0,
+								15.0,
+								16.0,
+								17.0,
+								18.0,
+								19.0,
+								20.0,
+								21.0,
+								23.0,
+								48.0,
+								49.0,
+								50.0,
+								51.0
+							],
+							"step": 2.0,
+							"type": "skill_step"
+						},
+						{
+							"text": "Inefficient Metabolism: physical actions may cost fatigue; see PHB p. 224.",
+							"type": "roll_note"
+						}
+					],
+					"id": "inefficient_metabolism",
+					"name": "Inefficient Metabolism",
+					"points": 2.0,
+					"reference": "Player's Handbook p. 224; Table P50.",
+					"summary": "Athletics, Melee Weapons, Unarmed Attack, Acrobatics, and Movement suffer +2 steps; physical actions also cost fatigue at the GM's time scale.",
+					"tier": "Moderate"
+				},
+				{
+					"effects": [
+						{
+							"text": "Thermal Intolerance: hot or cold condition Stamina/Survival checks suffer +2 steps.",
+							"type": "roll_note"
+						}
+					],
+					"id": "thermal_intolerance",
+					"name": "Thermal Intolerance",
+					"points": 1.0,
+					"reference": "Player's Handbook p. 223; Table P50.",
+					"summary": "Stamina or Survival checks in hot or cold conditions suffer +2 steps; protective clothing can remove the need for checks.",
+					"tier": "Slight"
+				}
+			],
+			"enabled": false,
+			"generation_mode": "player",
+			"origin": {
+				"id": "natural",
+				"name": "Naturally occurring mutation(s)",
+				"roll": "d8 result 6-8",
+				"uniqueness": [
+					{
+						"advantage_points": "d4+2",
+						"drawback_points": "d4+1",
+						"id": "natural_community",
+						"name": "Belongs to mutant community",
+						"roll": "d8 result 1-3"
+					},
+					{
+						"advantage_points": "d4+3",
+						"drawback_points": "d4+2",
+						"id": "natural_unique",
+						"name": "Individual with unique mutation(s)",
+						"roll": "d8 result 4-8"
+					}
+				]
+			},
+			"rules": [
+				"Mutants are a character species derived from human stock. Mutant heroes use the mutant species entry and have human free broad skills, but do not receive the human skill point or broad skill bonus. Source: Player's Handbook p. 213-214.",
+				"Every mutant hero has at least one advantageous mutation and one mutation drawback. Source: Player's Handbook p. 214.",
+				"Ordinary advantageous mutations and Slight drawbacks cost 1 point, Good mutations and Moderate drawbacks cost 2 points, and Amazing mutations or Extreme drawbacks cost 4 points. Source: Player's Handbook p. 214; Table P47.",
+				"A mutant can have no more than three Ordinary, two Good, and one Amazing advantageous mutations. Source: Player's Handbook p. 216.",
+				"Mutation powers that require a check use the listed skill, or an untrained check using one-half of the related ability score with a +d4 situation die. Source: Player's Handbook p. 216."
+			],
+			"uniqueness": {
+				"advantage_points": "d4+3",
+				"drawback_points": "d4+2",
+				"id": "natural_unique",
+				"name": "Individual with unique mutation(s)",
+				"roll": "d8 result 4-8"
+			}
+		},
+		"perk_count": 0,
+		"perk_points_used": 0,
+		"permanent_fx_effects": [
+			{
+				"description": "This power increases the character's physical power and muscle. The character's Strength is increased by 1 point even if this takes the character above a racial maximum. Movement rate and all abilities and statistics based upon Strength should be altered to reflect this new value. The hero can also lift twice as much weight as his Strength would normally allow. (See the Lifting Objects section in Chapter 4: Skills in the Gamemaster Guide.) This power lasts 10 minutes for each use.",
+				"name": "Super Strength"
+			}
+		],
+		"racial_broad_skills": 6,
+		"skill_budget": 77,
+		"skill_points_remaining": -25,
+		"skill_points_used": 102,
+		"skill_purchase_points_used": 73,
+		"sold_broads_count": 2,
+		"starting_skill_budget": 77,
+		"validations": [
+			"Ability total must be 55; current total is 62.",
+			"Skill points are overspent by 25."
+		]
+	}
+}

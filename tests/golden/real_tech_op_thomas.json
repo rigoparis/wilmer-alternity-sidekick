@@ -1,0 +1,411 @@
+{
+	"normalized": {
+		"abilities": {
+			"CON": 11.0,
+			"DEX": 11.0,
+			"INT": 13.0,
+			"PER": 6.0,
+			"STR": 8.0,
+			"WIL": 11.0
+		},
+		"achievement_level": 1,
+		"achievement_points": 0,
+		"achievement_points_available": -3,
+		"achievement_points_spent_other": 0,
+		"career": "",
+		"combat_spec_bonus_specialty": 12.0,
+		"custom_ability_target": 60.0,
+		"cybertech": {
+			"cykosis": 0,
+			"enabled": false,
+			"installed": [],
+			"skill_purchased": false
+		},
+		"damage": {
+			"fatigue": 0,
+			"mortal": 0,
+			"stun": 3,
+			"wound": 0
+		},
+		"equipment": {
+			"carried": [
+				{
+					"equipped": false,
+					"item_id": "custom_0001",
+					"line_id": "line_0001",
+					"notes": "",
+					"quantity": 1,
+					"slot": ""
+				}
+			],
+			"custom_items": [
+				{
+					"availability": "Com",
+					"category": "",
+					"class": "",
+					"combat": {
+						"accuracy": 0.0,
+						"actions": 1.0,
+						"base_score": "",
+						"clip_cost": 0.0,
+						"clip_size": "",
+						"damage": "d4s/d4+1s/d4w",
+						"damage_type": "",
+						"hide": 0.0,
+						"melee": false,
+						"mode": "",
+						"range": "",
+						"skill": "",
+						"strength_based": false,
+						"thrown": false,
+						"type": ""
+					},
+					"cost": 0,
+					"id": "custom_0001",
+					"kind": "weapon",
+					"mass": 0.0,
+					"name": "Thrown rock/stone",
+					"page": "",
+					"pl": 0,
+					"reference": "Character custom equipment.",
+					"source": "Custom",
+					"source_code": "custom",
+					"table": ""
+				}
+			]
+		},
+		"fx": {
+			"energy_pool": 0.0,
+			"is_fx_talent": true,
+			"permanent_skills": {
+
+			},
+			"primary_broad_group": "Alienism",
+			"selected_skills": {
+
+			}
+		},
+		"hero_name": "Thomas Johnson",
+		"last_resorts_rebought": 0.0,
+		"last_resorts_used": 0,
+		"mutations": {
+			"advantage_distribution": {
+				"Amazing": 0,
+				"Good": 0,
+				"Ordinary": 0
+			},
+			"advantage_points": 0,
+			"advantages": [],
+			"drawback_distribution": {
+				"Extreme": 0,
+				"Moderate": 0,
+				"Slight": 0
+			},
+			"drawback_points": 0,
+			"drawbacks": [],
+			"generation_mode": "random",
+			"origin": "engineered",
+			"uniqueness": "engineered_community"
+		},
+		"notes": "",
+		"optional_rules": {
+			"2a": true,
+			"2b": false,
+			"2c": true,
+			"dazed": true
+		},
+		"player_name": "Fixture",
+		"profession_id": 5.0,
+		"selected_achievements": [],
+		"selected_flaws": {
+
+		},
+		"selected_perks": {
+
+		},
+		"selected_skills": {
+			"101": 1,
+			"103": 3,
+			"114": 1,
+			"115": 3,
+			"116": 4,
+			"117": 4,
+			"118": 3,
+			"15": 1,
+			"17": 1,
+			"45": 2,
+			"53": 1,
+			"54": 1,
+			"6": 4,
+			"65": 1
+		},
+		"setting": "Core",
+		"sold_species_skills": [
+			69,
+			155
+		],
+		"species_id": 0.0
+	},
+	"summary": {
+		"ability_target": 60,
+		"ability_total": 60,
+		"achievement_benefit_points_used": 0,
+		"achievement_level": 1,
+		"achievement_points": 0,
+		"achievement_points_for_sp": 0,
+		"achievements.achievement_next_level_points": 6,
+		"achievements.achievement_points_available": -3,
+		"achievements.achievement_points_used": 3,
+		"achievements.achievement_skill_bonus": 0,
+		"achievements.selected_achievements": [],
+		"action_check": {
+			"actions": 2,
+			"amazing": 3,
+			"die": "+d0",
+			"good": 6,
+			"marginal": 14,
+			"ordinary": 13
+		},
+		"additional_broad_skill_limit": 9,
+		"additional_broad_skills_remaining": 5,
+		"additional_broad_skills_used": 4,
+		"broad_skills_remaining": 5,
+		"broad_skills_used": 10,
+		"cybertech": {
+			"cykosis": 0,
+			"cykosis_total": 6,
+			"enabled": false,
+			"installed": [],
+			"skill_purchased": false,
+			"tolerance": {
+				"center": 3,
+				"left": 6,
+				"right": 2,
+				"total": 11,
+				"used": 0
+			}
+		},
+		"durability": {
+			"fatigue": 6,
+			"mortal": 6,
+			"stun": 11,
+			"wound": 11
+		},
+		"effective_abilities": {
+			"CON": 11,
+			"DEX": 11,
+			"INT": 13,
+			"PER": 6,
+			"STR": 8,
+			"WIL": 11
+		},
+		"equipment": {
+			"attack_forms": [
+				{
+					"base_die": "+d4",
+					"clip_size": "-",
+					"damage": "d6-1s/d6+1s/d4-1w",
+					"hide": "3",
+					"mass": "",
+					"name": "Unarmed",
+					"range": "Personal",
+					"score": "8/4/2",
+					"type": "LI/O"
+				},
+				{
+					"base_die": "+d4",
+					"clip_size": "-",
+					"damage": "d4s/d4+1s/d4w",
+					"equipped": false,
+					"hide": "0",
+					"mass": "0",
+					"name": "Thrown rock/stone",
+					"quantity": 1,
+					"range": "",
+					"score": "4/2/1",
+					"slot": "",
+					"type": ""
+				}
+			],
+			"carried_count": 1,
+			"combat_armor": [],
+			"combat_weapons": [
+				{
+					"equipped": false,
+					"item": {
+						"availability": "Com",
+						"category": "",
+						"class": "",
+						"combat": {
+							"accuracy": 0.0,
+							"actions": 1.0,
+							"base_score": "",
+							"clip_cost": 0.0,
+							"clip_size": "",
+							"damage": "d4s/d4+1s/d4w",
+							"damage_type": "",
+							"hide": 0.0,
+							"melee": false,
+							"mode": "",
+							"range": "",
+							"skill": "",
+							"strength_based": false,
+							"thrown": false,
+							"type": ""
+						},
+						"cost": 0,
+						"id": "custom_0001",
+						"kind": "weapon",
+						"mass": 0.0,
+						"name": "Thrown rock/stone",
+						"page": "",
+						"pl": 0,
+						"reference": "Character custom equipment.",
+						"source": "Custom",
+						"source_code": "custom",
+						"table": ""
+					},
+					"item_id": "custom_0001",
+					"line_id": "line_0001",
+					"notes": "",
+					"quantity": 1,
+					"slot": "",
+					"total_cost": 0,
+					"total_mass": 0.0
+				}
+			],
+			"equipped_armor": [],
+			"equipped_weapons": [],
+			"total_cost": 0,
+			"total_mass": 0.0
+		},
+		"flaw_count": 0,
+		"flaw_skill_points_bonus": 0,
+		"last_resorts": {
+			"available": 0,
+			"base_max": 0,
+			"cost": 0,
+			"max": 0,
+			"personality": 6,
+			"profession_bonus": 0,
+			"used": 0
+		},
+		"max_broad_skills": 15,
+		"movement": {
+			"easy_swim": 2,
+			"effects": [
+				{
+					"effect": "No penalty when moving and acting in the same phase.",
+					"mode": "Walk"
+				},
+				{
+					"effect": "+2 step penalty to another action in the same phase.",
+					"mode": "Run"
+				},
+				{
+					"effect": "+3 step penalty to another action in the same phase.",
+					"mode": "Sprint"
+				},
+				{
+					"effect": "+2 step penalty to another action in the same phase.",
+					"mode": "Easy Swim"
+				},
+				{
+					"effect": "No other actions in the same phase.",
+					"mode": "Swim"
+				},
+				{
+					"effect": "+1 step penalty to another action in the same phase.",
+					"mode": "Glide"
+				},
+				{
+					"effect": "+2 step penalty to another action in the same phase.",
+					"mode": "Fly"
+				},
+				{
+					"effect": "Movement only; after stopping, no other action for the rest of the round.",
+					"mode": "All-out"
+				}
+			],
+			"fly": "-",
+			"glide": "-",
+			"run": 12,
+			"sprint": 18,
+			"swim": 4,
+			"total": 19,
+			"walk": 4
+		},
+		"mutations": {
+			"advantage_distribution": {
+				"Amazing": 0,
+				"Good": 0,
+				"Ordinary": 0
+			},
+			"advantage_distribution_label": "None",
+			"advantage_points": 0,
+			"advantage_points_remaining": 0,
+			"advantage_points_used": 0,
+			"advantages": [],
+			"drawback_distribution": {
+				"Extreme": 0,
+				"Moderate": 0,
+				"Slight": 0
+			},
+			"drawback_distribution_label": "None",
+			"drawback_points": 0,
+			"drawback_points_remaining": 0,
+			"drawback_points_used": 0,
+			"drawbacks": [],
+			"enabled": false,
+			"generation_mode": "random",
+			"origin": {
+				"id": "engineered",
+				"name": "Engineered mutation(s)",
+				"roll": "d8 result 1-5",
+				"uniqueness": [
+					{
+						"advantage_points": "d4",
+						"drawback_points": "d4",
+						"id": "engineered_community",
+						"name": "Belongs to mutant community",
+						"roll": "d8 result 1-5"
+					},
+					{
+						"advantage_points": "d4+1",
+						"drawback_points": "d4+1",
+						"id": "engineered_unique",
+						"name": "Individual with unique mutation(s)",
+						"roll": "d8 result 6-8"
+					}
+				]
+			},
+			"rules": [
+				"Mutants are a character species derived from human stock. Mutant heroes use the mutant species entry and have human free broad skills, but do not receive the human skill point or broad skill bonus. Source: Player's Handbook p. 213-214.",
+				"Every mutant hero has at least one advantageous mutation and one mutation drawback. Source: Player's Handbook p. 214.",
+				"Ordinary advantageous mutations and Slight drawbacks cost 1 point, Good mutations and Moderate drawbacks cost 2 points, and Amazing mutations or Extreme drawbacks cost 4 points. Source: Player's Handbook p. 214; Table P47.",
+				"A mutant can have no more than three Ordinary, two Good, and one Amazing advantageous mutations. Source: Player's Handbook p. 216.",
+				"Mutation powers that require a check use the listed skill, or an untrained check using one-half of the related ability score with a +d4 situation die. Source: Player's Handbook p. 216."
+			],
+			"uniqueness": {
+				"advantage_points": "d4",
+				"drawback_points": "d4",
+				"id": "engineered_community",
+				"name": "Belongs to mutant community",
+				"roll": "d8 result 1-5"
+			}
+		},
+		"perk_count": 0,
+		"perk_points_used": 0,
+		"permanent_fx_effects": [],
+		"racial_broad_skills": 6,
+		"skill_budget": 80,
+		"skill_points_remaining": -3,
+		"skill_points_used": 83,
+		"skill_purchase_points_used": 83,
+		"sold_broads_count": 2,
+		"starting_skill_budget": 80,
+		"validations": [
+			"Skill points are overspent by 3."
+		]
+	}
+}

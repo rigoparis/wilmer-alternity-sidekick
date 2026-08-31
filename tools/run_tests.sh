@@ -42,6 +42,18 @@ run_suite() {
     local summary
     summary="$(printf '%s\n' "$output" | grep -E '\] (passed|FAILED)' | head -1)"
 
+    # A GDScript runtime error does not always abort the whole call stack: an
+    # invalid call aborts only the enclosing function, so _init() can carry on
+    # and reach finish(), reporting success despite the error. The exit code
+    # cannot see that, so treat any SCRIPT ERROR as a failure on its own.
+    if printf '%s\n' "$output" | grep -q 'SCRIPT ERROR'; then
+        printf '  FAIL  %-28s script error (exit was %d)\n' "$name" "$code"
+        printf '%s\n' "$output" | grep -A2 'SCRIPT ERROR' | head -6 | sed 's/^/          /'
+        fail=$((fail + 1))
+        failed_suites+=("$name")
+        return
+    fi
+
     if [ $code -eq 0 ]; then
         printf '  ok    %-28s %s\n' "$name" "$summary"
         pass=$((pass + 1))
@@ -79,6 +91,20 @@ for fixture in pass failing nochecks crash; do
         failed_suites+=("harness_selftest/$fixture")
     fi
 done
+
+# script_error is the one case the harness cannot catch by itself: the fixture
+# exits 0 and prints "passed" despite a runtime error, so the guard in
+# run_suite() above has to be what fails it. Assert both halves.
+se_output="$("$GODOT" --headless --path . -s tools/harness_selftest/script_error.gd 2>&1)"
+se_code=$?
+if [ $se_code -eq 0 ] && printf '%s\n' "$se_output" | grep -q 'SCRIPT ERROR'; then
+    printf '  ok    %-28s exit=0 but SCRIPT ERROR present (guard has something to catch)\n' "script_error"
+    pass=$((pass + 1))
+else
+    printf '  FAIL  %-28s expected exit=0 with a SCRIPT ERROR, got exit=%d\n' "script_error" "$se_code"
+    fail=$((fail + 1))
+    failed_suites+=("harness_selftest/script_error")
+fi
 
 echo
 if [ $fail -eq 0 ]; then

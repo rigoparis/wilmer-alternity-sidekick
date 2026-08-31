@@ -1,0 +1,446 @@
+{
+	"normalized": {
+		"abilities": {
+			"CON": 12.0,
+			"DEX": 9.0,
+			"INT": 9.0,
+			"PER": 8.0,
+			"STR": 11.0,
+			"WIL": 10.0
+		},
+		"achievement_level": 1,
+		"achievement_points": 0,
+		"achievement_points_available": 0,
+		"achievement_points_spent_other": 0,
+		"career": "",
+		"cybertech": {
+			"cykosis": 0,
+			"enabled": false,
+			"installed": [],
+			"skill_purchased": false
+		},
+		"damage": {
+			"fatigue": 0,
+			"mortal": 0,
+			"stun": 0,
+			"wound": 0
+		},
+		"equipment": {
+			"carried": [],
+			"custom_items": []
+		},
+		"fx": {
+			"energy_pool": 0.0,
+			"is_fx_talent": false,
+			"permanent_skills": {
+
+			},
+			"selected_skills": {
+
+			}
+		},
+		"hero_name": "Mutant Bruiser",
+		"last_resorts_rebought": 0.0,
+		"last_resorts_used": 0,
+		"mutations": {
+			"advantage_distribution": {
+				"Amazing": 0,
+				"Good": 1,
+				"Ordinary": 2
+			},
+			"advantage_points": 4,
+			"advantages": [
+				"improved_str",
+				"dermal_reinforcement",
+				"natural_attack"
+			],
+			"drawback_distribution": {
+				"Extreme": 0,
+				"Moderate": 1,
+				"Slight": 0
+			},
+			"drawback_points": 2,
+			"drawbacks": [
+				"slow_reflexes"
+			],
+			"generation_mode": "random",
+			"origin": "engineered",
+			"uniqueness": "engineered_community"
+		},
+		"notes": "",
+		"optional_rules": {
+			"2a": false,
+			"2b": false,
+			"2c": false,
+			"dazed": false
+		},
+		"player_name": "Fixture",
+		"profession_id": 0.0,
+		"selected_achievements": [],
+		"selected_flaws": {
+
+		},
+		"selected_perks": {
+
+		},
+		"selected_skills": {
+
+		},
+		"setting": "Core",
+		"sold_species_skills": [],
+		"species_id": 6.0
+	},
+	"summary": {
+		"ability_target": 60,
+		"ability_total": 59,
+		"achievement_benefit_points_used": 0,
+		"achievement_level": 1,
+		"achievement_points": 0,
+		"achievement_points_for_sp": 0,
+		"achievements.achievement_next_level_points": 6,
+		"achievements.achievement_points_available": 0,
+		"achievements.achievement_points_used": 0,
+		"achievements.achievement_skill_bonus": 0,
+		"achievements.selected_achievements": [],
+		"action_check": {
+			"actions": 2,
+			"amazing": 3,
+			"die": "+d4",
+			"good": 6,
+			"marginal": 13,
+			"ordinary": 12
+		},
+		"additional_broad_skill_limit": 4,
+		"additional_broad_skills_remaining": 4,
+		"additional_broad_skills_used": 0,
+		"broad_skills_remaining": 4,
+		"broad_skills_used": 6,
+		"cybertech": {
+			"cykosis": 0,
+			"cykosis_total": 5,
+			"enabled": false,
+			"installed": [],
+			"skill_purchased": false,
+			"tolerance": {
+				"center": 3,
+				"left": 6,
+				"right": 3,
+				"total": 12,
+				"used": 0
+			}
+		},
+		"durability": {
+			"fatigue": 6,
+			"mortal": 6,
+			"stun": 12,
+			"wound": 12
+		},
+		"effective_abilities": {
+			"CON": 12,
+			"DEX": 9,
+			"INT": 9,
+			"PER": 8,
+			"STR": 12,
+			"WIL": 10
+		},
+		"equipment": {
+			"attack_forms": [
+				{
+					"base_die": "+d4",
+					"clip_size": "-",
+					"damage": "d4s/d4+1s/d4+2s",
+					"hide": "3",
+					"mass": "",
+					"name": "Unarmed",
+					"range": "Personal",
+					"score": "6/3/1",
+					"type": "LI/O"
+				},
+				{
+					"base_die": "+d4",
+					"clip_size": "-",
+					"damage": "d6+2s/d4w/d4+2w",
+					"hide": "-",
+					"mass": "",
+					"mutation": "Natural Attack",
+					"name": "Natural Attack",
+					"note": "",
+					"range": "Personal",
+					"score": "6/3/1",
+					"type": "LI"
+				}
+			],
+			"carried_count": 0,
+			"combat_armor": [
+				{
+					"equipped": true,
+					"item": {
+						"availability": "-",
+						"category": "Mutation",
+						"class": "Natural Armor",
+						"combat": {
+							"action_penalty": 0,
+							"en": "d4-1",
+							"hi": "d4",
+							"li": "d4+1",
+							"role": "armor",
+							"toughness": "O"
+						},
+						"cost": 0,
+						"id": "mutation_dermal_reinforcement",
+						"kind": "armor",
+						"mass": 0,
+						"name": "Dermal Reinforcement",
+						"reference": "Player's Handbook p. 218; Table P49 p. 215.",
+						"source": "Mutation",
+						"source_code": "mutation"
+					},
+					"item_id": "mutation_dermal_reinforcement",
+					"line_id": "mutation_dermal_reinforcement",
+					"notes": "Natural armor: LI d4+1, HI d4, En d4-1. Layer with worn armor and use the better result.",
+					"quantity": 1,
+					"slot": "Mutation",
+					"total_cost": 0,
+					"total_mass": 0
+				}
+			],
+			"combat_weapons": [],
+			"equipped_armor": [
+				{
+					"equipped": true,
+					"item": {
+						"availability": "-",
+						"category": "Mutation",
+						"class": "Natural Armor",
+						"combat": {
+							"action_penalty": 0,
+							"en": "d4-1",
+							"hi": "d4",
+							"li": "d4+1",
+							"role": "armor",
+							"toughness": "O"
+						},
+						"cost": 0,
+						"id": "mutation_dermal_reinforcement",
+						"kind": "armor",
+						"mass": 0,
+						"name": "Dermal Reinforcement",
+						"reference": "Player's Handbook p. 218; Table P49 p. 215.",
+						"source": "Mutation",
+						"source_code": "mutation"
+					},
+					"item_id": "mutation_dermal_reinforcement",
+					"line_id": "mutation_dermal_reinforcement",
+					"notes": "Natural armor: LI d4+1, HI d4, En d4-1. Layer with worn armor and use the better result.",
+					"quantity": 1,
+					"slot": "Mutation",
+					"total_cost": 0,
+					"total_mass": 0
+				}
+			],
+			"equipped_weapons": [],
+			"total_cost": 0,
+			"total_mass": 0.0
+		},
+		"flaw_count": 0,
+		"flaw_skill_points_bonus": 0,
+		"last_resorts": {
+			"available": 1,
+			"base_max": 1,
+			"cost": 3,
+			"max": 1,
+			"personality": 8,
+			"profession_bonus": 0,
+			"used": 0
+		},
+		"max_broad_skills": 10,
+		"movement": {
+			"easy_swim": 2,
+			"effects": [
+				{
+					"effect": "No penalty when moving and acting in the same phase.",
+					"mode": "Walk"
+				},
+				{
+					"effect": "+2 step penalty to another action in the same phase.",
+					"mode": "Run"
+				},
+				{
+					"effect": "+3 step penalty to another action in the same phase.",
+					"mode": "Sprint"
+				},
+				{
+					"effect": "+2 step penalty to another action in the same phase.",
+					"mode": "Easy Swim"
+				},
+				{
+					"effect": "No other actions in the same phase.",
+					"mode": "Swim"
+				},
+				{
+					"effect": "+1 step penalty to another action in the same phase.",
+					"mode": "Glide"
+				},
+				{
+					"effect": "+2 step penalty to another action in the same phase.",
+					"mode": "Fly"
+				},
+				{
+					"effect": "Movement only; after stopping, no other action for the rest of the round.",
+					"mode": "All-out"
+				}
+			],
+			"fly": "-",
+			"glide": "-",
+			"run": 12,
+			"sprint": 20,
+			"swim": 4,
+			"total": 21,
+			"walk": 4
+		},
+		"mutations": {
+			"advantage_distribution": {
+				"Amazing": 0,
+				"Good": 1,
+				"Ordinary": 2
+			},
+			"advantage_distribution_label": "1 Good + 2 Ordinary",
+			"advantage_points": 4,
+			"advantage_points_remaining": 0,
+			"advantage_points_used": 4,
+			"advantages": [
+				{
+					"effects": [
+						{
+							"ability": "STR",
+							"amount": 1.0,
+							"type": "ability"
+						}
+					],
+					"id": "improved_str",
+					"name": "Improved STR",
+					"points": 1.0,
+					"reference": "Player's Handbook p. 219; Table P49 p. 215.",
+					"related_ability": "STR",
+					"summary": "Permanently raises Strength by 1.",
+					"tier": "Ordinary"
+				},
+				{
+					"effects": [
+						{
+							"ap": 0.0,
+							"en": "d4-1",
+							"hi": "d4",
+							"li": "d4+1",
+							"toughness": "O",
+							"type": "armor"
+						}
+					],
+					"id": "dermal_reinforcement",
+					"name": "Dermal Reinforcement",
+					"points": 1.0,
+					"reference": "Player's Handbook p. 218; Table P49 p. 215.",
+					"related_ability": "CON",
+					"summary": "Natural armor: LI d4+1, HI d4, En d4-1. Layer with worn armor and use the better result.",
+					"tier": "Ordinary"
+				},
+				{
+					"effects": [
+						{
+							"damage": "d6+2s/d4w/d4+2w",
+							"damage_type": "LI",
+							"name": "Natural Attack",
+							"range": "Personal",
+							"skill_id": 16.0,
+							"step": 0.0,
+							"strength_bonus": true,
+							"type": "attack"
+						}
+					],
+					"id": "natural_attack",
+					"name": "Natural Attack",
+					"points": 2.0,
+					"reference": "Player's Handbook p. 220; Table P49 p. 215.",
+					"related_ability": "STR",
+					"summary": "Natural weapon uses Unarmed Attack-brawl and deals d6+2s/d4w/d4+2w LI plus Strength bonus. Retractable weapons reduce damage by 2 points.",
+					"tier": "Good"
+				}
+			],
+			"drawback_distribution": {
+				"Extreme": 0,
+				"Moderate": 1,
+				"Slight": 0
+			},
+			"drawback_distribution_label": "1 Moderate",
+			"drawback_points": 2,
+			"drawback_points_remaining": 0,
+			"drawback_points_used": 2,
+			"drawbacks": [
+				{
+					"effects": [
+						{
+							"amount": 1.0,
+							"type": "action_check_step"
+						}
+					],
+					"id": "slow_reflexes",
+					"name": "Slow Reflexes",
+					"points": 2.0,
+					"reference": "Player's Handbook p. 224; Table P50.",
+					"summary": "Action checks suffer a +1 step penalty.",
+					"tier": "Moderate"
+				}
+			],
+			"enabled": true,
+			"generation_mode": "random",
+			"origin": {
+				"id": "engineered",
+				"name": "Engineered mutation(s)",
+				"roll": "d8 result 1-5",
+				"uniqueness": [
+					{
+						"advantage_points": "d4",
+						"drawback_points": "d4",
+						"id": "engineered_community",
+						"name": "Belongs to mutant community",
+						"roll": "d8 result 1-5"
+					},
+					{
+						"advantage_points": "d4+1",
+						"drawback_points": "d4+1",
+						"id": "engineered_unique",
+						"name": "Individual with unique mutation(s)",
+						"roll": "d8 result 6-8"
+					}
+				]
+			},
+			"rules": [
+				"Mutants are a character species derived from human stock. Mutant heroes use the mutant species entry and have human free broad skills, but do not receive the human skill point or broad skill bonus. Source: Player's Handbook p. 213-214.",
+				"Every mutant hero has at least one advantageous mutation and one mutation drawback. Source: Player's Handbook p. 214.",
+				"Ordinary advantageous mutations and Slight drawbacks cost 1 point, Good mutations and Moderate drawbacks cost 2 points, and Amazing mutations or Extreme drawbacks cost 4 points. Source: Player's Handbook p. 214; Table P47.",
+				"A mutant can have no more than three Ordinary, two Good, and one Amazing advantageous mutations. Source: Player's Handbook p. 216.",
+				"Mutation powers that require a check use the listed skill, or an untrained check using one-half of the related ability score with a +d4 situation die. Source: Player's Handbook p. 216."
+			],
+			"uniqueness": {
+				"advantage_points": "d4",
+				"drawback_points": "d4",
+				"id": "engineered_community",
+				"name": "Belongs to mutant community",
+				"roll": "d8 result 1-5"
+			}
+		},
+		"perk_count": 0,
+		"perk_points_used": 0,
+		"permanent_fx_effects": [],
+		"racial_broad_skills": 6,
+		"skill_budget": 59,
+		"skill_points_remaining": 59,
+		"skill_points_used": 0,
+		"skill_purchase_points_used": 0,
+		"sold_broads_count": 0,
+		"starting_skill_budget": 59,
+		"validations": [
+			"Ability total must be 60; current total is 59."
+		]
+	}
+}

@@ -1,0 +1,291 @@
+{
+	"normalized": {
+		"abilities": {
+			"CON": 10.0,
+			"DEX": 10.0,
+			"INT": 10.0,
+			"PER": 10.0,
+			"STR": 10.0,
+			"WIL": 10.0
+		},
+		"achievement_level": 1,
+		"achievement_points": 0,
+		"achievement_points_available": 0,
+		"achievement_points_spent_other": 0,
+		"career": "",
+		"cybertech": {
+			"cykosis": 0,
+			"enabled": false,
+			"installed": [],
+			"skill_purchased": false
+		},
+		"damage": {
+			"fatigue": 0,
+			"mortal": 0,
+			"stun": 0,
+			"wound": 0
+		},
+		"equipment": {
+			"carried": [],
+			"custom_items": []
+		},
+		"fx": {
+			"energy_pool": 0.0,
+			"is_fx_talent": false,
+			"permanent_skills": {
+
+			},
+			"selected_skills": {
+
+			}
+		},
+		"hero_name": "Default Hero",
+		"last_resorts_rebought": 0.0,
+		"last_resorts_used": 0,
+		"mutations": {
+			"advantage_distribution": {
+				"Amazing": 0,
+				"Good": 0,
+				"Ordinary": 0
+			},
+			"advantage_points": 0,
+			"advantages": [],
+			"drawback_distribution": {
+				"Extreme": 0,
+				"Moderate": 0,
+				"Slight": 0
+			},
+			"drawback_points": 0,
+			"drawbacks": [],
+			"generation_mode": "random",
+			"origin": "engineered",
+			"uniqueness": "engineered_community"
+		},
+		"notes": "",
+		"optional_rules": {
+			"2a": false,
+			"2b": false,
+			"2c": false,
+			"dazed": false
+		},
+		"player_name": "Fixture",
+		"profession_id": 0.0,
+		"selected_achievements": [],
+		"selected_flaws": {
+
+		},
+		"selected_perks": {
+
+		},
+		"selected_skills": {
+
+		},
+		"setting": "Core",
+		"sold_species_skills": [],
+		"species_id": 0.0
+	},
+	"summary": {
+		"ability_target": 60,
+		"ability_total": 60,
+		"achievement_benefit_points_used": 0,
+		"achievement_level": 1,
+		"achievement_points": 0,
+		"achievement_points_for_sp": 0,
+		"achievements.achievement_next_level_points": 6,
+		"achievements.achievement_points_available": 0,
+		"achievements.achievement_points_used": 0,
+		"achievements.achievement_skill_bonus": 0,
+		"achievements.selected_achievements": [],
+		"action_check": {
+			"actions": 2,
+			"amazing": 3,
+			"die": "+d0",
+			"good": 6,
+			"marginal": 14,
+			"ordinary": 13
+		},
+		"additional_broad_skill_limit": 6,
+		"additional_broad_skills_remaining": 6,
+		"additional_broad_skills_used": 0,
+		"broad_skills_remaining": 6,
+		"broad_skills_used": 6,
+		"cybertech": {
+			"cykosis": 0,
+			"cykosis_total": 5,
+			"enabled": false,
+			"installed": [],
+			"skill_purchased": false,
+			"tolerance": {
+				"center": 3,
+				"left": 5,
+				"right": 2,
+				"total": 10,
+				"used": 0
+			}
+		},
+		"durability": {
+			"fatigue": 5,
+			"mortal": 5,
+			"stun": 10,
+			"wound": 10
+		},
+		"effective_abilities": {
+			"CON": 10,
+			"DEX": 10,
+			"INT": 10,
+			"PER": 10,
+			"STR": 10,
+			"WIL": 10
+		},
+		"equipment": {
+			"attack_forms": [
+				{
+					"base_die": "+d4",
+					"clip_size": "-",
+					"damage": "d4s/d4+1s/d4+2s",
+					"hide": "3",
+					"mass": "",
+					"name": "Unarmed",
+					"range": "Personal",
+					"score": "5/2/1",
+					"type": "LI/O"
+				}
+			],
+			"carried_count": 0,
+			"combat_armor": [],
+			"combat_weapons": [],
+			"equipped_armor": [],
+			"equipped_weapons": [],
+			"total_cost": 0,
+			"total_mass": 0.0
+		},
+		"flaw_count": 0,
+		"flaw_skill_points_bonus": 0,
+		"last_resorts": {
+			"available": 1,
+			"base_max": 1,
+			"cost": 3,
+			"max": 1,
+			"personality": 10,
+			"profession_bonus": 0,
+			"used": 0
+		},
+		"max_broad_skills": 12,
+		"movement": {
+			"easy_swim": 2,
+			"effects": [
+				{
+					"effect": "No penalty when moving and acting in the same phase.",
+					"mode": "Walk"
+				},
+				{
+					"effect": "+2 step penalty to another action in the same phase.",
+					"mode": "Run"
+				},
+				{
+					"effect": "+3 step penalty to another action in the same phase.",
+					"mode": "Sprint"
+				},
+				{
+					"effect": "+2 step penalty to another action in the same phase.",
+					"mode": "Easy Swim"
+				},
+				{
+					"effect": "No other actions in the same phase.",
+					"mode": "Swim"
+				},
+				{
+					"effect": "+1 step penalty to another action in the same phase.",
+					"mode": "Glide"
+				},
+				{
+					"effect": "+2 step penalty to another action in the same phase.",
+					"mode": "Fly"
+				},
+				{
+					"effect": "Movement only; after stopping, no other action for the rest of the round.",
+					"mode": "All-out"
+				}
+			],
+			"fly": "-",
+			"glide": "-",
+			"run": 12,
+			"sprint": 20,
+			"swim": 4,
+			"total": 20,
+			"walk": 4
+		},
+		"mutations": {
+			"advantage_distribution": {
+				"Amazing": 0,
+				"Good": 0,
+				"Ordinary": 0
+			},
+			"advantage_distribution_label": "None",
+			"advantage_points": 0,
+			"advantage_points_remaining": 0,
+			"advantage_points_used": 0,
+			"advantages": [],
+			"drawback_distribution": {
+				"Extreme": 0,
+				"Moderate": 0,
+				"Slight": 0
+			},
+			"drawback_distribution_label": "None",
+			"drawback_points": 0,
+			"drawback_points_remaining": 0,
+			"drawback_points_used": 0,
+			"drawbacks": [],
+			"enabled": false,
+			"generation_mode": "random",
+			"origin": {
+				"id": "engineered",
+				"name": "Engineered mutation(s)",
+				"roll": "d8 result 1-5",
+				"uniqueness": [
+					{
+						"advantage_points": "d4",
+						"drawback_points": "d4",
+						"id": "engineered_community",
+						"name": "Belongs to mutant community",
+						"roll": "d8 result 1-5"
+					},
+					{
+						"advantage_points": "d4+1",
+						"drawback_points": "d4+1",
+						"id": "engineered_unique",
+						"name": "Individual with unique mutation(s)",
+						"roll": "d8 result 6-8"
+					}
+				]
+			},
+			"rules": [
+				"Mutants are a character species derived from human stock. Mutant heroes use the mutant species entry and have human free broad skills, but do not receive the human skill point or broad skill bonus. Source: Player's Handbook p. 213-214.",
+				"Every mutant hero has at least one advantageous mutation and one mutation drawback. Source: Player's Handbook p. 214.",
+				"Ordinary advantageous mutations and Slight drawbacks cost 1 point, Good mutations and Moderate drawbacks cost 2 points, and Amazing mutations or Extreme drawbacks cost 4 points. Source: Player's Handbook p. 214; Table P47.",
+				"A mutant can have no more than three Ordinary, two Good, and one Amazing advantageous mutations. Source: Player's Handbook p. 216.",
+				"Mutation powers that require a check use the listed skill, or an untrained check using one-half of the related ability score with a +d4 situation die. Source: Player's Handbook p. 216."
+			],
+			"uniqueness": {
+				"advantage_points": "d4",
+				"drawback_points": "d4",
+				"id": "engineered_community",
+				"name": "Belongs to mutant community",
+				"roll": "d8 result 1-5"
+			}
+		},
+		"perk_count": 0,
+		"perk_points_used": 0,
+		"permanent_fx_effects": [],
+		"racial_broad_skills": 6,
+		"skill_budget": 65,
+		"skill_points_remaining": 65,
+		"skill_points_used": 0,
+		"skill_purchase_points_used": 0,
+		"sold_broads_count": 0,
+		"starting_skill_budget": 65,
+		"validations": [
+			"STR must be between 11 and 14 for this species and profession. Source: Player's Handbook Tables P1 and P3."
+		]
+	}
+}

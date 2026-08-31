@@ -1,0 +1,288 @@
+{
+	"abilities": {
+		"CON": 9,
+		"DEX": 10,
+		"INT": 12,
+		"PER": 8,
+		"STR": 13,
+		"WIL": 10
+	},
+	"achievement_level": 1,
+	"achievement_points": 0,
+	"achievement_points_available": -4.0,
+	"achievement_points_spent_other": 0,
+	"achievements.achievement_points_available": -25,
+	"achievements.selected_achievements": [],
+	"career": "Apt Maintenance",
+	"combat_spec_bonus_specialty": 12.0,
+	"custom_ability_target": 55.0,
+	"cybertech": {
+		"cykosis": 0,
+		"enabled": false,
+		"installed": [],
+		"skill_purchased": false
+	},
+	"damage": {
+		"fatigue": 0,
+		"mortal": 0,
+		"stun": 2,
+		"wound": 4
+	},
+	"equipment": {
+		"carried": [
+			{
+				"equipped": false,
+				"item_id": "equip_core_035",
+				"line_id": "line_0001",
+				"notes": "",
+				"quantity": 1,
+				"slot": ""
+			},
+			{
+				"equipped": false,
+				"item_id": "equip_core_053",
+				"line_id": "line_0002",
+				"notes": "",
+				"quantity": 1,
+				"slot": ""
+			},
+			{
+				"equipped": false,
+				"item_id": "equip_core_005",
+				"line_id": "line_0003",
+				"notes": "",
+				"quantity": 1,
+				"slot": ""
+			},
+			{
+				"equipped": false,
+				"item_id": "custom_0001",
+				"line_id": "line_0004",
+				"notes": "",
+				"quantity": 1,
+				"slot": ""
+			},
+			{
+				"equipped": false,
+				"item_id": "custom_0002",
+				"line_id": "line_0005",
+				"notes": "",
+				"quantity": 1,
+				"slot": ""
+			},
+			{
+				"equipped": false,
+				"item_id": "custom_0003",
+				"line_id": "line_0006",
+				"notes": "",
+				"quantity": 1,
+				"slot": ""
+			},
+			{
+				"equipped": false,
+				"item_id": "equip_core_015",
+				"line_id": "line_0007",
+				"notes": "",
+				"quantity": 1,
+				"slot": ""
+			},
+			{
+				"equipped": false,
+				"item_id": "custom_0004",
+				"line_id": "line_0008",
+				"notes": "",
+				"quantity": 1,
+				"slot": ""
+			},
+			{
+				"equipped": false,
+				"item_id": "equip_core_054",
+				"line_id": "line_0009",
+				"notes": "",
+				"quantity": 1,
+				"slot": ""
+			},
+			{
+				"equipped": false,
+				"item_id": "custom_0005",
+				"line_id": "line_0010",
+				"notes": "",
+				"quantity": 1,
+				"slot": ""
+			},
+			{
+				"equipped": false,
+				"item_id": "weapon_core_033",
+				"line_id": "line_0011",
+				"notes": "",
+				"quantity": 1,
+				"slot": ""
+			}
+		],
+		"custom_items": [
+			{
+				"availability": "Com",
+				"category": "",
+				"class": "",
+				"combat": null,
+				"cost": 0,
+				"id": "custom_0001",
+				"kind": "equipment",
+				"mass": 0.0,
+				"name": "Multitool",
+				"page": "",
+				"pl": 0,
+				"reference": "Character custom equipment.",
+				"source": "Custom",
+				"source_code": "custom",
+				"table": ""
+			},
+			{
+				"availability": "Com",
+				"category": "",
+				"class": "",
+				"combat": null,
+				"cost": 0,
+				"id": "custom_0002",
+				"kind": "equipment",
+				"mass": 0.0,
+				"name": "respirator / dust mask",
+				"page": "",
+				"pl": 0,
+				"reference": "Character custom equipment.",
+				"source": "Custom",
+				"source_code": "custom",
+				"table": ""
+			},
+			{
+				"availability": "Com",
+				"category": "",
+				"class": "",
+				"combat": null,
+				"cost": 0,
+				"id": "custom_0003",
+				"kind": "equipment",
+				"mass": 0.0,
+				"name": "Portable Battery Pack",
+				"page": "",
+				"pl": 0,
+				"reference": "Character custom equipment.",
+				"source": "Custom",
+				"source_code": "custom",
+				"table": ""
+			},
+			{
+				"availability": "Com",
+				"category": "",
+				"class": "",
+				"combat": null,
+				"cost": 0,
+				"id": "custom_0004",
+				"kind": "equipment",
+				"mass": 0.0,
+				"name": "Duct tape, Zip ties, Electrical tape",
+				"page": "",
+				"pl": 0,
+				"reference": "Character custom equipment.",
+				"source": "Custom",
+				"source_code": "custom",
+				"table": ""
+			},
+			{
+				"availability": "Com",
+				"category": "",
+				"class": "",
+				"combat": null,
+				"cost": 0,
+				"id": "custom_0005",
+				"kind": "equipment",
+				"mass": 0.0,
+				"name": "Apartment Keys",
+				"page": "",
+				"pl": 0,
+				"reference": "Character custom equipment.",
+				"source": "Custom",
+				"source_code": "custom",
+				"table": ""
+			}
+		]
+	},
+	"fx": {
+		"energy_pool": 5.0,
+		"is_fx_talent": true,
+		"permanent_skills": {
+			"Super Strength": true
+		},
+		"primary_broad_group": "Alienism",
+		"selected_skills": {
+			"Brick": 1.0,
+			"Druidism": 1.0,
+			"Super Strength": 1.0
+		}
+	},
+	"hero_name": "Marco Mendez",
+	"last_resorts_rebought": 0.0,
+	"last_resorts_used": 1,
+	"mutations": {
+		"advantage_distribution": {
+			"Amazing": 0,
+			"Good": 2,
+			"Ordinary": 2
+		},
+		"advantage_points": 6,
+		"advantages": [
+			"enhanced_wil",
+			"enhanced_senses",
+			"night_vision",
+			"improved_reflexes"
+		],
+		"drawback_distribution": {
+			"Extreme": 0,
+			"Moderate": 2,
+			"Slight": 2
+		},
+		"drawback_points": 6,
+		"drawbacks": [
+			"susceptible_to_damage",
+			"light_sensitivity",
+			"inefficient_metabolism",
+			"thermal_intolerance"
+		],
+		"generation_mode": "player",
+		"origin": "natural",
+		"uniqueness": "natural_unique"
+	},
+	"notes": "",
+	"optional_rules": {
+		"2a": true,
+		"2b": false,
+		"2c": true,
+		"dazed": true
+	},
+	"player_name": "Fixture",
+	"profession_id": 5.0,
+	"selected_achievements": [],
+	"selected_flaws": {},
+	"selected_perks": {},
+	"selected_skills": {
+		"114": 1,
+		"116": 2,
+		"117": 2,
+		"127": 2,
+		"134": 1,
+		"135": 3,
+		"136": 3,
+		"157": 2,
+		"158": 2,
+		"30": 1,
+		"31": 3,
+		"72": 1
+	},
+	"setting": "Core",
+	"sold_species_skills": [
+		43,
+		43,
+		3
+	],
+	"species_id": 0
+}

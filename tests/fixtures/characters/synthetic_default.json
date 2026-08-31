@@ -1,0 +1,85 @@
+{
+	"abilities": {
+		"CON": 10,
+		"DEX": 10,
+		"INT": 10,
+		"PER": 10,
+		"STR": 10,
+		"WIL": 10
+	},
+	"achievement_level": 1,
+	"achievement_points": 0,
+	"achievement_points_available": 0,
+	"achievement_points_spent_other": 0,
+	"career": "",
+	"cybertech": {
+		"cykosis": 0,
+		"enabled": false,
+		"installed": [],
+		"skill_purchased": false
+	},
+	"damage": {
+		"fatigue": 0,
+		"mortal": 0,
+		"stun": 0,
+		"wound": 0
+	},
+	"equipment": {
+		"carried": [],
+		"custom_items": []
+	},
+	"fx": {
+		"energy_pool": 0,
+		"is_fx_talent": false,
+		"permanent_skills": {
+
+		},
+		"selected_skills": {
+
+		}
+	},
+	"hero_name": "Default Hero",
+	"last_resorts_rebought": 0,
+	"last_resorts_used": 0,
+	"mutations": {
+		"advantage_distribution": {
+			"Amazing": 0,
+			"Good": 0,
+			"Ordinary": 0
+		},
+		"advantage_points": 0,
+		"advantages": [],
+		"drawback_distribution": {
+			"Extreme": 0,
+			"Moderate": 0,
+			"Slight": 0
+		},
+		"drawback_points": 0,
+		"drawbacks": [],
+		"generation_mode": "random",
+		"origin": "engineered",
+		"uniqueness": "engineered_community"
+	},
+	"notes": "",
+	"optional_rules": {
+		"2a": false,
+		"2b": false,
+		"2c": false,
+		"dazed": false
+	},
+	"player_name": "Fixture",
+	"profession_id": 0,
+	"selected_achievements": [],
+	"selected_flaws": {
+
+	},
+	"selected_perks": {
+
+	},
+	"selected_skills": {
+
+	},
+	"setting": "Core",
+	"sold_species_skills": [],
+	"species_id": 0
+}

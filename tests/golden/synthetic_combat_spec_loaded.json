@@ -1,0 +1,479 @@
+{
+	"normalized": {
+		"abilities": {
+			"CON": 11.0,
+			"DEX": 11.0,
+			"INT": 9.0,
+			"PER": 8.0,
+			"STR": 12.0,
+			"WIL": 10.0
+		},
+		"achievement_level": 5,
+		"achievement_points": 30,
+		"achievement_points_available": 30,
+		"achievement_points_spent_other": 0,
+		"career": "Marine",
+		"combat_spec_bonus_specialty": 31.0,
+		"cybertech": {
+			"cykosis": 0,
+			"enabled": false,
+			"installed": [],
+			"skill_purchased": false
+		},
+		"damage": {
+			"fatigue": 0,
+			"mortal": 0,
+			"stun": 0,
+			"wound": 0
+		},
+		"equipment": {
+			"carried": [
+				{
+					"equipped": false,
+					"item_id": "armor_core_001",
+					"line_id": "line_0001",
+					"notes": "",
+					"quantity": 1,
+					"slot": ""
+				},
+				{
+					"equipped": false,
+					"item_id": "weapon_core_001",
+					"line_id": "line_0002",
+					"notes": "",
+					"quantity": 1,
+					"slot": ""
+				}
+			],
+			"custom_items": []
+		},
+		"fx": {
+			"energy_pool": 0.0,
+			"is_fx_talent": false,
+			"permanent_skills": {
+
+			},
+			"selected_skills": {
+
+			}
+		},
+		"hero_name": "Loaded Combat Spec",
+		"last_resorts_rebought": 0.0,
+		"last_resorts_used": 0,
+		"mutations": {
+			"advantage_distribution": {
+				"Amazing": 0,
+				"Good": 0,
+				"Ordinary": 0
+			},
+			"advantage_points": 0,
+			"advantages": [],
+			"drawback_distribution": {
+				"Extreme": 0,
+				"Moderate": 0,
+				"Slight": 0
+			},
+			"drawback_points": 0,
+			"drawbacks": [],
+			"generation_mode": "random",
+			"origin": "engineered",
+			"uniqueness": "engineered_community"
+		},
+		"notes": "",
+		"optional_rules": {
+			"2a": false,
+			"2b": false,
+			"2c": false,
+			"dazed": false
+		},
+		"player_name": "Fixture",
+		"profession_id": 0.0,
+		"selected_achievements": [
+			{
+				"achievement_id": "action_check_increase",
+				"cost": 4,
+				"level": 5,
+				"line_id": "ach_0001",
+				"notes": "",
+				"target_id": "",
+				"target_value": 0
+			}
+		],
+		"selected_flaws": {
+			"alien_artifact_flaw": 5
+		},
+		"selected_perks": {
+			"alien_artifact": 8
+		},
+		"selected_skills": {
+			"0": 1,
+			"1": 2,
+			"30": 1,
+			"31": 3
+		},
+		"setting": "Core",
+		"sold_species_skills": [],
+		"species_id": 0.0
+	},
+	"summary": {
+		"ability_target": 60,
+		"ability_total": 61,
+		"achievement_benefit_points_used": 4,
+		"achievement_level": 5,
+		"achievement_points": 30,
+		"achievement_points_for_sp": 30,
+		"achievements.achievement_next_level_points": 40,
+		"achievements.achievement_points_available": 30,
+		"achievements.achievement_points_used": 0,
+		"achievements.achievement_skill_bonus": 0,
+		"achievements.selected_achievements": [
+			{
+				"achievement": {
+					"category": "Action Check",
+					"costs": [
+						[
+							4.0,
+							3.0
+						],
+						[
+							4.0,
+							3.0
+						],
+						[
+							3.0,
+							3.0
+						],
+						[
+							4.0,
+							4.0
+						],
+						[
+							4.0,
+							6.0
+						]
+					],
+					"effect": {
+						"amount": 1.0,
+						"type": "action_check_score"
+					},
+					"id": "action_check_increase",
+					"max": 3.0,
+					"name": "Action Check Increase",
+					"reference": "Player's Handbook p. 127-128; Table P29 p. 128.",
+					"summary": "Increases the hero's action check score by 1 point each time it is purchased."
+				},
+				"achievement_id": "action_check_increase",
+				"cost": 4,
+				"level": 5,
+				"line_id": "ach_0001",
+				"name": "Action Check Increase",
+				"notes": "",
+				"summary": "Increases the hero's action check score by 1 point each time it is purchased.",
+				"target_id": "",
+				"target_value": 0
+			}
+		],
+		"action_check": {
+			"actions": 2,
+			"amazing": 3,
+			"die": "+d0",
+			"good": 7,
+			"marginal": 15,
+			"ordinary": 14
+		},
+		"additional_broad_skill_limit": 5,
+		"additional_broad_skills_remaining": 3,
+		"additional_broad_skills_used": 2,
+		"broad_skills_remaining": 3,
+		"broad_skills_used": 8,
+		"cybertech": {
+			"cykosis": 0,
+			"cykosis_total": 5,
+			"enabled": false,
+			"installed": [],
+			"skill_purchased": false,
+			"tolerance": {
+				"center": 3,
+				"left": 6,
+				"right": 2,
+				"total": 11,
+				"used": 0
+			}
+		},
+		"durability": {
+			"fatigue": 6,
+			"mortal": 6,
+			"stun": 11,
+			"wound": 11
+		},
+		"effective_abilities": {
+			"CON": 11,
+			"DEX": 11,
+			"INT": 9,
+			"PER": 8,
+			"STR": 12,
+			"WIL": 10
+		},
+		"equipment": {
+			"attack_forms": [
+				{
+					"base_die": "+d4",
+					"clip_size": "-",
+					"damage": "d4s/d4+1s/d4+2s",
+					"hide": "3",
+					"mass": "",
+					"name": "Unarmed",
+					"range": "Personal",
+					"score": "6/3/1",
+					"type": "LI/O"
+				},
+				{
+					"base_die": "-d4",
+					"clip_size": "15",
+					"damage": "d4+1w/d6+1w/d4m",
+					"equipped": false,
+					"hide": "3",
+					"mass": "1",
+					"name": "Pistol, 9mm ch",
+					"quantity": 1,
+					"range": "8/16/60",
+					"score": "14/7/3",
+					"slot": "",
+					"type": "HI/O"
+				}
+			],
+			"carried_count": 2,
+			"combat_armor": [
+				{
+					"equipped": false,
+					"item": {
+						"availability": "Mil",
+						"category": "Armor",
+						"class": "Armor Operation - Powered armor",
+						"combat": {
+							"action_penalty": 2.0,
+							"en": "d6",
+							"hi": "d6+2",
+							"hide": 0.0,
+							"li": "d6+1",
+							"skill": "Armor Operation - Powered armor",
+							"skill_id": 2.0,
+							"toughness": "G"
+						},
+						"cost": 8000.0,
+						"id": "armor_core_001",
+						"kind": "armor",
+						"mass": 25.0,
+						"name": "Attack armor, powered",
+						"page": "188",
+						"pl": 6.0,
+						"reference": "Player's Handbook p. 188, Table P41: Armor",
+						"references": [
+							{
+								"book": "Player's Handbook",
+								"page": "188",
+								"table": "P41",
+								"title": "Armor"
+							}
+						],
+						"source": "Player's Handbook",
+						"source_code": "phb",
+						"table": "P41"
+					},
+					"item_id": "armor_core_001",
+					"line_id": "line_0001",
+					"notes": "",
+					"quantity": 1,
+					"slot": "",
+					"total_cost": 8000,
+					"total_mass": 25.0
+				}
+			],
+			"combat_weapons": [
+				{
+					"equipped": false,
+					"item": {
+						"availability": "Com",
+						"category": "Weapons",
+						"class": "Modern Ranged Weapons",
+						"combat": {
+							"accuracy": 0.0,
+							"actions": 4.0,
+							"clip_cost": 50.0,
+							"clip_size": "15",
+							"damage": "d4+1w/d6+1w/d4m",
+							"damage_type": "HI/O",
+							"hide": 3.0,
+							"melee": false,
+							"mode": "F",
+							"range": "8/16/60",
+							"skill": "Modern Ranged Weapons - Pistol",
+							"skill_id": 31.0,
+							"strength_based": false,
+							"thrown": false,
+							"type": "HI/O"
+						},
+						"cost": 400.0,
+						"id": "weapon_core_001",
+						"kind": "weapon",
+						"mass": 1.0,
+						"name": "Pistol, 9mm ch",
+						"page": "176-177",
+						"pl": 6.0,
+						"reference": "Player's Handbook p. 176-177, Table P39: Ranged Weapons",
+						"references": [
+							{
+								"book": "Player's Handbook",
+								"page": "176-177",
+								"table": "P39",
+								"title": "Ranged Weapons"
+							}
+						],
+						"source": "Player's Handbook",
+						"source_code": "phb",
+						"table": "P39"
+					},
+					"item_id": "weapon_core_001",
+					"line_id": "line_0002",
+					"notes": "",
+					"quantity": 1,
+					"slot": "",
+					"total_cost": 400,
+					"total_mass": 1.0
+				}
+			],
+			"equipped_armor": [],
+			"equipped_weapons": [],
+			"total_cost": 8400,
+			"total_mass": 26.0
+		},
+		"flaw_count": 1,
+		"flaw_skill_points_bonus": 5,
+		"last_resorts": {
+			"available": 1,
+			"base_max": 1,
+			"cost": 3,
+			"max": 1,
+			"personality": 8,
+			"profession_bonus": 0,
+			"used": 0
+		},
+		"max_broad_skills": 11,
+		"movement": {
+			"easy_swim": 2,
+			"effects": [
+				{
+					"effect": "No penalty when moving and acting in the same phase.",
+					"mode": "Walk"
+				},
+				{
+					"effect": "+2 step penalty to another action in the same phase.",
+					"mode": "Run"
+				},
+				{
+					"effect": "+3 step penalty to another action in the same phase.",
+					"mode": "Sprint"
+				},
+				{
+					"effect": "+2 step penalty to another action in the same phase.",
+					"mode": "Easy Swim"
+				},
+				{
+					"effect": "No other actions in the same phase.",
+					"mode": "Swim"
+				},
+				{
+					"effect": "+1 step penalty to another action in the same phase.",
+					"mode": "Glide"
+				},
+				{
+					"effect": "+2 step penalty to another action in the same phase.",
+					"mode": "Fly"
+				},
+				{
+					"effect": "Movement only; after stopping, no other action for the rest of the round.",
+					"mode": "All-out"
+				}
+			],
+			"fly": "-",
+			"glide": "-",
+			"run": 14,
+			"sprint": 22,
+			"swim": 4,
+			"total": 23,
+			"walk": 4
+		},
+		"mutations": {
+			"advantage_distribution": {
+				"Amazing": 0,
+				"Good": 0,
+				"Ordinary": 0
+			},
+			"advantage_distribution_label": "None",
+			"advantage_points": 0,
+			"advantage_points_remaining": 0,
+			"advantage_points_used": 0,
+			"advantages": [],
+			"drawback_distribution": {
+				"Extreme": 0,
+				"Moderate": 0,
+				"Slight": 0
+			},
+			"drawback_distribution_label": "None",
+			"drawback_points": 0,
+			"drawback_points_remaining": 0,
+			"drawback_points_used": 0,
+			"drawbacks": [],
+			"enabled": false,
+			"generation_mode": "random",
+			"origin": {
+				"id": "engineered",
+				"name": "Engineered mutation(s)",
+				"roll": "d8 result 1-5",
+				"uniqueness": [
+					{
+						"advantage_points": "d4",
+						"drawback_points": "d4",
+						"id": "engineered_community",
+						"name": "Belongs to mutant community",
+						"roll": "d8 result 1-5"
+					},
+					{
+						"advantage_points": "d4+1",
+						"drawback_points": "d4+1",
+						"id": "engineered_unique",
+						"name": "Individual with unique mutation(s)",
+						"roll": "d8 result 6-8"
+					}
+				]
+			},
+			"rules": [
+				"Mutants are a character species derived from human stock. Mutant heroes use the mutant species entry and have human free broad skills, but do not receive the human skill point or broad skill bonus. Source: Player's Handbook p. 213-214.",
+				"Every mutant hero has at least one advantageous mutation and one mutation drawback. Source: Player's Handbook p. 214.",
+				"Ordinary advantageous mutations and Slight drawbacks cost 1 point, Good mutations and Moderate drawbacks cost 2 points, and Amazing mutations or Extreme drawbacks cost 4 points. Source: Player's Handbook p. 214; Table P47.",
+				"A mutant can have no more than three Ordinary, two Good, and one Amazing advantageous mutations. Source: Player's Handbook p. 216.",
+				"Mutation powers that require a check use the listed skill, or an untrained check using one-half of the related ability score with a +d4 situation die. Source: Player's Handbook p. 216."
+			],
+			"uniqueness": {
+				"advantage_points": "d4",
+				"drawback_points": "d4",
+				"id": "engineered_community",
+				"name": "Belongs to mutant community",
+				"roll": "d8 result 1-5"
+			}
+		},
+		"perk_count": 1,
+		"perk_points_used": 8,
+		"permanent_fx_effects": [],
+		"racial_broad_skills": 6,
+		"skill_budget": 99,
+		"skill_points_remaining": 59,
+		"skill_points_used": 40,
+		"skill_purchase_points_used": 28,
+		"sold_broads_count": 0,
+		"starting_skill_budget": 69,
+		"validations": [
+			"Ability total must be 60; current total is 61."
+		]
+	}
+}
