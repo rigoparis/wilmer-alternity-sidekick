@@ -12,6 +12,7 @@
 		"achievement_points": 0,
 		"achievement_points_available": 0,
 		"achievement_points_spent_other": 0,
+		"age_category": "young_adult",
 		"career": "",
 		"cybertech": {
 			"cykosis": 0,
@@ -106,10 +107,11 @@
 			"marginal": 14,
 			"ordinary": 13
 		},
-		"additional_broad_skill_limit": 8,
-		"additional_broad_skills_remaining": 8,
+		"additional_broad_skill_limit": 7,
+		"additional_broad_skills_remaining": 7,
 		"additional_broad_skills_used": 0,
-		"broad_skills_remaining": 8,
+		"age_category": "young_adult",
+		"broad_skills_remaining": 7,
 		"broad_skills_used": 6,
 		"cybertech": {
 			"cykosis": 0,
@@ -138,6 +140,16 @@
 			"PER": 10,
 			"STR": 9,
 			"WIL": 12
+		},
+		"encumbrance": {
+			"extreme_limit": 54.0,
+			"heavy_limit": 36.0,
+			"light_limit": 18.0,
+			"mass": 0.0,
+			"movement_multiplier": 1.0,
+			"penalty": 0,
+			"severe_limit": 45.0,
+			"tier": "Normal"
 		},
 		"equipment": {
 			"attack_forms": [
@@ -172,7 +184,7 @@
 			"profession_bonus": 0,
 			"used": 0
 		},
-		"max_broad_skills": 14,
+		"max_broad_skills": 13,
 		"movement": {
 			"easy_swim": 2,
 			"effects": [
@@ -209,6 +221,16 @@
 					"mode": "All-out"
 				}
 			],
+			"encumbrance": {
+				"extreme_limit": 54.0,
+				"heavy_limit": 36.0,
+				"light_limit": 18.0,
+				"mass": 0.0,
+				"movement_multiplier": 1.0,
+				"penalty": 0,
+				"severe_limit": 45.0,
+				"tier": "Normal"
+			},
 			"fly": "-",
 			"glide": "-",
 			"run": 12,
@@ -280,12 +302,12 @@
 		"perk_points_used": 0,
 		"permanent_fx_effects": [],
 		"racial_broad_skills": 6,
-		"skill_budget": 67,
-		"skill_points_remaining": 51,
+		"skill_budget": 60,
+		"skill_points_remaining": 44,
 		"skill_points_used": 16,
 		"skill_purchase_points_used": 0,
 		"sold_broads_count": 0,
-		"starting_skill_budget": 67,
+		"starting_skill_budget": 60,
 		"validations": [
 			"Ability total must be 60; current total is 62.",
 			"STR must be between 11 and 14 for this species and profession. Source: Player's Handbook Tables P1 and P3."

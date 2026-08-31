@@ -12,6 +12,7 @@
 		"achievement_points": 0,
 		"achievement_points_available": 0,
 		"achievement_points_spent_other": 0,
+		"age_category": "young_adult",
 		"career": "",
 		"cybertech": {
 			"cykosis": 0,
@@ -113,6 +114,7 @@
 		"additional_broad_skill_limit": 4,
 		"additional_broad_skills_remaining": 4,
 		"additional_broad_skills_used": 0,
+		"age_category": "young_adult",
 		"broad_skills_remaining": 4,
 		"broad_skills_used": 6,
 		"cybertech": {
@@ -143,12 +145,22 @@
 			"STR": 12,
 			"WIL": 10
 		},
+		"encumbrance": {
+			"extreme_limit": 72.0,
+			"heavy_limit": 48.0,
+			"light_limit": 24.0,
+			"mass": 0.0,
+			"movement_multiplier": 1.0,
+			"penalty": 0,
+			"severe_limit": 60.0,
+			"tier": "Normal"
+		},
 		"equipment": {
 			"attack_forms": [
 				{
 					"base_die": "+d4",
 					"clip_size": "-",
-					"damage": "d4s/d4+1s/d4+2s",
+					"damage": "d4+1s/d4+2s/d4+3s",
 					"hide": "3",
 					"mass": "",
 					"name": "Unarmed",
@@ -159,7 +171,7 @@
 				{
 					"base_die": "+d4",
 					"clip_size": "-",
-					"damage": "d6+2s/d4w/d4+2w",
+					"damage": "d6+3s/d4+1w/d4+3w",
 					"hide": "-",
 					"mass": "",
 					"mutation": "Natural Attack",
@@ -290,6 +302,16 @@
 					"mode": "All-out"
 				}
 			],
+			"encumbrance": {
+				"extreme_limit": 72.0,
+				"heavy_limit": 48.0,
+				"light_limit": 24.0,
+				"mass": 0.0,
+				"movement_multiplier": 1.0,
+				"penalty": 0,
+				"severe_limit": 60.0,
+				"tier": "Normal"
+			},
 			"fly": "-",
 			"glide": "-",
 			"run": 12,
@@ -433,12 +455,12 @@
 		"perk_points_used": 0,
 		"permanent_fx_effects": [],
 		"racial_broad_skills": 6,
-		"skill_budget": 59,
-		"skill_points_remaining": 59,
+		"skill_budget": 40,
+		"skill_points_remaining": 40,
 		"skill_points_used": 0,
 		"skill_purchase_points_used": 0,
 		"sold_broads_count": 0,
-		"starting_skill_budget": 59,
+		"starting_skill_budget": 40,
 		"validations": [
 			"Ability total must be 60; current total is 59."
 		]

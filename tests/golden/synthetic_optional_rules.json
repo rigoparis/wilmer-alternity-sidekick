@@ -12,6 +12,7 @@
 		"achievement_points": 0,
 		"achievement_points_available": 0,
 		"achievement_points_spent_other": 0,
+		"age_category": "young_adult",
 		"career": "",
 		"cybertech": {
 			"cykosis": 0,
@@ -107,6 +108,7 @@
 		"additional_broad_skill_limit": 7,
 		"additional_broad_skills_remaining": 6,
 		"additional_broad_skills_used": 1,
+		"age_category": "young_adult",
 		"broad_skills_remaining": 6,
 		"broad_skills_used": 7,
 		"cybertech": {
@@ -136,6 +138,16 @@
 			"PER": 10,
 			"STR": 10,
 			"WIL": 10
+		},
+		"encumbrance": {
+			"extreme_limit": 60.0,
+			"heavy_limit": 40.0,
+			"light_limit": 20.0,
+			"mass": 0.0,
+			"movement_multiplier": 1.0,
+			"penalty": 0,
+			"severe_limit": 50.0,
+			"tier": "Normal"
 		},
 		"equipment": {
 			"attack_forms": [
@@ -207,6 +219,16 @@
 					"mode": "All-out"
 				}
 			],
+			"encumbrance": {
+				"extreme_limit": 60.0,
+				"heavy_limit": 40.0,
+				"light_limit": 20.0,
+				"mass": 0.0,
+				"movement_multiplier": 1.0,
+				"penalty": 0,
+				"severe_limit": 50.0,
+				"tier": "Normal"
+			},
 			"fly": "-",
 			"glide": "-",
 			"run": 12,

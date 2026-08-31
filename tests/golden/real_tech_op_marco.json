@@ -12,6 +12,7 @@
 		"achievement_points": 0,
 		"achievement_points_available": -25,
 		"achievement_points_spent_other": 0,
+		"age_category": "young_adult",
 		"career": "Apt Maintenance",
 		"combat_spec_bonus_specialty": 12.0,
 		"custom_ability_target": 55.0,
@@ -309,10 +310,11 @@
 			"marginal": 13,
 			"ordinary": 12
 		},
-		"additional_broad_skill_limit": 8,
-		"additional_broad_skills_remaining": 5,
+		"additional_broad_skill_limit": 7,
+		"additional_broad_skills_remaining": 4,
 		"additional_broad_skills_used": 3,
-		"broad_skills_remaining": 5,
+		"age_category": "young_adult",
+		"broad_skills_remaining": 4,
 		"broad_skills_used": 9,
 		"cybertech": {
 			"cykosis": 0,
@@ -342,12 +344,22 @@
 			"STR": 14,
 			"WIL": 10
 		},
+		"encumbrance": {
+			"extreme_limit": 84.0,
+			"heavy_limit": 56.0,
+			"light_limit": 28.0,
+			"mass": 14.0,
+			"movement_multiplier": 1.0,
+			"penalty": 0,
+			"severe_limit": 70.0,
+			"tier": "Normal"
+		},
 		"equipment": {
 			"attack_forms": [
 				{
 					"base_die": "+d4",
 					"clip_size": "-",
-					"damage": "d4+1s/d4+2s/d4+3s",
+					"damage": "d4+2s/d4+3s/d4+4s",
 					"hide": "3",
 					"mass": "",
 					"name": "Unarmed",
@@ -441,9 +453,9 @@
 			"profession_bonus": 0,
 			"used": 1
 		},
-		"max_broad_skills": 14,
+		"max_broad_skills": 13,
 		"movement": {
-			"easy_swim": 2,
+			"easy_swim": 3,
 			"effects": [
 				{
 					"effect": "No penalty when moving and acting in the same phase.",
@@ -478,13 +490,23 @@
 					"mode": "All-out"
 				}
 			],
+			"encumbrance": {
+				"extreme_limit": 84.0,
+				"heavy_limit": 56.0,
+				"light_limit": 28.0,
+				"mass": 14.0,
+				"movement_multiplier": 1.0,
+				"penalty": 0,
+				"severe_limit": 70.0,
+				"tier": "Normal"
+			},
 			"fly": "-",
 			"glide": "-",
 			"run": 16,
 			"sprint": 24,
-			"swim": 4,
+			"swim": 6,
 			"total": 24,
-			"walk": 4
+			"walk": 6
 		},
 		"mutations": {
 			"advantage_distribution": {

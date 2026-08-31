@@ -293,6 +293,7 @@ func default_character() -> Dictionary:
 		"achievement_points_spent_other": 0,
 		"species_id": 0,
 		"profession_id": 0,
+		"age_category": "young_adult",
 		"abilities": {
 			"STR": 10,
 			"DEX": 10,
@@ -342,6 +343,9 @@ func ensure_character_shape(character: Dictionary) -> Dictionary:
 	for ability in ABILITIES:
 		if not character["abilities"].has(ability):
 			character["abilities"][ability] = 10
+
+	if not character.has("age_category") or String(character["age_category"]).strip_edges().is_empty():
+		character["age_category"] = "young_adult"
 
 	# Normalize achievement points and level first: skill rank clamping below
 	# depends on the achievement level being up to date.
@@ -530,11 +534,35 @@ func base_abilities(character: Dictionary) -> Dictionary:
 	return character.get("abilities", {})
 
 
-func achievement_adjusted_abilities(character: Dictionary) -> Dictionary:
+func age_category(character: Dictionary) -> String:
+	var cat := String(character.get("age_category", "young_adult")).strip_edges().to_lower()
+	return cat if AGE_MODIFIERS.has(cat) else "young_adult"
+
+
+func age_modifier(character: Dictionary, ability: String) -> int:
+	var cat := age_category(character)
+	var mods: Dictionary = AGE_MODIFIERS.get(cat, {})
+	return _as_int(mods.get(ability, 0))
+
+
+func age_adjusted_abilities(character: Dictionary) -> Dictionary:
 	var result := {}
 	var abilities: Dictionary = character.get("abilities", {})
+	var cat := age_category(character)
+	var mods: Dictionary = AGE_MODIFIERS.get(cat, {})
+	var current_species := get_species_by_id(_as_int(character.get("species_id", 0)))
+	var limits_dict: Dictionary = current_species.get("ability_limits", {})
 	for ability in ABILITIES:
-		result[ability] = _as_int(abilities.get(ability, 10))
+		var score := _as_int(abilities.get(ability, 10))
+		var age_mod := _as_int(mods.get(ability, 0))
+		var spec_lim: Array = limits_dict.get(ability, [4, 14])
+		# Age modifiers cannot raise or lower scores outside species minimums and maximums.
+		result[ability] = clampi(score + age_mod, _as_int(spec_lim[0]), _as_int(spec_lim[1]))
+	return result
+
+
+func achievement_adjusted_abilities(character: Dictionary) -> Dictionary:
+	var result := age_adjusted_abilities(character)
 	for entry in achievements.selected_achievements(character):
 		var achievement: Dictionary = entry.get("achievement", {})
 		var effect: Dictionary = achievement.get("effect", {})
@@ -699,6 +727,12 @@ func character_resistance_modifier(character: Dictionary, ability: String) -> in
 			skill_bonus += 1
 
 	rm += skill_bonus
+
+	# Table P12 Encumbrance: +1/+2/+3 step penalty to STR and DEX checks/resistance
+	if ability == "STR" or ability == "DEX":
+		var enc := encumbrance(character)
+		rm -= _as_int(enc.get("penalty", 0))
+
 	return rm
 
 
@@ -709,7 +743,7 @@ func action_check(character: Dictionary) -> Dictionary:
 	var base := int(floor((_as_int(abilities.get("DEX", 10)) + _as_int(abilities.get("INT", 10))) / 2.0))
 	var ordinary := base + _as_int(profession.get("action_bonus", 0)) + achievements.achievement_effect_total(character, "action_check_score")
 	var good := int(floor(ordinary / 2.0))
-	var amazing := int(floor(good / 2.0))
+	var amazing := int(floor(ordinary / 4.0))
 	var action_step := _as_int(current_species.get("action_step", 0)) + achievements.achievement_effect_total(character, "action_check_step") + mutations.mutation_action_check_step(character) + cybertech.cybertech_action_check_step(character)
 	var penalty := dazed_penalty(character)
 	return {
@@ -749,29 +783,89 @@ func durability(character: Dictionary) -> Dictionary:
 	}
 
 
+## Table P12: Encumbrance. Source: Player's Handbook p. 34.
+func encumbrance(character: Dictionary) -> Dictionary:
+	var abilities := effective_abilities(character)
+	var str_score := _as_int(abilities.get("STR", 10))
+	var eq_summary: Dictionary = equipment.equipment_summary(character)
+	var mass := _as_float(eq_summary.get("total_mass", 0.0))
+	var light_limit := float(str_score * 2)
+	var heavy_limit := float(str_score * 4)
+	var severe_limit := float(str_score * 5)
+	var extreme_limit := float(str_score * 6)
+
+	var tier_name := "Normal"
+	var movement_mult := 1.0
+	var penalty := 0
+
+	if mass <= light_limit:
+		tier_name = "Normal"
+		movement_mult = 1.0
+		penalty = 0
+	elif mass <= heavy_limit:
+		tier_name = "Heavy"
+		movement_mult = 0.75
+		penalty = 1
+	elif mass <= severe_limit:
+		tier_name = "Severe"
+		movement_mult = 0.50
+		penalty = 2
+	elif mass <= extreme_limit:
+		tier_name = "Extreme"
+		movement_mult = 0.25
+		penalty = 3
+	else:
+		tier_name = "Immobile"
+		movement_mult = 0.0
+		penalty = 3
+
+	return {
+		"mass": mass,
+		"tier": tier_name,
+		"movement_multiplier": movement_mult,
+		"penalty": penalty,
+		"light_limit": light_limit,
+		"heavy_limit": heavy_limit,
+		"severe_limit": severe_limit,
+		"extreme_limit": extreme_limit,
+	}
+
+
+## Table P8: Combat Movement Rates (Meters per Phase). Source: Player's Handbook p. 33.
 func movement(character: Dictionary) -> Dictionary:
 	var abilities := effective_abilities(character)
 	var current_species := get_species_by_id(_as_int(character.get("species_id", 0)))
 	var movement_total := _as_int(abilities.get("STR", 10)) + _as_int(abilities.get("DEX", 10))
-	var table_total := clampi(movement_total, 6, 32)
-	if table_total % 2 != 0:
-		table_total -= 1
-	var sprint := table_total
-	var run := _as_int(MOVEMENT_RUN_BY_TOTAL.get(table_total, 12))
-	var mutation_movement := mutations.mutation_movement_modes(character)
+	var table_key := clampi(movement_total, 6, 32)
+	if table_key % 2 != 0:
+		table_key -= 1
+	var rates: Dictionary = MOVEMENT_RATES_TABLE.get(table_key, {"sprint": 12, "run": 8, "walk": 2, "easy_swim": 1, "swim": 2, "glide": 12, "fly": 24})
+	var sprint := _as_int(rates.get("sprint", 12))
+	var run := _as_int(rates.get("run", 8))
+	var walk := _as_int(rates.get("walk", 2))
+	var easy_swim := _as_int(rates.get("easy_swim", 1))
+	var swim := _as_int(rates.get("swim", 2))
+	var can_glide := bool(current_species.get("can_glide", false)) or bool(mutations.mutation_movement_modes(character).get("glide", false))
+	var can_fly := bool(current_species.get("can_fly", false)) or bool(mutations.mutation_movement_modes(character).get("fly", false))
+
+	var enc := encumbrance(character)
+	var mult: float = _as_float(enc.get("movement_multiplier", 1.0), 1.0)
+
 	return {
 		"total": movement_total,
-		"sprint": sprint,
-		"run": run,
-		"walk": 4,
-		"easy_swim": 2,
-		"swim": 4,
-		"glide": run if bool(current_species.get("can_glide", false)) or bool(mutation_movement.get("glide", false)) else "-",
-		"fly": sprint if bool(current_species.get("can_fly", false)) or bool(mutation_movement.get("fly", false)) else "-",
+		"sprint": int(floor(sprint * mult)),
+		"run": int(floor(run * mult)),
+		"walk": int(floor(walk * mult)),
+		"easy_swim": int(floor(easy_swim * mult)),
+		"swim": int(floor(swim * mult)),
+		"glide": str(int(floor(sprint * mult))) if can_glide else "-",
+		"fly": str(int(floor(sprint * 2 * mult))) if can_fly else "-",
 		"effects": MOVEMENT_EFFECTS,
+		"encumbrance": enc,
 	}
 
 
+## Table P7: Actions Per Round. Source: Player's Handbook p. 33.
 func actions_per_round(character: Dictionary) -> int:
 	var abilities := effective_abilities(character)
 	var total := _as_int(abilities.get("CON", 10)) + _as_int(abilities.get("WIL", 10))
@@ -779,9 +873,9 @@ func actions_per_round(character: Dictionary) -> int:
 	var base := 1
 	if total <= 15:
 		base = 1
-	elif total <= 24:
+	elif total <= 23:
 		base = 2
-	elif total <= 32:
+	elif total <= 31:
 		base = 3
 	else:
 		base = 4
@@ -851,9 +945,12 @@ func clamp_trackers(character: Dictionary) -> void:
 	set_last_resorts_used(character, _as_int(character.get("last_resorts_used", 0)))
 
 
+## Table P5: Starting Skill Point Budget. Source: Player's Handbook p. 34.
 func starting_skill_budget(character: Dictionary) -> int:
 	var abilities := effective_abilities(character)
 	var current_species := get_species_by_id(_as_int(character.get("species_id", 0)))
+	var is_human := String(current_species.get("name", "")) == "Human"
+	var human_bonus := 5 if is_human else 0
 	var flaw_bonus := flaw_skill_points_bonus(character)
 
 	# Sold species broad skills bonus (+3 SP per sold skill)
@@ -863,12 +960,13 @@ func starting_skill_budget(character: Dictionary) -> int:
 		if sold_list.has(skill_id):
 			sold_bonus += 3
 
+	var int_score := _as_int(abilities.get("INT", 10))
 	var base := 0
 	if optional_rule_enabled(character, "2a"):
-		var human_bonus := _as_int(current_species.get("skill_points", 0)) if String(current_species.get("name", "")) == "Human" else 0
-		base = 30 + (3 * _as_int(abilities.get("INT", 10))) + human_bonus + flaw_bonus
+		base = 30 + (3 * int_score) + human_bonus + flaw_bonus
 	else:
-		base = _as_int(data.get("base_skill_points", 50)) + _as_int(abilities.get("INT", 10)) + _as_int(current_species.get("skill_points", 0)) + flaw_bonus
+		# Table P5: Aliens = (INT * 5) - 5, Humans = (INT * 5)
+		base = (int_score * 5) - 5 + human_bonus + flaw_bonus
 	return base + sold_bonus
 
 
@@ -878,13 +976,9 @@ func skill_budget(character: Dictionary) -> int:
 	return starting_skill_budget(character) + ap_for_sp + achievements.achievement_skill_bonus(character)
 
 
+## Table P5: Broad Skills Cap. Source: Player's Handbook p. 34.
 func max_broad_skills(character: Dictionary) -> int:
-	var abilities := effective_abilities(character)
-	if optional_rule_enabled(character, "2b"):
-		return racial_broad_skills_count(character) + additional_broad_skill_limit(character)
-	var current_species := get_species_by_id(_as_int(character.get("species_id", 0)))
-	var base_allowance: int = max(0, _as_int(data.get("base_broad_skill_allowance", 2)) - 1)
-	return _as_int(abilities.get("INT", 10)) + base_allowance + _as_int(current_species.get("broad_skills", 0))
+	return racial_broad_skills_count(character) + additional_broad_skill_limit(character)
 
 
 func racial_broad_skills_count(character: Dictionary) -> int:
@@ -895,11 +989,17 @@ func racial_broad_skills_count(character: Dictionary) -> int:
 	return count
 
 
+## Table P5: Additional Broad Skills Allowance (excluding racial). Source: Player's Handbook p. 34.
 func additional_broad_skill_limit(character: Dictionary) -> int:
 	if optional_rule_enabled(character, "2b"):
 		var intelligence_rm := character_resistance_modifier(character, "INT")
 		return max(0, 6 + intelligence_rm)
-	return max(0, max_broad_skills(character) - racial_broad_skills_count(character))
+	var abilities := effective_abilities(character)
+	var int_score := _as_int(abilities.get("INT", 10))
+	var current_species := get_species_by_id(_as_int(character.get("species_id", 0)))
+	var is_human := String(current_species.get("name", "")) == "Human"
+	var human_bonus := 1 if is_human else 0
+	return int(floor(int_score / 2.0)) + human_bonus
 
 
 func profession_codes(character: Dictionary) -> Array:
@@ -957,11 +1057,14 @@ func skill_rank_total_cost(character: Dictionary, skill: Dictionary) -> int:
 	return total
 
 
+## Specialty skill ranks are capped at Rank 3 at creation (Level 1), and Level + 2 in play (capped at 12).
+## Source: Player's Handbook p. 34.
 func max_skill_rank_for_character(character: Dictionary) -> int:
 	if character.is_empty():
 		return MAX_SPECIALTY_RANK
 	var level := _as_int(character.get("achievement_level", 1))
-	return clampi(level + 3, 1, MAX_SPECIALTY_RANK)
+	return clampi(level + 2, 1, MAX_SPECIALTY_RANK)
+
 
 
 func next_skill_rank_cost(character: Dictionary, skill: Dictionary) -> int:
@@ -1235,6 +1338,11 @@ func skill_score(character: Dictionary, skill: Dictionary) -> Dictionary:
 	step += mutations.mutation_skill_step_bonus(character, skill_id)
 	step += dazed_penalty(character)
 	
+	# Table P12 Encumbrance: +1/+2/+3 step penalty to STR and DEX checks
+	if ability == "STR" or ability == "DEX":
+		var enc := encumbrance(character)
+		step += _as_int(enc.get("penalty", 0))
+
 	# Mindwalker profession bonus (-1 step to focused broad skill and its specialties)
 	if _as_int(character.get("profession_id", 0)) == 6:
 		var broad_id := skill_id if skill.get("type", "") == "broad" else _as_int(skill.get("broad_id", -1))
@@ -1249,9 +1357,10 @@ func skill_score(character: Dictionary, skill: Dictionary) -> Dictionary:
 	return {
 		"ordinary": ordinary,
 		"good": good,
-		"amazing": int(floor(good / 2.0)),
+		"amazing": int(floor(ordinary / 4.0)),
 		"die": action_step_die(step),
 	}
+
 
 
 func _species_skill_step_bonus(character: Dictionary, skill_id: int) -> int:
@@ -1427,6 +1536,8 @@ func summary(character: Dictionary) -> Dictionary:
 		"action_check": action_check(character),
 		"durability": durability(character),
 		"movement": movement(character),
+		"encumbrance": encumbrance(character),
+		"age_category": age_category(character),
 		"last_resorts": last_resorts(character),
 		"equipment": equipment.equipment_summary(character),
 		"mutations": mutations.mutation_summary(character),
@@ -1438,7 +1549,125 @@ func summary(character: Dictionary) -> Dictionary:
 	return _cached_summary
 
 
+## Evaluate a dice check against a target score.
+## Core formula: Roll 1d20 (Control Die) +/- Situation Die <= Target Score.
+## Degrees of Success: Critical Failure (natural 20), Failure (> target),
+## Marginal (= target + 1), Ordinary (<= target), Good (<= target / 2),
+## Amazing (<= target / 4), Auto Success (natural 1 unless situation die >= +d20).
+func resolve_check(control_die: int, situation_roll: int, target_score: int, situation_die_str: String = "", allow_marginal: bool = true) -> Dictionary:
+	var total := control_die + situation_roll
+	var is_crit_fail := control_die == 20
+	var is_auto_success := false
+	if control_die == 1:
+		var parsed := DiceNotation.parse(situation_die_str)
+		var sides := _as_int(parsed.get("sides", 0))
+		var sign := _as_int(parsed.get("sign", 1), 1)
+		# Automatic Success unless situation die is +d20 or higher (step >= 5)
+		if not (sign > 0 and sides >= 20):
+			is_auto_success = true
+
+	var degree := ""
+	if is_crit_fail:
+		degree = "Critical Failure"
+	elif is_auto_success and total > target_score:
+		degree = "Ordinary" # Auto success ensures at least Ordinary
+	elif total <= int(floor(target_score / 4.0)):
+		degree = "Amazing"
+	elif total <= int(floor(target_score / 2.0)):
+		degree = "Good"
+	elif total <= target_score:
+		degree = "Ordinary"
+	elif allow_marginal and total == target_score + 1:
+		degree = "Marginal"
+	else:
+		degree = "Failure"
+
+	return {
+		"control_die": control_die,
+		"situation_roll": situation_roll,
+		"total": total,
+		"target_score": target_score,
+		"degree": degree,
+		"is_success": degree in ["Ordinary", "Good", "Amazing", "Marginal"],
+		"is_critical_failure": is_crit_fail,
+		"is_auto_success": is_auto_success,
+	}
+
+
+## Applies damage according to Alternity damage propagation & degradation rules.
+## Damage types: "stun", "wound", "mortal", "fatigue".
+## Armor absorbs primary damage only; armor never absorbs secondary damage.
+## Secondary Stun from Wound: floor(attack_damage / 2).
+## Secondary Damage from Mortal: floor(attack_damage / 2) Wound and floor(attack_damage / 2) Stun.
+## Heavy Stun overflow: 2 excess stun -> 1 wound.
+## Heavy Wound overflow: 2 excess wound -> 1 mortal.
+func apply_damage(character: Dictionary, attack_damage: int, damage_type: String, armor_absorption: int = 0) -> Dictionary:
+	var primary_dmg: int = max(0, attack_damage - armor_absorption)
+	var secondary_stun := 0
+	var secondary_wound := 0
+
+	if damage_type == "wound":
+		secondary_stun = int(floor(attack_damage / 2.0))
+	elif damage_type == "mortal":
+		secondary_wound = int(floor(attack_damage / 2.0))
+		secondary_stun = int(floor(attack_damage / 2.0))
+
+	var dur := durability(character)
+	var damage: Dictionary = character.get("damage", {}).duplicate()
+	var current_stun := _as_int(damage.get("stun", 0))
+	var current_wound := _as_int(damage.get("wound", 0))
+	var current_mortal := _as_int(damage.get("mortal", 0))
+	var current_fatigue := _as_int(damage.get("fatigue", 0))
+
+	var max_stun := _as_int(dur.get("stun", 0))
+	var max_wound := _as_int(dur.get("wound", 0))
+	var max_mortal := _as_int(dur.get("mortal", 0))
+	var max_fatigue := _as_int(dur.get("fatigue", 0))
+
+	# 1. Apply primary damage
+	if damage_type == "stun":
+		current_stun += primary_dmg
+	elif damage_type == "wound":
+		current_wound += primary_dmg
+	elif damage_type == "mortal":
+		current_mortal += primary_dmg
+	elif damage_type == "fatigue":
+		current_fatigue = min(max_fatigue, current_fatigue + primary_dmg)
+
+	# 2. Apply secondary damage
+	current_stun += secondary_stun
+	current_wound += secondary_wound
+
+	# 3. Handle Heavy Stun overflow (2 stun -> 1 wound)
+	if current_stun > max_stun:
+		var overflow_stun := current_stun - max_stun
+		current_stun = max_stun
+		current_wound += int(floor(overflow_stun / 2.0))
+
+	# 4. Handle Heavy Wound overflow (2 wound -> 1 mortal)
+	if current_wound > max_wound:
+		var overflow_wound := current_wound - max_wound
+		current_wound = max_wound
+		current_mortal += int(floor(overflow_wound / 2.0))
+
+	current_mortal = min(max_mortal, current_mortal)
+
+	damage["stun"] = current_stun
+	damage["wound"] = current_wound
+	damage["mortal"] = current_mortal
+	damage["fatigue"] = current_fatigue
+	character["damage"] = damage
+
+	return {
+		"primary_damage": primary_dmg,
+		"secondary_stun": secondary_stun,
+		"secondary_wound": secondary_wound,
+		"damage": damage,
+	}
+
+
 func skill_detail(skill: Dictionary, character: Dictionary = {}) -> Dictionary:
+
 	var skill_id := _as_int(skill.get("id", -1))
 	var broad := get_skill_by_id(_as_int(skill.get("broad_id", skill_id)))
 	var type_label := "Broad skill" if skill.get("type", "") == "broad" else "Specialty skill"
@@ -1914,16 +2143,18 @@ func _unique_strings(values: Array) -> Array:
 	return result
 
 
+## Table P6: Last Resort Points & Recovery Cost. Source: Player's Handbook p. 33.
 func _last_resort_base(personality: int) -> Dictionary:
 	if personality <= 7:
 		return {"max": 0, "cost": 0}
 	if personality <= 10:
 		return {"max": 1, "cost": 3}
 	if personality <= 12:
-		return {"max": 2, "cost": 3}
+		return {"max": 2, "cost": 2}
 	if personality <= 14:
-		return {"max": 3, "cost": 2}
-	return {"max": 4, "cost": 2}
+		return {"max": 3, "cost": 1}
+	return {"max": 4, "cost": 1}
+
 
 
 ## Deprecated forwarders. The implementations moved to AlternityNum (see

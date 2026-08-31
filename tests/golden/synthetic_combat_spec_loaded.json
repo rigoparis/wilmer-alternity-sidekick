@@ -12,6 +12,7 @@
 		"achievement_points": 30,
 		"achievement_points_available": 30,
 		"achievement_points_spent_other": 0,
+		"age_category": "young_adult",
 		"career": "Marine",
 		"combat_spec_bonus_specialty": 31.0,
 		"cybertech": {
@@ -184,6 +185,7 @@
 		"additional_broad_skill_limit": 5,
 		"additional_broad_skills_remaining": 3,
 		"additional_broad_skills_used": 2,
+		"age_category": "young_adult",
 		"broad_skills_remaining": 3,
 		"broad_skills_used": 8,
 		"cybertech": {
@@ -214,12 +216,22 @@
 			"STR": 12,
 			"WIL": 10
 		},
+		"encumbrance": {
+			"extreme_limit": 72.0,
+			"heavy_limit": 48.0,
+			"light_limit": 24.0,
+			"mass": 26.0,
+			"movement_multiplier": 0.75,
+			"penalty": 1,
+			"severe_limit": 60.0,
+			"tier": "Heavy"
+		},
 		"equipment": {
 			"attack_forms": [
 				{
 					"base_die": "+d4",
 					"clip_size": "-",
-					"damage": "d4s/d4+1s/d4+2s",
+					"damage": "d4+1s/d4+2s/d4+3s",
 					"hide": "3",
 					"mass": "",
 					"name": "Unarmed",
@@ -360,7 +372,7 @@
 		},
 		"max_broad_skills": 11,
 		"movement": {
-			"easy_swim": 2,
+			"easy_swim": 1,
 			"effects": [
 				{
 					"effect": "No penalty when moving and acting in the same phase.",
@@ -395,13 +407,23 @@
 					"mode": "All-out"
 				}
 			],
+			"encumbrance": {
+				"extreme_limit": 72.0,
+				"heavy_limit": 48.0,
+				"light_limit": 24.0,
+				"mass": 26.0,
+				"movement_multiplier": 0.75,
+				"penalty": 1,
+				"severe_limit": 60.0,
+				"tier": "Heavy"
+			},
 			"fly": "-",
 			"glide": "-",
-			"run": 14,
-			"sprint": 22,
-			"swim": 4,
+			"run": 10,
+			"sprint": 16,
+			"swim": 3,
 			"total": 23,
-			"walk": 4
+			"walk": 3
 		},
 		"mutations": {
 			"advantage_distribution": {
@@ -466,12 +488,12 @@
 		"perk_points_used": 8,
 		"permanent_fx_effects": [],
 		"racial_broad_skills": 6,
-		"skill_budget": 99,
-		"skill_points_remaining": 59,
+		"skill_budget": 80,
+		"skill_points_remaining": 40,
 		"skill_points_used": 40,
 		"skill_purchase_points_used": 28,
 		"sold_broads_count": 0,
-		"starting_skill_budget": 69,
+		"starting_skill_budget": 50,
 		"validations": [
 			"Ability total must be 60; current total is 61."
 		]

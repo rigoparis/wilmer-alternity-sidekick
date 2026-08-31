@@ -1346,6 +1346,25 @@ func _render_basics() -> void:
 	)
 	UIBuilder.add_field(basics, "Profession", profession_option, color_muted)
 
+	var age_option := OptionButton.new()
+	var current_age := rules.age_category(character)
+	var age_select_idx := 0
+	for index in range(AlternityRules.AGE_CATEGORIES.size()):
+		var age_info: Dictionary = AlternityRules.AGE_CATEGORIES[index]
+		var age_id := String(age_info.get("id", ""))
+		age_option.add_item(String(age_info.get("name", "")), index)
+		if age_id == current_age:
+			age_select_idx = index
+	age_option.select(age_select_idx)
+	age_option.item_selected.connect(func(index):
+		var selected_age: Dictionary = AlternityRules.AGE_CATEGORIES[index]
+		character["age_category"] = String(selected_age.get("id", "young_adult"))
+		rules.clamp_abilities_to_species(character)
+		rules.clamp_trackers(character)
+		_render()
+	)
+	UIBuilder.add_field(basics, "Age Category", age_option, color_muted)
+
 	_render_abilities_to(basics_parent)
 
 	var species_box := UIBuilder.add_section(rules_parent, "Species Rules", null, color_surface, color_border, color_text)
@@ -1550,10 +1569,13 @@ func _add_ability_row(parent: Container, ability: String) -> void:
 	var detail := Label.new()
 	var adjustment_note := ""
 	if adjustment != 0:
+		var age_mod := rules.age_modifier(character, ability)
 		var mutation_adjustment := effective_score - achievement_score
 		var parts := []
-		if achievement_score != score:
-			parts.append("achievement %+d" % (achievement_score - score))
+		if age_mod != 0:
+			parts.append("age %+d" % age_mod)
+		if achievement_score != (score + age_mod):
+			parts.append("achievement %+d" % (achievement_score - score - age_mod))
 		if mutation_adjustment != 0:
 			parts.append("mutation %+d" % mutation_adjustment)
 		adjustment_note = "   Purchased %d (%s)" % [score, ", ".join(parts)]
@@ -4691,6 +4713,14 @@ func _render_summary() -> void:
 	var movement_box := UIBuilder.add_section(left_parent, "Combat Movement", null, color_surface, color_border, color_text)
 	var movement: Dictionary = summary["movement"]
 	_add_metric(movement_box, "STR + DEX", str(movement["total"]))
+	var enc: Dictionary = summary.get("encumbrance", {})
+	var enc_tier: String = String(enc.get("tier", "Normal"))
+	var enc_mass: float = rules._as_float(enc.get("mass", 0.0))
+	var enc_penalty: int = rules._as_int(enc.get("penalty", 0))
+	var enc_text := "Carried %0.1f kg (%s)" % [enc_mass, enc_tier]
+	if enc_penalty > 0:
+		enc_text += " [Penalty: +%d step to STR/DEX]" % enc_penalty
+	_add_metric(movement_box, "Encumbrance", enc_text)
 	_add_metric(movement_box, "Rates", "Sprint %s   Run %s   Walk %s" % [
 		str(movement["sprint"]),
 		str(movement["run"]),

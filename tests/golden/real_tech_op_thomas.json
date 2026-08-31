@@ -10,8 +10,9 @@
 		},
 		"achievement_level": 1,
 		"achievement_points": 0,
-		"achievement_points_available": -3,
+		"achievement_points_available": 0,
 		"achievement_points_spent_other": 0,
+		"age_category": "young_adult",
 		"career": "",
 		"combat_spec_bonus_specialty": 12.0,
 		"custom_ability_target": 60.0,
@@ -128,15 +129,15 @@
 			"103": 3,
 			"114": 1,
 			"115": 3,
-			"116": 4,
-			"117": 4,
+			"116": 3,
+			"117": 3,
 			"118": 3,
 			"15": 1,
 			"17": 1,
 			"45": 2,
 			"53": 1,
 			"54": 1,
-			"6": 4,
+			"6": 3,
 			"65": 1
 		},
 		"setting": "Core",
@@ -154,8 +155,8 @@
 		"achievement_points": 0,
 		"achievement_points_for_sp": 0,
 		"achievements.achievement_next_level_points": 6,
-		"achievements.achievement_points_available": -3,
-		"achievements.achievement_points_used": 3,
+		"achievements.achievement_points_available": 0,
+		"achievements.achievement_points_used": 0,
 		"achievements.achievement_skill_bonus": 0,
 		"achievements.selected_achievements": [],
 		"action_check": {
@@ -166,10 +167,11 @@
 			"marginal": 14,
 			"ordinary": 13
 		},
-		"additional_broad_skill_limit": 9,
-		"additional_broad_skills_remaining": 5,
+		"additional_broad_skill_limit": 7,
+		"additional_broad_skills_remaining": 3,
 		"additional_broad_skills_used": 4,
-		"broad_skills_remaining": 5,
+		"age_category": "young_adult",
+		"broad_skills_remaining": 3,
 		"broad_skills_used": 10,
 		"cybertech": {
 			"cykosis": 0,
@@ -199,12 +201,22 @@
 			"STR": 8,
 			"WIL": 11
 		},
+		"encumbrance": {
+			"extreme_limit": 48.0,
+			"heavy_limit": 32.0,
+			"light_limit": 16.0,
+			"mass": 0.0,
+			"movement_multiplier": 1.0,
+			"penalty": 0,
+			"severe_limit": 40.0,
+			"tier": "Normal"
+		},
 		"equipment": {
 			"attack_forms": [
 				{
 					"base_die": "+d4",
 					"clip_size": "-",
-					"damage": "d6-1s/d6+1s/d4-1w",
+					"damage": "d6s/d6+2s/d4w",
 					"hide": "3",
 					"mass": "",
 					"name": "Unarmed",
@@ -290,7 +302,7 @@
 			"profession_bonus": 0,
 			"used": 0
 		},
-		"max_broad_skills": 15,
+		"max_broad_skills": 13,
 		"movement": {
 			"easy_swim": 2,
 			"effects": [
@@ -327,6 +339,16 @@
 					"mode": "All-out"
 				}
 			],
+			"encumbrance": {
+				"extreme_limit": 48.0,
+				"heavy_limit": 32.0,
+				"light_limit": 16.0,
+				"mass": 0.0,
+				"movement_multiplier": 1.0,
+				"penalty": 0,
+				"severe_limit": 40.0,
+				"tier": "Normal"
+			},
 			"fly": "-",
 			"glide": "-",
 			"run": 12,
@@ -399,13 +421,11 @@
 		"permanent_fx_effects": [],
 		"racial_broad_skills": 6,
 		"skill_budget": 80,
-		"skill_points_remaining": -3,
-		"skill_points_used": 83,
-		"skill_purchase_points_used": 83,
+		"skill_points_remaining": 3,
+		"skill_points_used": 77,
+		"skill_purchase_points_used": 77,
 		"sold_broads_count": 2,
 		"starting_skill_budget": 80,
-		"validations": [
-			"Skill points are overspent by 3."
-		]
+		"validations": []
 	}
 }

@@ -12,6 +12,7 @@
 		"achievement_points": 0,
 		"achievement_points_available": 0,
 		"achievement_points_spent_other": 0,
+		"age_category": "young_adult",
 		"career": "",
 		"cybertech": {
 			"cykosis": 0,
@@ -105,10 +106,11 @@
 			"marginal": 13,
 			"ordinary": 12
 		},
-		"additional_broad_skill_limit": 7,
-		"additional_broad_skills_remaining": 6,
+		"additional_broad_skill_limit": 6,
+		"additional_broad_skills_remaining": 5,
 		"additional_broad_skills_used": 1,
-		"broad_skills_remaining": 6,
+		"age_category": "young_adult",
+		"broad_skills_remaining": 5,
 		"broad_skills_used": 7,
 		"cybertech": {
 			"cykosis": 0,
@@ -138,12 +140,22 @@
 			"STR": 8,
 			"WIL": 13
 		},
+		"encumbrance": {
+			"extreme_limit": 48.0,
+			"heavy_limit": 32.0,
+			"light_limit": 16.0,
+			"mass": 0.0,
+			"movement_multiplier": 1.0,
+			"penalty": 0,
+			"severe_limit": 40.0,
+			"tier": "Normal"
+		},
 		"equipment": {
 			"attack_forms": [
 				{
 					"base_die": "+d4",
 					"clip_size": "-",
-					"damage": "d4-1s/d4s/d4+1s",
+					"damage": "d4s/d4+1s/d4+2s",
 					"hide": "3",
 					"mass": "",
 					"name": "Unarmed",
@@ -165,13 +177,13 @@
 		"last_resorts": {
 			"available": 2,
 			"base_max": 2,
-			"cost": 3,
+			"cost": 2,
 			"max": 2,
 			"personality": 11,
 			"profession_bonus": 0,
 			"used": 0
 		},
-		"max_broad_skills": 13,
+		"max_broad_skills": 12,
 		"movement": {
 			"easy_swim": 2,
 			"effects": [
@@ -208,6 +220,16 @@
 					"mode": "All-out"
 				}
 			],
+			"encumbrance": {
+				"extreme_limit": 48.0,
+				"heavy_limit": 32.0,
+				"light_limit": 16.0,
+				"mass": 0.0,
+				"movement_multiplier": 1.0,
+				"penalty": 0,
+				"severe_limit": 40.0,
+				"tier": "Normal"
+			},
 			"fly": "-",
 			"glide": "-",
 			"run": 12,
@@ -279,12 +301,12 @@
 		"perk_points_used": 0,
 		"permanent_fx_effects": [],
 		"racial_broad_skills": 6,
-		"skill_budget": 62,
-		"skill_points_remaining": 57,
+		"skill_budget": 55,
+		"skill_points_remaining": 50,
 		"skill_points_used": 5,
 		"skill_purchase_points_used": 5,
 		"sold_broads_count": 0,
-		"starting_skill_budget": 62,
+		"starting_skill_budget": 55,
 		"validations": [
 			"Ability total must be 60; current total is 63."
 		]

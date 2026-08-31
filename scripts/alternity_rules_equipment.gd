@@ -499,16 +499,22 @@ func _score_text(score: Dictionary) -> String:
 	]
 
 
+## Table P9: Strength & Unarmed Damage Adjustments. Source: Player's Handbook p. 34.
 func strength_damage_bonus(score: int) -> int:
-	if score <= 4:
-		return -2
-	if score <= 8:
+	if score <= 6:
 		return -1
-	if score <= 12:
+	if score <= 10:
 		return 0
-	if score <= 16:
+	if score <= 12:
 		return 1
-	return 2
+	if score <= 14:
+		return 2
+	if score <= 16:
+		return 3
+	if score <= 18:
+		return 4
+	return 5
+
 
 
 func _damage_with_bonus(damage: String, bonus: int) -> String:

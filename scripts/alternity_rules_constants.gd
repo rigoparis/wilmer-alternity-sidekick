@@ -12,6 +12,32 @@ const ABILITY_NAMES := {
 	"PER": "Personality",
 }
 
+const AGE_CATEGORIES := [
+	{"id": "young_adult", "name": "Young Adult", "summary": "Standard starting age. No ability modifiers."},
+	{"id": "adolescent", "name": "Adolescent", "summary": "-1 STR, +1 DEX, -1 INT, -1 WIL."},
+	{"id": "mature", "name": "Mature", "summary": "+1 INT, +1 PER."},
+	{"id": "middle_aged", "name": "Middle-Aged", "summary": "-1 DEX, +1 INT, +1 WIL."},
+	{"id": "old", "name": "Old", "summary": "-1 STR, -1 CON, -1 DEX, +1 WIL, +1 PER."},
+	{"id": "ancient", "name": "Ancient", "summary": "-1 STR, -1 CON, -1 DEX."},
+]
+
+const AGE_MODIFIERS := {
+	"young_adult": {},
+	"adolescent": {"STR": -1, "DEX": 1, "INT": -1, "WIL": -1},
+	"mature": {"INT": 1, "PER": 1},
+	"middle_aged": {"DEX": -1, "INT": 1, "WIL": 1},
+	"old": {"STR": -1, "CON": -1, "DEX": -1, "WIL": 1, "PER": 1},
+	"ancient": {"STR": -1, "CON": -1, "DEX": -1},
+}
+
+const ENCUMBRANCE_TIERS := [
+	{"name": "Normal", "limit_multiplier": 2.0, "movement_multiplier": 1.0, "penalty": 0},
+	{"name": "Heavy", "limit_multiplier": 4.0, "movement_multiplier": 0.75, "penalty": 1},
+	{"name": "Severe", "limit_multiplier": 5.0, "movement_multiplier": 0.50, "penalty": 2},
+	{"name": "Extreme", "limit_multiplier": 6.0, "movement_multiplier": 0.25, "penalty": 3},
+	{"name": "Immobile", "limit_multiplier": INF, "movement_multiplier": 0.0, "penalty": 3},
+]
+
 const OPTIONAL_RULES := [
 	{
 		"id": "2a",
@@ -143,8 +169,27 @@ const MOVEMENT_RUN_BY_TOTAL := {
 	26: 16,
 	28: 18,
 	30: 20,
-	32: 20,
+	32: 22,
 }
+
+## Table P8: Combat Movement Rates (Meters per Phase). Source: Player's Handbook p. 33.
+const MOVEMENT_RATES_TABLE := {
+	6:  {"sprint": 6,  "run": 4,  "walk": 2, "easy_swim": 1, "swim": 2, "glide": 6,  "fly": 12},
+	8:  {"sprint": 8,  "run": 6,  "walk": 2, "easy_swim": 1, "swim": 2, "glide": 8,  "fly": 16},
+	10: {"sprint": 10, "run": 6,  "walk": 2, "easy_swim": 1, "swim": 2, "glide": 10, "fly": 20},
+	12: {"sprint": 12, "run": 8,  "walk": 2, "easy_swim": 1, "swim": 2, "glide": 12, "fly": 24},
+	14: {"sprint": 14, "run": 10, "walk": 4, "easy_swim": 2, "swim": 4, "glide": 14, "fly": 28},
+	16: {"sprint": 16, "run": 10, "walk": 4, "easy_swim": 2, "swim": 4, "glide": 16, "fly": 32},
+	18: {"sprint": 18, "run": 12, "walk": 4, "easy_swim": 2, "swim": 4, "glide": 18, "fly": 36},
+	20: {"sprint": 20, "run": 12, "walk": 4, "easy_swim": 2, "swim": 4, "glide": 20, "fly": 40},
+	22: {"sprint": 22, "run": 14, "walk": 4, "easy_swim": 2, "swim": 4, "glide": 22, "fly": 44},
+	24: {"sprint": 24, "run": 16, "walk": 6, "easy_swim": 3, "swim": 6, "glide": 24, "fly": 48},
+	26: {"sprint": 26, "run": 16, "walk": 6, "easy_swim": 3, "swim": 6, "glide": 26, "fly": 52},
+	28: {"sprint": 28, "run": 18, "walk": 6, "easy_swim": 3, "swim": 6, "glide": 28, "fly": 56},
+	30: {"sprint": 30, "run": 20, "walk": 8, "easy_swim": 4, "swim": 8, "glide": 30, "fly": 60},
+	32: {"sprint": 32, "run": 22, "walk": 8, "easy_swim": 4, "swim": 8, "glide": 32, "fly": 64},
+}
+
 
 const BROAD_SKILL_SUMMARIES := {
 	0: "Operate armor effectively and reduce armor-related action check and Dexterity resistance penalties.",
@@ -1187,13 +1232,14 @@ const PROFESSION_DEFINITIONS := [
 		"last_resort_bonus": 0,
 		"ability_minimums": {
 			"STR": 11,
+			"DEX": 9,
 			"CON": 9,
 		},
 		"notes": [
 			"Combat Specs rely on physical power and endurance to supplement their training in battle techniques. These warriors are walking arsenals who employ both technology and their own bodies as weapons. Source: Player's Handbook p. 30.",
 			"Action Check Score Increase: action check score increased by 3. Source: Player's Handbook p. 30.",
 			"Situation Bonus: choose one specialty skill under Armor Operation, Unarmed Attack, Heavy Weapons, Modern Ranged Weapons, Melee Weapons, or Primitive Ranged Weapons; its base situation die improves from +d0 to -d4. Source: Player's Handbook p. 30.",
-			"Profession requirements: STR 11, CON 9. Source: Player's Handbook Table P1 p. 30.",
+			"Profession requirements: STR 11, DEX 9, CON 9. Source: Player's Handbook Table P1 p. 30.",
 		],
 	},
 	{
@@ -1206,13 +1252,14 @@ const PROFESSION_DEFINITIONS := [
 		"ability_minimums": {
 			"WIL": 9,
 			"PER": 11,
+			"INT": 9,
 		},
 		"notes": [
 			"Diplomats are negotiators, political figures, managers, deal-makers, and any others who use interaction skills and personal resolve to accomplish their jobs. They specialize in getting things done through bargaining, heated discussion, and even guile. Source: Player's Handbook p. 31.",
 			"Action Check Score Increase: action check score increased by 1. Source: Player's Handbook p. 31.",
 			"Contacts or Resources: a Diplomat starts with contacts or resources as described in the Gamemaster Guide; the Gamemaster informs you of the details. Source: Player's Handbook p. 31.",
 			"Secondary Profession (Combat Spec): purchase skills from the secondary profession for list price -1 instead of list price. Source: Player's Handbook p. 31.",
-			"Profession requirements: WIL 9, PER 11. Source: Player's Handbook Table P1 p. 30.",
+			"Profession requirements: PER 11, WIL 9, INT 9. Source: Player's Handbook Table P1 p. 30.",
 		],
 	},
 	{
@@ -1225,13 +1272,14 @@ const PROFESSION_DEFINITIONS := [
 		"ability_minimums": {
 			"WIL": 9,
 			"PER": 11,
+			"INT": 9,
 		},
 		"notes": [
 			"Diplomats are negotiators, political figures, managers, deal-makers, and any others who use interaction skills and personal resolve to accomplish their jobs. They specialize in getting things done through bargaining, heated discussion, and even guile. Source: Player's Handbook p. 31.",
 			"Action Check Score Increase: action check score increased by 1. Source: Player's Handbook p. 31.",
 			"Contacts or Resources: a Diplomat starts with contacts or resources as described in the Gamemaster Guide; the Gamemaster informs you of the details. Source: Player's Handbook p. 31.",
 			"Secondary Profession (Free Agent): purchase skills from the secondary profession for list price -1 instead of list price. Source: Player's Handbook p. 31.",
-			"Profession requirements: WIL 9, PER 11. Source: Player's Handbook Table P1 p. 30.",
+			"Profession requirements: PER 11, WIL 9, INT 9. Source: Player's Handbook Table P1 p. 30.",
 		],
 	},
 	{
@@ -1244,13 +1292,14 @@ const PROFESSION_DEFINITIONS := [
 		"ability_minimums": {
 			"WIL": 9,
 			"PER": 11,
+			"INT": 9,
 		},
 		"notes": [
 			"Diplomats are negotiators, political figures, managers, deal-makers, and any others who use interaction skills and personal resolve to accomplish their jobs. They specialize in getting things done through bargaining, heated discussion, and even guile. Source: Player's Handbook p. 31.",
 			"Action Check Score Increase: action check score increased by 1. Source: Player's Handbook p. 31.",
 			"Contacts or Resources: a Diplomat starts with contacts or resources as described in the Gamemaster Guide; the Gamemaster informs you of the details. Source: Player's Handbook p. 31.",
 			"Secondary Profession (Tech Op): purchase skills from the secondary profession for list price -1 instead of list price. Source: Player's Handbook p. 31.",
-			"Profession requirements: WIL 9, PER 11. Source: Player's Handbook Table P1 p. 30.",
+			"Profession requirements: PER 11, WIL 9, INT 9. Source: Player's Handbook Table P1 p. 30.",
 		],
 	},
 	{
@@ -1263,6 +1312,7 @@ const PROFESSION_DEFINITIONS := [
 		"ability_minimums": {
 			"WIL": 9,
 			"PER": 11,
+			"INT": 9,
 		},
 		"notes": [
 			"Diplomats are negotiators, political figures, managers, deal-makers, and any others who use interaction skills and personal resolve to accomplish their jobs. They specialize in getting things done through bargaining, heated discussion, and even guile. Source: Player's Handbook p. 31.",
@@ -1270,7 +1320,7 @@ const PROFESSION_DEFINITIONS := [
 			"Contacts or Resources: a Diplomat starts with contacts or resources as described in the Gamemaster Guide; the Gamemaster informs you of the details. Source: Player's Handbook p. 31.",
 			"Secondary Profession (Mindwalker): purchase skills from the secondary profession for list price -1 instead of list price. Diplomats in a campaign that allows Mindwalkers can use that profession as their secondary profession. Source: Player's Handbook p. 31 and p. 227.",
 			"Gains access to psionic broad skills and uses full WIL for psionic energy points instead of one-half WIL. Source: Player's Handbook p. 22 and Chapter 14.",
-			"Profession requirements: WIL 9, PER 11. Source: Player's Handbook Table P1 p. 30.",
+			"Profession requirements: PER 11, WIL 9, INT 9. Source: Player's Handbook Table P1 p. 30.",
 		],
 	},
 	{
@@ -1282,6 +1332,7 @@ const PROFESSION_DEFINITIONS := [
 		"last_resort_bonus": 1,
 		"ability_minimums": {
 			"DEX": 11,
+			"INT": 9,
 			"WIL": 9,
 		},
 		"notes": [
@@ -1289,7 +1340,7 @@ const PROFESSION_DEFINITIONS := [
 			"Action Check Score Increase: action check score increased by 2. Source: Player's Handbook p. 31.",
 			"Resistance Bonus: choose one ability and improve its resistance modifier by 1 step (Constitution has no resistance modifier). Source: Player's Handbook p. 31-32.",
 			"Last Resort Bonus: maximum last resort points increased by 1, and a Free Agent can spend 2 last resort points to alter an action instead of the usual 1. Source: Player's Handbook p. 31.",
-			"Profession requirements: DEX 11, WIL 9. Source: Player's Handbook Table P1 p. 30.",
+			"Profession requirements: DEX 11, INT 9, WIL 9. Source: Player's Handbook Table P1 p. 30.",
 		],
 	},
 	{
@@ -1300,14 +1351,15 @@ const PROFESSION_DEFINITIONS := [
 		"action_bonus": 1,
 		"last_resort_bonus": 0,
 		"ability_minimums": {
-			"DEX": 9,
 			"INT": 11,
+			"DEX": 9,
+			"CON": 9,
 		},
 		"notes": [
 			"Tech Ops are operatives accomplished in the use of high-tech equipment or specialists trained to create or maintain high-tech equipment. They rely on natural genius, agility, and expert training, as well as the benefits of their technological devices. Source: Player's Handbook p. 32.",
 			"Action Check Score Increase: action check score increased by 1. Source: Player's Handbook p. 32.",
 			"Accelerated Learning: at every new achievement level a Tech Op receives the usual skill points plus extra points by level attained: +1 at levels 2-5, +2 at 6-10, +3 at 11-15, +4 at 16-20, +5 at 21+. Source: Player's Handbook p. 32.",
-			"Profession requirements: DEX 9, INT 11. Source: Player's Handbook Table P1 p. 30.",
+			"Profession requirements: INT 11, DEX 9, CON 9. Source: Player's Handbook Table P1 p. 30.",
 		],
 	},
 	{
@@ -1318,15 +1370,15 @@ const PROFESSION_DEFINITIONS := [
 		"action_bonus": 1,
 		"last_resort_bonus": 0,
 		"ability_minimums": {
-			"CON": 9,
-			"INT": 9,
 			"WIL": 11,
+			"INT": 9,
+			"CON": 9,
 		},
 		"notes": [
 			"Mindwalkers are a select group of characters who are gifted with great mental powers and trained to use them. These individuals may be extremely rare, depending on the setting, and some may be trained in a particular tradition. Source: Player's Handbook p. 227.",
 			"Action Check Score Increase: action check score increased by 1. Source: Player's Handbook p. 227.",
 			"Situation Bonus: choose one psionic broad skill; that broad skill and all of its specialty skills receive a situation die improvement of 1 step (broad skill +d0, specialties -d4). Source: Player's Handbook p. 227.",
-			"Profession requirements: CON 9, INT 9, WIL 11. Source: Player's Handbook Table P1 p. 30 and p. 227.",
+			"Profession requirements: WIL 11, INT 9, CON 9. Source: Player's Handbook Table P1 p. 30 and p. 227.",
 		],
 	},
 ]
