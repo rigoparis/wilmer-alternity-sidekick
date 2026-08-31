@@ -1,55 +1,63 @@
-extends SceneTree
+extends "res://tools/test_harness.gd"
 
 const RulesScript := preload("res://scripts/alternity_rules.gd")
 
 
-func _fail(message: String) -> void:
-	push_error(message)
-	quit(1)
-
-
 func _init() -> void:
+	begin("achievement purchases")
+
 	var rules = RulesScript.new()
 	rules.load_core_data()
 	var character := rules.default_character()
 	rules.ensure_character_shape(character)
 	rules.achievements.set_achievement_points(character, 30)
 
-	if rules.achievement_catalog.size() < 30:
-		_fail("Achievement catalog did not load.")
+	check_true(rules.achievement_catalog.size() >= 30, "achievement catalog loaded (>=30 entries)")
 
+	# Action Check Increase: purchasable for a Combat Spec at level 5, costs 4 SP,
+	# and raises the ordinary action check score by 1.
 	var base_action: Dictionary = rules.action_check(character)
 	var increase := rules.get_achievement_by_id("action_check_increase")
-	var check = rules.achievements.can_purchase_achievement(character, increase)
-	if not bool(check.get("allowed", false)):
-		_fail("Action Check Increase should be purchasable at Combat Spec level 5.")
-	var result = rules.achievements.add_achievement_purchase(character, "action_check_increase")
-	if not bool(result.get("ok", false)):
-		_fail("Action Check Increase purchase failed.")
-	var improved_action: Dictionary = rules.action_check(character)
-	if rules._as_int(improved_action.get("ordinary", 0)) != rules._as_int(base_action.get("ordinary", 0)) + 1:
-		_fail("Action Check Increase did not affect the action check score.")
-	if rules.achievements.achievement_points_spent(character) != 4:
-		_fail("Action Check Increase did not spend 4 skill points for Combat Spec.")
+	var check_result = rules.achievements.can_purchase_achievement(character, increase)
+	check_true(
+		bool(check_result.get("allowed", false)),
+		"Action Check Increase is purchasable at Combat Spec level 5"
+	)
 
+	var result = rules.achievements.add_achievement_purchase(character, "action_check_increase")
+	check_true(bool(result.get("ok", false)), "Action Check Increase purchase succeeds")
+
+	var improved_action: Dictionary = rules.action_check(character)
+	check_eq(
+		rules._as_int(improved_action.get("ordinary", 0)),
+		rules._as_int(base_action.get("ordinary", 0)) + 1,
+		"Action Check Increase raises the ordinary score by 1"
+	)
+	check_eq(
+		rules.achievements.achievement_points_spent(character), 4,
+		"Action Check Increase costs 4 points for Combat Spec"
+	)
+
+	# WIL Increase for a Free Agent (profession 4) raises effective WIL by 1.
 	character["profession_id"] = 4
 	var wil_before := rules._as_int(rules.effective_abilities(character).get("WIL", 0))
 	result = rules.achievements.add_achievement_purchase(character, "wil_increase_1")
-	if not bool(result.get("ok", false)):
-		_fail("WIL Increase 1 purchase failed for Free Agent level 5.")
-	var wil_after := rules._as_int(rules.effective_abilities(character).get("WIL", 0))
-	if wil_after != wil_before + 1:
-		_fail("WIL Increase did not affect effective abilities.")
+	check_true(bool(result.get("ok", false)), "WIL Increase 1 purchase succeeds for Free Agent level 5")
+	check_eq(
+		rules._as_int(rules.effective_abilities(character).get("WIL", 0)), wil_before + 1,
+		"WIL Increase raises effective WIL by 1"
+	)
 
+	# Remove Flaw drops the selected flaw and bills for it.
 	rules.set_flaw_selected(character, "obsessed", 4)
 	rules.achievements.set_achievement_points(character, 51)
 	character["profession_id"] = 0
 	result = rules.achievements.add_achievement_purchase(character, "remove_flaw", "obsessed", 4)
-	if not bool(result.get("ok", false)):
-		_fail("Remove Flaw purchase failed.")
-	if rules.is_flaw_selected(character, "obsessed"):
-		_fail("Remove Flaw did not remove the selected flaw.")
-	if rules.achievements.achievement_points_spent(character) < 22:
-		_fail("Achievement spending did not include Remove Flaw cost.")
+	check_true(bool(result.get("ok", false)), "Remove Flaw purchase succeeds")
+	check_false(rules.is_flaw_selected(character, "obsessed"), "Remove Flaw clears the selected flaw")
+	check_true(
+		rules.achievements.achievement_points_spent(character) >= 22,
+		"spend total includes the Remove Flaw cost"
+	)
 
-	quit()
+	finish()

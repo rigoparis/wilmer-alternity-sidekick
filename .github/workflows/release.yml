@@ -10,7 +10,12 @@ permissions:
   contents: write
 
 jobs:
+  # Publishing is gated on the same suites that run for ordinary pushes.
+  test:
+    uses: ./.github/workflows/test.yml
+
   build-and-release:
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Source Code

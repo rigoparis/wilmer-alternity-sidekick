@@ -1,58 +1,33 @@
-extends SceneTree
+extends "res://tools/test_harness.gd"
 
 const RulesScript := preload("res://scripts/alternity_rules.gd")
 
-func _fail(message: String) -> void:
-	push_error(message)
-	quit(1)
 
 func _init() -> void:
+	begin("achievement math")
+
 	var rules = RulesScript.new()
 	var achievements = rules.achievements
 
-	# Test achievement_points_for_level
-	if achievements.achievement_points_for_level(-5) != 0:
-		_fail("achievement_points_for_level failed for negative number")
-	if achievements.achievement_points_for_level(0) != 0:
-		_fail("achievement_points_for_level failed for 0")
-	if achievements.achievement_points_for_level(1) != 0:
-		_fail("achievement_points_for_level failed for 1")
-	if achievements.achievement_points_for_level(2) != 6:
-		_fail("achievement_points_for_level failed for 2")
-	if achievements.achievement_points_for_level(3) != 13:
-		_fail("achievement_points_for_level failed for 3")
-	if achievements.achievement_points_for_level(4) != 21:
-		_fail("achievement_points_for_level failed for 4")
-	if achievements.achievement_points_for_level(5) != 30:
-		_fail("achievement_points_for_level failed for 5")
+	# achievement_points_for_level: level -> cumulative points required.
+	for case in [[-5, 0], [0, 0], [1, 0], [2, 6], [3, 13], [4, 21], [5, 30]]:
+		check_eq(
+			achievements.achievement_points_for_level(case[0]), case[1],
+			"achievement_points_for_level(%d)" % case[0]
+		)
 
-	# Test achievement_level_for_points
-	if achievements.achievement_level_for_points(-10) != 1:
-		_fail("achievement_level_for_points failed for negative points")
-	if achievements.achievement_level_for_points(0) != 1:
-		_fail("achievement_level_for_points failed for 0 points")
-	if achievements.achievement_level_for_points(5) != 1:
-		_fail("achievement_level_for_points failed for 5 points")
-	if achievements.achievement_level_for_points(6) != 2:
-		_fail("achievement_level_for_points failed for 6 points")
-	if achievements.achievement_level_for_points(12) != 2:
-		_fail("achievement_level_for_points failed for 12 points")
-	if achievements.achievement_level_for_points(13) != 3:
-		_fail("achievement_level_for_points failed for 13 points")
-	if achievements.achievement_level_for_points(30) != 5:
-		_fail("achievement_level_for_points failed for 30 points")
-	if achievements.achievement_level_for_points(100) != 10:
-		_fail("achievement_level_for_points failed for 100 points")
+	# achievement_level_for_points: the inverse, clamped to a minimum of level 1.
+	for case in [[-10, 1], [0, 1], [5, 1], [6, 2], [12, 2], [13, 3], [30, 5], [100, 10]]:
+		check_eq(
+			achievements.achievement_level_for_points(case[0]), case[1],
+			"achievement_level_for_points(%d)" % case[0]
+		)
 
-	# Test achievement_next_level_points
-	if achievements.achievement_next_level_points(0) != 6:
-		_fail("achievement_next_level_points failed for 0 points")
-	if achievements.achievement_next_level_points(5) != 6:
-		_fail("achievement_next_level_points failed for 5 points")
-	if achievements.achievement_next_level_points(6) != 13:
-		_fail("achievement_next_level_points failed for 6 points")
-	if achievements.achievement_next_level_points(30) != 40:
-		_fail("achievement_next_level_points failed for 30 points")
+	# achievement_next_level_points: points needed to reach the next level.
+	for case in [[0, 6], [5, 6], [6, 13], [30, 40]]:
+		check_eq(
+			achievements.achievement_next_level_points(case[0]), case[1],
+			"achievement_next_level_points(%d)" % case[0]
+		)
 
-	print("Smoke achievement math tests passed successfully.")
-	quit(0)
+	finish()

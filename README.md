@@ -100,26 +100,46 @@ godot --headless --path . --export-debug "Android APK" builds/android/WilmerAlte
 
 ---
 
-## Running Smoke Tests
+## Running Tests
 
-You can run automated diagnostic tests headless using Godot to verify database integrity:
+All suites run headlessly. The runner executes every `tools/smoke_*.gd` suite plus
+the harness self-test, and exits non-zero if anything fails:
 
-```powershell
-# Run mutations diagnostic tests
-godot --headless --path . -s tools/smoke_mutations.gd
-
-# Run achievements diagnostic tests
-godot --headless --path . -s tools/smoke_achievements.gd
-
-# Run achievement math diagnostic tests
-godot --headless --path . -s tools/smoke_achievement_math.gd
-
-# Run equipment catalog diagnostic tests
-godot --headless --path . -s tools/smoke_equipment_catalog.gd
-
-# Run resistance modifier rules validation tests
-godot --headless -s scratch/test_resistance_modifier.gd
-
-# Run resistance modifier verification on saved character sheets
-godot --headless -s scratch/test_characters_rm.gd
+```bash
+bash tools/run_tests.sh
 ```
+
+On Windows, run it from Git Bash. Set `GODOT` if the binary is not on `PATH`:
+
+```bash
+GODOT=/c/path/to/godot.exe bash tools/run_tests.sh
+```
+
+An individual suite can still be run directly:
+
+```bash
+godot --headless --path . -s tools/smoke_mutations.gd
+```
+
+CI runs the same script on every push and pull request (`.github/workflows/test.yml`),
+and publishing a release is gated on it.
+
+### Writing a suite
+
+Suites extend `tools/test_harness.gd` rather than `SceneTree` directly:
+
+```gdscript
+extends "res://tools/test_harness.gd"
+
+func _init() -> void:
+	begin("what this suite covers")
+	check_eq(actual, expected, "what should be true")
+	finish()
+```
+
+`begin()` sets the exit code to 1 up front and `finish()` is the only thing that lowers
+it to 0, so an assertion failure, an early return, or a crash all report failure. Use
+`begin_async()` instead for suites that need the main loop; it adds a frame watchdog so a
+scene that never loads fails rather than hanging CI.
+
+A suite that runs zero checks is treated as a failure.

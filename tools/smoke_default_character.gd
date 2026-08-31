@@ -1,114 +1,81 @@
-extends SceneTree
+extends "res://tools/test_harness.gd"
 
 const RulesScript := preload("res://scripts/alternity_rules.gd")
 
-func _fail(message: String) -> void:
-	push_error(message)
-	quit(1)
 
 func _init() -> void:
+	begin("default character shape")
+
 	var rules = RulesScript.new()
 	rules.load_core_data()
 	var character := rules.default_character()
 
-	var expected_keys = [
+	var expected_keys := [
 		"hero_name", "player_name", "career", "notes", "setting",
 		"achievement_level", "achievement_points", "achievement_points_available",
 		"achievement_points_spent_other", "species_id", "profession_id",
 		"abilities", "selected_skills", "selected_perks", "selected_flaws",
 		"selected_achievements", "mutations", "optional_rules",
-		"damage", "last_resorts_used", "equipment"
+		"damage", "last_resorts_used", "equipment",
 	]
-
 	for key in expected_keys:
-		if not character.has(key):
-			_fail("Character missing expected key: " + key)
+		check_true(character.has(key), "default character has key %s" % key)
 
-	if character["hero_name"] != "New Hero":
-		_fail("hero_name should be 'New Hero', got " + str(character["hero_name"]))
-	if character["player_name"] != "":
-		_fail("player_name should be empty, got " + str(character["player_name"]))
-	if character["career"] != "":
-		_fail("career should be empty, got " + str(character["career"]))
-	if character["notes"] != "":
-		_fail("notes should be empty, got " + str(character["notes"]))
-	if character["setting"] != rules.data.get("setting", "Core"):
-		_fail("setting should be '" + rules.data.get("setting", "Core") + "', got " + str(character["setting"]))
-	if character["achievement_level"] != 1:
-		_fail("achievement_level should be 1, got " + str(character["achievement_level"]))
-	if character["achievement_points"] != 0:
-		_fail("achievement_points should be 0, got " + str(character["achievement_points"]))
-	if character["achievement_points_available"] != 0:
-		_fail("achievement_points_available should be 0, got " + str(character["achievement_points_available"]))
-	if character["achievement_points_spent_other"] != 0:
-		_fail("achievement_points_spent_other should be 0, got " + str(character["achievement_points_spent_other"]))
-	if character["species_id"] != 0:
-		_fail("species_id should be 0, got " + str(character["species_id"]))
-	if character["profession_id"] != 0:
-		_fail("profession_id should be 0, got " + str(character["profession_id"]))
+	# Scalar defaults.
+	check_eq(character["hero_name"], "New Hero", "hero_name default")
+	check_eq(character["player_name"], "", "player_name default")
+	check_eq(character["career"], "", "career default")
+	check_eq(character["notes"], "", "notes default")
+	check_eq(character["setting"], rules.data.get("setting", "Core"), "setting default")
+	check_eq(character["achievement_level"], 1, "achievement_level default")
+	check_eq(character["achievement_points"], 0, "achievement_points default")
+	check_eq(character["achievement_points_available"], 0, "achievement_points_available default")
+	check_eq(character["achievement_points_spent_other"], 0, "achievement_points_spent_other default")
+	check_eq(character["species_id"], 0, "species_id default")
+	check_eq(character["profession_id"], 0, "profession_id default")
+	check_eq(character["last_resorts_used"], 0, "last_resorts_used default")
 
-	var expected_abilities = ["STR", "DEX", "CON", "INT", "WIL", "PER"]
-	for ability in expected_abilities:
-		if not character["abilities"].has(ability):
-			_fail("Missing ability: " + ability)
-		if character["abilities"][ability] != 10:
-			_fail("Ability " + ability + " should be 10, got " + str(character["abilities"][ability]))
+	# All six abilities start at 10.
+	for ability in ["STR", "DEX", "CON", "INT", "WIL", "PER"]:
+		if check_true(character["abilities"].has(ability), "abilities has %s" % ability):
+			check_eq(character["abilities"][ability], 10, "ability %s starts at 10" % ability)
 
-	if typeof(character["selected_skills"]) != TYPE_DICTIONARY or not character["selected_skills"].is_empty():
-		_fail("selected_skills should be an empty dictionary")
-	if typeof(character["selected_perks"]) != TYPE_DICTIONARY or not character["selected_perks"].is_empty():
-		_fail("selected_perks should be an empty dictionary")
-	if typeof(character["selected_flaws"]) != TYPE_DICTIONARY or not character["selected_flaws"].is_empty():
-		_fail("selected_flaws should be an empty dictionary")
-	if typeof(character["selected_achievements"]) != TYPE_ARRAY or not character["selected_achievements"].is_empty():
-		_fail("selected_achievements should be an empty array")
+	# Empty collections, with the container type pinned.
+	for key in ["selected_skills", "selected_perks", "selected_flaws"]:
+		check_eq(typeof(character[key]), TYPE_DICTIONARY, "%s is a Dictionary" % key)
+		check_true(character[key].is_empty(), "%s starts empty" % key)
+	check_eq(typeof(character["selected_achievements"]), TYPE_ARRAY, "selected_achievements is an Array")
+	check_true(character["selected_achievements"].is_empty(), "selected_achievements starts empty")
 
-	var mutations = character["mutations"]
-	if mutations["generation_mode"] != "random":
-		_fail("mutations.generation_mode should be 'random', got " + str(mutations["generation_mode"]))
-	if mutations["origin"] != "engineered":
-		_fail("mutations.origin should be 'engineered', got " + str(mutations["origin"]))
-	if mutations["uniqueness"] != "engineered_community":
-		_fail("mutations.uniqueness should be 'engineered_community', got " + str(mutations["uniqueness"]))
-	if mutations["advantage_points"] != 0:
-		_fail("mutations.advantage_points should be 0, got " + str(mutations["advantage_points"]))
-	if mutations["drawback_points"] != 0:
-		_fail("mutations.drawback_points should be 0, got " + str(mutations["drawback_points"]))
-	if typeof(mutations["advantage_distribution"]) != TYPE_DICTIONARY or not mutations["advantage_distribution"].is_empty():
-		_fail("mutations.advantage_distribution should be an empty dictionary")
-	if typeof(mutations["drawback_distribution"]) != TYPE_DICTIONARY or not mutations["drawback_distribution"].is_empty():
-		_fail("mutations.drawback_distribution should be an empty dictionary")
-	if typeof(mutations["advantages"]) != TYPE_ARRAY or not mutations["advantages"].is_empty():
-		_fail("mutations.advantages should be an empty array")
-	if typeof(mutations["drawbacks"]) != TYPE_ARRAY or not mutations["drawbacks"].is_empty():
-		_fail("mutations.drawbacks should be an empty array")
+	# Mutations block.
+	var mutations: Dictionary = character["mutations"]
+	check_eq(mutations["generation_mode"], "random", "mutations.generation_mode default")
+	check_eq(mutations["origin"], "engineered", "mutations.origin default")
+	check_eq(mutations["uniqueness"], "engineered_community", "mutations.uniqueness default")
+	check_eq(mutations["advantage_points"], 0, "mutations.advantage_points default")
+	check_eq(mutations["drawback_points"], 0, "mutations.drawback_points default")
+	for key in ["advantage_distribution", "drawback_distribution"]:
+		check_eq(typeof(mutations[key]), TYPE_DICTIONARY, "mutations.%s is a Dictionary" % key)
+		check_true(mutations[key].is_empty(), "mutations.%s starts empty" % key)
+	for key in ["advantages", "drawbacks"]:
+		check_eq(typeof(mutations[key]), TYPE_ARRAY, "mutations.%s is an Array" % key)
+		check_true(mutations[key].is_empty(), "mutations.%s starts empty" % key)
 
-	var optional_rules = character["optional_rules"]
-	if not optional_rules.has("2a") or optional_rules["2a"] != false:
-		_fail("optional_rules.2a should be false")
-	if not optional_rules.has("2b") or optional_rules["2b"] != false:
-		_fail("optional_rules.2b should be false")
-	if not optional_rules.has("2c") or optional_rules["2c"] != false:
-		_fail("optional_rules.2c should be false")
+	# Optional rules all start disabled.
+	var optional_rules: Dictionary = character["optional_rules"]
+	for rule_id in ["2a", "2b", "2c"]:
+		if check_true(optional_rules.has(rule_id), "optional_rules has %s" % rule_id):
+			check_eq(optional_rules[rule_id], false, "optional rule %s starts disabled" % rule_id)
 
-	var damage = character["damage"]
-	if damage["stun"] != 0:
-		_fail("damage.stun should be 0")
-	if damage["wound"] != 0:
-		_fail("damage.wound should be 0")
-	if damage["mortal"] != 0:
-		_fail("damage.mortal should be 0")
-	if damage["fatigue"] != 0:
-		_fail("damage.fatigue should be 0")
+	# Damage tracks all start clear.
+	var damage: Dictionary = character["damage"]
+	for track in ["stun", "wound", "mortal", "fatigue"]:
+		check_eq(damage[track], 0, "damage.%s starts at 0" % track)
 
-	if character["last_resorts_used"] != 0:
-		_fail("last_resorts_used should be 0")
+	# Equipment block.
+	var equipment: Dictionary = character["equipment"]
+	for key in ["carried", "custom_items"]:
+		check_eq(typeof(equipment[key]), TYPE_ARRAY, "equipment.%s is an Array" % key)
+		check_true(equipment[key].is_empty(), "equipment.%s starts empty" % key)
 
-	var equipment = character["equipment"]
-	if typeof(equipment["carried"]) != TYPE_ARRAY or not equipment["carried"].is_empty():
-		_fail("equipment.carried should be an empty array")
-	if typeof(equipment["custom_items"]) != TYPE_ARRAY or not equipment["custom_items"].is_empty():
-		_fail("equipment.custom_items should be an empty array")
-
-	print("Success!")
-	quit()
+	finish()

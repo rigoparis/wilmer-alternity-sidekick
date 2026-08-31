@@ -1,0 +1,44 @@
+name: Tests
+
+# Runs on every push and PR. Also exposed as a reusable workflow so
+# release.yml can gate publishing on it (see its `needs: test`).
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: [main]
+  workflow_call:
+
+permissions:
+  contents: read
+
+# A new push to the same branch supersedes the in-flight run.
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    name: Headless smoke suites
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      # include-templates is deliberately off: export templates are ~1 GB and
+      # are only needed by release.yml, not by headless script runs.
+      - name: Setup Godot Engine
+        uses: chickensoft-games/setup-godot@v2
+        with:
+          version: 4.6.3-stable
+          use-dotnet: false
+          include-templates: false
+
+      # A clean runner has no .godot/ cache (it is gitignored), so resources
+      # must be imported before any suite runs.
+      - name: Import project resources
+        run: godot --headless --import --quit || true
+
+      - name: Run smoke suites
+        run: bash tools/run_tests.sh
