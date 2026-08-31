@@ -811,26 +811,28 @@ func _refresh_theme_panel() -> void:
 
 
 func _show_optional_rules() -> void:
-	_refresh_optional_rules_panel()
-	optional_rules_overlay.visible = true
+	var locked := _is_optional_rules_locked_by_gm()
+	optional_rules_overlay.show_for_character(character, locked, _on_optional_rule_toggled)
 	_update_optional_rules_modal_height.call_deferred()
 
 
-func _refresh_optional_rules_panel() -> void:
-	for child in optional_rules_body.get_children():
-		child.queue_free()
+func _on_optional_rule_toggled(_rule_id: String = "", _pressed: bool = false) -> void:
+	if not char_manager.active_character_file.is_empty():
+		char_manager.save_character(notes_editing, notes_draft)
+	_render()
 
-	for rule in AlternityRules.OPTIONAL_RULES:
-		_add_optional_rule_row(rule)
-	_update_optional_rules_modal_height.call_deferred()
+
+func _is_optional_rules_locked_by_gm() -> bool:
+	# Hook for multiplayer campaign sessions: if local player is seated and not the GM, rules are locked
+	return false
 
 
 func _update_optional_rules_modal_height() -> void:
-	if optional_rules_scroll == null:
+	if optional_rules_scroll == null or optional_rules_body == null:
 		return
 
 	var viewport_size := get_viewport_rect().size
-	var max_scroll_height := maxf(220.0, viewport_size.y - 170.0)
+	var max_scroll_height := maxf(220.0, viewport_size.y - 180.0)
 	var content_height := optional_rules_body.get_combined_minimum_size().y
 	var needs_scroll := content_height > max_scroll_height
 	optional_rules_scroll.custom_minimum_size.y = max_scroll_height if needs_scroll else content_height
@@ -967,33 +969,6 @@ func _update_mutation_catalog_modal_height() -> void:
 	var needs_scroll := content_height > max_scroll_height
 	mutation_catalog_scroll.custom_minimum_size.y = max_scroll_height if needs_scroll else content_height
 	mutation_catalog_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO if needs_scroll else ScrollContainer.SCROLL_MODE_DISABLED
-
-
-func _add_optional_rule_row(rule: Dictionary) -> void:
-	var block_margin := MarginContainer.new()
-	block_margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	block_margin.add_theme_constant_override("margin_bottom", 6)
-	optional_rules_body.add_child(block_margin)
-
-	var box := VBoxContainer.new()
-	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	box.add_theme_constant_override("separation", 6)
-	block_margin.add_child(box)
-
-	var rule_id := String(rule.get("id", ""))
-	_add_large_checkbox(
-		box,
-		"%s: %s" % [rule.get("name", ""), rule.get("summary", "")],
-		rules.optional_rule_enabled(character, rule_id),
-		func(pressed):
-			rules.set_optional_rule(character, rule_id, pressed)
-			if not char_manager.active_character_file.is_empty():
-				char_manager.save_character(notes_editing, notes_draft)
-			_render()
-			_refresh_optional_rules_panel()
-	)
-
-	UIBuilder.add_text(box, String(rule.get("description", "")), 13, color_muted)
 
 
 func _tab_visible(tab: String) -> bool:
@@ -5072,33 +5047,52 @@ func _perform_close_character(save_first: bool) -> void:
 	if FileAccess.file_exists(last_char_path):
 		DirAccess.remove_absolute(last_char_path)
 		
-	active_tab = "Basics"
-	_render()
+func _prompt_new_character_optional_rules() -> void:
+	if _is_optional_rules_locked_by_gm():
+		_create_new_character_with_rules({})
+		return
+
+	var initial_rules := {}
+	for rule in AlternityRules.OPTIONAL_RULES:
+		initial_rules[String(rule.get("id", ""))] = false
+
+	optional_rules_overlay.show_for_new_hero(
+		initial_rules,
+		func(chosen_rules: Dictionary):
+			_create_new_character_with_rules(chosen_rules)
+	)
+	_update_optional_rules_modal_height.call_deferred()
 
 
-func _create_new_character() -> void:
+func _create_new_character_with_rules(chosen_rules: Dictionary = {}) -> void:
 	character = rules.default_character()
+	if not chosen_rules.is_empty():
+		character["optional_rules"] = chosen_rules.duplicate(true)
 	rules.ensure_character_shape(character)
-	
+
 	var base_name := "New Hero"
 	var safe_name := char_manager.safe_filename(base_name)
 	var final_filename := safe_name + ".json"
-	
+
 	var counter := 1
 	while FileAccess.file_exists("user://" + final_filename):
 		counter += 1
 		final_filename = "%s_%d.json" % [safe_name, counter]
-		
+
 	var display_name := base_name
 	if counter > 1:
 		display_name = "%s %d" % [base_name, counter]
 	character["hero_name"] = display_name
-	
+
 	char_manager.set_character(character)
 	char_manager.active_character_file = final_filename
 	char_manager.save_character(notes_editing, notes_draft)
 	active_tab = "Basics"
 	_render()
+
+
+func _create_new_character() -> void:
+	_prompt_new_character_optional_rules()
 
 
 func _get_saved_characters() -> Array:
@@ -5201,7 +5195,7 @@ func _render_character_select() -> void:
 	create_btn.add_theme_color_override("font_color", color_background)
 	create_btn.add_theme_color_override("font_hover_color", color_background)
 	create_btn.add_theme_color_override("font_pressed_color", color_background)
-	create_btn.pressed.connect(_create_new_character)
+	create_btn.pressed.connect(_prompt_new_character_optional_rules)
 	actions_bar.add_child(create_btn)
 
 	var import_btn := Button.new()
