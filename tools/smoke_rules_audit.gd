@@ -1675,4 +1675,59 @@ func _init() -> void:
 	assert_eq.call(rules.get_skill_by_id(90104).get("stat", ""), "PER", "Mind Blast keyed to PER/WIL")
 	assert_eq.call(rules.get_skill_by_id(90206).get("stat", ""), "WIL", "Pyrokinetics keyed to WIL/CON")
 
+	# --- 33. FX (Special Effects) Skills & Pillars (Beyond Science: A Guide to FX) ---
+	print("Testing FX Skills, Pillars & Permanent Powers...")
+	# 1. Three Pillars of FX (Arcane Magic, Faith, Super Power)
+	var arcane_broads := ["Diabolism", "Hemomancy", "Hermeticism", "Illusion", "Mesmerism", "Necromancy", "Pyromancy"]
+	for bname in arcane_broads:
+		var broad = rules.fx.get_broad_skill(bname)
+		assert_true.call(not broad.is_empty(), "Arcane Magic school '%s' exists" % bname)
+		assert_eq.call(String(broad.get("category", "")), "Arcane Magic", "%s is Arcane Magic" % bname)
+
+	var faith_broads := ["Alienism", "Druidism", "Hatire", "Monotheism", "Shamanism", "Taoism", "Voodoo"]
+	for bname in faith_broads:
+		var broad = rules.fx.get_broad_skill(bname)
+		assert_true.call(not broad.is_empty(), "Faith '%s' exists" % bname)
+		assert_eq.call(String(broad.get("category", "")), "Faith", "%s is Faith" % bname)
+
+	var super_broads := ["Body Alteration", "Brick", "Chi", "Energy", "Metaconscious", "Movement"]
+	for bname in super_broads:
+		var broad = rules.fx.get_broad_skill(bname)
+		assert_true.call(not broad.is_empty(), "Super Power category '%s' exists" % bname)
+		assert_eq.call(String(broad.get("category", "")), "Super Hero", "%s is Super Hero" % bname)
+
+	# 2. FX Skill Scores and Dual-Ability Resolution
+	var fx_char: Dictionary = rules.default_character()
+	fx_char["abilities"]["INT"] = 12
+	fx_char["abilities"]["WIL"] = 14
+	rules.ensure_character_shape(fx_char)
+	rules.fx.add_fx_skill(fx_char, "Alienism") # Broad skill (WIL/INT)
+	var alienism_score: Dictionary = rules.fx.fx_skill_score(fx_char, "Alienism")
+	# Uses higher stat (WIL 14) -> half is 7
+	assert_eq.call(alienism_score.ordinary, 7, "Alienism broad score uses max(INT 12, WIL 14) / 2 = 7")
+
+	# 3. Permanent FX Powers (Super Strength)
+	var perm_hero: Dictionary = rules.default_character()
+	perm_hero["abilities"]["STR"] = 12
+	rules.ensure_character_shape(perm_hero)
+	rules.fx.add_fx_skill(perm_hero, "Brick")
+	rules.fx.add_fx_skill(perm_hero, "Super Strength") # Rank 1
+	assert_eq.call(rules.fx.permanent_fx_stat_bonus(perm_hero, "STR"), 0, "Non-permanent Super Strength grants no static stat bonus")
+	rules.fx.set_fx_skill_permanent(perm_hero, "Super Strength", true)
+	assert_eq.call(rules.fx.permanent_fx_stat_bonus(perm_hero, "STR"), 1, "Rank 1 Permanent Super Strength grants +1 STR")
+	assert_eq.call(rules.effective_abilities(perm_hero)["STR"], 13, "Effective STR becomes 13")
+
+	# Rank 4 gives +2 STR
+	perm_hero["fx"]["selected_skills"]["Super Strength"] = 4
+	assert_eq.call(rules.fx.permanent_fx_stat_bonus(perm_hero, "STR"), 2, "Rank 4 Permanent Super Strength grants +2 STR")
+	assert_eq.call(rules.effective_abilities(perm_hero)["STR"], 14, "Effective STR becomes 14")
+
+	# 4. FX Skill Costs & Point Totals
+	var cost_char: Dictionary = rules.default_character()
+	rules.ensure_character_shape(cost_char)
+	rules.fx.add_fx_skill(cost_char, "Chi")
+	var chi_broad = rules.fx.get_broad_skill("Chi")
+	var chi_cost: int = rules.fx.fx_skill_cost(cost_char, "Chi")
+	assert_eq.call(chi_cost, int(chi_broad.cost), "Chi broad skill cost matches catalog")
+
 	finish()
