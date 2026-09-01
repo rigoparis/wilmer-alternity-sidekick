@@ -1438,12 +1438,39 @@ func set_skill_rank(character: Dictionary, skill_id: int, rank: int) -> void:
 	var skill := get_skill_by_id(skill_id)
 	if skill.is_empty():
 		return
+	var is_broad: bool = skill.get("type", "") == "broad"
 	var free_rank := free_species_skill_rank(character, skill_id)
-	if skill.get("type", "") == "broad" and free_rank > 0:
+
+	if is_broad and free_rank > 0:
+		# Selling a racial broad back is a supported move that was unreachable.
+		# skill_budget pays +3 SP for each id in sold_species_skills, and both
+		# selected_skill_ids and summary() read the list -- but nothing ever
+		# added to it, so the sell button was drawn and did nothing.
+		if rank <= 0:
+			var sold_list: Array = character.get("sold_species_skills", [])
+			if not sold_list.has(skill_id):
+				sold_list.append(skill_id)
+				character["sold_species_skills"] = sold_list
+			selected_skills.erase(str(skill_id))
+			for specialty in specialty_skills_by_broad_id.get(skill_id, []):
+				selected_skills.erase(str(_as_int(specialty.get("id", -1))))
+			character["selected_skills"] = selected_skills
+		# Already granted at rank 1; there is no higher rank for a broad.
 		return
 
 	if rank > free_rank:
-		selected_skills[str(skill_id)] = 1 if skill.get("type", "") == "broad" else clampi(rank, 1, max_skill_rank_for_character(character))
+		# Taking back a racial broad that was sold restores the free grant
+		# instead of charging for it, mirroring what the specialty path below
+		# already does for its parent.
+		if is_broad and is_normally_free_species_skill(character, skill_id):
+			var sold_list: Array = character.get("sold_species_skills", [])
+			if sold_list.has(skill_id):
+				sold_list.erase(skill_id)
+				character["sold_species_skills"] = sold_list
+				character["selected_skills"] = selected_skills
+				return
+
+		selected_skills[str(skill_id)] = 1 if is_broad else clampi(rank, 1, max_skill_rank_for_character(character))
 		if skill.get("type", "") == "specialty":
 			var broad_id := _as_int(skill.get("broad_id", -1))
 			if is_normally_free_species_skill(character, broad_id):
@@ -1455,7 +1482,7 @@ func set_skill_rank(character: Dictionary, skill_id: int, rank: int) -> void:
 				selected_skills[str(broad_id)] = 1
 	else:
 		selected_skills.erase(str(skill_id))
-		if skill.get("type", "") == "broad":
+		if is_broad:
 			for specialty in specialty_skills_by_broad_id.get(skill_id, []):
 				selected_skills.erase(str(_as_int(specialty.get("id", -1))))
 	character["selected_skills"] = selected_skills

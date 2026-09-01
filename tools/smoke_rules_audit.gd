@@ -219,6 +219,43 @@ func _init() -> void:
 	assert_eq.call(rules.character_resistance_modifier(enc_char, "DEX"), -1, "DEX RM reduced by 1 under Heavy load")
 	assert_eq.call(rules.character_resistance_modifier(enc_char, "INT"), 0, "INT RM unaffected by encumbrance")
 
+	# --- 9b. Selling species broad skills ---
+	# The whole mechanic was implemented -- skill_budget pays +3 SP per sold id,
+	# selected_skill_ids and summary() both read the list -- but set_skill_rank
+	# returned early for a racial broad, so nothing ever wrote to it.
+	print("Testing Species Broad Skill Sell-Back...")
+	var seller: Dictionary = rules.default_character()
+	seller["species_id"] = 0 # Human
+	rules.ensure_character_shape(seller)
+	var free_ids: Array = rules.get_free_skill_ids(seller)
+	if free_ids.is_empty():
+		assert_true.call(false, "Human has at least one free broad skill to sell")
+	else:
+		var free_id: int = AlternityNum.as_int(free_ids[0])
+		var budget_before: int = rules.skill_budget(seller)
+		assert_eq.call(rules.free_species_skill_rank(seller, free_id), 1, "Species broad starts granted")
+
+		rules.set_skill_rank(seller, free_id, 0)
+		assert_true.call(
+			seller["sold_species_skills"].has(free_id),
+			"Selling a species broad records it as sold"
+		)
+		assert_eq.call(rules.free_species_skill_rank(seller, free_id), 0, "Sold species broad is no longer granted")
+		assert_eq.call(rules.skill_budget(seller), budget_before + 3, "Selling a species broad pays +3 SP")
+		assert_true.call(
+			not rules.selected_skill_ids(seller).has(free_id),
+			"Sold species broad drops out of the selected list"
+		)
+
+		# Taking it back restores the grant rather than charging for it.
+		rules.set_skill_rank(seller, free_id, 1)
+		assert_true.call(
+			not seller["sold_species_skills"].has(free_id),
+			"Taking a species broad back clears the sold record"
+		)
+		assert_eq.call(rules.free_species_skill_rank(seller, free_id), 1, "Species broad is granted again")
+		assert_eq.call(rules.skill_budget(seller), budget_before, "Taking it back gives the 3 SP up again")
+
 	# --- 10. Age Modifiers ---
 	# Age categories are an optional rule now, so every case here turns it on
 	# explicitly. The rule being off is itself asserted at the end.

@@ -294,10 +294,16 @@ func _build_row(parent: Container, skill: Dictionary, is_broad: bool) -> void:
 		die_label.tooltip_text = reading
 		actions.add_child(die_label)
 
+	# A racial broad that was sold back is re-taken for free, not re-bought, so
+	# pricing it here would state a cost set_skill_rank does not charge.
+	var restorable: bool = is_broad and rules.is_normally_free_species_skill(raw, skill_id)
+
 	var cost: int = rules.skill_cost(raw, skill)
 	var buy: Button
 	if rank <= 0:
-		buy = Widgets.cost_button("Buy", cost)
+		buy = Widgets.cost_button("Take back", 0) if restorable else Widgets.cost_button("Buy", cost)
+		if restorable:
+			buy.tooltip_text = "Granted by your species. Taking it back costs nothing."
 	elif rank >= max_rank:
 		buy = Widgets.cost_button("Max rank", 0)
 		buy.disabled = true
@@ -311,9 +317,13 @@ func _build_row(parent: Container, skill: Dictionary, is_broad: bool) -> void:
 
 	if rank > 0:
 		var sell := Button.new()
-		sell.text = "-1"
-		sell.tooltip_text = "Drop a rank and refund its cost"
-		sell.custom_minimum_size = Vector2(44, 36)
+		sell.text = "Sell" if restorable else "-1"
+		sell.tooltip_text = (
+			"Give up this species broad skill for +3 skill points"
+			if restorable else "Drop a rank and refund its cost"
+		)
+		sell.custom_minimum_size = Vector2(60 if restorable else 44, 36)
+		sell.clip_text = true
 		sell.pressed.connect(func():
 			doc.apply(CharacterDoc.ALL, func(c): rules.set_skill_rank(c, skill_id, rank - 1))
 			change_requested.emit())
