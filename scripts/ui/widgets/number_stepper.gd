@@ -39,7 +39,8 @@ func setup(
 	initial: int,
 	minimum: int,
 	maximum: int,
-	step: int = 1
+	step: int = 1,
+	label_width: int = 0
 ) -> void:
 	_palette = palette
 	_minimum = minimum
@@ -54,6 +55,11 @@ func setup(
 	# 1px minimum let "Qty" wrap into "Q / ty".
 	_label.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	# A caller stacking several steppers passes a width so their buttons line up.
+	# Left to hug its own text, a column of them comes out ragged, because the
+	# labels differ in length ("Will (WIL)" against "Intelligence (INT)").
+	if label_width > 0:
+		_label.custom_minimum_size = Vector2(label_width, 0)
 	# No ellipsis and no wrap: an overrun behaviour takes the text out of the
 	# label's minimum size, which collapsed it to nothing and lost "Qty"
 	# altogether. Left alone it sizes to its own text, which is the width wanted.

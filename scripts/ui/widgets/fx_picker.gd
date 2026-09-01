@@ -31,6 +31,7 @@ var _query := ""
 
 var _list: VBoxContainer
 var _category_buttons: Dictionary = {}
+var _card_columns: Array[Container] = []
 
 
 func _init() -> void:
@@ -130,9 +131,11 @@ func _refresh_list() -> void:
 		_list.remove_child(child)
 		child.queue_free()
 
+	_reset_card_columns()
+
 	var shown := 0
 	for broad in _visible_broads():
-		_build_broad(broad)
+		_build_broad(broad, _card_host(shown))
 		shown += 1
 
 	if shown == 0:
@@ -171,14 +174,44 @@ func _specialties(broad_name: String) -> Array:
 	return rules.fx.get_specialty_skills_for_broad_and_character(broad_name, _ctx.doc.raw())
 
 
-func _build_broad(broad: Dictionary) -> void:
+## Where the next card goes.
+##
+## One card per row across a 1900px window puts a skill's name at one edge and
+## its buy button at the other -- the row is wide, not readable. Two columns of
+## cards keep each one at a width you can take in, and use the height that a
+## single stacked list leaves empty.
+func _card_host(index: int) -> Container:
+	if _card_columns.is_empty():
+		return _list
+	return _card_columns[index % _card_columns.size()]
+
+
+## Build the column hosts for this refresh, or none when narrow.
+func _reset_card_columns() -> void:
+	_card_columns.clear()
+	if not _ctx.is_wide_layout:
+		return
+	var row := HBoxContainer.new()
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_theme_constant_override("separation", Widgets.GAP_ROW)
+	_list.add_child(row)
+	for _i in 2:
+		var column := VBoxContainer.new()
+		column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		column.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+		column.add_theme_constant_override("separation", Widgets.GAP_ROW)
+		row.add_child(column)
+		_card_columns.append(column)
+
+
+func _build_broad(broad: Dictionary, host: Container) -> void:
 	var rules: AlternityRules = _ctx.rules
 	var palette := _ctx.palette
 	var raw := _ctx.doc.raw()
 	var broad_name := String(broad.get("name", ""))
 	var owned: bool = rules.fx.is_fx_skill_selected(raw, broad_name)
 
-	var box := Widgets.section(_list, "", palette)
+	var box := Widgets.section(host, "", palette)
 	_build_row(box, broad, true)
 
 	# A power cannot be used without its parent school, so listing powers before

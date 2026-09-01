@@ -17,6 +17,10 @@ const STORE_DIR := "user://__shot_store__/"
 const SIZES := [
 	[390, 844, "phone"],
 	[1280, 720, "desktop"],
+	# A maximised window on a 1080p monitor. The layout problems that only show
+	# up at real desktop width -- rows stretched until a label and its value sit
+	# at opposite edges -- are invisible at 1280.
+	[1920, 1080, "wide"],
 ]
 
 var _out_dir := "user://shots/"

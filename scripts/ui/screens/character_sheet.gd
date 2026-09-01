@@ -12,8 +12,18 @@ extends Control
 ## which is what lets this run alongside the old UI while the rest move across.
 ##
 
+## Content takes this many parts against one gutter each side.
+const CONTENT_STRETCH := 8.0
+
 ## Leave the sheet and return to the character list.
 signal closed
+
+## Header icons. preload, not load: these are fixed assets, and the old header
+## resolved them at runtime on every build.
+const ICON_RULES := preload("res://assets/book.svg")
+const ICON_THEME := preload("res://assets/pallete.svg")
+const ICON_SHARE := preload("res://assets/share.svg")
+const ICON_CLOSE := preload("res://assets/logout.svg")
 
 const TAB_BASICS := preload("res://scenes/ui/tabs/tab_basics.tscn")
 const TAB_ACHIEVEMENTS := preload("res://scenes/ui/tabs/tab_achievements.tscn")
@@ -113,6 +123,27 @@ func _build() -> void:
 		margin.add_theme_constant_override("margin_" + side, Widgets.PAD_PANEL)
 	_content_scroll.add_child(margin)
 
+	# Content is centred inside proportional spacers rather than filling the
+	# window. A row spanning 1900px puts its label at one edge of the screen and
+	# its value at the other, which is unreadable however much space it "uses".
+	#
+	# Proportional rather than a fixed cap on purpose: Godot 4.6 has no
+	# custom_maximum_size (that is 4.7), and the shell only rebuilds when the
+	# compact breakpoint is crossed, so an absolute margin computed at build time
+	# would not follow an ordinary resize. Stretch ratios do.
+	var centred: Container = margin
+	if _ctx.is_wide_layout:
+		var row := HBoxContainer.new()
+		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		margin.add_child(row)
+		row.add_child(_gutter())
+		var body := VBoxContainer.new()
+		body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		body.size_flags_stretch_ratio = CONTENT_STRETCH
+		row.add_child(body)
+		row.add_child(_gutter())
+		centred = body
+
 	# A VBoxContainer, not a bare Control. A Control child anchored full-rect
 	# reports no minimum size, so the ScrollContainer cannot measure it and the
 	# tab ends up clipped against the top of the viewport. A container measures
@@ -120,7 +151,16 @@ func _build() -> void:
 	# wanted here, since every tab lives in it and only one is visible.
 	_content_host = VBoxContainer.new()
 	_content_host.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	margin.add_child(_content_host)
+	centred.add_child(_content_host)
+
+
+## One side of the reading gutter on a wide screen.
+func _gutter() -> Control:
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	spacer.size_flags_stretch_ratio = 1.0
+	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return spacer
 
 
 func _build_header(parent: Container) -> void:
@@ -170,25 +210,37 @@ func _build_header(parent: Container) -> void:
 	else:
 		outer.add_child(actions)
 
+	# Icons, as the old header had. Five words across the top of a phone is most
+	# of the row; five glyphs is a strip. Save keeps its label because it is the
+	# one whose state matters and there is no unambiguous icon for it.
 	var buttons := [
-		["Rules", "Optional rules", _open_optional_rules],
-		["Theme", "", _open_theme],
-		["Share", "", _share],
-		["Save", "", _save],
-		["Close", "", _on_close_pressed],
+		[ICON_RULES, "Optional rules", _open_optional_rules],
+		[ICON_THEME, "Theme", _open_theme],
+		[ICON_SHARE, "Share character", _share],
+		[null, "Save", _save],
+		[ICON_CLOSE, "Close character", _on_close_pressed],
 	]
 	for spec in buttons:
+		var icon = spec[0]
+		var label := String(spec[1])
 		var button := Button.new()
-		button.text = String(spec[0])
-		button.tooltip_text = String(spec[1])
-		button.custom_minimum_size = Vector2(0, 40)
-		if not _ctx.is_wide_layout:
-			# Compact shares the row evenly, so the label must not set the width
-			# -- but clipping is only safe where something else does. Left on in
-			# wide mode it collapsed every button to an empty square.
-			button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			button.clip_text = true
-			button.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
+		button.tooltip_text = label
+		if icon != null:
+			button.icon = icon
+			button.expand_icon = true
+			button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			button.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+			button.custom_minimum_size = Vector2(44, 44)
+			# Tinted rather than coloured art, so icons follow the palette.
+			button.add_theme_color_override("icon_normal_color", _ctx.palette.text)
+			button.add_theme_color_override("icon_hover_color", _ctx.palette.accent)
+			button.add_theme_color_override("icon_pressed_color", _ctx.palette.accent)
+		else:
+			# Wide enough to hold its own label. clip_text takes the text out of
+			# the minimum size, so without a width the button renders as an
+			# empty gap between the icons.
+			button.text = label
+			button.custom_minimum_size = Vector2(64, 44)
 		button.pressed.connect(spec[2])
 		actions.add_child(button)
 

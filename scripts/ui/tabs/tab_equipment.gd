@@ -22,8 +22,11 @@ func watched_sections() -> Array:
 
 
 func build(container: Container) -> void:
-	_build_summary(container)
-	_build_carried(container)
+	# The load totals are short and the carried list is long, so the totals take
+	# the narrow side rather than an even split.
+	var split := columns(container, 0.32)
+	_build_summary(split[0])
+	_build_carried(split[1])
 
 
 func _build_summary(container: Container) -> void:

@@ -25,26 +25,36 @@ func watched_sections() -> Array:
 func build(container: Container) -> void:
 	var summary := ctx.doc.summary()
 
+	# Validations span the full width -- they are the one thing you must not
+	# miss. Everything else splits, so a desktop window shows the stat block and
+	# the trackers at once instead of one narrow strip scrolled twice.
 	_build_validations(container, summary)
-	_build_abilities(container, summary)
-	_build_action(container, summary)
-	_build_damage(container, summary)
-	_build_last_resorts(container, summary)
-	_build_movement(container, summary)
-	_build_combat(container, summary)
+
+	var split := columns(container)
+	var left: Container = split[0]
+	var right: Container = split[1]
+
+	_build_abilities(left, summary)
+	_build_action(left, summary)
+	_build_movement(left, summary)
+
+	_build_damage(right, summary)
+	_build_last_resorts(right, summary)
+	_build_combat(right, summary)
 
 	# Everything the hero actually has, spelled out here rather than linked to.
 	# This is the tab that stays open at the table, and the point of the app is
 	# to replace reaching for a manual -- so a section that says "3 perks" and
 	# makes you go to another tab to find out which has failed at its job.
-	_build_skills(container)
-	_build_psionics(container)
-	_build_fx(container)
-	_build_perks_flaws(container)
-	_build_cybertech(container)
-	_build_mutations(container)
-	_build_achievements(container)
-	_build_species_notes(container)
+	var reference := columns(container)
+	_build_skills(reference[0])
+	_build_psionics(reference[0])
+	_build_fx(reference[0])
+	_build_perks_flaws(reference[1])
+	_build_cybertech(reference[1])
+	_build_mutations(reference[1])
+	_build_achievements(reference[1])
+	_build_species_notes(reference[1])
 
 	_build_notes(container)
 
@@ -62,22 +72,53 @@ func _build_validations(container: Container, summary: Dictionary) -> void:
 		Widgets.text(box, String(message), palette, Widgets.FONT_DETAIL, palette.warning)
 
 
+## Abilities as a table, and the three numbers you actually roll against.
+##
+## Six cells in a 3-wide grid stretched to the window width put STR at one edge
+## of a maximised screen and PER at the other -- by the time you read the last
+## you have forgotten the first. A fixed table keeps the six together in a block
+## you take in at once, and has room for the untrained score and resistance
+## modifier the old compact summary showed and this one had dropped.
 func _build_abilities(container: Container, summary: Dictionary) -> void:
 	var palette := ctx.palette
+	var rules: AlternityRules = ctx.rules
+	var raw := ctx.doc.raw()
 	var box := Widgets.section(container, "Abilities", palette)
 
 	var effective: Dictionary = summary.get("effective_abilities", {})
+	var base: Dictionary = raw.get("abilities", {})
+
 	var grid := GridContainer.new()
-	grid.columns = 3
+	grid.columns = 4
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid.add_theme_constant_override("h_separation", Widgets.GAP_SECTION)
+	grid.add_theme_constant_override("v_separation", Widgets.GAP_TIGHT)
 	box.add_child(grid)
 
+	for heading in ["Ability", "Score", "Untrained", "Resistance"]:
+		Widgets.table_cell(
+			grid, heading, palette, true,
+			HORIZONTAL_ALIGNMENT_LEFT if heading == "Ability" else HORIZONTAL_ALIGNMENT_RIGHT
+		)
+
 	for ability in ABILITIES:
-		var cell := VBoxContainer.new()
-		cell.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		grid.add_child(cell)
-		Widgets.muted_text(cell, ability, palette, Widgets.FONT_CAPTION)
-		Widgets.text(cell, str(AlternityNum.as_int(effective.get(ability, 0))), palette, 20)
+		var base_score := AlternityNum.as_int(base.get(ability, 0))
+		var score := AlternityNum.as_int(effective.get(ability, base_score))
+		# Say where a bonus came from rather than silently showing a raised
+		# number: a mutation or permanent power moving a score is worth seeing.
+		var score_text := str(score)
+		if score != base_score:
+			score_text = "%d  (%d %+d)" % [score, base_score, score - base_score]
+
+		Widgets.table_cell(grid, ability, palette, false)
+		Widgets.table_cell(grid, score_text, palette, false, HORIZONTAL_ALIGNMENT_RIGHT)
+		Widgets.table_cell(
+			grid, str(rules.untrained_score(score)), palette, false, HORIZONTAL_ALIGNMENT_RIGHT
+		)
+		Widgets.table_cell(
+			grid, "%+d" % rules.character_resistance_modifier(raw, ability),
+			palette, false, HORIZONTAL_ALIGNMENT_RIGHT
+		)
 
 	Widgets.metric(box, "Ability points spent", str(AlternityNum.as_int(summary.get("ability_total", 0))), palette)
 
@@ -92,18 +133,22 @@ func _build_action(container: Container, summary: Dictionary) -> void:
 	Widgets.metric(box, "Actions per round", str(AlternityNum.as_int(action.get("actions", 1), 1)), palette)
 	Widgets.metric(box, "Situation die", String(action.get("die", "")), palette)
 
-	# Amazing / Good / Ordinary / Marginal are the phase thresholds, so they read
-	# best as a row rather than four separate lines.
+	# The four thresholds are one reading, so they go in a table that stays
+	# together rather than four cells stretched over the width of the window.
 	var grid := GridContainer.new()
 	grid.columns = 4
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid.add_theme_constant_override("h_separation", Widgets.GAP_SECTION)
+	grid.add_theme_constant_override("v_separation", Widgets.GAP_TIGHT)
 	box.add_child(grid)
+
 	for degree in ["amazing", "good", "ordinary", "marginal"]:
-		var cell := VBoxContainer.new()
-		cell.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		grid.add_child(cell)
-		Widgets.muted_text(cell, degree.capitalize(), palette, Widgets.FONT_CAPTION)
-		Widgets.text(cell, str(AlternityNum.as_int(action.get(degree, 0))), palette, Widgets.FONT_SUBHEADING)
+		Widgets.table_cell(grid, degree.capitalize(), palette, true, HORIZONTAL_ALIGNMENT_RIGHT)
+	for degree in ["amazing", "good", "ordinary", "marginal"]:
+		Widgets.table_cell(
+			grid, str(AlternityNum.as_int(action.get(degree, 0))),
+			palette, false, HORIZONTAL_ALIGNMENT_RIGHT
+		)
 
 
 ## The trackers, and the main reason this tab is the one open during play.
@@ -252,6 +297,13 @@ func _build_skills(container: Container) -> void:
 		return
 
 	var box := Widgets.section(container, "Skills", palette)
+	Widgets.muted_text(
+		box,
+		"A broad skill rolls its ability score at +d4. A specialty rolls that "
+		+ "ability plus its rank at +d0, or the broad score at +d4 if only the "
+		+ "broad is trained.",
+		palette, Widgets.FONT_CAPTION
+	)
 	_build_skill_rows(box, rows)
 
 
@@ -312,6 +364,8 @@ func _build_skill_rows(box: Container, rows: Array) -> void:
 			Widgets.muted_text(box, complex, palette, Widgets.FONT_CAPTION)
 
 		for note in detail.get("roll_notes", []):
+			if _is_general_rule(String(note)):
+				continue
 			Widgets.muted_text(box, "- %s" % String(note), palette, Widgets.FONT_CAPTION)
 
 		var benefits: Dictionary = detail.get("rank_benefits", {})
@@ -326,6 +380,26 @@ func _build_skill_rows(box: Container, rows: Array) -> void:
 				palette, Widgets.FONT_CAPTION,
 				palette.text if reached else palette.muted
 			)
+
+
+## Notes that are true of every skill of their kind, rather than of this one.
+##
+## skill_detail prefixes each skill's roll notes with how its score and situation
+## die are derived. That is worth stating in a detail view opened for one skill;
+## repeated down a list of forty it is noise that buries the notes that actually
+## differ. Stated once at the head of the section instead.
+const GENERAL_RULE_PREFIXES := [
+	"Score is the linked ability score",
+	"Score is linked ability +",
+	"If only the parent broad skill is trained",
+]
+
+
+func _is_general_rule(note: String) -> bool:
+	for prefix in GENERAL_RULE_PREFIXES:
+		if note.begins_with(prefix):
+			return true
+	return false
 
 
 ## Rank-benefit keys arrive as strings from JSON, so they are sorted as numbers

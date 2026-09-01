@@ -33,6 +33,10 @@ const SETTINGS := [
 ]
 
 
+## Width reserved for an ability's name, so the six steppers line up.
+const ABILITY_LABEL_WIDTH := 168
+
+
 ## The age rows, in the order they run. Mirrors AlternityRules.AGE_MODIFIERS.
 const AGE_CATEGORIES := [
 	"adolescent", "young_adult", "mature", "middle_aged", "old", "ancient",
@@ -46,11 +50,14 @@ func watched_sections() -> Array:
 
 
 func build(container: Container) -> void:
-	_build_identity(container)
-	_build_advancement(container)
-	_build_origin(container)
-	_build_abilities(container)
-	_build_profession_options(container)
+	# Who the hero is on the left, what they are made of on the right. The old
+	# UI split this tab the same way when wide.
+	var split := columns(container)
+	_build_identity(split[0])
+	_build_advancement(split[0])
+	_build_origin(split[0])
+	_build_abilities(split[1])
+	_build_profession_options(split[1])
 
 
 # --- Identity --------------------------------------------------------------
@@ -461,7 +468,9 @@ func _build_ability_row(parent: Container, ability: String) -> void:
 		"%s (%s)  %d-%d" % [ABILITY_NAMES.get(ability, ability), ability, minimum, maximum],
 		doc.get_ability(StringName(ability)),
 		minimum,
-		maximum
+		maximum,
+		1,
+		ABILITY_LABEL_WIDTH
 	)
 	# set_ability clamps and cascades; the stepper is only the input.
 	stepper.value_changed.connect(func(value: int):

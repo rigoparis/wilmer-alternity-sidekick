@@ -22,8 +22,9 @@ func watched_sections() -> Array:
 
 
 func build(container: Container) -> void:
-	_build_progress(container)
-	_build_purchased(container)
+	var split := columns(container)
+	_build_progress(split[0])
+	_build_purchased(split[1])
 
 
 func _build_progress(container: Container) -> void:

@@ -23,9 +23,11 @@ func watched_sections() -> Array:
 
 
 func build(container: Container) -> void:
+	# The budget spans both, since it counts against them together.
 	_build_budget(container)
-	_build_list(container, "perk")
-	_build_list(container, "flaw")
+	var split := columns(container)
+	_build_list(split[0], "perk")
+	_build_list(split[1], "flaw")
 
 
 func _build_budget(container: Container) -> void:

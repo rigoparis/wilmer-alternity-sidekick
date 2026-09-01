@@ -55,6 +55,22 @@ func is_available_for(_context: SheetContext) -> bool:
 	return true
 
 
+## Two hosts to distribute sections between, or one host twice when narrow.
+##
+## The old UI split five tabs into columns on a wide screen
+## (UIBuilder.add_columns, called from Basics, Perks/Flaws, Equipment, FX and
+## Summary) and the rewrite dropped it, so every tab became a single full-width
+## strip. On a maximised desktop window that puts a label at one edge of the
+## screen and its value at the other, and leaves most of the height empty.
+##
+## Returning the same container twice when compact means a tab is written once:
+## it appends to left or right without caring which layout it is in.
+func columns(container: Container, left_ratio: float = 0.5) -> Array:
+	if not ctx.is_wide_layout:
+		return [container, container]
+	return Widgets.columns(container, left_ratio)
+
+
 ## Draw the tab. Called with a fresh, empty container.
 ##
 ## Subclasses must not retain nodes across calls: the container is cleared
