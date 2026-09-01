@@ -165,6 +165,12 @@ const OPTIONAL_RULES := [
 		"description": "Permits characters of any profession to learn Psionic broad and specialty skills with a +1 SP cost surcharge above the listed price. Psionic energy pool is ceil(WIL * 0.5) (or full WIL for Fraal). Source: Player's Handbook Chapter 14.",
 	},
 	{
+		"id": "age_effects",
+		"name": "Optional Rule: Age Categories",
+		"summary": "Apply age category ability modifiers",
+		"description": "A hero's age category adjusts their ability scores: an adolescent takes -1 STR, -1 INT and -1 WIL but gains +1 DEX, while an old hero loses STR, CON and DEX and gains WIL and PER. With this rule off, every hero in the campaign is treated as a Young Adult for all rules purposes and no age modifier applies -- players may still record an age for their character, it simply does not change their scores. Source: Gamemaster Guide Table G1 p. 21.",
+	},
+	{
 		"id": "firepower_scaling",
 		"name": "Optional Rule: Firepower Scaling",
 		"summary": "Firepower vs Toughness damage degradation",

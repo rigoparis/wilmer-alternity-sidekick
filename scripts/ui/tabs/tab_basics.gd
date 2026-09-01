@@ -33,6 +33,12 @@ const SETTINGS := [
 ]
 
 
+## The age rows, in the order they run. Mirrors AlternityRules.AGE_MODIFIERS.
+const AGE_CATEGORIES := [
+	"adolescent", "young_adult", "mature", "middle_aged", "old", "ancient",
+]
+
+
 func watched_sections() -> Array:
 	# Everything: species, profession and abilities all cascade, and the setting
 	# selector changes what the whole sheet may show.
@@ -41,6 +47,7 @@ func watched_sections() -> Array:
 
 func build(container: Container) -> void:
 	_build_identity(container)
+	_build_advancement(container)
 	_build_origin(container)
 	_build_abilities(container)
 	_build_profession_options(container)
@@ -59,9 +66,95 @@ func _build_identity(container: Container) -> void:
 
 	_build_setting_picker(box)
 
-	var age := String(ctx.rules.age_category(doc.raw()))
-	if not age.is_empty():
-		Widgets.metric(box, "Age category", age.capitalize(), palette)
+	_build_age_picker(box)
+
+
+## Level and the achievement points that drive it.
+##
+## Lives here as well as on the Achievements tab because this is where the
+## hero's level is read, and levelling up was unreachable from it -- the only
+## input for earned points was a tab away.
+func _build_advancement(container: Container) -> void:
+	var doc := ctx.doc
+	var rules: AlternityRules = ctx.rules
+	var palette := ctx.palette
+	var raw := doc.raw()
+
+	var box := Widgets.section(container, "Advancement", palette)
+
+	var points := AlternityNum.as_int(raw.get("achievement_points", 0))
+	var level: int = rules.achievements.achievement_level_for_points(points)
+	Widgets.metric(box, "Achievement level", str(level), palette)
+
+	var into_level: int = rules.achievements.achievement_points_available(raw)
+	var to_next: int = rules.achievements.achievement_points_to_next_level(raw)
+	if to_next > 0:
+		Widgets.progress_metric(
+			box, "Progress to level %d" % (level + 1), into_level, into_level + to_next,
+			palette, false
+		)
+
+	# The GM awards these between adventures, so it is an input.
+	var stepper := NumberStepper.new()
+	box.add_child(stepper)
+	stepper.setup(palette, "Achievement points earned", points, 0, 999)
+	stepper.value_changed.connect(func(value: int):
+		doc.apply(CharacterDoc.ALL, func(c): rules.achievements.set_achievement_points(c, value))
+		save_requested.emit())
+
+
+## Age category, and what it is currently doing to the hero.
+##
+## A selector rather than a read-only line: age was derived and displayed with
+## no way to change it. Whether it moves any ability score depends on the
+## age_effects optional rule, so the row says which of the two it is instead of
+## leaving a control that silently does nothing.
+func _build_age_picker(parent: Container) -> void:
+	var doc := ctx.doc
+	var rules: AlternityRules = ctx.rules
+	var palette := ctx.palette
+	var current := String(rules.age_category(doc.raw()))
+
+	var label := Label.new()
+	label.text = "Age category"
+	label.add_theme_color_override("font_color", palette.muted)
+	label.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
+	parent.add_child(label)
+
+	var picker := OptionButton.new()
+	picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	picker.custom_minimum_size = Vector2(0, 42)
+	var selected := 0
+	for i in AGE_CATEGORIES.size():
+		var id := String(AGE_CATEGORIES[i])
+		picker.add_item(id.capitalize().replace("_", " "), i)
+		if id == current:
+			selected = i
+	picker.select(selected)
+	picker.item_selected.connect(func(index: int):
+		var chosen := String(AGE_CATEGORIES[index])
+		doc.apply(CharacterDoc.ALL, func(c): c["age_category"] = chosen)
+		save_requested.emit())
+	parent.add_child(picker)
+
+	if rules.optional_rule_enabled(doc.raw(), "age_effects"):
+		var mods: Array = []
+		for ability in ["STR", "DEX", "CON", "INT", "WIL", "PER"]:
+			var delta: int = rules.age_modifier(doc.raw(), ability)
+			if delta != 0:
+				mods.append("%s %+d" % [ability, delta])
+		Widgets.muted_text(
+			parent,
+			"Applies: %s" % (", ".join(mods) if not mods.is_empty() else "no ability change"),
+			palette, Widgets.FONT_CAPTION
+		)
+	else:
+		Widgets.muted_text(
+			parent,
+			"Age categories are off for this campaign, so every hero counts as a "
+			+ "Young Adult for rules purposes. Recorded here for reference only.",
+			palette, Widgets.FONT_CAPTION
+		)
 
 
 ## The control that decides which optional-setting content the rest of the sheet

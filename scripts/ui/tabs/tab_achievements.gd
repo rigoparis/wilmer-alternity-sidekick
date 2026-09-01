@@ -39,21 +39,35 @@ func _build_progress(container: Container) -> void:
 
 	Widgets.metric(box, "Achievement level", str(level), palette)
 	Widgets.metric(box, "Points earned", str(points), palette)
-	Widgets.metric(box, "Points spent", str(rules.achievements.achievement_points_spent(raw)), palette)
-	Widgets.metric(box, "Points available", str(rules.achievements.achievement_points_available(raw)), palette)
 
+	# achievement_points_available is progress past the last level threshold, not
+	# a wallet. Showing it as "Points available" beside "Points spent" -- which is
+	# a count of skill points -- put two unrelated currencies side by side and
+	# read as though benefits were bought with achievement points. They are not:
+	# skill_points_used includes achievement spending, so benefits come out of
+	# the one skill-point pool like everything else.
+	var into_level: int = rules.achievements.achievement_points_available(raw)
 	var to_next: int = rules.achievements.achievement_points_to_next_level(raw)
 	if to_next > 0:
-		Widgets.metric(box, "To next level", "%d points" % to_next, palette)
+		Widgets.progress_metric(
+			box, "Progress to level %d" % (level + 1), into_level, into_level + to_next,
+			palette, false
+		)
+		Widgets.muted_text(
+			box, "%d more point%s to the next level." % [to_next, "" if to_next == 1 else "s"],
+			palette, Widgets.FONT_CAPTION
+		)
 
-	var skill_bonus: int = rules.achievements.achievement_skill_bonus(raw)
-	if skill_bonus != 0:
-		Widgets.metric(box, "Skill points from level", "+%d" % skill_bonus, palette)
+	# Every point banked into a level becomes a skill point, which is the actual
+	# reward for levelling and the thing worth showing here.
+	var from_levels: int = rules.achievements.achievement_points_for_current_level(points) 		+ rules.achievements.achievement_skill_bonus(raw)
+	if from_levels != 0:
+		Widgets.metric(box, "Skill points earned from levels", "+%d" % from_levels, palette)
 
 	Widgets.separator(box, palette)
 
 	# The GM awards points between adventures, so this is an input rather than a
-	# derived value.
+	# derived value. It is also on Basics, next to the level it drives.
 	var stepper := NumberStepper.new()
 	box.add_child(stepper)
 	stepper.setup(palette, "Achievement points earned", points, 0, 999)
@@ -68,6 +82,17 @@ func _build_purchased(container: Container) -> void:
 	var palette := ctx.palette
 
 	var box := Widgets.section(container, "Purchased Benefits", palette)
+
+	# Named in the currency they are actually paid in, against the pool they are
+	# actually drawn from.
+	var summary := doc.summary()
+	var sp_used := AlternityNum.as_int(summary.get("skill_points_used", 0))
+	var sp_left := AlternityNum.as_int(summary.get("skill_points_remaining", 0))
+	Widgets.progress_metric(box, "Skill points", sp_used, sp_used + sp_left, palette)
+	Widgets.metric(
+		box, "Spent on benefits",
+		"%d SP" % rules.achievements.achievement_points_spent(doc.raw()), palette
+	)
 
 	var purchased: Array = rules.achievements.selected_achievements(doc.raw())
 	if purchased.is_empty():
@@ -217,7 +242,12 @@ func _remove_flaw_entries(achievement: Dictionary) -> Array:
 func _budget_text(selected_ids: Array) -> String:
 	var rules: AlternityRules = ctx.rules
 	var raw := ctx.doc.raw()
-	var available: int = rules.achievements.achievement_points_available(raw)
+	# Benefits are paid for in skill points, so this is what is left of the skill
+	# budget -- not achievement_points_available, which is progress to the next
+	# level and buys nothing.
+	var available: int = AlternityNum.as_int(
+		ctx.doc.summary().get("skill_points_remaining", 0)
+	)
 
 	var pending := 0
 	for entry_id in selected_ids:

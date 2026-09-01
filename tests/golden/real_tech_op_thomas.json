@@ -113,6 +113,7 @@
 			"2a": true,
 			"2b": false,
 			"2c": true,
+			"age_effects": false,
 			"dazed": true,
 			"firepower_scaling": false,
 			"psionic_talents": false

@@ -100,10 +100,18 @@ func _build_rule(parent: Container, rule: Dictionary, enabled: bool) -> void:
 	Widgets.muted_text(block, String(rule.get("summary", "")), _palette, Widgets.FONT_CAPTION)
 	Widgets.text(block, String(rule.get("description", "")), _palette, Widgets.FONT_CAPTION)
 
-	var toggle := Widgets.toggle_row(block, "Enabled", enabled, _palette)
+	# The label used to read "Enabled" whether the rule was on or off, so the row
+	# named a state it was not necessarily in and you had to read the switch to
+	# know which. It now says what is true.
+	var toggle := Widgets.toggle_row(block, _rule_state_label(enabled), enabled, _palette)
 	toggle.toggled.connect(func(pressed: bool):
+		toggle.text = _rule_state_label(pressed)
 		# Record only the net change: toggling twice leaves nothing to apply.
 		if pressed == enabled:
 			_changed.erase(rule_id)
 		else:
 			_changed[rule_id] = pressed)
+
+
+func _rule_state_label(enabled: bool) -> String:
+	return "Using this rule" if enabled else "Not using this rule"

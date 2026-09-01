@@ -611,8 +611,20 @@ func age_category(character: Dictionary) -> String:
 	return cat if AGE_MODIFIERS.has(cat) else "young_adult"
 
 
+## The age category used for rules purposes.
+##
+## With the age optional rule off the campaign treats every hero as a young
+## adult -- the zero-modifier row. The recorded category is deliberately left
+## alone and still displayed, so a player can note how old their hero is without
+## it moving any ability score.
+func effective_age_category(character: Dictionary) -> String:
+	if not optional_rule_enabled(character, "age_effects"):
+		return "young_adult"
+	return age_category(character)
+
+
 func age_modifier(character: Dictionary, ability: String) -> int:
-	var cat := age_category(character)
+	var cat := effective_age_category(character)
 	var mods: Dictionary = AGE_MODIFIERS.get(cat, {})
 	return _as_int(mods.get(ability, 0))
 
@@ -620,7 +632,7 @@ func age_modifier(character: Dictionary, ability: String) -> int:
 func age_adjusted_abilities(character: Dictionary) -> Dictionary:
 	var result := {}
 	var abilities: Dictionary = character.get("abilities", {})
-	var cat := age_category(character)
+	var cat := effective_age_category(character)
 	var mods: Dictionary = AGE_MODIFIERS.get(cat, {})
 	var current_species := get_species_by_id(_as_int(character.get("species_id", 0)))
 	var limits_dict: Dictionary = current_species.get("ability_limits", {})

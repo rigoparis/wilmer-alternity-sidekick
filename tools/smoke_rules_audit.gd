@@ -220,6 +220,8 @@ func _init() -> void:
 	assert_eq.call(rules.character_resistance_modifier(enc_char, "INT"), 0, "INT RM unaffected by encumbrance")
 
 	# --- 10. Age Modifiers ---
+	# Age categories are an optional rule now, so every case here turns it on
+	# explicitly. The rule being off is itself asserted at the end.
 	print("Testing Age Modifiers...")
 	var mature_char: Dictionary = rules.default_character()
 	mature_char["species_id"] = 0 # Human (limits 4-14)
@@ -227,6 +229,7 @@ func _init() -> void:
 	mature_char["abilities"]["PER"] = 10
 	mature_char["age_category"] = "mature" # +1 INT, +1 PER
 	rules.ensure_character_shape(mature_char)
+	rules.set_optional_rule(mature_char, "age_effects", true)
 	var mature_eff: Dictionary = rules.effective_abilities(mature_char)
 	assert_eq.call(mature_eff.INT, 11, "Mature Human INT 10 -> 11")
 	assert_eq.call(mature_eff.PER, 11, "Mature Human PER 10 -> 11")
@@ -238,7 +241,21 @@ func _init() -> void:
 	max_int_char["abilities"]["INT"] = 14
 	max_int_char["age_category"] = "mature"
 	rules.ensure_character_shape(max_int_char)
+	rules.set_optional_rule(max_int_char, "age_effects", true)
 	assert_eq.call(rules.effective_abilities(max_int_char).INT, 14, "Mature age bonus cannot exceed species max (14)")
+
+	# With the rule off the campaign treats everyone as a young adult, while the
+	# recorded category is left alone so a player can still note their age.
+	var ageless: Dictionary = rules.default_character()
+	ageless["species_id"] = 0
+	ageless["abilities"]["INT"] = 10
+	ageless["abilities"]["PER"] = 10
+	ageless["age_category"] = "mature"
+	rules.ensure_character_shape(ageless)
+	assert_eq.call(rules.effective_abilities(ageless).INT, 10, "Age rule off leaves INT alone")
+	assert_eq.call(rules.effective_abilities(ageless).PER, 10, "Age rule off leaves PER alone")
+	assert_eq.call(rules.effective_age_category(ageless), "young_adult", "Age rule off rules as Young Adult")
+	assert_eq.call(rules.age_category(ageless), "mature", "Age rule off still records the chosen age")
 
 	# --- 11. Damage Propagation & Overflow ---
 	print("Testing Damage Propagation & Overflow...")
