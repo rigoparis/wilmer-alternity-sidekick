@@ -57,6 +57,9 @@ var _buttons: Dictionary = {}
 var _instances: Dictionary = {}
 var _active_id: String = ""
 
+## Tab ids currently in the bar, so a rebuild only happens when the set changes.
+var _listed_ids: Array = []
+
 
 func setup(ctx: SheetContext, store: CharacterStore) -> void:
 	_ctx = ctx
@@ -176,7 +179,13 @@ func _build_tab_bar(parent: Container) -> void:
 	_tab_bar.add_theme_constant_override("separation", 6)
 	scroll.add_child(_tab_bar)
 
+	_populate_tab_bar()
+
+
+func _populate_tab_bar() -> void:
+	_listed_ids = []
 	for definition in _available_tabs():
+		_listed_ids.append(String(definition["id"]))
 		var button := Button.new()
 		button.text = String(definition["label"])
 		button.toggle_mode = true
@@ -255,6 +264,39 @@ func _refresh_header() -> void:
 func _on_document_changed(sections: PackedStringArray) -> void:
 	if sections.has(String(CharacterDoc.META)):
 		_refresh_header()
+	_refresh_tab_bar()
+
+
+## Rebuild the tab bar when the set of applicable tabs changes.
+##
+## Which tabs apply is not fixed for the life of a sheet: choosing the Mutant
+## species makes Mutations apply, and becoming a Mindwalker makes Psionics
+## apply. The bar was built once in setup(), so neither could ever appear --
+## you had to close and reopen the character.
+func _refresh_tab_bar() -> void:
+	var ids: Array = []
+	for definition in _available_tabs():
+		ids.append(String(definition["id"]))
+	if ids == _listed_ids:
+		return
+
+	_listed_ids = ids
+	_buttons.clear()
+	for child in _tab_bar.get_children():
+		_tab_bar.remove_child(child)
+		child.queue_free()
+	_populate_tab_bar()
+
+	# A tab that stopped applying must not stay on screen.
+	if not ids.has(_active_id):
+		for tab_id in _instances:
+			_instances[tab_id].visible = false
+		_active_id = ""
+		if not ids.is_empty():
+			_select_tab(String(ids[0]))
+	else:
+		for tab_id in _buttons:
+			_buttons[tab_id].button_pressed = tab_id == _active_id
 
 
 func _on_dirty_changed(is_dirty: bool) -> void:

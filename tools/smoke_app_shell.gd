@@ -167,25 +167,20 @@ func _test_tab_availability() -> void:
 
 	check_false(sheet._buttons.has("mutations"), "Mutations hidden before the species changes")
 
+	# Changing the species on the open sheet must be enough. Reopening the sheet
+	# here would hide the real bug: the tab bar was built once in setup(), so
+	# Mutations could never appear without closing and reopening the character.
 	var mutant_id: int = rules.mutations.mutant_species_id()
 	doc.set_species_id(mutant_id)
 	await process_frame
 
-	# The sheet rebuilds its tab bar when reopened, which is what the shell does
-	# on a species change in practice.
-	_shell._open_sheet(doc)
-	await process_frame
-	await process_frame
+	check_true(sheet._buttons.has("mutations"), "Mutations appears without reopening the sheet")
 
-	var reopened = _sheet_screen()
-	check_true(reopened._buttons.has("mutations"), "Mutations appears for a Mutant hero")
-
-	# Put it back so later tests see the original character.
+	# And it must disappear again, not linger.
 	doc.set_species_id(0)
-	_shell._open_sheet(doc)
 	await process_frame
-	await process_frame
-	check_false(_sheet_screen()._buttons.has("mutations"), "Mutations hides again when the species reverts")
+	check_false(sheet._buttons.has("mutations"), "Mutations hides again when the species reverts")
+	check_ne(sheet._active_id, "mutations", "a tab that stopped applying is not left showing")
 
 
 func _test_cybertech_edits() -> void:
