@@ -19,6 +19,7 @@ const Context := preload("res://scripts/ui/sheet_context.gd")
 const TAB_BASICS := preload("res://scenes/ui/tabs/tab_basics.tscn")
 const TAB_MUTATIONS := preload("res://scenes/ui/tabs/tab_mutations.tscn")
 const TAB_SUMMARY := preload("res://scenes/ui/tabs/tab_summary.tscn")
+const TAB_FX := preload("res://scenes/ui/tabs/tab_fx.tscn")
 const OPTIONAL_RULES_ROUTE := preload("res://scenes/ui/routes/optional_rules_route.tscn")
 
 var _rules: AlternityRules
@@ -38,6 +39,7 @@ func _run() -> void:
 	await _test_mutations_tab()
 	await _test_summary_tab()
 	await _test_summary_is_self_contained()
+	await _test_permanent_fx_effects_render()
 	await _test_optional_rules_route()
 
 	finish()
@@ -287,6 +289,53 @@ func _test_summary_is_self_contained() -> void:
 		)
 
 	tab.queue_free()
+
+
+## A hero with an always-active power must not take the tab down with them.
+##
+## permanent_fx_effects_summary returns {name, description} dictionaries. Both
+## Summary and the FX tab passed each entry straight to String(), which has no
+## Dictionary constructor, so both sections crashed -- but only for a character
+## who actually had a permanent power, which no fixture or screenshot hero did.
+## Found by driving the real app against a real saved character.
+func _test_permanent_fx_effects_render() -> void:
+	var doc := Doc.new(_rules)
+	doc.set_species_id(0)
+	doc.set_profession_id(0)
+
+	var permanent_name := [""]
+	doc.apply(CharacterDoc.ALL, func(c):
+		_rules.fx.set_fx_talent(c, true)
+		for broad in _rules.fx.get_broad_skills_for_character(c):
+			var broad_name := String(broad.get("name", ""))
+			_rules.fx.add_fx_skill(c, broad_name)
+			for power in _rules.fx.get_specialty_skills_for_broad_and_character(broad_name, c):
+				var power_name := String(power.get("name", ""))
+				if not _rules.fx.can_fx_skill_be_permanent(power_name):
+					continue
+				_rules.fx.add_fx_skill(c, power_name)
+				_rules.fx.set_fx_skill_permanent(c, power_name, true)
+				permanent_name[0] = power_name
+				break
+			if not permanent_name[0].is_empty():
+				break)
+
+	if not check(not permanent_name[0].is_empty(), "the catalog has a power that can be permanent"):
+		return
+
+	var effects: Array = _rules.fx.permanent_fx_effects_summary(doc.raw())
+	check_true(not effects.is_empty(), "the hero has an always-active power recorded")
+
+	# Both tabs render that list, and both used to die on it.
+	for scene in [TAB_SUMMARY, TAB_FX]:
+		var tab = _mount(scene, doc)
+		await process_frame
+		check_true(tab.get_child_count() > 0, "the tab still renders with a permanent power")
+		check_true(
+			_any_label_contains(_labels_in(tab), permanent_name[0]),
+			"the always-active power is named (%s)" % permanent_name[0]
+		)
+		tab.queue_free()
 
 
 ## Every piece of text in the subtree, so a test can ask what is on screen.

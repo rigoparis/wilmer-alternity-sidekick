@@ -104,21 +104,28 @@ func _build_abilities(container: Container, summary: Dictionary) -> void:
 	for ability in ABILITIES:
 		var base_score := AlternityNum.as_int(base.get(ability, 0))
 		var score := AlternityNum.as_int(effective.get(ability, base_score))
-		# Say where a bonus came from rather than silently showing a raised
-		# number: a mutation or permanent power moving a score is worth seeing.
+		# Flag that a score is raised without spelling out the arithmetic. The
+		# long form ("14  (13 +1)") was wide enough to wrap inside its column,
+		# which split one ability across three lines and broke the table.
 		var score_text := str(score)
 		if score != base_score:
-			score_text = "%d  (%d %+d)" % [score, base_score, score - base_score]
+			score_text = "%d (%+d)" % [score, score - base_score]
 
-		Widgets.table_cell(grid, ability, palette, false)
-		Widgets.table_cell(grid, score_text, palette, false, HORIZONTAL_ALIGNMENT_RIGHT)
-		Widgets.table_cell(
-			grid, str(rules.untrained_score(score)), palette, false, HORIZONTAL_ALIGNMENT_RIGHT
-		)
-		Widgets.table_cell(
-			grid, "%+d" % rules.character_resistance_modifier(raw, ability),
-			palette, false, HORIZONTAL_ALIGNMENT_RIGHT
-		)
+		var cells := [
+			Widgets.table_cell(grid, ability, palette, false),
+			Widgets.table_cell(grid, score_text, palette, false, HORIZONTAL_ALIGNMENT_RIGHT),
+			Widgets.table_cell(
+				grid, str(rules.untrained_score(score)), palette, false, HORIZONTAL_ALIGNMENT_RIGHT
+			),
+			Widgets.table_cell(
+				grid, "%+d" % rules.character_resistance_modifier(raw, ability),
+				palette, false, HORIZONTAL_ALIGNMENT_RIGHT
+			),
+		]
+		# Numbers must never wrap: a wrapped cell pushes its row out of line with
+		# every other row in the table.
+		for cell in cells:
+			(cell as Label).autowrap_mode = TextServer.AUTOWRAP_OFF
 
 	Widgets.metric(box, "Ability points spent", str(AlternityNum.as_int(summary.get("ability_total", 0))), palette)
 
@@ -456,7 +463,30 @@ func _build_fx(container: Container) -> void:
 			Widgets.muted_text(box, description, palette, Widgets.FONT_CAPTION)
 
 	for effect in rules.fx.permanent_fx_effects_summary(raw):
-		Widgets.muted_text(box, String(effect), palette, Widgets.FONT_CAPTION)
+		_build_permanent_effect(box, effect)
+
+
+## One always-active power, named and described.
+##
+## permanent_fx_effects_summary returns {name, description} dictionaries, not
+## strings. Both this tab and the FX tab passed each entry straight to String(),
+## which has no Dictionary constructor -- so the section crashed for any hero who
+## actually had a permanent power, and only for those heroes.
+func _build_permanent_effect(box: Container, effect: Variant) -> void:
+	var palette := ctx.palette
+	if typeof(effect) != TYPE_DICTIONARY:
+		Widgets.muted_text(box, str(effect), palette, Widgets.FONT_CAPTION)
+		return
+	var entry: Dictionary = effect
+	var name := String(entry.get("name", "")).strip_edges()
+	var description := String(entry.get("description", "")).strip_edges()
+	if name.is_empty() and description.is_empty():
+		return
+	Widgets.muted_text(
+		box,
+		"%s: %s" % [name, description] if not description.is_empty() else name,
+		palette, Widgets.FONT_CAPTION
+	)
 
 
 func _build_perks_flaws(container: Container) -> void:

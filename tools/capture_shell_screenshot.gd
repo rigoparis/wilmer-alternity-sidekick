@@ -81,7 +81,13 @@ func _seed_store() -> void:
 				for power in rules.fx.get_specialty_skills_for_broad_and_character(
 					String(broad.get("name", "")), c
 				):
-					rules.fx.add_fx_skill(c, String(power.get("name", "")))
+					var power_name := String(power.get("name", ""))
+					rules.fx.add_fx_skill(c, power_name)
+					# Make one power always-active. Without a permanent power the
+					# permanent-effects block never renders, which is how a crash
+					# in it survived every screenshot pass.
+					if rules.fx.can_fx_skill_be_permanent(power_name):
+						rules.fx.set_fx_skill_permanent(c, power_name, true)
 					break
 				break
 

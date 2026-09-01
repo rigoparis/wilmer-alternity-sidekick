@@ -73,8 +73,23 @@ func _build_pool(container: Container) -> void:
 
 	Widgets.metric(box, "Skill points spent on FX", str(rules.fx.fx_skill_purchase_points_used(doc.raw())), palette)
 
+	# Each entry is a {name, description} dictionary. Passing one to String()
+	# has no valid constructor and took the whole tab down for any hero with a
+	# permanent power -- which is why this only ever failed on a real character.
 	for effect in rules.fx.permanent_fx_effects_summary(doc.raw()):
-		Widgets.muted_text(box, String(effect), palette, Widgets.FONT_CAPTION)
+		if typeof(effect) != TYPE_DICTIONARY:
+			Widgets.muted_text(box, str(effect), palette, Widgets.FONT_CAPTION)
+			continue
+		var entry: Dictionary = effect
+		var effect_name := String(entry.get("name", "")).strip_edges()
+		var description := String(entry.get("description", "")).strip_edges()
+		if effect_name.is_empty() and description.is_empty():
+			continue
+		Widgets.muted_text(
+			box,
+			"%s: %s" % [effect_name, description] if not description.is_empty() else effect_name,
+			palette, Widgets.FONT_CAPTION
+		)
 
 
 func _build_picker(container: Container) -> void:
