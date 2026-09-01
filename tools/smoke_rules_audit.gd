@@ -983,6 +983,24 @@ func _init() -> void:
 	assert_true.call(not armor_rows.is_empty(), "Body Plating generates cybertech armor row")
 	assert_eq.call(armor_rows[0]["item"]["combat"]["li"], "d6", "Body Plating (Good) LI armor matches")
 
+	# --- 26B. Cyber Gear & Computer Hardware (Table P36) ---
+	var comp_gauntlet := rules.get_equipment_item_by_id("equip_p36_computer_gauntlet")
+	assert_true.call(not comp_gauntlet.is_empty(), "Computer Gauntlet exists in equipment catalog")
+	assert_eq.call(comp_gauntlet.get("pl", 0), 7, "Computer Gauntlet is PL 7")
+	assert_eq.call(comp_gauntlet.get("category", ""), "Computers and Cyber Gear", "Computer Gauntlet category is Computers and Cyber Gear")
+	assert_eq.call(comp_gauntlet.get("class", ""), "Gauntlets", "Computer Gauntlet class is Gauntlets")
+
+	var gridcaster_gauntlet := rules.get_equipment_item_by_id("equip_p36_gridcaster_gauntlet")
+	assert_true.call(not gridcaster_gauntlet.is_empty(), "Gridcaster Gauntlet exists in equipment catalog")
+
+	var gridsuit := rules.get_equipment_item_by_id("equip_p36_gridsuit")
+	assert_true.call(not gridsuit.is_empty(), "Gridsuit exists in equipment catalog")
+	assert_eq.call(gridsuit.get("class", ""), "Grid Interface Devices", "Gridsuit is a Grid Interface Device")
+
+	var coproc_pl6 := rules.get_equipment_item_by_id("equip_p36_coprocessor_pl6")
+	assert_true.call(not coproc_pl6.is_empty(), "Co-Processor PL 6 exists in equipment catalog")
+	assert_eq.call(coproc_pl6.get("cost", 0), 400, "Co-Processor PL 6 cost is 400")
+
 	# --- 26. Dexterity (DEX) Skills, Specialties & Mechanics ---
 	print("Testing DEX Skills, Specialties & Mechanics...")
 	# 1. Catalog Costs, Affinities, and Trained-Only Verification
