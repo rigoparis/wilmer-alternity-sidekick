@@ -19,6 +19,7 @@ const TAB_BASICS := preload("res://scenes/ui/tabs/tab_basics.tscn")
 const TAB_ACHIEVEMENTS := preload("res://scenes/ui/tabs/tab_achievements.tscn")
 const TAB_EQUIPMENT := preload("res://scenes/ui/tabs/tab_equipment.tscn")
 const TAB_MUTATIONS := preload("res://scenes/ui/tabs/tab_mutations.tscn")
+const TAB_FX := preload("res://scenes/ui/tabs/tab_fx.tscn")
 const TAB_CYBERTECH := preload("res://scenes/ui/tabs/tab_cybertech.tscn")
 const TAB_PERKS_FLAWS := preload("res://scenes/ui/tabs/tab_perks_flaws.tscn")
 
@@ -29,6 +30,7 @@ const TABS := [
 	{"id": "cybertech", "label": "Cybertech", "scene": TAB_CYBERTECH},
 	{"id": "equipment", "label": "Equipment", "scene": TAB_EQUIPMENT},
 	{"id": "achievements", "label": "Achievements", "scene": TAB_ACHIEVEMENTS},
+	{"id": "fx", "label": "FX", "scene": TAB_FX},
 	{"id": "mutations", "label": "Mutations", "scene": TAB_MUTATIONS},
 ]
 
