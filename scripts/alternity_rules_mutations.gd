@@ -260,6 +260,9 @@ func can_add_mutation_advantage(character: Dictionary, mutation: Dictionary) -> 
 	var mutation_id := String(mutation.get("id", ""))
 	if mutation_id.is_empty() or get_mutation_advantage_by_id(mutation_id).is_empty():
 		return {"allowed": false, "reason": "Unknown mutation."}
+	var mutation_setting := String(mutation.get("setting", ""))
+	if not mutation_setting.is_empty() and not _get_parent().is_setting_available(character, mutation_setting):
+		return {"allowed": false, "reason": "Requires %s setting." % mutation_setting}
 	if _mutation_selected(character, "advantages", mutation_id):
 		return {"allowed": false, "reason": "Already selected."}
 	var remaining := mutation_advantage_points_remaining(character)
@@ -285,6 +288,9 @@ func can_add_mutation_drawback(character: Dictionary, drawback: Dictionary) -> D
 	var drawback_id := String(drawback.get("id", ""))
 	if drawback_id.is_empty() or get_mutation_drawback_by_id(drawback_id).is_empty():
 		return {"allowed": false, "reason": "Unknown drawback."}
+	var drawback_setting := String(drawback.get("setting", ""))
+	if not drawback_setting.is_empty() and not _get_parent().is_setting_available(character, drawback_setting):
+		return {"allowed": false, "reason": "Requires %s setting." % drawback_setting}
 	if _mutation_selected(character, "drawbacks", drawback_id):
 		return {"allowed": false, "reason": "Already selected."}
 	var remaining := mutation_drawback_points_remaining(character)
@@ -711,7 +717,7 @@ func _roll_mutation_selection(character: Dictionary, selected_key: String, catal
 		var tier := String(tier_value)
 		var needed: int = AlternityNum.as_int(distribution.get(tier, 0))
 		for _index in range(needed):
-			var mutation := _random_mutation_from_tier(catalog, tier, selected)
+			var mutation := _random_mutation_from_tier(character, catalog, tier, selected)
 			if mutation.is_empty():
 				failed.append(tier)
 				continue
@@ -727,13 +733,16 @@ func _roll_mutation_selection(character: Dictionary, selected_key: String, catal
 	}
 
 
-func _random_mutation_from_tier(catalog: Array, tier: String, excluded: Array) -> Dictionary:
+func _random_mutation_from_tier(character: Dictionary, catalog: Array, tier: String, excluded: Array) -> Dictionary:
 	var candidates := []
 	for mutation_value in catalog:
 		if typeof(mutation_value) != TYPE_DICTIONARY:
 			continue
 		var mutation: Dictionary = mutation_value
 		var mutation_id := String(mutation.get("id", ""))
+		var mutation_setting := String(mutation.get("setting", ""))
+		if not mutation_setting.is_empty() and not _get_parent().is_setting_available(character, mutation_setting):
+			continue
 		if String(mutation.get("tier", "")) == tier and not excluded.has(mutation_id):
 			candidates.append(mutation)
 	if candidates.is_empty():

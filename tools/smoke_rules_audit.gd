@@ -1916,4 +1916,35 @@ func _init() -> void:
 	assert_true.call(bool(res_rem.get("ok", false)), "Remove Flaw purchase succeeds at Level 10")
 	assert_true.call(not rules.is_flaw_selected(ach_hero, "clueless"), "Clueless flaw has been eliminated")
 
+	# --- 35. Mutations Architecture & System Audit (PHB Chapter 13 & Dark*Matter) ---
+	print("Testing Mutations Architecture & System Audit...")
+	assert_eq.call(rules.mutation_advantages.size(), 60, "All 60 canonical mutation advantages cataloged")
+	assert_eq.call(rules.mutation_drawbacks.size(), 24, "All 24 canonical mutation drawbacks cataloged")
+
+	var mut_char: Dictionary = rules.default_character()
+	mut_char["species_id"] = rules.mutations.mutant_species_id()
+	mut_char["abilities"] = {"STR": 14, "DEX": 14, "CON": 14, "INT": 14, "WIL": 14, "PER": 14}
+	rules.ensure_character_shape(mut_char)
+	assert_true.call(rules.mutations.mutations_enabled(mut_char), "Mutations enabled for Mutant species")
+
+	# Configure point buy distribution with 4 advantage points & 4 drawback points (1 Amazing advantage, 1 Extreme drawback)
+	rules.mutations.set_mutation_generation_mode(mut_char, "player")
+	rules.mutations.set_mutation_points(mut_char, 4, 4)
+	rules.mutations.set_mutation_distribution(mut_char, "drawback", "Slight:0|Moderate:0|Extreme:1")
+
+	# Add Hyper STR (Amazing: +3 STR, costs 4 MP) and Major Physical Change (Extreme: 4 DP)
+	var add_adv_res = rules.mutations.add_mutation_advantage(mut_char, "hyper_str")
+	assert_true.call(bool(add_adv_res.get("ok", false)), "Hyper STR advantage added successfully")
+	var add_drw_res = rules.mutations.add_mutation_drawback(mut_char, "major_physical_change")
+	assert_true.call(bool(add_drw_res.get("ok", false)), "Major Physical Change drawback added successfully")
+
+	# Verify Hyper STR raises STR 14 to 17 past human species max (14)
+	var eff_mut_stats: Dictionary = rules.effective_abilities(mut_char)
+	assert_eq.call(eff_mut_stats["STR"], 17, "Hyper STR raises STR from 14 to 17, bypassing human maximum (14)")
+	assert_eq.call(rules.equipment.strength_damage_bonus(eff_mut_stats["STR"]), 4, "STR 17 grants +4 melee damage bonus")
+
+	# Advantage cap enforcement: Cannot add a second Amazing mutation
+	var add_adv_res2 = rules.mutations.add_mutation_advantage(mut_char, "hyper_dex")
+	assert_true.call(not bool(add_adv_res2.get("ok", false)), "Cannot add 2nd Amazing mutation (cap is 1)")
+
 	finish()
