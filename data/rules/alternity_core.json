@@ -55,7 +55,8 @@
       "notes": [
         "Human 5 point skill bonus",
         "Human 1 extra broad skill bonus"
-      ]
+      ],
+      "description": "The baseline species, and the most numerous and adaptable in the Verge. Humans have no ability extremes in either direction -- every score runs the full 4 to 14 -- and no innate special abilities. What they get instead is breadth: 5 extra skill points and one extra broad skill at creation, making them the most flexible starting hero and the easiest species to build any profession on."
     },
     {
       "id": 1,
@@ -108,7 +109,8 @@
         "Fraal talents or Diplomats with Mindwalker as secondary profession use WIL for psionic energy points instead of one-half WIL. Source: Player's Handbook p. 23.",
         "Fraal Mindwalkers use WIL x 1.5 for psionic energy points instead of WIL x 1. Source: Player's Handbook p. 23.",
         "Telepathy is one of every fraal hero's free broad skills. Source: Player's Handbook p. 23 and Table P4."
-      ]
+      ],
+      "description": "A frail, long-lived, telepathic species who arrived in human space long before humans reached the stars, and who are now found among them as advisors, healers and scholars. Fraal are physically weak -- their STR, DEX and CON are capped well below human maximums -- but are the strongest minds available to a player, with high INT, WIL and PER floors as well as ceilings. Every fraal is psionic and begins with Telepathy as a free broad skill, and fraal draw on a larger psionic energy pool than other species."
     },
     {
       "id": 2,
@@ -159,7 +161,8 @@
       "notes": [
         "Mechalus Computer Operation Skill Bonus: -1 step when using Knowledge-Computer Operations and Computer Science-Hacking when merged",
         "Mechalus Cybernetic Enhancement"
-      ]
+      ],
+      "description": "Also called the Aleerin: a species that has integrated technology into its own biology, threaded through with organic circuitry that lets them interface directly with machines. A mechalus can merge with a computer system and gains a bonus when doing so. They are sturdy and clever -- high STR and INT floors -- but socially reserved, with a lower PER ceiling than most. Their bodies also tolerate far more cybertech than other species."
     },
     {
       "id": 3,
@@ -213,7 +216,8 @@
         "Sesheyan Falling: do not suffer impact damage if conscious and can use wings",
         "Sesheyan Night Vision: ignore low illumination penalties",
         "Sesheyan Light Sensitivity: +1/+2/+3 step penalty for ordinary/good/amazing illumination"
-      ]
+      ],
+      "description": "A winged, nocturnal species from a dark jungle world, brought into human space as indentured labour and still largely bound to it. Sesheyan are quick and strong-willed but fragile, with the lowest CON ceiling of the playable species. Their wings let them glide, they see perfectly in the dark and ignore low-light penalties, and they take no impact damage from a fall while conscious -- but bright light hurts them, costing an escalating step penalty as illumination rises."
     },
     {
       "id": 4,
@@ -265,7 +269,8 @@
         "T'sa Action Check bonus: base die is -d4",
         "T'sa Body Armor: natural armor of d4+1 (LI), d4 (HI), d4-1 (En)",
         "T'sa Juryrig Bonus: -1 step to Technical Science-Juryrig skill check"
-      ]
+      ],
+      "description": "A small, fast-talking, fast-moving reptilian species with a cultural obsession with tinkering and invention. T'sa are the quickest heroes available -- the highest DEX floor and ceiling of any species, and an improved action check die -- and are clever with machines, taking a bonus when jury-rigging. Their scaled hide gives them light natural armour. They are physically slight, with low STR and CON caps."
     },
     {
       "id": 5,
@@ -318,7 +323,8 @@
         "Weren Natural Weapon: on successfull Unarmed Attack-brawl check claws do d4w/d4+2w/d4m (LI/O) plus any STR bonus",
         "Weren Camouflage: +1 step to ranged attacks vs. weren",
         "Weren Primitive Culture: +2 step penalty when using any items of PL4 or higher"
-      ]
+      ],
+      "description": "A huge, furred, immensely strong species from a cold world, whose culture is pre-industrial and whose warriors are prized and feared. Weren have the highest STR and CON of any playable species and are tougher than their CON alone suggests, gaining half again the usual durability. Their claws are a natural weapon in unarmed combat and their fur makes them harder to hit at range. Against that, their background leaves them badly out of step with advanced equipment, taking a heavy penalty with anything of Progress Level 4 or higher."
     },
     {
       "id": 6,
@@ -366,7 +372,8 @@
         125,
         155
       ],
-      "notes": []
+      "notes": [],
+      "description": "A human whose genome has been altered -- by radiation, engineering, disease or inheritance -- trading stability for capability. Mutants use the human ability range and gain no fixed racial benefits. Instead they receive mutation points, spent on advantages drawn from the mutation tables and offset by drawbacks, so no two mutant heroes have the same abilities. The Mutations tab handles rolling and spending them."
     }
   ],
   "skills": [

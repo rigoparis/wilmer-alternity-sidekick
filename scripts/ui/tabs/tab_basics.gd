@@ -238,10 +238,116 @@ func _build_origin(container: Container) -> void:
 		func(id: int): doc.set_profession_id(id)
 	)
 
-	var species := rules.get_species_by_id(doc.get_species_id())
-	var summary := String(species.get("summary", species.get("description", "")))
-	if not summary.is_empty():
-		Widgets.muted_text(box, summary, palette, Widgets.FONT_CAPTION)
+	_build_species_detail(box)
+	_build_profession_detail(box)
+
+
+## What the chosen species is, and what taking it actually gives you.
+##
+## The tab showed a species picker and nothing else -- it read species["summary"],
+## a key the data does not have, so the line never rendered and the mechanical
+## notes that do exist were never surfaced anywhere. Choosing a race meant
+## knowing the manual already, which is the opposite of the point.
+func _build_species_detail(parent: Container) -> void:
+	var rules: AlternityRules = ctx.rules
+	var palette := ctx.palette
+	var raw := ctx.doc.raw()
+	var species := rules.get_species_by_id(ctx.doc.get_species_id())
+	if species.is_empty():
+		return
+
+	Widgets.separator(parent, palette)
+	Widgets.subheading(parent, String(species.get("name", "Species")), palette)
+
+	var description := String(species.get("description", "")).strip_edges()
+	if not description.is_empty():
+		Widgets.text(parent, description, palette, Widgets.FONT_CAPTION)
+
+	# Derived from the same fields the rules read, so this cannot drift from what
+	# the species actually does.
+	var limits: Dictionary = species.get("ability_limits", {})
+	var bands: Array = []
+	for ability in ABILITIES:
+		var band: Array = limits.get(ability, [])
+		if band.size() >= 2:
+			bands.append("%s %d-%d" % [
+				ability, AlternityNum.as_int(band[0]), AlternityNum.as_int(band[1])
+			])
+	if not bands.is_empty():
+		Widgets.metric(parent, "Ability range", "  ".join(bands), palette)
+
+	var free_names: Array = []
+	for skill_id in rules.get_free_skill_ids(raw):
+		var skill_name := rules.skill_name_for_id(AlternityNum.as_int(skill_id))
+		if not skill_name.is_empty():
+			free_names.append(skill_name)
+	if not free_names.is_empty():
+		Widgets.metric(parent, "Free broad skills", ", ".join(free_names), palette)
+
+	var skill_bonus := AlternityNum.as_int(species.get("skill_points", 0))
+	if skill_bonus != 0:
+		Widgets.metric(parent, "Bonus skill points", "%+d" % skill_bonus, palette)
+	var broad_bonus := AlternityNum.as_int(species.get("broad_skills", 0))
+	if broad_bonus != 0:
+		Widgets.metric(parent, "Bonus broad skills", "%+d" % broad_bonus, palette)
+
+	# A step modifier, not a die string: 0 for most species, -1 for T'sa. A
+	# negative step is an improvement, so it is worth saying so rather than
+	# printing a bare "-1".
+	var action_step := AlternityNum.as_int(species.get("action_step", 0))
+	if action_step != 0:
+		Widgets.metric(
+			parent, "Action check",
+			"%+d step%s" % [action_step, "" if abs(action_step) == 1 else "s"]
+				+ ("  (better)" if action_step < 0 else "  (worse)"),
+			palette
+		)
+
+	var durability := AlternityNum.as_float(species.get("durability_multiplier", 1.0), 1.0)
+	if not is_equal_approx(durability, 1.0):
+		Widgets.metric(parent, "Durability", "CON x %s" % Widgets.format_number(durability), palette)
+
+	if bool(species.get("psionic", false)):
+		var psi := AlternityNum.as_float(species.get("psi_multiplier", 1.0), 1.0)
+		Widgets.metric(parent, "Psionic", "yes, energy pool WIL x %s" % Widgets.format_number(psi), palette)
+	if bool(species.get("can_fly", false)):
+		Widgets.metric(parent, "Flight", "can fly", palette)
+	elif bool(species.get("can_glide", false)):
+		Widgets.metric(parent, "Flight", "can glide", palette)
+
+	for note in species.get("notes", []):
+		Widgets.muted_text(parent, "- %s" % String(note), palette, Widgets.FONT_CAPTION)
+
+
+## What the chosen profession is and what it grants.
+##
+## The notes were already written, with sources, and nothing displayed them.
+## The first is the description; the rest are the mechanical grants.
+func _build_profession_detail(parent: Container) -> void:
+	var rules: AlternityRules = ctx.rules
+	var palette := ctx.palette
+	var profession := rules.get_profession_by_id(ctx.doc.get_profession_id())
+	if profession.is_empty():
+		return
+
+	Widgets.separator(parent, palette)
+	Widgets.subheading(parent, String(profession.get("name", "Profession")), palette)
+
+	var minimums: Dictionary = profession.get("ability_minimums", {})
+	var required: Array = []
+	for ability in ABILITIES:
+		if minimums.has(ability):
+			required.append("%s %d" % [ability, AlternityNum.as_int(minimums[ability])])
+	if not required.is_empty():
+		Widgets.metric(parent, "Requires", "  ".join(required), palette)
+
+	var notes: Array = profession.get("notes", [])
+	for i in notes.size():
+		var note := String(notes[i])
+		if i == 0:
+			Widgets.text(parent, note, palette, Widgets.FONT_CAPTION)
+		else:
+			Widgets.muted_text(parent, "- %s" % note, palette, Widgets.FONT_CAPTION)
 
 
 # --- Abilities -------------------------------------------------------------
@@ -274,23 +380,31 @@ func _build_generation(parent: Container) -> void:
 
 	Widgets.muted_text(
 		parent,
-		"Generating replaces all six scores and resets the point target.",
+		"Generating replaces all six scores and resets the point target. "
+		+ "Rolled scores are clamped into the legal band for your species and "
+		+ "profession, so a low roll still meets a requirement.",
 		ctx.palette,
 		Widgets.FONT_CAPTION
 	)
 
+	# There used to be a third button, "Random spread for profession", wired to
+	# roll_random_abilities_by_profession. That returns the *formula table*
+	# ({"STR": "10+d4", ...}), not rolled scores, so every ability was coerced
+	# from an unparseable string to 0 and then clamped up to its minimum: the
+	# button reliably produced a floor-value hero. It also duplicated Method I,
+	# which rolls the same table properly, so it is gone rather than repaired.
 	var methods := [
 		{
-			"label": "Roll abilities (Method I)",
+			"label": "Method I - roll for your profession",
+			"note": "Each ability is rolled on the spread for your profession, so "
+				+ "the scores it cares about start high. Table G2.",
 			"roll": func(): return rules.roll_abilities_method_1(doc.get_profession_id()),
 		},
 		{
-			"label": "Roll abilities (Method II)",
+			"label": "Method II - roll for your species",
+			"note": "Each ability is rolled on the spread for your species, giving "
+				+ "a hero typical of that race rather than of a job. Table G3.",
 			"roll": func(): return rules.roll_abilities_method_2(doc.get_species_id()),
-		},
-		{
-			"label": "Random spread for profession",
-			"roll": func(): return rules.roll_random_abilities_by_profession(doc.get_profession_id()),
 		},
 	]
 
@@ -301,6 +415,7 @@ func _build_generation(parent: Container) -> void:
 		var roll: Callable = method["roll"]
 		button.pressed.connect(func(): _apply_rolled(roll.call()))
 		parent.add_child(button)
+		Widgets.muted_text(parent, String(method["note"]), ctx.palette, Widgets.FONT_CAPTION)
 
 
 ## Clamp each rolled score into its legal band and reset the point target.

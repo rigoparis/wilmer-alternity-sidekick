@@ -122,9 +122,18 @@ static func metric(parent: Container, name: String, value: String, palette: Them
 	name_label.add_theme_font_size_override("font_size", FONT_DETAIL)
 	row.add_child(name_label)
 
+	# The value wraps too. Without this a long one -- an ability range, a list of
+	# free skills -- set a minimum width no container could honour, and pushed
+	# the entire sheet wider than the viewport: on a phone that clipped the tab
+	# bar and the header buttons right off the screen. Short values are
+	# unaffected, since they never reach the wrap point.
 	var value_label := Label.new()
 	value_label.text = value
 	value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	value_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	value_label.custom_minimum_size = Vector2(1, 0)
+	value_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	value_label.size_flags_stretch_ratio = 1.4
 	value_label.add_theme_color_override("font_color", palette.text)
 	value_label.add_theme_font_size_override("font_size", FONT_BODY)
 	row.add_child(value_label)

@@ -34,6 +34,7 @@ func _run() -> void:
 	_rules.load_core_data()
 
 	await _test_ability_generation()
+	await _test_basics_explains_origin()
 	await _test_mutations_tab()
 	await _test_summary_tab()
 	await _test_summary_is_self_contained()
@@ -60,12 +61,16 @@ func _test_ability_generation() -> void:
 	await process_frame
 	check_true(tab.get_child_count() > 0, "Basics renders")
 
-	for method in ["method_1", "method_2", "spread"]:
+	# Only the two methods the tab offers. The third button called
+	# roll_random_abilities_by_profession, which returns the formula table rather
+	# than rolled scores -- and this loop asserted only that scores landed inside
+	# the legal band, which clamping a coerced 0 up to the minimum satisfies. The
+	# test passed while the button reliably produced a floor-value hero.
+	for method in ["method_1", "method_2"]:
 		var rolled: Dictionary = {}
 		match method:
 			"method_1": rolled = _rules.roll_abilities_method_1(doc.get_profession_id())
-			"method_2": rolled = _rules.roll_abilities_method_2(doc.get_species_id())
-			_: rolled = _rules.roll_random_abilities_by_profession(doc.get_profession_id())
+			_: rolled = _rules.roll_abilities_method_2(doc.get_species_id())
 
 		if not check(not rolled.is_empty(), "%s produced a spread" % method):
 			continue
@@ -77,12 +82,24 @@ func _test_ability_generation() -> void:
 		check_eq(abilities.size(), 6, "%s writes all six abilities" % method)
 
 		var out_of_band: Array = []
+		var above_floor := 0
 		for ability in ["STR", "DEX", "CON", "INT", "WIL", "PER"]:
 			var limits: Array = _rules.ability_limits(doc.raw(), ability)
 			var score := AlternityNum.as_int(abilities.get(ability, 0))
 			if score < AlternityNum.as_int(limits[0]) or score > AlternityNum.as_int(limits[1]):
 				out_of_band.append("%s=%d" % [ability, score])
+			if score > AlternityNum.as_int(limits[0]):
+				above_floor += 1
 		check_true(out_of_band.is_empty(), "%s stays inside the legal band (%s)" % [method, str(out_of_band)])
+
+		# In-band is not enough: a generator that produces nothing and gets
+		# clamped up to the minimum is also in band. Every published spread
+		# starts each ability well above the species floor, so a roll that
+		# leaves every score sitting on it did not roll anything.
+		check_true(
+			above_floor > 0,
+			"%s produced scores above the floor, not a clamped zero spread" % method
+		)
 
 		# The point target is reset to what the roll cost, so the budget is not
 		# compared against a purchased spread that no longer exists.
@@ -91,6 +108,64 @@ func _test_ability_generation() -> void:
 			_rules.ability_total(doc.raw()),
 			"%s resets the ability point target" % method
 		)
+
+	tab.queue_free()
+
+
+## Basics must say what a species and profession are, not just let you pick one.
+##
+## "This app is trying to be a replacement for the manuals" -- and choosing a
+## race showed a dropdown and nothing else. The species summary line read a key
+## the data does not have, so it never rendered, and the mechanical notes that
+## do exist were displayed nowhere at all.
+func _test_basics_explains_origin() -> void:
+	var doc := Doc.new(_rules)
+	doc.set_species_id(4)     # T'sa: has notes, a free skill and an action-step bonus
+	doc.set_profession_id(0)  # Combat Spec
+
+	var tab = _mount(TAB_BASICS, doc)
+	await process_frame
+	var labels := _labels_in(tab)
+
+	var species: Dictionary = _rules.get_species_by_id(doc.get_species_id())
+	var species_name := String(species.get("name", ""))
+	check_true(_any_label_contains(labels, species_name), "Basics names the species (%s)" % species_name)
+
+	var description := String(species.get("description", ""))
+	check_true(not description.is_empty(), "the species catalog carries a description")
+	if not description.is_empty():
+		check_true(
+			_any_label_contains(labels, description.substr(0, 40)),
+			"Basics shows the species description"
+		)
+
+	check_true(_any_label_contains(labels, "Ability range"), "Basics states the species ability range")
+
+	var notes: Array = species.get("notes", [])
+	if not notes.is_empty():
+		check_true(
+			_any_label_contains(labels, String(notes[0]).substr(0, 30)),
+			"Basics shows the species rule notes"
+		)
+
+	var profession: Dictionary = _rules.get_profession_by_id(doc.get_profession_id())
+	check_true(
+		_any_label_contains(labels, String(profession.get("name", ""))),
+		"Basics names the profession"
+	)
+	var prof_notes: Array = profession.get("notes", [])
+	if not prof_notes.is_empty():
+		check_true(
+			_any_label_contains(labels, String(prof_notes[0]).substr(0, 30)),
+			"Basics shows what the profession is"
+		)
+	check_true(_any_label_contains(labels, "Requires"), "Basics states the profession requirements")
+
+	# Every generation button offered must actually roll. The removed third
+	# button passed the formula table in as if it were scores.
+	check_true(
+		_any_label_contains(labels, "Method I"), "Basics offers Method I with a name that says what it rolls"
+	)
 
 	tab.queue_free()
 
@@ -214,12 +289,20 @@ func _test_summary_is_self_contained() -> void:
 	tab.queue_free()
 
 
-## Every Label text in the subtree, so a test can ask what is actually on screen.
+## Every piece of text in the subtree, so a test can ask what is on screen.
+##
+## Buttons count: their label is content a reader sees, and several of the
+## things these tests assert about (generation methods, catalog actions) are
+## rendered as buttons rather than labels.
 func _labels_in(node: Node) -> Array:
 	var out: Array = []
 	for child in node.get_children():
 		if child is Label:
 			out.append((child as Label).text)
+		elif child is Button:
+			out.append((child as Button).text)
+		elif child is RichTextLabel:
+			out.append((child as RichTextLabel).get_parsed_text())
 		out.append_array(_labels_in(child))
 	return out
 
