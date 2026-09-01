@@ -172,10 +172,12 @@ static func toggle_row(
 	toggle.button_pressed = pressed
 	# Compact sits inline beside another control and sizes to its label; the full
 	# form is a row of its own and takes the width.
-	toggle.size_flags_horizontal = Control.SIZE_SHRINK_END if compact else Control.SIZE_EXPAND_FILL
-	# The compact form sizes to its content, so it needs a floor wide enough for
-	# a label plus the switch. Left at zero the two overlapped.
-	toggle.custom_minimum_size = Vector2(132, 36) if compact else Vector2(0, 44)
+	# Neither form stretches to the container. A CheckButton draws its switch at
+	# its own right edge, so a full-width one on a 1900px screen put the label at
+	# one end and the control it labels 1400px away at the other. Both forms size
+	# to a fixed width and let a trailing spacer absorb the rest.
+	toggle.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	toggle.custom_minimum_size = Vector2(132 if compact else 320, 36 if compact else 44)
 	toggle.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	toggle.add_theme_font_size_override("font_size", FONT_CAPTION if compact else FONT_DETAIL)
 
@@ -187,7 +189,21 @@ static func toggle_row(
 	for state in ["font_color", "font_pressed_color", "font_hover_color", "font_focus_color"]:
 		toggle.add_theme_color_override(state, palette.text)
 
-	parent.add_child(toggle)
+	# Compact toggles sit inline in a row their caller arranges; a full one gets
+	# its own row here, with the slack after it rather than inside it.
+	if compact:
+		parent.add_child(toggle)
+		return toggle
+
+	var row := HBoxContainer.new()
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	parent.add_child(row)
+	row.add_child(toggle)
+
+	var slack := Control.new()
+	slack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	slack.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(slack)
 	return toggle
 
 
