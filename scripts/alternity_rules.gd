@@ -375,9 +375,16 @@ func ensure_character_shape(character: Dictionary) -> Dictionary:
 	if not character.has("sold_species_skills") or typeof(character["sold_species_skills"]) != TYPE_ARRAY:
 		character["sold_species_skills"] = []
 	else:
+		# Deduplicated as well as coerced. A real saved character carries
+		# [43, 43, 3] -- the old UI could record the same species broad as sold
+		# twice. It does not double-count today, because the budget walks the
+		# species' free ids and asks whether each is in this list rather than
+		# summing the list, but it is corruption and it should not persist.
 		var norm_sold := []
 		for s_id in character["sold_species_skills"]:
-			norm_sold.append(_as_int(s_id))
+			var sold_id := _as_int(s_id)
+			if not norm_sold.has(sold_id):
+				norm_sold.append(sold_id)
 		character["sold_species_skills"] = norm_sold
 	if not character.has("selected_perks") or typeof(character["selected_perks"]) != TYPE_DICTIONARY:
 		character["selected_perks"] = {}
