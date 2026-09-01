@@ -133,6 +133,20 @@ const ENCUMBRANCE_TIERS := [
 	{"name": "Immobile", "limit_multiplier": INF, "movement_multiplier": 0.0, "penalty": 3},
 ]
 
+## FX campaign scale: what an extra point of FX energy pool costs in
+## achievement points. Source: Beyond Science: A Guide to FX ch. 1 p. 8.
+##
+## Ordered cheapest-last so the list reads from grittiest to most powerful.
+const FX_CAMPAIGN_SCALES := [
+	{"id": "realistic", "name": "Realistic", "ap_per_point": 15},
+	{"id": "heroic", "name": "Heroic", "ap_per_point": 10},
+	{"id": "superheroic", "name": "Superheroic", "ap_per_point": 5},
+]
+
+## Used when a character has no scale recorded.
+const FX_CAMPAIGN_SCALE_DEFAULT := "heroic"
+
+
 const OPTIONAL_RULES := [
 	{
 		"id": "2a",
@@ -163,6 +177,12 @@ const OPTIONAL_RULES := [
 		"name": "Optional Rule: Psionic Talents",
 		"summary": "Allow non-Mindwalker heroes to purchase Psionics",
 		"description": "Permits characters of any profession to learn Psionic broad and specialty skills with a +1 SP cost surcharge above the listed price. Psionic energy pool is ceil(WIL * 0.5) (or full WIL for Fraal). Source: Player's Handbook Chapter 14.",
+	},
+	{
+		"id": "monetary_awards_uncapped",
+		"name": "Optional Rule: Uncapped Monetary Awards",
+		"summary": "Monetary awards continue past 24th level",
+		"description": "Table P29 lists the Monetary Award as available at 3rd, 6th, 9th, 12th, 15th, 18th, 21st and 24th level, and unlike the achievement track it prints no \"etc.\" -- so by the text eight purchases is the maximum. The designers stopped there because campaigns were not expected to run that long; the underlying pattern is simply every third level, with the payout doubling each time. Enable this for an epic campaign to keep the benefit available at every multiple of three beyond 24th. Source: Player's Handbook p. 126-128; Gamemaster Guide p. 113.",
 	},
 	{
 		"id": "age_effects",

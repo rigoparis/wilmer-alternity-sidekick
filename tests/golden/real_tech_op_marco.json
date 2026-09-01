@@ -220,6 +220,7 @@
 				"Super Strength": 1.0
 			}
 		},
+		"fx_campaign_scale": "heroic",
 		"hero_name": "Marco Mendez",
 		"last_resorts_rebought": 0.0,
 		"last_resorts_used": 1,
@@ -260,6 +261,7 @@
 			"age_effects": false,
 			"dazed": true,
 			"firepower_scaling": false,
+			"monetary_awards_uncapped": false,
 			"psionic_talents": false
 		},
 		"player_name": "Fixture",

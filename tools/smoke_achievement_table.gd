@@ -69,6 +69,16 @@ const TABLE_P29 := {
 	"new_perk_willpower": [[6, 8], [6, 5], [6, 6], [6, 5], [5, 4]],
 }
 
+## Benefits that exist but are not priced by Table P29.
+##
+## Remove Flaw costs twice the flaw's bonus rather than a flat figure, and the
+## FX energy pool increase is from Beyond Science and is priced in achievement
+## points, not skill points.
+const OFF_TABLE := {
+	"remove_flaw": true,
+	"fx_energy_pool_increase": true,
+}
+
 ## Remove Flaw is priced at twice the flaw's bonus rather than a flat cost, so
 ## only its level requirement is fixed: 6th, for every profession.
 const REMOVE_FLAW_LEVEL := 6
@@ -102,6 +112,8 @@ func _run() -> void:
 	_test_remove_flaw_level()
 	_test_purchase_limits()
 	_test_italic_perks_are_unavailable()
+	_test_fx_energy_pool_spends_achievement_points()
+	_test_monetary_award_ceiling()
 
 
 func _test_every_entry_present() -> void:
@@ -115,11 +127,11 @@ func _test_every_entry_present() -> void:
 		check_true(ids.has(id), "the catalog carries %s" % id)
 	check_true(ids.has("remove_flaw"), "the catalog carries remove_flaw")
 
-	# Nothing invented either: an id the table does not list is either a
-	# transcription gap here or an entry that should not be purchasable.
+	# Nothing invented either: an id neither table lists is a transcription gap
+	# here or an entry that should not be purchasable.
 	for id in ids:
-		var known: bool = TABLE_P29.has(id) or id == "remove_flaw"
-		check_true(known, "%s appears in Table P29" % id)
+		var known: bool = TABLE_P29.has(id) or OFF_TABLE.has(id)
+		check_true(known, "%s is a benefit the manuals describe" % id)
 
 
 func _test_costs_and_levels() -> void:
@@ -203,3 +215,138 @@ func _test_italic_perks_are_unavailable() -> void:
 			offered.has(perk_id),
 			"%s is not purchasable as an achievement benefit" % perk_id
 		)
+
+
+## The FX energy pool increase is the one benefit bought with achievement points.
+##
+## Alternity has no parallel spendable-AP pool: the points come straight off the
+## hero's unbanked track, so buying one costs progress toward the next level.
+## The pool can never be enlarged past twice its starting value.
+## Source: Beyond Science ch. 1 p. 8.
+func _test_fx_energy_pool_spends_achievement_points() -> void:
+	var character: Dictionary = _rules.default_character()
+	character["species_id"] = 0
+	character["profession_id"] = 0
+	_rules.ensure_character_shape(character)
+
+	var achievement: Dictionary = _rules.get_achievement_by_id("fx_energy_pool_increase")
+	if not check(not achievement.is_empty(), "the FX energy pool benefit exists"):
+		return
+
+	check_eq(
+		_rules.fx_campaign_scale(character), "heroic",
+		"a new hero defaults to the heroic FX scale"
+	)
+	for scale in [["realistic", 15], ["heroic", 10], ["superheroic", 5]]:
+		_rules.set_fx_campaign_scale(character, String(scale[0]))
+		check_eq(
+			_rules.achievements.fx_energy_pool_ap_cost(character),
+			AlternityNum.as_int(scale[1]),
+			"a %s campaign charges %d AP per point" % [String(scale[0]), AlternityNum.as_int(scale[1])]
+		)
+	_rules.set_fx_campaign_scale(character, "heroic")
+
+	# A hero who does not use FX cannot buy it at all.
+	var refusal: Dictionary = _rules.achievements.can_purchase_achievement(character, achievement)
+	check_false(bool(refusal.get("allowed", false)), "a non-FX hero cannot buy pool points")
+
+	_rules.fx.set_fx_talent(character, true)
+	_rules.fx.set_energy_pool(character, 4)
+
+	# Unbanked points can never exceed the width of the current level band, and
+	# those widths are 6, 7, 8, 9, 10, 11 ... so a 10 AP purchase is first
+	# affordable at 7th level, where the band to 8th is 12 wide.
+	var cost := 10
+	var level := 7
+	var banked: int = _rules.achievements.achievement_points_for_level(level)
+
+	# One short.
+	_rules.achievements.set_achievement_points(character, banked + cost - 1)
+	check_eq(
+		_rules.achievements.achievement_points_available(character), cost - 1,
+		"the hero is one achievement point short"
+	)
+	refusal = _rules.achievements.can_purchase_achievement(character, achievement)
+	check_false(bool(refusal.get("allowed", false)), "%d AP will not buy a %d AP point" % [cost - 1, cost])
+
+	# Exactly enough: the points come off the track and the level is unchanged.
+	_rules.achievements.set_achievement_points(character, banked + cost)
+	var budget_before: int = _rules.skill_budget(character)
+	var used_before: int = _rules.skill_points_used(character)
+
+	if not check(
+		bool(_rules.achievements.can_purchase_achievement(character, achievement).get("allowed", false)),
+		"%d banked achievement points buy a %d AP point" % [cost, cost]
+	):
+		return
+	var result: Dictionary = _rules.achievements.add_achievement_purchase(
+		character, "fx_energy_pool_increase"
+	)
+	check_true(bool(result.get("ok", false)), "the purchase applies")
+
+	check_eq(
+		AlternityNum.as_int(character.get("achievement_points", 0)), banked,
+		"the cost comes off the track, leaving the banked points"
+	)
+	check_eq(
+		_rules.achievements.achievement_level_for_points(
+			AlternityNum.as_int(character.get("achievement_points", 0))
+		),
+		level,
+		"spending unbanked points does not cost the hero a level"
+	)
+	check_eq(_rules.fx.energy_pool(character), 4, "the recorded starting pool is untouched")
+	check_eq(_rules.fx.total_energy_pool(character), 5, "the total pool grew by one")
+
+	# It is not a skill-point purchase, so the skill budget must not move.
+	check_eq(_rules.skill_budget(character), budget_before, "the skill budget is unchanged")
+	check_eq(_rules.skill_points_used(character), used_before, "no skill points were spent")
+	check_eq(
+		_rules.achievements.achievement_points_spent(character), 0,
+		"an AP purchase is not counted as achievement skill-point spending"
+	)
+
+	# Giving it up puts the points back.
+	_rules.achievements.remove_achievement_purchase(character, String(result.get("line_id", "")))
+	check_eq(
+		AlternityNum.as_int(character.get("achievement_points", 0)), banked + cost,
+		"removing the benefit refunds its achievement points"
+	)
+	check_eq(_rules.fx.total_energy_pool(character), 4, "the pool returns to its starting value")
+
+	# The pool can never pass twice its starting value: a base of 4 allows four
+	# increases and no more, however many points the hero banks.
+	var bought := 0
+	for _i in 12:
+		_rules.achievements.set_achievement_points(character, banked + cost)
+		var attempt: Dictionary = _rules.achievements.add_achievement_purchase(
+			character, "fx_energy_pool_increase"
+		)
+		if not bool(attempt.get("ok", false)):
+			break
+		bought += 1
+	check_eq(bought, 4, "a starting pool of 4 allows exactly 4 increases")
+	check_eq(_rules.fx.total_energy_pool(character), 8, "the pool tops out at twice its base")
+
+
+## Monetary Award stops at eight purchases by the printed text, and continues on
+## the every-third-level pattern when the campaign opts in.
+func _test_monetary_award_ceiling() -> void:
+	var character: Dictionary = _rules.default_character()
+	character["species_id"] = 0
+	character["profession_id"] = 0
+	_rules.ensure_character_shape(character)
+
+	var achievement: Dictionary = _rules.get_achievement_by_id("monetary_award")
+	if not check(not achievement.is_empty(), "the monetary award exists"):
+		return
+
+	var levels: Array = achievement.get("effect", {}).get("levels", [])
+	check_eq(levels.size(), 8, "the printed table lists eight levels")
+	check_eq(AlternityNum.as_int(levels[0]), 3, "the first is 3rd level")
+	check_eq(AlternityNum.as_int(levels[levels.size() - 1]), 24, "the last is 24th level")
+
+	check_false(
+		_rules.optional_rule_enabled(character, "monetary_awards_uncapped"),
+		"awards are capped unless the campaign says otherwise"
+	)

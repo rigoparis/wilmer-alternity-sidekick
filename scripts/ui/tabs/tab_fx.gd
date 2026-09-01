@@ -59,17 +59,29 @@ func _build_pool(container: Container) -> void:
 	var pool: int = rules.fx.energy_pool(doc.raw())
 	var stepper := NumberStepper.new()
 	box.add_child(stepper)
-	stepper.setup(palette, "FX energy pool", pool, 0, 99)
+	stepper.setup(palette, "Starting FX energy pool", pool, 0, 99)
 	stepper.value_changed.connect(func(value: int):
 		doc.apply([CharacterDoc.FX], func(c): rules.fx.set_energy_pool(c, value))
 		save_requested.emit())
+
+	# Points bought with achievement points, which is the only way the pool
+	# grows after creation, and which the Achievements tab sells.
+	var bought: int = rules.fx.energy_pool_bonus(doc.raw())
+	if bought > 0:
+		Widgets.metric(box, "Bought with achievement points", "+%d" % bought, palette)
+		Widgets.metric(box, "Total pool", str(rules.fx.total_energy_pool(doc.raw())), palette)
+
+	_build_scale_picker(box)
 
 	# Always-active powers permanently reserve part of the pool, so the usable
 	# figure is the one that matters in play.
 	var drain: int = rules.fx.permanent_fx_energy_drain(doc.raw())
 	if drain > 0:
 		Widgets.metric(box, "Reserved by permanent powers", "-%d" % drain, palette)
-		Widgets.metric(box, "Usable pool", str(maxi(0, pool - drain)), palette)
+		Widgets.metric(
+			box, "Usable pool",
+			str(maxi(0, rules.fx.total_energy_pool(doc.raw()) - drain)), palette
+		)
 
 	Widgets.metric(box, "Skill points spent on FX", str(rules.fx.fx_skill_purchase_points_used(doc.raw())), palette)
 
@@ -90,6 +102,56 @@ func _build_pool(container: Container) -> void:
 			"%s: %s" % [effect_name, description] if not description.is_empty() else effect_name,
 			palette, Widgets.FONT_CAPTION
 		)
+
+
+## What the campaign charges in achievement points for a point of FX pool.
+##
+## A campaign-wide decision rather than a character one, but it is recorded per
+## character because that is where this app keeps everything a table agrees on.
+func _build_scale_picker(parent: Container) -> void:
+	var doc := ctx.doc
+	var rules: AlternityRules = ctx.rules
+	var palette := ctx.palette
+
+	var label := Label.new()
+	label.text = "Campaign FX scale"
+	label.add_theme_color_override("font_color", palette.muted)
+	label.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
+	parent.add_child(label)
+
+	var current := rules.fx_campaign_scale(doc.raw())
+	var scales: Array = AlternityRules.FX_CAMPAIGN_SCALES
+
+	var picker := OptionButton.new()
+	picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	picker.custom_minimum_size = Vector2(0, 42)
+	var selected := 0
+	for index in scales.size():
+		var entry: Dictionary = scales[index]
+		picker.add_item(
+			"%s  -  %d AP per point" % [
+				String(entry.get("name", "")),
+				AlternityNum.as_int(entry.get("ap_per_point", 0)),
+			],
+			index
+		)
+		if String(entry.get("id", "")) == current:
+			selected = index
+	picker.select(selected)
+	picker.item_selected.connect(func(index: int):
+		var entry: Dictionary = scales[index]
+		doc.apply(CharacterDoc.ALL, func(c):
+			rules.set_fx_campaign_scale(c, String(entry.get("id", ""))))
+		save_requested.emit())
+	parent.add_child(picker)
+
+	Widgets.muted_text(
+		parent,
+		"Enlarging the pool is bought with achievement points, not skill points, "
+		+ "so it costs progress toward your next level. The pool can never pass "
+		+ "twice its starting value.",
+		palette, Widgets.FONT_CAPTION
+	)
 
 
 func _build_picker(container: Container) -> void:

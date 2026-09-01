@@ -49,6 +49,7 @@
 
 			}
 		},
+		"fx_campaign_scale": "heroic",
 		"hero_name": "Wired Tech Op",
 		"last_resorts_rebought": 0.0,
 		"last_resorts_used": 0,
@@ -79,6 +80,7 @@
 			"age_effects": false,
 			"dazed": false,
 			"firepower_scaling": false,
+			"monetary_awards_uncapped": false,
 			"psionic_talents": false
 		},
 		"player_name": "Fixture",

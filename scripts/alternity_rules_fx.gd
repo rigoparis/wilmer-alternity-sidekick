@@ -37,6 +37,20 @@ func set_energy_pool(character: Dictionary, amount: int) -> void:
 	_normalize_fx(character)
 	character["fx"]["energy_pool"] = max(0, amount)
 
+
+## Points added to the pool by achievement benefits.
+##
+## Kept apart from the recorded pool rather than folded into it, so the starting
+## value stays visible -- Beyond Science caps the pool at twice that starting
+## value, which cannot be checked once the two are added together.
+func energy_pool_bonus(character: Dictionary) -> int:
+	return _get_parent().achievements.fx_energy_pool_purchases(character)
+
+
+## The hero's whole pool: what they recorded plus what they have bought.
+func total_energy_pool(character: Dictionary) -> int:
+	return energy_pool(character) + energy_pool_bonus(character)
+
 func get_broad_skills() -> Array:
 	return _get_parent().fx_broad_skills
 

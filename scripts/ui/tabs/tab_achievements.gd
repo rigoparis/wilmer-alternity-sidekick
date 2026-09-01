@@ -193,11 +193,20 @@ func _catalog_entries() -> Array:
 
 		var verdict: Dictionary = rules.achievements.can_purchase_achievement(raw, achievement)
 		var cost: int = rules.achievements.achievement_purchase_cost(raw, achievement)
+
+		# One benefit is priced in achievement points rather than skill points.
+		# Labelling it "0 SP" would read as free when it is the most expensive
+		# thing here: it comes straight off progress to the next level.
+		var effect: Dictionary = achievement.get("effect", {})
+		var price := "%d SP" % cost
+		if String(effect.get("type", "")) == "fx_energy_pool":
+			price = "%d AP" % rules.achievements.fx_energy_pool_ap_cost(raw)
+
 		entries.append({
 			"id": achievement_id,
 			"name": String(achievement.get("name", achievement_id)),
 			"summary": String(achievement.get("summary", "")),
-			"meta": "%d SP" % cost,
+			"meta": price,
 			"disabled": not bool(verdict.get("allowed", false)),
 			"reason": String(verdict.get("reason", "")),
 		})

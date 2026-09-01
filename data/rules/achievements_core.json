@@ -1337,6 +1337,40 @@
           6
         ]
       ]
+    },
+    {
+      "id": "fx_energy_pool_increase",
+      "name": "FX Energy Pool Increase",
+      "category": "FX",
+      "max": 99,
+      "summary": "Permanently adds 1 point to the hero's maximum FX energy pool. Paid for with achievement points rather than skill points, so it costs progress toward the next level. The pool can never be enlarged past twice its starting value.",
+      "reference": "Beyond Science: A Guide to FX ch. 1 p. 8.",
+      "effect": {
+        "type": "fx_energy_pool",
+        "amount": 1
+      },
+      "costs": [
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          1
+        ]
+      ]
     }
   ]
 }

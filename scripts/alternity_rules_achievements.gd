@@ -215,6 +215,28 @@ func achievement_granted_perks(character: Dictionary) -> Array:
 	return rows
 
 
+## What one extra point of FX energy pool costs in achievement points.
+##
+## Unlike every other benefit this is bought with achievement points rather than
+## skill points, so buying one costs progress toward the next level. Alternity
+## has no parallel "spendable AP" pool: the points come straight off the hero's
+## unbanked track. Source: Beyond Science ch. 1 p. 8.
+func fx_energy_pool_ap_cost(character: Dictionary) -> int:
+	var scale: Dictionary = _get_parent().fx_campaign_scale_entry(character)
+	return AlternityNum.as_int(scale.get("ap_per_point", 10), 10)
+
+
+## How many pool increases this hero has bought.
+func fx_energy_pool_purchases(character: Dictionary) -> int:
+	return achievement_purchase_count(character, "fx_energy_pool_increase")
+
+
+## The pool may never be enlarged past twice its starting value, so the number
+## of increases can never exceed the base the hero began with.
+func fx_energy_pool_increase_limit(character: Dictionary) -> int:
+	return max(0, _get_parent().fx.energy_pool(character))
+
+
 func can_purchase_achievement(character: Dictionary, achievement: Dictionary, target_id := "", target_value := 0) -> Dictionary:
 	var achievement_id := String(achievement.get("id", ""))
 	var cost_info := achievement_cost_entry(achievement, character)
@@ -232,6 +254,12 @@ func can_purchase_achievement(character: Dictionary, achievement: Dictionary, ta
 		for level_value in eligible_levels:
 			if current_level >= AlternityNum.as_int(level_value):
 				eligible_count += 1
+		# The printed list stops at 24th and, unlike the achievement track,
+		# carries no "etc." -- so eight is the maximum by the text. The pattern
+		# underneath is simply every third level, which an epic campaign can
+		# keep going with the optional rule.
+		if _get_parent().optional_rule_enabled(character, "monetary_awards_uncapped"):
+			eligible_count = int(current_level / 3.0)
 		max_purchases = eligible_count
 	if effect_type != "remove_flaw" and max_purchases >= 0 and achievement_purchase_count(character, achievement_id) >= max_purchases:
 		return {"allowed": false, "reason": "Maximum purchases reached."}
@@ -247,6 +275,26 @@ func can_purchase_achievement(character: Dictionary, achievement: Dictionary, ta
 			return {"allowed": false, "reason": "%s is already at the species maximum." % ability}
 	if effect_type == "extra_action" and _get_parent().actions_per_round(character) >= 4:
 		return {"allowed": false, "reason": "Actions per round are already at the maximum of 4."}
+	if effect_type == "fx_energy_pool":
+		if not _get_parent().fx.is_fx_talent(character):
+			return {"allowed": false, "reason": "This hero does not use FX."}
+		var base_pool: int = fx_energy_pool_increase_limit(character)
+		if base_pool <= 0:
+			return {"allowed": false, "reason": "Set a starting FX energy pool first."}
+		if fx_energy_pool_purchases(character) >= base_pool:
+			return {"allowed": false, "reason": "The pool is already twice its starting value."}
+		# Paid in achievement points off the unbanked track, not in skill
+		# points, so it is checked here and skips the skill-point test below.
+		var ap_cost := fx_energy_pool_ap_cost(character)
+		var ap_available := achievement_points_available(character)
+		if ap_available < ap_cost:
+			return {
+				"allowed": false,
+				"reason": "Requires %d achievement points; %d banked toward the next level." % [
+					ap_cost, ap_available,
+				],
+			}
+		return {"allowed": true, "reason": "", "cost": 0, "ap_cost": ap_cost, "min_level": min_level}
 	if effect_type == "new_perk":
 		var perk_id := String(effect.get("perk_id", ""))
 		if _get_parent().is_perk_selected(character, perk_id):
@@ -294,10 +342,23 @@ func add_achievement_purchase(character: Dictionary, achievement_id: String, tar
 
 	var selected: Array = character.get("selected_achievements", [])
 	var line_id := _next_achievement_line_id_from_list(selected)
+	# An AP-priced benefit records what it cost in achievement points and zero
+	# skill points, so achievement_points_spent -- which feeds skill_points_used
+	# -- never counts it against the skill budget.
+	var effect_for_cost: Dictionary = achievement.get("effect", {})
+	var ap_cost := 0
+	if String(effect_for_cost.get("type", "")) == "fx_energy_pool":
+		ap_cost = AlternityNum.as_int(check.get("ap_cost", fx_energy_pool_ap_cost(character)))
+		cost = 0
+		character["achievement_points"] = max(
+			0, AlternityNum.as_int(character.get("achievement_points", 0)) - ap_cost
+		)
+
 	var entry := {
 		"line_id": line_id,
 		"achievement_id": achievement_id,
 		"cost": cost,
+		"ap_cost": ap_cost,
 		"level": achievement_level_for_points(AlternityNum.as_int(character.get("achievement_points", 0))),
 		"target_id": String(target_id),
 		"target_value": AlternityNum.as_int(target_value),
@@ -328,6 +389,14 @@ func remove_achievement_purchase(character: Dictionary, line_id: String) -> void
 
 		var achievement: Dictionary = _get_parent().get_achievement_by_id(String(entry.get("achievement_id", "")))
 		var effect: Dictionary = achievement.get("effect", {})
+
+		# Giving up an AP-priced benefit puts the points back on the track.
+		var refund: int = AlternityNum.as_int(entry.get("ap_cost", 0))
+		if refund > 0:
+			character["achievement_points"] = AlternityNum.as_int(
+				character.get("achievement_points", 0)
+			) + refund
+
 		if String(effect.get("type", "")) != "remove_flaw":
 			continue
 

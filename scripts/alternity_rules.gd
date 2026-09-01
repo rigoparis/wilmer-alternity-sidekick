@@ -302,6 +302,7 @@ func default_character() -> Dictionary:
 		"species_id": 0,
 		"profession_id": 0,
 		"age_category": "young_adult",
+		"fx_campaign_scale": FX_CAMPAIGN_SCALE_DEFAULT,
 		"abilities": {
 			"STR": 10,
 			"DEX": 10,
@@ -354,6 +355,8 @@ func ensure_character_shape(character: Dictionary) -> Dictionary:
 
 	if not character.has("age_category") or String(character["age_category"]).strip_edges().is_empty():
 		character["age_category"] = "young_adult"
+	if not character.has("fx_campaign_scale") or fx_campaign_scale(character).is_empty():
+		character["fx_campaign_scale"] = FX_CAMPAIGN_SCALE_DEFAULT
 
 	# Normalize achievement points and level first: skill rank clamping below
 	# depends on the achievement level being up to date.
@@ -611,6 +614,33 @@ func set_optional_rule(character: Dictionary, rule_id: String, enabled: bool) ->
 
 func base_abilities(character: Dictionary) -> Dictionary:
 	return character.get("abilities", {})
+
+
+## Which FX scale the campaign runs at, deciding what a point of FX energy pool
+## costs in achievement points. Source: Beyond Science ch. 1 p. 8.
+func fx_campaign_scale(character: Dictionary) -> String:
+	var scale := String(character.get("fx_campaign_scale", "")).strip_edges().to_lower()
+	for entry in FX_CAMPAIGN_SCALES:
+		if String(entry.get("id", "")) == scale:
+			return scale
+	return ""
+
+
+func fx_campaign_scale_entry(character: Dictionary) -> Dictionary:
+	var scale := fx_campaign_scale(character)
+	if scale.is_empty():
+		scale = FX_CAMPAIGN_SCALE_DEFAULT
+	for entry in FX_CAMPAIGN_SCALES:
+		if String(entry.get("id", "")) == scale:
+			return entry
+	return {}
+
+
+func set_fx_campaign_scale(character: Dictionary, scale: String) -> void:
+	for entry in FX_CAMPAIGN_SCALES:
+		if String(entry.get("id", "")) == scale:
+			character["fx_campaign_scale"] = scale
+			return
 
 
 func age_category(character: Dictionary) -> String:
