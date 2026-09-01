@@ -2408,7 +2408,7 @@
       "type": "specialty",
       "broad_id": 142,
       "base_price": 3,
-      "untrained": false,
+      "untrained": true,
       "multi": false,
       "custom_name": false,
       "professions": "D",

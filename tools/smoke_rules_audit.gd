@@ -1393,4 +1393,101 @@ func _init() -> void:
 	apr_hero["abilities"]["WIL"] = 12 # CON + WIL = 24 -> 3 Actions
 	assert_eq.call(rules.actions_per_round(apr_hero), 3, "CON + WIL = 24 grants 3 actions per round")
 
+	# --- 30. Personality (PER) Skills, Specialties & Mechanics ---
+	print("Testing PER Skills, Specialties & Mechanics...")
+	# 1. Catalog Costs, Affinities, and Trained-Only Verification
+	var culture_skill := rules.get_skill_by_id(142)
+	var diplomacy := rules.get_skill_by_id(143)
+	var etiquette := rules.get_skill_by_id(144)
+	var first_enc := rules.get_skill_by_id(145)
+	var deception_skill := rules.get_skill_by_id(146)
+	var bluff_skill := rules.get_skill_by_id(147)
+	var bribe_skill := rules.get_skill_by_id(148)
+	var gamble_skill := rules.get_skill_by_id(149)
+	var entertain_skill := rules.get_skill_by_id(150)
+	var act_skill := rules.get_skill_by_id(151)
+	var dance_skill := rules.get_skill_by_id(152)
+	var music_skill := rules.get_skill_by_id(153)
+	var sing_skill := rules.get_skill_by_id(154)
+	var interact_skill := rules.get_skill_by_id(155)
+	var bargain_skill := rules.get_skill_by_id(156)
+	var charm_skill := rules.get_skill_by_id(157)
+	var interview_skill := rules.get_skill_by_id(158)
+	var intimidate_skill := rules.get_skill_by_id(159)
+	var seduce_skill := rules.get_skill_by_id(160)
+	var taunt_skill := rules.get_skill_by_id(161)
+	var leader_skill := rules.get_skill_by_id(162)
+	var command_skill := rules.get_skill_by_id(163)
+	var inspire_skill := rules.get_skill_by_id(164)
+
+	# Verify Base Costs
+	assert_eq.call(culture_skill["base_price"], 5, "Culture base price is 5 SP")
+	assert_eq.call(diplomacy["base_price"], 3, "Diplomacy base price is 3 SP")
+	assert_eq.call(etiquette["base_price"], 2, "Etiquette base price is 2 SP")
+	assert_eq.call(first_enc["base_price"], 3, "First encounter base price is 3 SP")
+
+	assert_eq.call(deception_skill["base_price"], 5, "Deception base price is 5 SP")
+	assert_eq.call(bluff_skill["base_price"], 3, "Bluff base price is 3 SP")
+	assert_eq.call(bribe_skill["base_price"], 3, "Bribe base price is 3 SP")
+	assert_eq.call(gamble_skill["base_price"], 3, "Gamble base price is 3 SP")
+
+	assert_eq.call(entertain_skill["base_price"], 4, "Entertainment base price is 4 SP")
+	assert_eq.call(act_skill["base_price"], 2, "Act base price is 2 SP")
+	assert_eq.call(dance_skill["base_price"], 2, "Dance base price is 2 SP")
+	assert_eq.call(music_skill["base_price"], 2, "Musical instrument base price is 2 SP")
+	assert_eq.call(sing_skill["base_price"], 2, "Sing base price is 2 SP")
+
+	assert_eq.call(interact_skill["base_price"], 3, "Interaction base price is 3 SP")
+	assert_eq.call(bargain_skill["base_price"], 3, "Bargain base price is 3 SP")
+	assert_eq.call(charm_skill["base_price"], 3, "Charm base price is 3 SP")
+	assert_eq.call(interview_skill["base_price"], 3, "Interview base price is 3 SP")
+	assert_eq.call(intimidate_skill["base_price"], 3, "Intimidate base price is 3 SP")
+	assert_eq.call(seduce_skill["base_price"], 3, "Seduce base price is 3 SP")
+	assert_eq.call(taunt_skill["base_price"], 2, "Taunt base price is 2 SP")
+
+	assert_eq.call(leader_skill["base_price"], 4, "Leadership base price is 4 SP")
+	assert_eq.call(command_skill["base_price"], 4, "Command base price is 4 SP")
+	assert_eq.call(inspire_skill["base_price"], 4, "Inspire base price is 4 SP")
+
+	# Verify Trained-Only Demarcations
+	assert_true.call(not bool(etiquette["untrained"]), "Etiquette is Trained Only")
+	assert_true.call(not bool(music_skill["untrained"]), "Musical instrument is Trained Only")
+	assert_true.call(not bool(inspire_skill["untrained"]), "Inspire is Trained Only")
+	assert_true.call(bool(first_enc["untrained"]), "First encounter can be used untrained")
+
+	# 2. Species Free Skills (Table P4)
+	assert_true.call(rules.is_free_species_skill(human_veh, 155), "Human receives Interaction (155) for free")
+	assert_true.call(rules.is_free_species_skill(fraal_wil, 155), "Fraal receives Interaction (155) for free")
+	assert_true.call(rules.is_free_species_skill(sesh_hero, 155), "Sesheyan receives Interaction (155) for free")
+	assert_true.call(rules.is_free_species_skill(tsa_hero, 155), "T'sa receives Interaction (155) for free")
+
+	# 3. No Passive Resistance Modifier for PER
+	assert_eq.call(rules.character_resistance_modifier(human_veh, "PER"), 0, "Personality has no passive resistance modifier (always 0)")
+
+	# 4. Last Resort Points Table P6
+	var per_hero: Dictionary = rules.default_character()
+	per_hero["profession_id"] = 2 # Diplomat
+	per_hero["abilities"]["PER"] = 7
+	rules.ensure_character_shape(per_hero)
+	assert_eq.call(rules.last_resorts(per_hero).get("max"), 0, "PER <= 7 has 0 Last Resort points")
+
+	per_hero["abilities"]["PER"] = 10
+	assert_eq.call(rules.last_resorts(per_hero).get("max"), 1, "PER 8-10 has 1 Last Resort point")
+	assert_eq.call(rules.last_resorts(per_hero).get("cost"), 3, "PER 8-10 recovery cost is 3 SP")
+
+	per_hero["abilities"]["PER"] = 12
+	assert_eq.call(rules.last_resorts(per_hero).get("max"), 2, "PER 11-12 has 2 Last Resort points")
+	assert_eq.call(rules.last_resorts(per_hero).get("cost"), 2, "PER 11-12 recovery cost is 2 SP")
+
+	per_hero["abilities"]["PER"] = 14
+	assert_eq.call(rules.last_resorts(per_hero).get("max"), 3, "PER 13-14 has 3 Last Resort points")
+	assert_eq.call(rules.last_resorts(per_hero).get("cost"), 1, "PER 13-14 recovery cost is 1 SP")
+
+	# Free Agent bonus (+1 Last Resort point)
+	var fa_lr: Dictionary = rules.default_character()
+	fa_lr["profession_id"] = 4 # Free Agent
+	fa_lr["abilities"]["PER"] = 10
+	rules.ensure_character_shape(fa_lr)
+	assert_eq.call(rules.last_resorts(fa_lr).get("max"), 2, "Free Agent with PER 10 has 1 + 1 = 2 Last Resort points")
+
 	finish()
