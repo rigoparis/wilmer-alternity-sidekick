@@ -701,7 +701,7 @@ func character_resistance_modifier(character: Dictionary, ability: String) -> in
 
 	# Flaw Adjustments
 	if ability == "WIL" and is_flaw_selected(character, "spineless"):
-		var val = _as_int(character.get("selected_flaws", {}).get("spineless", 0))
+		var val := flaw_bonus_selected(character, "spineless")
 		rm -= int(val / 2.0)
 
 	# Skill Rank Benefits
@@ -937,11 +937,29 @@ func durability(character: Dictionary) -> Dictionary:
 	var constitution := _as_int(abilities.get("CON", 10))
 	var multiplier := _as_float(current_species.get("durability_multiplier", 1.0))
 	var durability_base := int(floor(constitution * multiplier))
+	var stun_bonus := 0
+	var wound_bonus := 0
+	var mortal_bonus := 0
+	var fatigue_bonus := 0
+	if is_perk_selected(character, "vigor"):
+		var val := perk_cost_selected(character, "vigor")
+		if val == 2:
+			stun_bonus += 1
+		elif val == 3:
+			wound_bonus += 1
+		elif val == 4:
+			mortal_bonus += 1
+			fatigue_bonus += 1
+		elif val >= 9:
+			stun_bonus += 1
+			wound_bonus += 1
+			mortal_bonus += 1
+			fatigue_bonus += 1
 	return {
-		"stun": durability_base + achievements.achievement_durability_bonus(character, "stun") + mutations.mutation_durability_bonus(character, "stun") + cybertech.cybertech_durability_bonus(character, "stun"),
-		"wound": durability_base + achievements.achievement_durability_bonus(character, "wound") + mutations.mutation_durability_bonus(character, "wound") + cybertech.cybertech_durability_bonus(character, "wound"),
-		"mortal": int(ceil(durability_base / 2.0)) + achievements.achievement_durability_bonus(character, "mortal") + mutations.mutation_durability_bonus(character, "mortal") + cybertech.cybertech_durability_bonus(character, "mortal"),
-		"fatigue": int(ceil(durability_base / 2.0)) + achievements.achievement_durability_bonus(character, "fatigue") + mutations.mutation_durability_bonus(character, "fatigue") + cybertech.cybertech_durability_bonus(character, "fatigue"),
+		"stun": durability_base + stun_bonus + achievements.achievement_durability_bonus(character, "stun") + mutations.mutation_durability_bonus(character, "stun") + cybertech.cybertech_durability_bonus(character, "stun"),
+		"wound": durability_base + wound_bonus + achievements.achievement_durability_bonus(character, "wound") + mutations.mutation_durability_bonus(character, "wound") + cybertech.cybertech_durability_bonus(character, "wound"),
+		"mortal": int(ceil(durability_base / 2.0)) + mortal_bonus + achievements.achievement_durability_bonus(character, "mortal") + mutations.mutation_durability_bonus(character, "mortal") + cybertech.cybertech_durability_bonus(character, "mortal"),
+		"fatigue": int(ceil(durability_base / 2.0)) + fatigue_bonus + achievements.achievement_durability_bonus(character, "fatigue") + mutations.mutation_durability_bonus(character, "fatigue") + cybertech.cybertech_durability_bonus(character, "fatigue"),
 	}
 
 
@@ -1384,12 +1402,12 @@ func is_perk_selected(character: Dictionary, perk_id: String) -> bool:
 
 func perk_cost_selected(character: Dictionary, perk_id: String) -> int:
 	var selected: Dictionary = character.get("selected_perks", {})
-	return _as_int(selected.get(perk_id, 0))
+	return _selected_character_option_entry_value(selected.get(perk_id, 0))
 
 
 func flaw_bonus_selected(character: Dictionary, flaw_id: String) -> int:
 	var selected: Dictionary = character.get("selected_flaws", {})
-	return _as_int(selected.get(flaw_id, 0))
+	return _selected_character_option_entry_value(selected.get(flaw_id, 0))
 
 
 func selected_perks(character: Dictionary) -> Array:

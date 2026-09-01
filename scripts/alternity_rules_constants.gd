@@ -1210,9 +1210,9 @@ const FLAW_DEFINITIONS := [
 	{
 		"id": "clumsy",
 		"name": "Clumsy",
-		"bonus_options": [5],
+		"bonus_options": [5, 6],
 		"ability": "DEX",
-		"summary": "The hero has poor coordination and takes a +1 step penalty to Dexterity-based skill checks.",
+		"summary": "The hero has poor coordination and takes a +1 step penalty to Dexterity-based skill checks (Ver. I, +5 SP) or to both skill and feat checks (Ver. II, +6 SP).",
 		"source": "Player's Handbook p. 108; Table P27.",
 	},
 	{

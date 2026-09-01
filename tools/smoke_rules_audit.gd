@@ -1490,4 +1490,73 @@ func _init() -> void:
 	rules.ensure_character_shape(fa_lr)
 	assert_eq.call(rules.last_resorts(fa_lr).get("max"), 2, "Free Agent with PER 10 has 1 + 1 = 2 Last Resort points")
 
+	# --- 31. Perks and Flaws Verification ---
+	print("Testing Perks & Flaws Architecture & Mechanics...")
+	assert_eq.call(AlternityRules.PERK_DEFINITIONS.size(), 22, "22 standard core perks defined")
+	assert_eq.call(AlternityRules.FLAW_DEFINITIONS.size(), 20, "20 standard core flaws defined")
+
+	# 1. Multi-tier Cost/Bonus and Version Options
+	var clumsy_def := rules.get_flaw_by_id("clumsy")
+	assert_eq.call(clumsy_def.get("bonus_options", []), [5, 6], "Clumsy has Ver. I (+5 SP) and Ver. II (+6 SP)")
+
+	var spineless_def := rules.get_flaw_by_id("spineless")
+	assert_eq.call(spineless_def.get("bonus_options", []), [2, 4, 6], "Spineless has Ver. I (+2 SP), Ver. II (+4 SP), Ver. III (+6 SP)")
+
+	var fists_def := rules.get_perk_by_id("fists_of_iron")
+	assert_eq.call(fists_def.get("cost_options", []), [2, 5], "Fists of Iron has Standard (2 SP) and Improved (5 SP)")
+
+	var vigor_def := rules.get_perk_by_id("vigor")
+	assert_eq.call(vigor_def.get("cost_options", []), [2, 3, 4], "Vigor has Stun (2 SP), Wound (3 SP), and Mortal/Fatigue (4 SP)")
+
+	# 2. Resistance Modifier Perks & Flaws
+	var perk_hero: Dictionary = rules.default_character()
+	rules.ensure_character_shape(perk_hero)
+	var base_str_rm := rules.character_resistance_modifier(perk_hero, "STR")
+	var base_dex_rm := rules.character_resistance_modifier(perk_hero, "DEX")
+	var base_wil_rm := rules.character_resistance_modifier(perk_hero, "WIL")
+
+	rules.set_perk_selected(perk_hero, "tough_as_nails", 4)
+	assert_eq.call(rules.character_resistance_modifier(perk_hero, "STR"), base_str_rm + 1, "Tough as Nails adds +1 to STR RM")
+
+	rules.set_perk_selected(perk_hero, "reflexes", 4)
+	assert_eq.call(rules.character_resistance_modifier(perk_hero, "DEX"), base_dex_rm + 1, "Reflexes adds +1 to DEX RM")
+
+	rules.set_perk_selected(perk_hero, "willpower", 4)
+	assert_eq.call(rules.character_resistance_modifier(perk_hero, "WIL"), base_wil_rm + 1, "Willpower adds +1 to WIL RM")
+
+	# Spineless flaw tiers on WIL RM
+	rules.set_perk_selected(perk_hero, "willpower", 0) # remove willpower
+	rules.set_flaw_selected(perk_hero, "spineless", 2)
+	assert_eq.call(rules.character_resistance_modifier(perk_hero, "WIL"), base_wil_rm - 1, "Spineless Ver. I (-1 WIL RM)")
+
+	rules.set_flaw_selected(perk_hero, "spineless", 4)
+	assert_eq.call(rules.character_resistance_modifier(perk_hero, "WIL"), base_wil_rm - 2, "Spineless Ver. II (-2 WIL RM)")
+
+	rules.set_flaw_selected(perk_hero, "spineless", 6)
+	assert_eq.call(rules.character_resistance_modifier(perk_hero, "WIL"), base_wil_rm - 3, "Spineless Ver. III (-3 WIL RM)")
+
+	# 3. Durability Modifiers (Vigor Perk)
+	var dur_hero: Dictionary = rules.default_character()
+	dur_hero["abilities"]["CON"] = 10
+	rules.ensure_character_shape(dur_hero)
+	var base_dur: Dictionary = rules.durability(dur_hero)
+
+	rules.set_perk_selected(dur_hero, "vigor", 2)
+	assert_eq.call(rules.durability(dur_hero).stun, base_dur.stun + 1, "Vigor (2 SP) adds +1 Stun")
+
+	rules.set_perk_selected(dur_hero, "vigor", 3)
+	assert_eq.call(rules.durability(dur_hero).wound, base_dur.wound + 1, "Vigor (3 SP) adds +1 Wound")
+
+	rules.set_perk_selected(dur_hero, "vigor", 4)
+	assert_eq.call(rules.durability(dur_hero).mortal, base_dur.mortal + 1, "Vigor (4 SP) adds +1 Mortal")
+	assert_eq.call(rules.durability(dur_hero).fatigue, base_dur.fatigue + 1, "Vigor (4 SP) adds +1 Fatigue")
+
+	# 4. Starting Flaw SP Bonus and Non-GM Counts
+	var test_flaw_hero: Dictionary = rules.default_character()
+	rules.ensure_character_shape(test_flaw_hero)
+	rules.set_flaw_selected(test_flaw_hero, "bad_luck", 6)
+	rules.set_flaw_selected(test_flaw_hero, "delicate", 3)
+	assert_eq.call(rules.flaw_skill_points_bonus(test_flaw_hero), 9, "Flaws provide +9 SP bonus to character creation budget")
+	assert_eq.call(rules.non_gm_flaw_count(test_flaw_hero), 2, "2 non-GM flaws counted")
+
 	finish()

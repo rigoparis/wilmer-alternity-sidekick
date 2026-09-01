@@ -2176,10 +2176,16 @@ func _add_character_option_row(parent: VBoxContainer, option: Dictionary, select
 	button_row.add_theme_constant_override("separation", 6)
 	row_box.add_child(button_row)
 
-	for option_value in values:
+	var roman_numerals := ["I", "II", "III", "IV"]
+	for opt_idx in range(values.size()):
+		var option_value = values[opt_idx]
 		var value_int := rules._as_int(option_value)
 		var button := Button.new()
-		button.text = (selected_format % value_int) if selected_value == value_int else (button_format % value_int)
+		var ver_prefix := ("Ver. %s " % roman_numerals[opt_idx]) if values.size() > 1 and opt_idx < roman_numerals.size() else ""
+		if selected_value == value_int:
+			button.text = "Selected " + ver_prefix + ("(%d SP)" % value_int if not ver_prefix.is_empty() else "%d SP" % value_int)
+		else:
+			button.text = ver_prefix + (button_format % value_int)
 		var selecting_new := selected_value <= 0 and value_int > 0
 		button.disabled = selected_value == value_int or (selecting_new and not can_select_new)
 		if button.disabled:
