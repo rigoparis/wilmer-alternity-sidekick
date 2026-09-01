@@ -1614,4 +1614,65 @@ func _init() -> void:
 	assert_eq.call(rules.flaw_skill_points_bonus(test_flaw_hero), 9, "Flaws provide +9 SP bonus to character creation budget")
 	assert_eq.call(rules.non_gm_flaw_count(test_flaw_hero), 2, "2 non-GM flaws counted")
 
+	# --- 32. Psionics & FX Disciplines Architecture (PHB Chapter 14) ---
+	print("Testing Psionics & FX Disciplines Architecture...")
+	# 1. Broad Disciplines and Trained-Only Verification
+	var biokinesis_skill := rules.get_skill_by_id(900)
+	var telepathy_skill := rules.get_skill_by_id(901)
+	var telekinesis_skill := rules.get_skill_by_id(902)
+	var esp_skill := rules.get_skill_by_id(903)
+
+	assert_true.call(not biokinesis_skill.is_empty(), "Biokinesis broad skill (900) exists")
+	assert_true.call(not telepathy_skill.is_empty(), "Telepathy broad skill (901) exists")
+	assert_true.call(not telekinesis_skill.is_empty(), "Telekinesis broad skill (902) exists")
+	assert_true.call(not esp_skill.is_empty(), "ESP broad skill (903) exists")
+
+	assert_true.call(not bool(biokinesis_skill.get("untrained", true)), "Biokinesis is trained-only")
+	assert_true.call(not bool(telepathy_skill.get("untrained", true)), "Telepathy is trained-only")
+	assert_true.call(not bool(telekinesis_skill.get("untrained", true)), "Telekinesis is trained-only")
+	assert_true.call(not bool(esp_skill.get("untrained", true)), "ESP is trained-only")
+
+	# 2. Energy Pool Formulas: Mindwalker (1.0x WIL), Fraal Mindwalker (1.5x WIL), Talent (0.5x WIL), Fraal Talent (1.0x WIL)
+	var psi_calc_hero: Dictionary = rules.default_character()
+	psi_calc_hero["abilities"]["WIL"] = 14
+	rules.ensure_character_shape(psi_calc_hero)
+
+	# Standard Mindwalker: WIL x 1.0 = 14
+	psi_calc_hero["species_id"] = 0 # Human
+	psi_calc_hero["profession_id"] = 6 # Mindwalker
+	assert_eq.call(rules.psionic_energy_points(psi_calc_hero), 14, "Human Mindwalker Energy Pool = 14 (WIL x 1.0)")
+
+	# Fraal Mindwalker: WIL x 1.5 = 21
+	psi_calc_hero["species_id"] = 1 # Fraal
+	psi_calc_hero["profession_id"] = 6 # Mindwalker
+	assert_eq.call(rules.psionic_energy_points(psi_calc_hero), 21, "Fraal Mindwalker Energy Pool = 21 (WIL x 1.5)")
+
+	# Standard Talent (Human Combat Spec with Psionic Talents optional rule): ceil(WIL x 0.5) = 7
+	var talent_calc_hero: Dictionary = rules.default_character()
+	talent_calc_hero["species_id"] = 0
+	talent_calc_hero["profession_id"] = 0
+	talent_calc_hero["abilities"]["WIL"] = 13
+	talent_calc_hero["optional_rules"] = {"psionic_talents": true}
+	rules.ensure_character_shape(talent_calc_hero)
+	rules.set_skill_rank(talent_calc_hero, 901, 1) # Purchase Telepathy
+	assert_eq.call(rules.psionic_energy_points(talent_calc_hero), 7, "Human Talent Energy Pool = ceil(13 x 0.5) = 7")
+
+	# Fraal Talent (Non-Mindwalker): WIL x 1.0 = 13
+	talent_calc_hero["species_id"] = 1 # Fraal
+	assert_eq.call(rules.psionic_energy_points(talent_calc_hero), 13, "Fraal Talent Energy Pool = 13 (WIL x 1.0)")
+
+	# 3. Specialty Skill Pricing & Rank Costs
+	var mind_blast_skill := rules.get_skill_by_id(90104)
+	assert_true.call(not mind_blast_skill.is_empty(), "Mind Blast specialty skill (90104) exists")
+	# Mindwalker discount: base 4 - 1 = 3 SP
+	assert_eq.call(rules.skill_cost(psi_calc_hero, mind_blast_skill), 3, "Mind Blast cost for Mindwalker = 4 - 1 = 3 SP")
+	# Rank 1 = 3 SP, Rank 2 = 4 SP, Rank 3 = 5 SP
+	assert_eq.call(rules.skill_purchase_cost(psi_calc_hero, mind_blast_skill, 1), 3, "Mind Blast Rank 1 = 3 SP")
+	assert_eq.call(rules.skill_purchase_cost(psi_calc_hero, mind_blast_skill, 2), 4, "Mind Blast Rank 2 = 4 SP")
+	assert_eq.call(rules.skill_purchase_cost(psi_calc_hero, mind_blast_skill, 3), 5, "Mind Blast Rank 3 = 5 SP")
+
+	# 4. Psionic Combat Attack Forms (Mind Blast, TK Blow, Pyrokinetics)
+	assert_eq.call(rules.get_skill_by_id(90104).get("stat", ""), "PER", "Mind Blast keyed to PER/WIL")
+	assert_eq.call(rules.get_skill_by_id(90206).get("stat", ""), "WIL", "Pyrokinetics keyed to WIL/CON")
+
 	finish()

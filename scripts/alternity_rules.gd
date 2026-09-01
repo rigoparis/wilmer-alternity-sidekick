@@ -1081,7 +1081,7 @@ func is_psionic_skill(skill: Dictionary) -> bool:
 		return true
 	var broad_id := _as_int(skill.get("broad_id", -1))
 	var id := _as_int(skill.get("id", -1))
-	return broad_id in [525, 901, 902, 903, 904, 905] or id in [525, 901, 902, 903, 904, 905]
+	return broad_id in [525, 900, 901, 902, 903, 904, 905] or id in [525, 900, 901, 902, 903, 904, 905]
 
 
 func is_mindwalker_profession(character: Dictionary) -> bool:
