@@ -39,6 +39,7 @@ func _run() -> void:
 	await _test_perks_catalog()
 	await _test_back_leaves_sheet()
 	await _test_delete_confirm()
+	await _test_escape_unwinds()
 
 	_shell.queue_free()
 	_wipe()
@@ -316,3 +317,55 @@ func _test_delete_confirm() -> void:
 	await screen._on_delete_pressed(file_name, "Hero")
 	check_eq(_shell.store.list().size(), 0, "confirming deletes the character")
 	check_eq(_shell.router.depth(), 0, "the dialog closed")
+
+
+## Escape does what Android back does.
+##
+## Worth its own test because it is the only way the unwind logic is reachable
+## off-device: NOTIFICATION_WM_GO_BACK_REQUEST is emitted on Android and nowhere
+## else, so without this path nothing on desktop or in CI exercises it.
+func _test_escape_unwinds() -> void:
+	# Rebuild a character to work with -- the delete test emptied the store.
+	var screen = _select_screen()
+	var dismiss := func() -> void:
+		await process_frame
+		var route = _shell.router._host.top_route()
+		if route != null:
+			route.close(null)
+	dismiss.call_deferred()
+	await screen._on_create_pressed()
+	await process_frame
+	await process_frame
+
+	check_true(_sheet_screen() != null, "a sheet is open")
+
+	# With a route open, escape closes the route and leaves the sheet.
+	var open_route := func() -> void:
+		await process_frame
+		check_eq(_shell.router.depth(), 1, "a route is open")
+		_shell._unhandled_input(_escape())
+		await process_frame
+		check_eq(_shell.router.depth(), 0, "escape closed the route")
+	open_route.call_deferred()
+
+	var sheet = _sheet_screen()
+	await sheet._open_theme()
+	check_true(_sheet_screen() != null, "escape on a route did not leave the sheet")
+
+	# With nothing open, escape leaves the sheet for the character list.
+	_shell._unhandled_input(_escape())
+	await process_frame
+	await process_frame
+	check_true(_select_screen() != null, "escape from the sheet returns to the character list")
+
+	# At the list it does nothing, rather than quitting the way Android back does.
+	_shell._unhandled_input(_escape())
+	await process_frame
+	check_true(_select_screen() != null, "escape at the character list is inert")
+
+
+func _escape() -> InputEventAction:
+	var event := InputEventAction.new()
+	event.action = &"ui_cancel"
+	event.pressed = true
+	return event

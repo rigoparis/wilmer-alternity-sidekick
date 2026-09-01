@@ -162,6 +162,27 @@ func _handle_back() -> void:
 	get_tree().quit()
 
 
+## Escape does what Android back does.
+##
+## Desktop parity, and it makes the back path reachable without a phone:
+## NOTIFICATION_WM_GO_BACK_REQUEST is only ever emitted on Android, so without
+## this the unwind logic could not be exercised anywhere else.
+func _unhandled_input(event: InputEvent) -> void:
+	if _screens == null:
+		return
+	if not event.is_action_pressed(&"ui_cancel"):
+		return
+	# Only consume it while something is open; at the character list Escape
+	# should not quit the way Android back does, since a desktop window has its
+	# own close button.
+	if router != null and router.handle_back_request():
+		get_viewport().set_input_as_handled()
+		return
+	if _sheet != null and is_instance_valid(_sheet):
+		_on_sheet_closed()
+		get_viewport().set_input_as_handled()
+
+
 func _handle_resize() -> void:
 	var wide := _compute_is_wide()
 	if wide == _is_wide:

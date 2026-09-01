@@ -118,3 +118,39 @@ scenes/ui/                    the .tscn files for the above
   so turn it on for emulator testing and back off before tagging a release.
 - Release builds are currently signed with the debug keystore. Reconcile that
   before distributing outside the group.
+
+---
+
+## 8. Dice: the simulation is authoritative
+
+When the 3D dice tray is built, the result is **read from where the dice
+settle**. Dice collide with each other and with the tray walls, and those
+collisions determine the outcome. Do not "optimise" this into a predetermined
+result with an animation played over it -- that would silently make the dice
+fake, and nothing would fail.
+
+Three consequences that invert the usual networking advice:
+
+- **Cross-platform determinism is not required, and must never be relied on.**
+  A roll is never re-simulated anywhere else. The roller simulates locally, the
+  dice settle, the faces are read, and *that outcome* is broadcast as a fact.
+  The GM waits for the settle.
+- **Rolls are client-authoritative, and that is correct here.** Physical dice at
+  a real table are client-authoritative too. Do not build anti-cheat around it.
+- **The rules layer must not depend on the tray.** Mutation-table rolls happen
+  headless and in tests, where no physics scene exists. Randomness enters
+  through `RandomSource`: `RngSource` (seeded) for rules and tests,
+  `PhysicalDiceSource` for rolls made at the table. Both return a `RollResult`.
+
+Randomness lives on the *input* side -- the launch impulse is randomised, and
+the outcome emerges from the simulation.
+
+`3d/physics_engine="Jolt Physics"` and the `Die` / `TrayWall` / `TrayFloor`
+physics layers are reserved for this; they are unused by the current UI-only app
+and should not be removed as dead configuration.
+
+The three hard parts, none of which is the physics itself: reading which face is
+up (d4 is a special case -- it has no up-face), detecting settle with a hard
+timeout so a die spinning in a corner cannot hang a GM waiting on the result,
+and deciding the cocked-die policy before building, since it determines whether
+`RollResult` needs to record re-roll attempts.
