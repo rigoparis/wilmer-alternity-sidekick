@@ -1294,4 +1294,103 @@ func _init() -> void:
 	var ac_to: Dictionary = rules.action_check(to_hero)
 	assert_eq.call(ac_to.ordinary, 11, "Tech Op Action Check score is floor((10+10)/2) + 1 = 11")
 
+	# --- 29. Willpower (WIL) Skills, Specialties & Mechanics ---
+	print("Testing WIL Skills, Specialties & Mechanics...")
+	# 1. Catalog Costs, Affinities, and Untrained Verification
+	var admin_skill := rules.get_skill_by_id(119)
+	var bureaucracy := rules.get_skill_by_id(120)
+	var management := rules.get_skill_by_id(121)
+	var anim_hand := rules.get_skill_by_id(122)
+	var anim_riding := rules.get_skill_by_id(123)
+	var anim_training := rules.get_skill_by_id(124)
+	var awareness_skill := rules.get_skill_by_id(125)
+	var intuition_skill := rules.get_skill_by_id(126)
+	var perception_skill := rules.get_skill_by_id(127)
+	var creativity_skill := rules.get_skill_by_id(128)
+	var invest_skill := rules.get_skill_by_id(130)
+	var interrogate_skill := rules.get_skill_by_id(131)
+	var search_skill := rules.get_skill_by_id(132)
+	var track_skill := rules.get_skill_by_id(133)
+	var resolve_skill := rules.get_skill_by_id(134)
+	var mental_res := rules.get_skill_by_id(135)
+	var phys_res := rules.get_skill_by_id(136)
+	var street_smart := rules.get_skill_by_id(137)
+	var crim_elem := rules.get_skill_by_id(138)
+	var street_know := rules.get_skill_by_id(139)
+	var teach_skill := rules.get_skill_by_id(140)
+	var teach_spec := rules.get_skill_by_id(141)
+
+	# Verify Base Costs
+	assert_eq.call(admin_skill["base_price"], 4, "Administration base price is 4 SP")
+	assert_eq.call(bureaucracy["base_price"], 3, "Bureaucracy base price is 3 SP")
+	assert_eq.call(management["base_price"], 3, "Management base price is 3 SP")
+
+	assert_eq.call(anim_hand["base_price"], 3, "Animal Handling base price is 3 SP")
+	assert_eq.call(anim_riding["base_price"], 1, "Animal Riding base price is 1 SP")
+	assert_eq.call(anim_training["base_price"], 1, "Animal Training base price is 1 SP")
+
+	assert_eq.call(awareness_skill["base_price"], 3, "Awareness base price is 3 SP")
+	assert_eq.call(intuition_skill["base_price"], 3, "Intuition base price is 3 SP")
+	assert_eq.call(perception_skill["base_price"], 2, "Perception base price is 2 SP")
+
+	assert_eq.call(creativity_skill["base_price"], 4, "Creativity base price is 4 SP")
+
+	assert_eq.call(invest_skill["base_price"], 7, "Investigate base price is 7 SP")
+	assert_eq.call(interrogate_skill["base_price"], 4, "Interrogate base price is 4 SP")
+	assert_eq.call(search_skill["base_price"], 4, "Search base price is 4 SP")
+	assert_eq.call(track_skill["base_price"], 4, "Track base price is 4 SP")
+
+	assert_eq.call(resolve_skill["base_price"], 5, "Resolve base price is 5 SP")
+	assert_eq.call(mental_res["base_price"], 3, "Mental Resolve base price is 3 SP")
+	assert_eq.call(phys_res["base_price"], 3, "Physical Resolve base price is 3 SP")
+
+	assert_eq.call(street_smart["base_price"], 5, "Street Smart base price is 5 SP")
+	assert_eq.call(crim_elem["base_price"], 3, "Criminal Elements base price is 3 SP")
+	assert_eq.call(street_know["base_price"], 3, "Street Knowledge base price is 3 SP")
+
+	assert_eq.call(teach_skill["base_price"], 5, "Teach base price is 5 SP")
+	assert_eq.call(teach_spec["base_price"], 3, "Teach (specific) base price is 3 SP")
+
+	# Verify all core WIL skills can be used untrained
+	assert_true.call(bool(admin_skill["untrained"]), "Administration can be used untrained")
+	assert_true.call(bool(anim_hand["untrained"]), "Animal Handling can be used untrained")
+	assert_true.call(bool(awareness_skill["untrained"]), "Awareness can be used untrained")
+	assert_true.call(bool(creativity_skill["untrained"]), "Creativity can be used untrained")
+	assert_true.call(bool(invest_skill["untrained"]), "Investigate can be used untrained")
+	assert_true.call(bool(resolve_skill["untrained"]), "Resolve can be used untrained")
+	assert_true.call(bool(street_smart["untrained"]), "Street Smart can be used untrained")
+	assert_true.call(bool(teach_skill["untrained"]), "Teach can be used untrained")
+
+	# 2. Species Free Skills (Table P4)
+	var fraal_wil: Dictionary = rules.default_character()
+	fraal_wil["species_id"] = 1 # Fraal
+	rules.ensure_character_shape(fraal_wil)
+	assert_true.call(rules.is_free_species_skill(fraal_wil, 125), "Fraal receives Awareness (125) for free")
+	assert_true.call(rules.is_free_species_skill(fraal_wil, 134), "Fraal receives Resolve (134) for free")
+	assert_true.call(rules.is_free_species_skill(human_veh, 125), "Human receives Awareness (125) for free")
+
+	# 3. Mental Resolve Will Resistance Modifier Rank Benefits
+	rules.set_skill_rank(benefit_hero, 134, 1) # Resolve
+	var wil_rm_base := rules.character_resistance_modifier(benefit_hero, "WIL")
+	rules.set_skill_rank(benefit_hero, 135, 4) # Mental Resolve Rank 4
+	assert_eq.call(rules.character_resistance_modifier(benefit_hero, "WIL"), wil_rm_base + 1, "Mental Resolve rank 4 grants +1 to WIL RM")
+	rules.set_skill_rank(benefit_hero, 135, 8)
+	assert_eq.call(rules.character_resistance_modifier(benefit_hero, "WIL"), wil_rm_base + 2, "Mental Resolve rank 8 grants +2 to WIL RM")
+	rules.set_skill_rank(benefit_hero, 135, 12)
+	assert_eq.call(rules.character_resistance_modifier(benefit_hero, "WIL"), wil_rm_base + 3, "Mental Resolve rank 12 grants +3 to WIL RM")
+
+	# 4. Actions Per Round Thresholds (Table P7)
+	var apr_hero: Dictionary = rules.default_character()
+	apr_hero["abilities"]["CON"] = 8
+	apr_hero["abilities"]["WIL"] = 7 # CON + WIL = 15 -> 1 Action
+	rules.ensure_character_shape(apr_hero)
+	assert_eq.call(rules.actions_per_round(apr_hero), 1, "CON + WIL = 15 grants 1 action per round")
+
+	apr_hero["abilities"]["WIL"] = 8 # CON + WIL = 16 -> 2 Actions
+	assert_eq.call(rules.actions_per_round(apr_hero), 2, "CON + WIL = 16 grants 2 actions per round")
+
+	apr_hero["abilities"]["CON"] = 12
+	apr_hero["abilities"]["WIL"] = 12 # CON + WIL = 24 -> 3 Actions
+	assert_eq.call(rules.actions_per_round(apr_hero), 3, "CON + WIL = 24 grants 3 actions per round")
+
 	finish()

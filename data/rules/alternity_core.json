@@ -2169,7 +2169,7 @@
       "stat_id": 5,
       "type": "broad",
       "broad_id": 128,
-      "base_price": 1,
+      "base_price": 4,
       "untrained": true,
       "multi": false,
       "custom_name": false,
@@ -2257,7 +2257,7 @@
       "untrained": true,
       "multi": false,
       "custom_name": false,
-      "professions": "",
+      "professions": "M",
       "source": "core"
     },
     {
@@ -2271,7 +2271,7 @@
       "untrained": true,
       "multi": false,
       "custom_name": false,
-      "professions": "",
+      "professions": "M",
       "source": "core"
     },
     {
@@ -2285,7 +2285,7 @@
       "untrained": true,
       "multi": false,
       "custom_name": false,
-      "professions": "",
+      "professions": "M",
       "source": "core"
     },
     {
@@ -2337,7 +2337,7 @@
       "stat_id": 5,
       "type": "broad",
       "broad_id": 140,
-      "base_price": 3,
+      "base_price": 5,
       "untrained": true,
       "multi": false,
       "custom_name": false,
@@ -2352,7 +2352,7 @@
       "type": "specialty",
       "broad_id": 140,
       "base_price": 3,
-      "untrained": false,
+      "untrained": true,
       "multi": true,
       "custom_name": true,
       "professions": "DT",
