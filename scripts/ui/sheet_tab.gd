@@ -42,12 +42,16 @@ func watched_sections() -> Array:
 	return CharacterDoc.ALL
 
 
-## Whether this tab applies to the given character at all.
+## Whether this tab applies to this character at all.
 ##
 ## Replaces the special case hardcoded in _tab_visible(): Mutations only appears
-## for the Mutant species. Static-ish by intent -- the shell asks before the tab
-## is bound, so it must not depend on instance state.
-func is_available_for(_doc: CharacterDoc) -> bool:
+## for the Mutant species.
+##
+## Takes the whole context rather than just the document, because deciding
+## usually needs the rules too -- "is this the Mutant species" means asking the
+## rules for that id. The shell asks on a probe instance before binding, so
+## `ctx` is still null here: use the argument, never the member.
+func is_available_for(_context: SheetContext) -> bool:
 	return true
 
 

@@ -16,6 +16,9 @@ extends Control
 signal closed
 
 const TAB_BASICS := preload("res://scenes/ui/tabs/tab_basics.tscn")
+const TAB_ACHIEVEMENTS := preload("res://scenes/ui/tabs/tab_achievements.tscn")
+const TAB_EQUIPMENT := preload("res://scenes/ui/tabs/tab_equipment.tscn")
+const TAB_MUTATIONS := preload("res://scenes/ui/tabs/tab_mutations.tscn")
 const TAB_CYBERTECH := preload("res://scenes/ui/tabs/tab_cybertech.tscn")
 const TAB_PERKS_FLAWS := preload("res://scenes/ui/tabs/tab_perks_flaws.tscn")
 
@@ -24,6 +27,9 @@ const TABS := [
 	{"id": "basics", "label": "Basics", "scene": TAB_BASICS},
 	{"id": "perks_flaws", "label": "Perks/Flaws", "scene": TAB_PERKS_FLAWS},
 	{"id": "cybertech", "label": "Cybertech", "scene": TAB_CYBERTECH},
+	{"id": "equipment", "label": "Equipment", "scene": TAB_EQUIPMENT},
+	{"id": "achievements", "label": "Achievements", "scene": TAB_ACHIEVEMENTS},
+	{"id": "mutations", "label": "Mutations", "scene": TAB_MUTATIONS},
 ]
 
 var _ctx: SheetContext
@@ -159,7 +165,7 @@ func _available_tabs() -> Array:
 	for definition in TABS:
 		var scene: PackedScene = definition["scene"]
 		var probe := scene.instantiate()
-		var applies: bool = probe.is_available_for(_ctx.doc) if probe is SheetTab else true
+		var applies: bool = probe.is_available_for(_ctx) if probe is SheetTab else true
 		probe.free()
 		if applies:
 			out.append(definition)

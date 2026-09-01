@@ -34,6 +34,7 @@ func _run() -> void:
 	await _test_starts_on_character_select()
 	await _test_create_opens_sheet()
 	await _test_tabs()
+	await _test_tab_availability()
 	await _test_cybertech_edits()
 	await _test_perks_catalog()
 	await _test_back_leaves_sheet()
@@ -104,17 +105,27 @@ func _test_tabs() -> void:
 
 	# Assert against the registry rather than a hardcoded count, so migrating a
 	# tab in phase 5 does not break this test every time.
+	#
+	# Not every registered tab is listed: a tab may exclude itself for this
+	# character (Mutations only applies to the Mutant species), so the listed set
+	# is the registry filtered by is_available_for.
 	var registry: Array = sheet.TABS
 	check_true(registry.size() >= 2, "at least two tabs are migrated (%d)" % registry.size())
-	check_eq(sheet._buttons.size(), registry.size(), "every migrated tab is listed")
-	for definition in registry:
+
+	var available: Array = sheet._available_tabs()
+	check_eq(sheet._buttons.size(), available.size(), "every applicable tab is listed")
+	for definition in available:
 		check_true(sheet._buttons.has(String(definition["id"])), "%s is listed" % definition["id"])
 
-	var first_id := String(registry[0]["id"])
+	# The Mutations tab is the one that excludes itself, and this character is
+	# not a Mutant.
+	check_false(sheet._buttons.has("mutations"), "Mutations is hidden for a non-Mutant hero")
+
+	var first_id := String(available[0]["id"])
 	check_eq(sheet._active_id, first_id, "the first tab is selected on open")
 
 	# Switching to any other tab keeps the first one alive but hidden.
-	var second_id := String(registry[1]["id"])
+	var second_id := String(available[1]["id"])
 	sheet._select_tab(second_id)
 	await process_frame
 	check_eq(sheet._active_id, second_id, "switching tabs changes the active id")
@@ -122,8 +133,8 @@ func _test_tabs() -> void:
 	check_true(sheet._instances[second_id].visible, "the active tab is visible")
 	check_false(sheet._instances[first_id].visible, "the previous tab is hidden, not destroyed")
 
-	# Every migrated tab must at least build without erroring.
-	for definition in registry:
+	# Every applicable tab must at least build without erroring.
+	for definition in available:
 		var id := String(definition["id"])
 		sheet._select_tab(id)
 		await process_frame
@@ -132,9 +143,45 @@ func _test_tabs() -> void:
 			check_true(tab.get_child_count() > 0, "%s draws content" % id)
 
 
+## Turning the character into a Mutant must make the Mutations tab appear.
+##
+## This is the replacement for the hardcoded species check that used to live in
+## the shell, so it is worth exercising rather than assuming.
+func _test_tab_availability() -> void:
+	var sheet = _sheet_screen()
+	var doc = sheet.document()
+	var rules = _shell.rules
+
+	check_false(sheet._buttons.has("mutations"), "Mutations hidden before the species changes")
+
+	var mutant_id: int = rules.mutations.mutant_species_id()
+	doc.set_species_id(mutant_id)
+	await process_frame
+
+	# The sheet rebuilds its tab bar when reopened, which is what the shell does
+	# on a species change in practice.
+	_shell._open_sheet(doc)
+	await process_frame
+	await process_frame
+
+	var reopened = _sheet_screen()
+	check_true(reopened._buttons.has("mutations"), "Mutations appears for a Mutant hero")
+
+	# Put it back so later tests see the original character.
+	doc.set_species_id(0)
+	_shell._open_sheet(doc)
+	await process_frame
+	await process_frame
+	check_false(_sheet_screen()._buttons.has("mutations"), "Mutations hides again when the species reverts")
+
+
 func _test_cybertech_edits() -> void:
 	var sheet = _sheet_screen()
 	var doc = sheet.document()
+	# Select it first: a hidden SheetTab defers its rebuild by design, so editing
+	# while another tab is showing would correctly produce no redraw here.
+	sheet._select_tab("cybertech")
+	await process_frame
 	var tab = sheet._instances.get("cybertech")
 	if not check(tab != null, "the cybertech tab exists"):
 		return

@@ -27,7 +27,7 @@ class CountingTab:
 	func watched_sections() -> Array:
 		return sections if not sections.is_empty() else CharacterDoc.ALL
 
-	func is_available_for(_doc: CharacterDoc) -> bool:
+	func is_available_for(_context: SheetContext) -> bool:
 		return available
 
 	func build(container: Container) -> void:
@@ -143,13 +143,23 @@ func _test_hidden_tabs_defer() -> void:
 
 
 ## Replaces the Mutations special case hardcoded in _tab_visible().
+##
+## Takes the whole context, not just the document: deciding usually needs the
+## rules too, and the shell asks on an unbound probe instance where ctx is null.
 func _test_availability() -> void:
-	var doc = Doc.new(_rules)
+	var context = _context()
 	var tab = _make()
-	check_true(tab.is_available_for(doc), "a tab is available by default")
+	check_true(tab.is_available_for(context), "a tab is available by default")
 
 	tab.available = false
-	check_false(tab.is_available_for(doc), "a tab can exclude itself for a character")
+	check_false(tab.is_available_for(context), "a tab can exclude itself for a character")
+
+	# It must be answerable before bind(), since that is when the shell asks.
+	var unbound = CountingTab.new()
+	unbound.available = false
+	check_true(unbound.ctx == null, "the probe is unbound")
+	check_false(unbound.is_available_for(context), "an unbound tab can still answer")
+	unbound.free()
 
 	tab.queue_free()
 
