@@ -369,22 +369,68 @@ func _open_theme() -> void:
 ## Writes next to the save rather than opening a dialog on mobile: Android has
 ## no usable native save picker here, and a file the person can find beats a
 ## dialog that never appears.
+## Hand the character to the person, somewhere they can actually reach it.
+##
+## The rewrite had reduced this to a clipboard copy plus a file in user://,
+## which on Android is inside the app sandbox and on desktop is buried under
+## AppData -- neither is a place you can send a file to a friend from.
+##
+## Restores the two paths the old flow used: a native Save dialog where the
+## platform has one, so the file lands wherever you choose; and Downloads plus
+## a shell_open on Android, which is what makes it reachable from the share
+## sheet. The clipboard copy is kept as well, since pasting the JSON straight
+## into chat is the quickest way to pass a hero around.
 func _share() -> void:
 	if _store == null or _ctx == null or _ctx.doc == null:
 		return
 	var text := _store.export_json(_ctx.doc)
 	DisplayServer.clipboard_set(text)
 
-	var file_name := "shared_" + CharacterStore.file_name_for(_ctx.doc)
-	var path := "user://" + file_name
-	var file := FileAccess.open(path, FileAccess.WRITE)
-	if file != null:
-		file.store_string(text)
-		file.close()
-		_status.text = "Copied, and written to %s" % file_name
+	var file_name := CharacterStore.file_name_for(_ctx.doc)
+
+	if DisplayServer.has_feature(DisplayServer.FEATURE_NATIVE_DIALOG):
+		var on_chosen := func(accepted: bool, paths: PackedStringArray, _filter: int) -> void:
+			if not is_instance_valid(self):
+				return
+			if not accepted or paths.is_empty():
+				_set_status("Copied to clipboard", _ctx.palette.muted)
+				return
+			var chosen := String(paths[0])
+			if _write(chosen, text):
+				_set_status("Saved to %s" % chosen.get_file(), _ctx.palette.accent)
+			else:
+				_set_status("Could not write %s" % chosen.get_file(), _ctx.palette.warning)
+		DisplayServer.file_dialog_show(
+			"Save Character", "", file_name, false,
+			DisplayServer.FILE_DIALOG_MODE_SAVE_FILE, ["*.json"], on_chosen
+		)
+		return
+
+	# No native dialog: Android and anywhere else headless-ish. Downloads is the
+	# one directory the system file picker and the share sheet both see.
+	var downloads := OS.get_system_dir(OS.SYSTEM_DIR_DOWNLOADS)
+	var path := "%s/shared_%s" % [downloads, file_name] if not downloads.is_empty() else "user://shared_" + file_name
+	if _write(path, text):
+		OS.shell_open(ProjectSettings.globalize_path(path))
+		_set_status("Saved to %s" % path.get_file(), _ctx.palette.accent)
 	else:
-		_status.text = "Copied to clipboard"
-	_status.add_theme_color_override("font_color", _ctx.palette.accent)
+		_set_status("Copied to clipboard", _ctx.palette.muted)
+
+
+func _write(path: String, text: String) -> bool:
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	if file == null:
+		return false
+	file.store_string(text)
+	file.close()
+	return true
+
+
+func _set_status(message: String, color: Color) -> void:
+	if _status == null or not is_instance_valid(_status):
+		return
+	_status.text = message
+	_status.add_theme_color_override("font_color", color)
 
 
 func _save() -> void:

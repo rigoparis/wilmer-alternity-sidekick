@@ -167,6 +167,21 @@ func _build_selected(container: Container, kind: String) -> void:
 	for mutation in selected:
 		_build_selected_row(box, mutation, kind)
 
+	# Rolling the mutations themselves, not just the points. The rules layer has
+	# always been able to (roll_mutations_for_distribution fills the distribution
+	# from the tiered tables), but nothing called it, so the only way to end up
+	# with mutations was to pick every one by hand -- which is not how a mutant
+	# is generated at the table.
+	var roll := Button.new()
+	roll.text = "Roll %ss for this distribution" % kind
+	roll.tooltip_text = "Fill the distribution from the random tables, replacing any rolled entries"
+	roll.custom_minimum_size = Vector2(0, 44)
+	roll.pressed.connect(func():
+		ctx.doc.apply(CharacterDoc.ALL, func(c):
+			(ctx.rules as AlternityRules).mutations.roll_mutations_for_distribution(c, kind))
+		save_requested.emit())
+	box.add_child(roll)
+
 	var add := Button.new()
 	add.text = "Add %s" % ("Advantage" if is_advantage else "Drawback")
 	add.custom_minimum_size = Vector2(0, 44)
