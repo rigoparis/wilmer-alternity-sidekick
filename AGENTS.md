@@ -5,15 +5,53 @@ Developer rules and architectural guide for **Wilmer Alternity Sidekick** (Godot
 ---
 
 ## 1. System Architecture
-- **Controller**: [main.gd](file:///c:/Users/rodri/Projects/Godot/wilmer-alternity-sidekick/scripts/main.gd) (handles UI layouts, overlays, and events).
-- **Rules Engine**: [alternity_rules.gd](file:///c:/Users/rodri/Projects/Godot/wilmer-alternity-sidekick/scripts/alternity_rules.gd) (loads JSON rulesets from `data/rules/` and exposes getters/computations).
-- **Theme Autoload**: [theme_manager.gd](file:///c:/Users/rodri/Projects/Godot/wilmer-alternity-sidekick/scripts/theme_manager.gd) (handles custom themes in `themes/`).
 
----
+Layered, with no UI dependency below `scripts/ui/`:
+
+```
+scripts/core/      model and services, all headless-testable
+  num.gd             numeric coercion for stored JSON (as_int / as_float)
+  character_doc.gd   owns one character; mutations go through apply()
+  character_store.gd load / save / list / delete under user://
+  skill_detail.gd    typed sections for skill and FX reference text
+  theme_service.gd   autoload; owns the active theme
+  theme_palette.gd   the eight semantic colours
+  dice/              notation, seeded RNG, RollResult
+  session/           campaign document and transport interface
+
+scripts/ui/        presentation
+  app_shell.gd       root scene; routes between screens, handles back
+  ui_router.gd       navigation stack (RefCounted)
+  modal_host.gd      CanvasLayer owning the scrim, stacking and sizing
+  sheet_tab.gd       tab contract; declares watched sections
+  sheet_context.gd   what a tab is handed
+  widgets.gd         stateless builders, palette-aware
+  widgets/           controls with behaviour (SearchField, NumberStepper, SkillPicker)
+  screens/           character select, character sheet
+  tabs/              the ten sheet tabs
+  routes/            catalog, confirm, import, optional rules, theme, skill detail
+
+scripts/alternity_rules*.gd   the rules engine: catalog data plus pure functions
+data/rules/*.json             the rules data
+scenes/ui/                    the .tscn files for the above
+```
+
+**Key contracts**
+
+- A tab never triggers a global re-render. It declares `watched_sections()` and
+  the base rebuilds it only when one of those changes; a hidden tab defers.
+- Every character mutation goes through `doc.apply(sections, callable)`, which
+  is what announces the change.
+- Catalogs filter through `rules.is_entry_available(character, entry)` so
+  optional-setting content (Dark Matter) only appears when that setting is
+  selected. Forgetting this does not error -- it silently offers the wrong
+  content -- so use the helper rather than re-deriving the check.
+- Dice results come from a `RandomSource`. The rules layer uses the seeded
+  `RngSource`; a physical dice tray will implement the same interface.
 
 ## 2. Layout Overrides (Desktop vs. Mobile)
 - **Desktop (Default)**: `1280x720` (Landscape).
-- **Mobile (`.mobile` suffix)**: `390x844` (Portrait).
+- **Mobile (`.mobile` suffix)**: ``390x844` on mobile (`1280x720` is the desktop default)` (Portrait).
 - **Warning**: `window/handheld/orientation` in `project.godot` must be `1` (Integer Enum for Portrait). A string value like `"portrait"` will fail parser. Never use external `override.cfg`.
 
 ---
@@ -66,3 +104,17 @@ Developer rules and architectural guide for **Wilmer Alternity Sidekick** (Godot
 - **`.uid` files are tracked.** Godot 4.4+ uses them to keep resource references stable
   across machines. Do not add them to `.gitignore`. Delete a `.uid` only when its script is
   deleted.
+
+---
+
+## 7. Android Export Notes
+
+- `permissions/internet` and `permissions/access_network_state` are enabled in
+  `export_presets.cfg` and must stay that way. Debug exports get INTERNET
+  implicitly for the remote debugger, so anything networked (the planned GM
+  connection) would appear to work in testing and fail only in a release APK.
+- Architectures ship **arm64-v8a only**. Enabling `architectures/x86_64` allows
+  running on an Android emulator but takes the APK from roughly 33 MB to 61 MB,
+  so turn it on for emulator testing and back off before tagging a release.
+- Release builds are currently signed with the debug keystore. Reconcile that
+  before distributing outside the group.

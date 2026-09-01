@@ -20,7 +20,7 @@ This project is a labor of love for the classic Alternity Sci-Fi system. Feel fr
 
 ## Features
 
-- **Mobile Viewport Optimization**: Structured for modern mobile displays (defaulting to a `390x844` viewport).
+- **Mobile Viewport Optimization**: Structured for modern mobile displays (defaulting to `1280x720`, with a `390x844` portrait override on mobile).
 - **Responsive Layout Safety**: Protects compact screen boundaries using custom size constraints and smart word-wrapping to prevent empty list elements or wide layouts from breaking layout containers.
 - **Accurate Rules Evaluation**: Translates the full Alternity tabletop rules for derived attributes, checking perks (*Tough as Nails*, *Reflexes*, *Willpower*), flaws (*Spineless*), and specialty/melee combat skill ranks to calculate exact Resistance Modifiers on character sheets.
 - **Core Database Engine**: Fast offline searching and viewing of data sourced directly from JSON rulesheets.
@@ -31,14 +31,19 @@ This project is a labor of love for the classic Alternity Sci-Fi system. Feel fr
 
 ## Directory Structure
 
-* `data/rules/`: Contains the core dataset in JSON format (e.g., equipment lists, mutations, achievements, and core rules).
-* `manuals/`: Local PDF documents used for developer references (automatically ignored during exports to minimize size).
-* `scripts/`: GDScript files implementing the UI controller (`main.gd`) and rules database engine (`alternity_rules.gd`).
-* `tools/`: Diagnostic smoke test scripts and the PowerShell build automation script.
-* `export_presets.cfg`: The export presets configured for desktop and mobile targets.
-* `project.godot`: The Godot project configuration file.
+```
+scripts/core/     model and services (character, store, dice, theme, session)
+scripts/ui/       shell, router, screens, tabs, routes, widgets
+scripts/alternity_rules*.gd   the rules engine
+scenes/ui/        the .tscn files for the UI
+data/rules/       rules data as JSON
+tests/            fixtures and golden snapshots
+tools/            headless test suites and dev scripts
+```
 
----
+The UI is scene-based: `scenes/ui/app_shell.tscn` is the main scene, and each
+sheet tab is its own scene. See [AGENTS.md](AGENTS.md) for the layering and the
+contracts between them.
 
 ## Prerequisites
 
