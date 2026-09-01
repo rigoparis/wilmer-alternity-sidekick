@@ -151,14 +151,22 @@ static func table_cell(parent: GridContainer, content: String, palette: ThemePal
 ## CheckBox styleboxes so the old custom check artwork can show through, which
 ## would leave a plain CheckBox here looking unstyled. The switch is also a
 ## larger touch target.
-static func toggle_row(parent: Container, label_text: String, pressed: bool, palette: ThemePalette) -> CheckButton:
+static func toggle_row(
+	parent: Container,
+	label_text: String,
+	pressed: bool,
+	palette: ThemePalette,
+	compact: bool = false
+) -> CheckButton:
 	var toggle := CheckButton.new()
 	toggle.text = label_text
 	toggle.button_pressed = pressed
-	toggle.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	toggle.custom_minimum_size = Vector2(0, 44)
+	# Compact sits inline beside another control and sizes to its label; the full
+	# form is a row of its own and takes the width.
+	toggle.size_flags_horizontal = Control.SIZE_SHRINK_END if compact else Control.SIZE_EXPAND_FILL
+	toggle.custom_minimum_size = Vector2(0, 36 if compact else 44)
 	toggle.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	toggle.add_theme_font_size_override("font_size", FONT_DETAIL)
+	toggle.add_theme_font_size_override("font_size", FONT_CAPTION if compact else FONT_DETAIL)
 
 	# The switch shows the state; the row does not. Inheriting the theme's
 	# Button styles filled an enabled toggle with the accent colour and left

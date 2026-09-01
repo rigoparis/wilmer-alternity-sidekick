@@ -66,7 +66,29 @@ func _seed_store() -> void:
 			var tracks: Dictionary = c.get("damage", {})
 			tracks["stun"] = 3
 			tracks["wound"] = 1
-			c["damage"] = tracks)
+			c["damage"] = tracks
+
+			# FX and Equipment both render an empty shell until something is in
+			# them, which is the state that hides a broken layout.
+			rules.fx.set_fx_talent(c, true)
+			rules.fx.set_energy_pool(c, 8)
+			for broad in rules.fx.get_broad_skills_for_character(c):
+				rules.fx.add_fx_skill(c, String(broad.get("name", "")))
+				for power in rules.fx.get_specialty_skills_for_broad_and_character(
+					String(broad.get("name", "")), c
+				):
+					rules.fx.add_fx_skill(c, String(power.get("name", "")))
+					break
+				break
+
+			var stocked := 0
+			for item in rules.equipment.filtered_equipment({}):
+				if stocked >= 3:
+					break
+				rules.equipment.add_equipment_to_character(
+					c, String(item.get("id", "")), 1 + stocked
+				)
+				stocked += 1)
 		store.save(doc)
 	store.clear_last_opened()
 

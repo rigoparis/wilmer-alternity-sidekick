@@ -117,7 +117,13 @@ func _build_carried_row(parent: Container, row: Dictionary) -> void:
 			))
 		save_requested.emit())
 
-	var worn := Widgets.toggle_row(controls, "Equipped", equipped, palette)
+	# Pushes the toggle to the right of the row, so Qty keeps its buttons.
+	var gap := Control.new()
+	gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	controls.add_child(gap)
+
+	var worn := Widgets.toggle_row(controls, "Equipped", equipped, palette, true)
 	worn.toggled.connect(func(pressed: bool):
 		doc.apply([CharacterDoc.EQUIPMENT], func(c):
 			rules.equipment.update_carried_equipment(

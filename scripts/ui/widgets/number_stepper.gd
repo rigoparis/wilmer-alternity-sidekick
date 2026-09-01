@@ -28,7 +28,9 @@ var _step: int = 1
 
 func _init() -> void:
 	add_theme_constant_override("separation", Widgets.GAP_ROW)
-	size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# Sized to its contents. A stepper that stretched to the full row width left
+	# a gap between the label and the buttons that made them read as unrelated.
+	size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 
 
 func setup(
@@ -47,9 +49,15 @@ func setup(
 
 	_label = Label.new()
 	_label.text = label_text
-	_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_label.custom_minimum_size = Vector2(1, 0)
+	# Neither expanding nor wrapping. Expanding pushed the label to the far side
+	# of the row from the input it names, and once something squeezed the row the
+	# 1px minimum let "Qty" wrap into "Q / ty".
+	_label.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	# No ellipsis and no wrap: an overrun behaviour takes the text out of the
+	# label's minimum size, which collapsed it to nothing and lost "Qty"
+	# altogether. Left alone it sizes to its own text, which is the width wanted.
+	_label.visible = not label_text.is_empty()
 	_label.add_theme_color_override("font_color", palette.muted)
 	_label.add_theme_font_size_override("font_size", Widgets.FONT_DETAIL)
 	add_child(_label)

@@ -11,8 +11,12 @@ extends SheetTab
 ## SkillDetailView from the typed section schema -- the same renderer core
 ## skills use, replacing the two divergent detail panels the old UI had.
 ##
+## Browsing is FxPicker, which is shaped like the Skills tab: a bar of
+## categories to tab across, schools under the selected one, and their powers
+## nested beneath. It replaces a flat list of what was already chosen plus two
+## "Add" buttons that sent you to a catalog route to see what existed at all.
+##
 
-const CATALOG_ROUTE := preload("res://scenes/ui/routes/catalog_route.tscn")
 const DETAIL_ROUTE := preload("res://scenes/ui/routes/skill_detail_route.tscn")
 
 
@@ -26,7 +30,7 @@ func build(container: Container) -> void:
 	_build_pool(container)
 	if not ctx.rules.fx.is_fx_talent(ctx.doc.raw()):
 		return
-	_build_selected(container)
+	_build_picker(container)
 
 
 func _build_pool(container: Container) -> void:
@@ -73,84 +77,14 @@ func _build_pool(container: Container) -> void:
 		Widgets.muted_text(box, String(effect), palette, Widgets.FONT_CAPTION)
 
 
-func _build_selected(container: Container) -> void:
-	var doc := ctx.doc
-	var rules: AlternityRules = ctx.rules
-	var palette := ctx.palette
+func _build_picker(container: Container) -> void:
+	var box := Widgets.section(container, "Powers", ctx.palette)
 
-	var box := Widgets.section(container, "Powers", palette)
-
-	var selected: Array = rules.fx.selected_fx_skills(doc.raw())
-	if selected.is_empty():
-		Widgets.muted_text(box, "No FX skills chosen yet.", palette)
-
-	for skill in selected:
-		_build_selected_row(box, skill)
-
-	var add_broad := Button.new()
-	add_broad.text = "Add School / Faith / Category"
-	add_broad.custom_minimum_size = Vector2(0, 44)
-	add_broad.pressed.connect(_open_broad_catalog)
-	box.add_child(add_broad)
-
-	var add_power := Button.new()
-	add_power.text = "Add Power"
-	add_power.custom_minimum_size = Vector2(0, 44)
-	add_power.pressed.connect(_open_power_catalog)
-	box.add_child(add_power)
-
-
-func _build_selected_row(parent: Container, skill: Dictionary) -> void:
-	var doc := ctx.doc
-	var rules: AlternityRules = ctx.rules
-	var palette := ctx.palette
-	var skill_name := String(skill.get("name", ""))
-
-	var block := VBoxContainer.new()
-	block.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	block.add_theme_constant_override("separation", Widgets.GAP_TIGHT)
-	parent.add_child(block)
-
-	var header := HBoxContainer.new()
-	header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header.add_theme_constant_override("separation", Widgets.GAP_ROW)
-	block.add_child(header)
-
-	# The name is a button: tapping a power is how you read what it does.
-	var name_button := Button.new()
-	name_button.text = skill_name
-	name_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	name_button.custom_minimum_size = Vector2(0, 36)
-	name_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	name_button.pressed.connect(_open_detail.bind(skill))
-	header.add_child(name_button)
-
-	var rank := AlternityNum.as_int(skill.get("rank", 0))
-	var rank_label := Label.new()
-	rank_label.text = "Rank %d" % rank
-	rank_label.add_theme_color_override("font_color", palette.accent)
-	rank_label.add_theme_font_size_override("font_size", Widgets.FONT_DETAIL)
-	header.add_child(rank_label)
-
-	var remove := Button.new()
-	remove.text = "Remove"
-	remove.custom_minimum_size = Vector2(84, 36)
-	remove.pressed.connect(func():
-		doc.apply([CharacterDoc.FX], func(c): rules.fx.remove_fx_skill(c, skill_name))
-		save_requested.emit())
-	header.add_child(remove)
-
-	# Only some powers can be made always-active, so the control appears only
-	# where it applies rather than being drawn disabled everywhere.
-	if rules.fx.can_fx_skill_be_permanent(skill_name):
-		var permanent: bool = rules.fx.is_fx_skill_permanent(doc.raw(), skill_name)
-		var toggle := Widgets.toggle_row(block, "Always active (reserves pool)", permanent, palette)
-		toggle.toggled.connect(func(pressed: bool):
-			doc.apply([CharacterDoc.FX], func(c):
-				rules.fx.set_fx_skill_permanent(c, skill_name, pressed))
-			save_requested.emit())
-
-	Widgets.separator(block, palette)
+	var picker := FxPicker.new()
+	box.add_child(picker)
+	picker.setup(ctx)
+	picker.change_requested.connect(func(): save_requested.emit())
+	picker.detail_requested.connect(_open_detail)
 
 
 func _open_detail(skill: Dictionary) -> void:
@@ -159,86 +93,5 @@ func _open_detail(skill: Dictionary) -> void:
 	await ctx.router.push(DETAIL_ROUTE, {
 		"palette": ctx.palette,
 		"data": skill,
+		"title": String(skill.get("name", "")),
 	})
-
-
-func _open_broad_catalog() -> void:
-	if ctx.router == null:
-		return
-	var rules: AlternityRules = ctx.rules
-	var raw := ctx.doc.raw()
-
-	var entries: Array = []
-	# Already setting-filtered by the rules layer, so Dark Matter faiths only
-	# appear when that setting is selected.
-	for broad in rules.fx.get_broad_skills_for_character(raw):
-		var name := String(broad.get("name", ""))
-		entries.append({
-			"id": name,
-			"name": name,
-			"summary": String(broad.get("category", "")),
-			"meta": "%d SP" % rules.fx.fx_skill_cost(raw, name),
-			"taken": rules.fx.is_fx_skill_selected(raw, name),
-		})
-
-	var chosen = await ctx.router.push(CATALOG_ROUTE, {
-		"palette": ctx.palette,
-		"title": "Schools, Faiths and Categories",
-		"entries": entries,
-	})
-	_apply_chosen(chosen)
-
-
-func _open_power_catalog() -> void:
-	if ctx.router == null:
-		return
-	var rules: AlternityRules = ctx.rules
-	var raw := ctx.doc.raw()
-
-	var entries: Array = []
-	# Powers are only offered under a broad the hero actually has: FX specialty
-	# skills cannot be used without their parent.
-	for broad in rules.fx.get_broad_skills_for_character(raw):
-		var broad_name := String(broad.get("name", ""))
-		if not rules.fx.is_fx_skill_selected(raw, broad_name):
-			continue
-		for specialty in rules.fx.get_specialty_skills_for_broad_and_character(broad_name, raw):
-			var name := String(specialty.get("name", ""))
-			entries.append({
-				"id": name,
-				"name": name,
-				"summary": "%s  |  %s" % [broad_name, String(specialty.get("category", ""))],
-				"meta": "%d SP" % rules.fx.fx_skill_cost(raw, name),
-				"taken": rules.fx.is_fx_skill_selected(raw, name),
-			})
-
-	if entries.is_empty():
-		await ctx.router.push(DETAIL_ROUTE, {
-			"palette": ctx.palette,
-			"title": "No powers available",
-			"data": {
-				"name": "No powers available",
-				"description": "Add a school, faith or category first. FX powers can only be taken under a broad skill the hero already has.",
-			},
-		})
-		return
-
-	var chosen = await ctx.router.push(CATALOG_ROUTE, {
-		"palette": ctx.palette,
-		"title": "FX Powers",
-		"entries": entries,
-	})
-	_apply_chosen(chosen)
-
-
-func _apply_chosen(chosen: Variant) -> void:
-	if not is_instance_valid(self) or ctx == null or ctx.doc == null:
-		return
-	if typeof(chosen) != TYPE_ARRAY or chosen.is_empty():
-		return
-
-	var rules: AlternityRules = ctx.rules
-	ctx.doc.apply([CharacterDoc.FX], func(c):
-		for skill_name in chosen:
-			rules.fx.add_fx_skill(c, String(skill_name)))
-	save_requested.emit()
