@@ -1850,4 +1850,70 @@ func _init() -> void:
 	var selected_fx = rules.fx.selected_fx_skills(super_hero)
 	assert_true.call(selected_fx.size() >= 5, "Multi-category mixing is valid for Super Power FX")
 
+	# --- 34. Achievement Benefits Architecture & Table P29 (PHB Chapter 8) ---
+	print("Testing Achievement Benefits Architecture & Table P29...")
+	var ach_hero: Dictionary = rules.default_character()
+	ach_hero["profession_id"] = 0 # Combat Spec
+	ach_hero["abilities"] = {"STR": 11, "DEX": 11, "CON": 11, "INT": 11, "WIL": 11, "PER": 11}
+	rules.ensure_character_shape(ach_hero)
+	rules.achievements.set_achievement_points(ach_hero, 100) # Level 10
+
+	# 1. Action Check Bonus (-1 step situation die)
+	var base_ac: Dictionary = rules.action_check(ach_hero)
+	var ac_bonus_item := rules.get_achievement_by_id("action_check_bonus")
+	assert_true.call(not ac_bonus_item.is_empty(), "Action Check Bonus achievement exists")
+	assert_eq.call(rules.achievements.achievement_cost_entry(ac_bonus_item, ach_hero).cost, 10, "Combat Spec AC Bonus cost is 10 SP")
+	var res_ac_bonus = rules.achievements.add_achievement_purchase(ach_hero, "action_check_bonus")
+	assert_true.call(bool(res_ac_bonus.get("ok", false)), "Action Check Bonus purchase succeeds")
+	assert_eq.call(rules.action_check(ach_hero).die, "-d4", "Action check die improved to -d4")
+
+	# 2. Action Check Increase (+1 point to Action Check Score)
+	var res_ac_inc = rules.achievements.add_achievement_purchase(ach_hero, "action_check_increase")
+	assert_true.call(bool(res_ac_inc.get("ok", false)), "Action Check Increase purchase succeeds")
+	assert_eq.call(rules.action_check(ach_hero).ordinary, base_ac.ordinary + 1, "Ordinary action check score raised by +1")
+
+	# 3. Extra Action (+1 permanent action per round)
+	var base_apr := rules.actions_per_round(ach_hero)
+	var res_extra_act = rules.achievements.add_achievement_purchase(ach_hero, "extra_action")
+	assert_true.call(bool(res_extra_act.get("ok", false)), "Extra Action purchase succeeds")
+	assert_eq.call(rules.actions_per_round(ach_hero), min(4, base_apr + 1), "Actions per round increased by +1")
+
+	# 4. Durability Rating Increases (Stun, Wound, Mortal, Fatigue)
+	var base_durability: Dictionary = rules.durability(ach_hero)
+	rules.achievements.add_achievement_purchase(ach_hero, "stun_rating_increase")
+	rules.achievements.add_achievement_purchase(ach_hero, "wound_rating_increase")
+	rules.achievements.add_achievement_purchase(ach_hero, "mortal_rating_increase")
+	rules.achievements.add_achievement_purchase(ach_hero, "fatigue_rating_increase")
+	var updated_dur: Dictionary = rules.durability(ach_hero)
+	assert_eq.call(updated_dur.stun, base_durability.stun + 1, "+1 Stun rating box")
+	assert_eq.call(updated_dur.wound, base_durability.wound + 1, "+1 Wound rating box")
+	assert_eq.call(updated_dur.mortal, base_durability.mortal + 1, "+1 Mortal rating box")
+	assert_eq.call(updated_dur.fatigue, base_durability.fatigue + 1, "+1 Fatigue rating box")
+
+	# 5. Ability Score Increase #1 & #2
+	var base_str: int = AlternityNum.as_int(rules.effective_abilities(ach_hero).get("STR", 11))
+	var res_str1 = rules.achievements.add_achievement_purchase(ach_hero, "str_increase_1")
+	assert_true.call(bool(res_str1.get("ok", false)), "STR Increase #1 succeeds")
+	assert_eq.call(rules.effective_abilities(ach_hero)["STR"], base_str + 1, "STR raised by +1")
+
+	var res_str2 = rules.achievements.add_achievement_purchase(ach_hero, "str_increase_2")
+	assert_true.call(bool(res_str2.get("ok", false)), "STR Increase #2 succeeds")
+	assert_eq.call(rules.effective_abilities(ach_hero)["STR"], base_str + 2, "STR raised by +2")
+
+	# Cannot purchase STR Increase a 3rd time (max 2 per ability)
+	var res_str3 = rules.achievements.add_achievement_purchase(ach_hero, "str_increase_1")
+	assert_true.call(not bool(res_str3.get("ok", false)), "Cannot purchase STR Increase #1 more than once")
+
+	# 6. New Perk via Achievement
+	var res_perk = rules.achievements.add_achievement_purchase(ach_hero, "new_perk_danger_sense")
+	assert_true.call(bool(res_perk.get("ok", false)), "New Perk: Danger Sense purchase succeeds")
+	assert_true.call(rules.is_perk_selected(ach_hero, "danger_sense"), "Danger Sense perk is active on character")
+
+	# 7. Remove Flaw (costs 2x flaw bonus SP, min level 6)
+	rules.set_flaw_selected(ach_hero, "clueless", 4)
+	assert_true.call(rules.is_flaw_selected(ach_hero, "clueless"), "Hero has Clueless flaw")
+	var res_rem = rules.achievements.add_achievement_purchase(ach_hero, "remove_flaw", "clueless", 4)
+	assert_true.call(bool(res_rem.get("ok", false)), "Remove Flaw purchase succeeds at Level 10")
+	assert_true.call(not rules.is_flaw_selected(ach_hero, "clueless"), "Clueless flaw has been eliminated")
+
 	finish()
