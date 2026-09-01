@@ -778,12 +778,12 @@ func _update_theme_modal_height() -> void:
 
 
 func _refresh_theme_panel() -> void:
-	if theme_body == null or not has_node("/root/ThemeManager"):
+	if theme_body == null or not has_node("/root/ThemeService"):
 		return
 	for child in theme_body.get_children():
 		child.queue_free()
 
-	var tm = get_node("/root/ThemeManager")
+	var tm = get_node("/root/ThemeService")
 	for index in range(tm.theme_names.size()):
 		var name = tm.theme_names[index]
 		var is_selected = index == tm.current_theme_index
@@ -6053,34 +6053,39 @@ var theme_overlay: Control
 var theme_panel: PanelContainer
 var theme_body: VBoxContainer
 
+## Copy a palette into the eight local colour members this file draws with.
+##
+## Transitional: these members exist because the UI is one procedural file. As
+## tabs move to their own scenes they read ThemeService.palette() directly and
+## this shim goes away with main.gd.
+func _adopt_palette(palette: ThemePalette) -> void:
+	color_background = palette.background
+	color_surface = palette.surface
+	color_surface_soft = palette.surface_soft
+	color_text = palette.text
+	color_muted = palette.muted
+	color_accent = palette.accent
+	color_warning = palette.warning
+	color_border = palette.border
+
+
 func _setup_theme() -> void:
-	if not Engine.is_editor_hint() and has_node("/root/ThemeManager"):
-		var tm = get_node("/root/ThemeManager")
+	if not Engine.is_editor_hint() and has_node("/root/ThemeService"):
+		var tm = get_node("/root/ThemeService")
 		if tm.theme_changed.is_connected(_on_theme_changed):
 			return
 		tm.theme_changed.connect(_on_theme_changed)
 		_on_theme_changed()
 	else:
-		color_background = Color(0.05, 0.07, 0.10)
-		color_surface = Color(0.10, 0.12, 0.16)
-		color_surface_soft = Color(0.15, 0.18, 0.22)
-		color_text = Color(0.90, 0.92, 0.95)
-		color_muted = Color(0.50, 0.55, 0.60)
-		color_accent = Color(0.00, 0.80, 0.80)
-		color_warning = Color(0.90, 0.30, 0.20)
-		color_border = Color(0.20, 0.25, 0.30)
+		# No ThemeService: the editor, or a bare instantiation in a headless
+		# test. Fall back to the palette defaults rather than a second hardcoded
+		# copy of the same eight colours -- ThemePalette owns them now.
+		_adopt_palette(ThemePalette.new())
 
 func _on_theme_changed() -> void:
-	if has_node("/root/ThemeManager"):
-		var tm = get_node("/root/ThemeManager")
-		color_background = tm.get_theme_color("color_background")
-		color_surface = tm.get_theme_color("color_surface")
-		color_surface_soft = tm.get_theme_color("color_surface_soft")
-		color_text = tm.get_theme_color("color_text")
-		color_muted = tm.get_theme_color("color_muted")
-		color_accent = tm.get_theme_color("color_accent")
-		color_warning = tm.get_theme_color("color_warning")
-		color_border = tm.get_theme_color("color_border")
+	if has_node("/root/ThemeService"):
+		var tm = get_node("/root/ThemeService")
+		_adopt_palette(tm.palette())
 
 		if background_rect != null:
 			background_rect.color = color_background
@@ -6141,7 +6146,7 @@ func _on_theme_changed() -> void:
 			_render()
 
 func _show_theme_selector() -> void:
-	if not has_node("/root/ThemeManager"):
+	if not has_node("/root/ThemeService"):
 		return
 	_refresh_theme_panel()
 	theme_overlay.visible = true
