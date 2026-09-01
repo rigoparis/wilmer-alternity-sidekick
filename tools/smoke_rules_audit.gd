@@ -946,6 +946,43 @@ func _init() -> void:
 	var cyber_messages: Array = rules.validate(shrunk).filter(func(m): return String(m).contains("cyber tolerance"))
 	assert_true.call(not cyber_messages.is_empty(), "validate() reports cybertech over capacity after a CON drop")
 
+	# Stat Boosts Exceeding Species Max & Attack Forms
+	var max_str_hero: Dictionary = rules.default_character()
+	max_str_hero["species_id"] = 0 # Human (Max STR 14)
+	max_str_hero["abilities"]["STR"] = 14
+	max_str_hero["abilities"]["WIL"] = 11
+	rules.ensure_character_shape(max_str_hero)
+	rules.cybertech.set_cybertech_enabled(max_str_hero, true)
+	rules.cybertech.install_cybertech(max_str_hero, "muscleplus", "amazing")
+	assert_eq.call(rules.effective_abilities(max_str_hero)["STR"], 17, "MusclePlus (Amazing) raises STR to 17, bypassing racial max of 14")
+
+	# Durability Boosts from Cybertech
+	var cyber_dur_hero: Dictionary = rules.default_character()
+	cyber_dur_hero["abilities"]["CON"] = 10
+	rules.ensure_character_shape(cyber_dur_hero)
+	var base_cdur: Dictionary = rules.durability(cyber_dur_hero)
+	rules.cybertech.set_cybertech_enabled(cyber_dur_hero, true)
+	rules.cybertech.install_cybertech(cyber_dur_hero, "exoskeleton", "amazing")
+	assert_eq.call(rules.durability(cyber_dur_hero).stun, base_cdur.stun + 2, "Exoskeleton (Amazing) adds +2 Stun")
+	assert_eq.call(rules.durability(cyber_dur_hero).wound, base_cdur.wound + 2, "Exoskeleton (Amazing) adds +2 Wound")
+	assert_eq.call(rules.durability(cyber_dur_hero).mortal, base_cdur.mortal + 2, "Exoskeleton (Amazing) adds +2 Mortal")
+
+	# Action Step Bonus (Fast Chip) & Cykosis Calculation
+	rules.cybertech.install_cybertech(max_str_hero, "fast_chip", "amazing")
+	assert_eq.call(rules.cybertech.cybertech_action_check_step(max_str_hero), -3, "Fast Chip (Amazing) grants -3 action step bonus")
+	assert_eq.call(rules.cybertech.cykosis_total(max_str_hero), 6, "WIL 11 gives cykosis total = ceil(11/2) = 6")
+
+	# Attack Forms & Armor Rows
+	rules.cybertech.install_cybertech(max_str_hero, "battleklaw", "good")
+	var atk_forms: Array = rules.cybertech.cybertech_attack_forms(max_str_hero)
+	assert_true.call(not atk_forms.is_empty(), "BattleKlaw generates cybertech attack form")
+	assert_eq.call(atk_forms[0]["damage"], "d4+2w/d6+2w/d4m", "BattleKlaw (Good) damage profile matches")
+
+	rules.cybertech.install_cybertech(max_str_hero, "body_plating", "good")
+	var armor_rows: Array = rules.cybertech.cybertech_armor_rows(max_str_hero)
+	assert_true.call(not armor_rows.is_empty(), "Body Plating generates cybertech armor row")
+	assert_eq.call(armor_rows[0]["item"]["combat"]["li"], "d6", "Body Plating (Good) LI armor matches")
+
 	# --- 26. Dexterity (DEX) Skills, Specialties & Mechanics ---
 	print("Testing DEX Skills, Specialties & Mechanics...")
 	# 1. Catalog Costs, Affinities, and Trained-Only Verification
