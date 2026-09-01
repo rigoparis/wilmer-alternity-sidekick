@@ -2246,6 +2246,21 @@
                 "6": "At rank 6, 6,400 kilograms.",
                 "9": "At rank 9, 12,500 kilograms."
             }
+        },
+        "Befriend": {
+            "ability": "PER",
+            "broad_skill": "Mesmerism",
+            "category": "Arcane Magic",
+            "cost": 4.0,
+            "description": "Improved charm shifting a target's attitude by 1, 2, or 3 categories (can adjust even Hostile/Combative targets toward Fanatic). Lasts 1 hour.",
+            "meta": "Cost: 4 skill points / Energy: 1 FX point / Range: 2 meters / Duration: 1 hour",
+            "name": "Befriend",
+            "rank_benefits": {
+                "4": "Affects 3 targets simultaneously.",
+                "8": "Affects 10 targets simultaneously.",
+                "12": "Affects 30 targets simultaneously."
+            },
+            "source": "Beyond Science: A Guide to FX, pgs. 28-30"
         }
     }
 }

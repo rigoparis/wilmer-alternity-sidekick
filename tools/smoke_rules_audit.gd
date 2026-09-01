@@ -1730,4 +1730,25 @@ func _init() -> void:
 	var chi_cost: int = rules.fx.fx_skill_cost(cost_char, "Chi")
 	assert_eq.call(chi_cost, int(chi_broad.cost), "Chi broad skill cost matches catalog")
 
+	# 5. Arcane Magic Schools & 52 Canonical Spells Verification
+	var expected_arcane_spells: Dictionary = {
+		"Diabolism": ["Binding", "Black warding", "Command", "Hellfire", "Rend the weave", "Spiritwrack", "Summoning", "Tongue of the damned"],
+		"Hemomancy": ["Blood debt", "Bloodlust", "Hunger", "Lifeblood", "Reciprocating", "Runs cold", "Stigmata", "Thicker than water"],
+		"Hermeticism": ["Daedalus improved", "Glamour", "Homunculus", "Ligature", "Shapechanging", "Sleep of Morpheus", "Transmutation"],
+		"Illusion": ["Clamor", "Conceal", "Everyman", "Moving pictures", "Programmed response", "Static image"],
+		"Mesmerism": ["Befriend", "Confuse", "Dominate", "Emotion", "Encourage", "Forgetfulness", "Hypnotize", "Mindshatter"],
+		"Necromancy": ["Animate dead", "Energy drain", "Fortitude", "Haunt", "Knit wounds", "Mummy's curse", "Speak with dead", "Steal the soul"],
+		"Pyromancy": ["Cloak of the phoenix", "Fiery bolt", "Fire wall", "Flame gauntlet", "Immolation", "Incendiary seal", "Storm of flames"]
+	}
+	var total_arcane_spells := 0
+	for school_name in expected_arcane_spells.keys():
+		var spells: Array = expected_arcane_spells[school_name]
+		for sname in spells:
+			var spec: Dictionary = rules.fx.get_specialty_skill(sname)
+			assert_true.call(not spec.is_empty(), "Arcane spell '%s' exists" % sname)
+			assert_eq.call(String(spec.get("broad_skill", "")), school_name, "Spell '%s' belongs to school '%s'" % [sname, school_name])
+			assert_true.call(AlternityNum.as_int(spec.get("cost", 0)) > 0, "Spell '%s' has valid SP cost" % sname)
+			total_arcane_spells += 1
+	assert_eq.call(total_arcane_spells, 52, "All 52 canonical Arcane Magic spells audited")
+
 	finish()
