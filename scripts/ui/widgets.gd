@@ -173,7 +173,9 @@ static func toggle_row(
 	# Compact sits inline beside another control and sizes to its label; the full
 	# form is a row of its own and takes the width.
 	toggle.size_flags_horizontal = Control.SIZE_SHRINK_END if compact else Control.SIZE_EXPAND_FILL
-	toggle.custom_minimum_size = Vector2(0, 36 if compact else 44)
+	# The compact form sizes to its content, so it needs a floor wide enough for
+	# a label plus the switch. Left at zero the two overlapped.
+	toggle.custom_minimum_size = Vector2(132, 36) if compact else Vector2(0, 44)
 	toggle.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	toggle.add_theme_font_size_override("font_size", FONT_CAPTION if compact else FONT_DETAIL)
 

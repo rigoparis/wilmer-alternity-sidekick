@@ -50,10 +50,26 @@ func _build() -> void:
 		margin.add_theme_constant_override("margin_" + side, Widgets.PAD_PANEL)
 	scroll.add_child(margin)
 
+	# Centred inside gutters on a wide screen, the same as the sheet. Filling a
+	# 1920px window makes "Load Hero" a 1780px button, which is not using the
+	# space so much as stretching two controls across it.
+	var host: Container = margin
+	if _is_wide():
+		var row := HBoxContainer.new()
+		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		margin.add_child(row)
+		row.add_child(_gutter())
+		var body := VBoxContainer.new()
+		body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		body.size_flags_stretch_ratio = CharacterSheetScreen.CONTENT_STRETCH
+		row.add_child(body)
+		row.add_child(_gutter())
+		host = body
+
 	var column := VBoxContainer.new()
 	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	column.add_theme_constant_override("separation", 20)
-	margin.add_child(column)
+	host.add_child(column)
 
 	_build_banner(column)
 	_build_actions(column)
@@ -117,6 +133,15 @@ func _build_actions(parent: Container) -> void:
 	import_button.custom_minimum_size = Vector2(0, 44)
 	import_button.pressed.connect(_on_import_pressed)
 	bar.add_child(import_button)
+
+
+## One side of the reading gutter on a wide screen.
+func _gutter() -> Control:
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	spacer.size_flags_stretch_ratio = 1.0
+	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return spacer
 
 
 func _is_wide() -> bool:
