@@ -34,12 +34,18 @@ func _build_budget(container: Container) -> void:
 	var raw := ctx.doc.raw()
 
 	var box := Widgets.section(container, "Budget", palette)
-	Widgets.metric(box, "Perk points spent", str(rules.perk_points_used(raw)), palette)
-	Widgets.metric(box, "Skill points from flaws", "+%d" % rules.flaw_skill_points_bonus(raw), palette)
+
+	# Perks are paid for out of the same skill points everything else spends, so
+	# the spend is shown against what is actually available rather than alone.
+	var summary := ctx.doc.summary()
+	var available := AlternityNum.as_int(summary.get("skill_points_used", 0)) 		+ AlternityNum.as_int(summary.get("skill_points_remaining", 0))
+	Widgets.progress_metric(box, "Perk points spent", rules.perk_points_used(raw), available, palette)
+
 	# The three-of-each limit applies to chosen perks and flaws; GM-given ones
 	# do not count against it, which is why the non_gm_* counts are used here.
-	Widgets.metric(box, "Perks chosen", "%d / 3" % rules.non_gm_perk_count(raw), palette)
-	Widgets.metric(box, "Flaws chosen", "%d / 3" % rules.non_gm_flaw_count(raw), palette)
+	Widgets.progress_metric(box, "Perks chosen", rules.non_gm_perk_count(raw), 3, palette)
+	Widgets.progress_metric(box, "Flaws chosen", rules.non_gm_flaw_count(raw), 3, palette)
+	Widgets.metric(box, "Skill points from flaws", "+%d" % rules.flaw_skill_points_bonus(raw), palette)
 
 
 func _build_list(container: Container, kind: String) -> void:

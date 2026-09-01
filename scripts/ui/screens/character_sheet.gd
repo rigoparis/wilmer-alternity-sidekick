@@ -76,6 +76,18 @@ func setup(ctx: SheetContext, store: CharacterStore) -> void:
 	_refresh_header()
 
 
+## Which tab is showing, so a rebuild can put you back on it.
+func active_tab_id() -> String:
+	return _active_id
+
+
+## Reselect a tab after a rebuild, ignoring one that no longer applies.
+func restore_tab(id: String) -> void:
+	if id.is_empty() or not _buttons.has(id):
+		return
+	_select_tab(id)
+
+
 func document() -> CharacterDoc:
 	return null if _ctx == null else _ctx.doc
 
@@ -112,59 +124,73 @@ func _build() -> void:
 
 
 func _build_header(parent: Container) -> void:
-	var header := HBoxContainer.new()
-	header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header.add_theme_constant_override("separation", Widgets.GAP_SECTION)
 	var margin := MarginContainer.new()
 	for side in ["left", "right", "top"]:
 		margin.add_theme_constant_override("margin_" + side, Widgets.PAD_PANEL)
-	margin.add_child(header)
 	parent.add_child(margin)
+
+	# The hero name and five text buttons do not fit across a 390px phone. On one
+	# row the name was squeezed to its 1px minimum and wrapped to a single letter
+	# per line, which grew the header to most of the screen and turned the
+	# buttons into tall slabs. Compact stacks it: name first, actions beneath.
+	var outer := VBoxContainer.new()
+	outer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	outer.add_theme_constant_override("separation", Widgets.GAP_ROW)
+	margin.add_child(outer)
+
+	var title_row := HBoxContainer.new()
+	title_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title_row.add_theme_constant_override("separation", Widgets.GAP_SECTION)
+	outer.add_child(title_row)
 
 	_title = Label.new()
 	_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	# Ellipsis rather than wrap: a long hero name must never be able to grow the
+	# header vertically the way wrapping let it.
+	_title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_title.custom_minimum_size = Vector2(1, 0)
+	_title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_title.add_theme_color_override("font_color", _ctx.palette.text)
-	_title.add_theme_font_size_override("font_size", 22)
-	header.add_child(_title)
+	_title.add_theme_font_size_override("font_size", 22 if _ctx.is_wide_layout else 18)
+	title_row.add_child(_title)
 
 	_status = Label.new()
 	_status.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_status.add_theme_color_override("font_color", _ctx.palette.muted)
 	_status.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
-	header.add_child(_status)
+	title_row.add_child(_status)
 
-	var rules_button := Button.new()
-	rules_button.text = "Rules"
-	rules_button.tooltip_text = "Optional rules"
-	rules_button.custom_minimum_size = Vector2(0, 40)
-	rules_button.pressed.connect(_open_optional_rules)
-	header.add_child(rules_button)
+	# Wide keeps the single row it always had; compact gets its own row where the
+	# five buttons share the width evenly instead of competing with the name.
+	var actions := HBoxContainer.new()
+	actions.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	actions.add_theme_constant_override("separation", Widgets.GAP_ROW)
+	if _ctx.is_wide_layout:
+		title_row.add_child(actions)
+	else:
+		outer.add_child(actions)
 
-	var theme_button := Button.new()
-	theme_button.text = "Theme"
-	theme_button.custom_minimum_size = Vector2(0, 40)
-	theme_button.pressed.connect(_open_theme)
-	header.add_child(theme_button)
-
-	var share := Button.new()
-	share.text = "Share"
-	share.custom_minimum_size = Vector2(0, 40)
-	share.pressed.connect(_share)
-	header.add_child(share)
-
-	var save := Button.new()
-	save.text = "Save"
-	save.custom_minimum_size = Vector2(0, 40)
-	save.pressed.connect(_save)
-	header.add_child(save)
-
-	var close := Button.new()
-	close.text = "Close"
-	close.custom_minimum_size = Vector2(0, 40)
-	close.pressed.connect(_on_close_pressed)
-	header.add_child(close)
+	var buttons := [
+		["Rules", "Optional rules", _open_optional_rules],
+		["Theme", "", _open_theme],
+		["Share", "", _share],
+		["Save", "", _save],
+		["Close", "", _on_close_pressed],
+	]
+	for spec in buttons:
+		var button := Button.new()
+		button.text = String(spec[0])
+		button.tooltip_text = String(spec[1])
+		button.custom_minimum_size = Vector2(0, 40)
+		if not _ctx.is_wide_layout:
+			# Compact shares the row evenly, so the label must not set the width
+			# -- but clipping is only safe where something else does. Left on in
+			# wide mode it collapsed every button to an empty square.
+			button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			button.clip_text = true
+			button.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
+		button.pressed.connect(spec[2])
+		actions.add_child(button)
 
 
 func _build_tab_bar(parent: Container) -> void:

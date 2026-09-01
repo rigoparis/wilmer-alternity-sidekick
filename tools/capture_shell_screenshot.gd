@@ -49,6 +49,24 @@ func _seed_store() -> void:
 		var doc := CharacterDoc.new(rules)
 		doc.set_hero_name(hero)
 		doc.set_profession_id(5)
+		# A blank hero renders every budget bar at zero and every damage track
+		# empty, which is exactly the state that hides a broken widget. Spend
+		# something so the screenshots show the controls doing their job.
+		doc.apply(CharacterDoc.ALL, func(c):
+			var bought := 0
+			for broad in rules.broad_skills:
+				if bought >= 4:
+					break
+				if typeof(broad) != TYPE_DICTIONARY or rules.is_psionic_skill(broad):
+					continue
+				if not rules.is_entry_available(c, broad):
+					continue
+				rules.set_skill_rank(c, AlternityNum.as_int(broad.get("id", 0)), 1)
+				bought += 1
+			var tracks: Dictionary = c.get("damage", {})
+			tracks["stun"] = 3
+			tracks["wound"] = 1
+			c["damage"] = tracks)
 		store.save(doc)
 	store.clear_last_opened()
 

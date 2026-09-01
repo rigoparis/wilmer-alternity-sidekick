@@ -39,16 +39,17 @@ func _build_budget(container: Container) -> void:
 	var summary := ctx.doc.summary()
 
 	var box := Widgets.section(container, "%s Budget" % heading(), palette)
-	Widgets.metric(box, "Skill points used", str(AlternityNum.as_int(summary.get("skill_points_used", 0))), palette)
-	Widgets.metric(box, "Points remaining", str(AlternityNum.as_int(summary.get("skill_points_remaining", 0))), palette)
-	Widgets.metric(
-		box, "Broad skills",
-		"%d / %d" % [
-			AlternityNum.as_int(summary.get("broad_skills_used", 0)),
-			AlternityNum.as_int(summary.get("broad_skills_used", 0)) + AlternityNum.as_int(summary.get("broad_skills_remaining", 0)),
-		],
-		palette
-	)
+
+	# Bars, not bare numbers. Mid-build the question is always "have I got room",
+	# and "18" and "30" on separate rows makes you do the subtraction yourself.
+	var sp_used := AlternityNum.as_int(summary.get("skill_points_used", 0))
+	var sp_left := AlternityNum.as_int(summary.get("skill_points_remaining", 0))
+	Widgets.progress_metric(box, "Skill points", sp_used, sp_used + sp_left, palette)
+
+	var broad_used := AlternityNum.as_int(summary.get("broad_skills_used", 0))
+	var broad_left := AlternityNum.as_int(summary.get("broad_skills_remaining", 0))
+	Widgets.progress_metric(box, "Broad skills", broad_used, broad_used + broad_left, palette)
+
 	Widgets.metric(box, "Max specialty rank", str(rules.max_skill_rank_for_character(ctx.doc.raw())), palette)
 
 

@@ -106,28 +106,18 @@ func _build_damage(container: Container, summary: Dictionary) -> void:
 		var total := AlternityNum.as_int(durability.get(track, 0))
 		var used := AlternityNum.as_int(damage.get(track, 0))
 
-		var stepper := NumberStepper.new()
-		box.add_child(stepper)
-		stepper.setup(palette, "%s  (%d max)" % [track.capitalize(), total], used, 0, maxi(total, used))
-		stepper.value_changed.connect(func(value: int):
+		# Boxes, the way it is marked on paper. A stepper showed the number but
+		# hid the track, and during play what you need is how much room is left.
+		var tracker := DamageTrack.new()
+		box.add_child(tracker)
+		tracker.setup(palette, track.capitalize(), used, total)
+		tracker.value_changed.connect(func(value: int):
 			doc.apply([CharacterDoc.DAMAGE], func(c):
 				var tracks: Dictionary = c.get("damage", {})
 				tracks[track] = value
 				c["damage"] = tracks
 				rules.clamp_trackers(c))
 			save_requested.emit())
-
-	var heal := Button.new()
-	heal.text = "Clear all damage"
-	heal.custom_minimum_size = Vector2(0, 44)
-	heal.pressed.connect(func():
-		doc.apply([CharacterDoc.DAMAGE], func(c):
-			var tracks: Dictionary = c.get("damage", {})
-			for track in TRACKS:
-				tracks[track] = 0
-			c["damage"] = tracks)
-		save_requested.emit())
-	box.add_child(heal)
 
 
 func _build_last_resorts(container: Container, summary: Dictionary) -> void:
@@ -144,10 +134,12 @@ func _build_last_resorts(container: Container, summary: Dictionary) -> void:
 	var box := Widgets.section(container, "Last Resorts", palette)
 	var used := AlternityNum.as_int(doc.raw().get("last_resorts_used", 0))
 
-	var stepper := NumberStepper.new()
-	box.add_child(stepper)
-	stepper.setup(palette, "Spent  (%d max)" % maximum, used, 0, maximum)
-	stepper.value_changed.connect(func(value: int):
+	# Same consumable-track shape as damage, so it gets the same boxes rather
+	# than the stepper it used to share with it.
+	var tracker := DamageTrack.new()
+	box.add_child(tracker)
+	tracker.setup(palette, "Spent", used, maximum)
+	tracker.value_changed.connect(func(value: int):
 		doc.apply([CharacterDoc.DAMAGE], func(c): c["last_resorts_used"] = value)
 		save_requested.emit())
 

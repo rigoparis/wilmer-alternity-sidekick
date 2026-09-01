@@ -24,6 +24,7 @@ var rules
 var store: CharacterStore
 var router: UiRouter
 
+var _background: ColorRect
 var _modal_host: ModalHost
 var _screens: Control
 var _select: CharacterSelectScreen
@@ -51,12 +52,22 @@ func _ready() -> void:
 	add_child(_modal_host)
 	router = UiRouter.new(_modal_host)
 
+	# The window's own clear colour is not the theme's, so without this the app
+	# sits on a grey that no palette chose.
+	_background = ColorRect.new()
+	_background.name = "Background"
+	_background.color = _palette.background
+	_background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_background.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_background)
+
 	_screens = Control.new()
 	_screens.name = "Screens"
 	_screens.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(_screens)
 	# Behind the modal host, which sits on its own CanvasLayer.
-	move_child(_screens, 0)
+	move_child(_background, 0)
+	move_child(_screens, 1)
 
 	_is_wide = _compute_is_wide()
 	_show_select()
@@ -80,6 +91,10 @@ func _connect_theme() -> void:
 		return
 	service.palette_changed.connect(func(palette: ThemePalette):
 		_palette = palette
+		# The backdrop is built once and outlives the rebuild below, so it has to
+		# be recoloured by hand or the app keeps the old theme's ground.
+		if _background != null and is_instance_valid(_background):
+			_background.color = palette.background
 		# Colours are baked into styleboxes at build time, so a theme change
 		# means rebuilding the visible screen.
 		_rebuild_active_screen())
@@ -128,7 +143,13 @@ func _rebuild_active_screen() -> void:
 	if _sheet != null and is_instance_valid(_sheet):
 		var doc: CharacterDoc = _sheet.document()
 		if doc != null:
+			# Colours are baked into styleboxes at build time, so a rebuild is
+			# unavoidable -- but the tab you were on must survive it. Changing
+			# the theme used to drop you back on Basics.
+			var was_on: String = _sheet.active_tab_id()
 			_open_sheet(doc)
+			if not was_on.is_empty():
+				_sheet.restore_tab(was_on)
 			return
 	_show_select()
 
