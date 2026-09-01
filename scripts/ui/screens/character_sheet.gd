@@ -23,6 +23,7 @@ signal closed
 const ICON_RULES := preload("res://assets/book.svg")
 const ICON_THEME := preload("res://assets/pallete.svg")
 const ICON_SHARE := preload("res://assets/share.svg")
+const ICON_SAVE := preload("res://assets/diskette.svg")
 const ICON_CLOSE := preload("res://assets/logout.svg")
 
 const TAB_BASICS := preload("res://scenes/ui/tabs/tab_basics.tscn")
@@ -211,13 +212,13 @@ func _build_header(parent: Container) -> void:
 		outer.add_child(actions)
 
 	# Icons, as the old header had. Five words across the top of a phone is most
-	# of the row; five glyphs is a strip. Save keeps its label because it is the
-	# one whose state matters and there is no unambiguous icon for it.
+	# of the row; five glyphs is a strip. The status label beside them still
+	# reports saved state in words, so nothing depends on reading the glyph.
 	var buttons := [
 		[ICON_RULES, "Optional rules", _open_optional_rules],
 		[ICON_THEME, "Theme", _open_theme],
 		[ICON_SHARE, "Share character", _share],
-		[null, "Save", _save],
+		[ICON_SAVE, "Save character", _save],
 		[ICON_CLOSE, "Close character", _on_close_pressed],
 	]
 	for spec in buttons:
