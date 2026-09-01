@@ -17,6 +17,8 @@ extends Control
 signal character_opened(doc: CharacterDoc)
 
 const CONFIRM_ROUTE := preload("res://scenes/ui/routes/confirm_route.tscn")
+const IMPORT_ROUTE := preload("res://scenes/ui/routes/import_character_route.tscn")
+const OPTIONAL_RULES_ROUTE := preload("res://scenes/ui/routes/optional_rules_route.tscn")
 
 var _rules
 var _store: CharacterStore
@@ -190,9 +192,27 @@ func _describe(entry: Dictionary) -> String:
 
 func _on_create_pressed() -> void:
 	var doc: CharacterDoc = CharacterDoc.new(_rules)
+
+	# Ask which optional rules the campaign uses before the hero exists, because
+	# several of them change the starting skill budget and ability limits ---
+	# applying them afterwards would mean re-deriving a spread already spent.
+	if _router != null:
+		var chosen = await _router.push(OPTIONAL_RULES_ROUTE, {
+			"palette": _palette,
+			"rules": _rules,
+			"character": doc.raw(),
+			"confirm_text": "Create Hero",
+		})
+		if not is_instance_valid(self):
+			return
+		if typeof(chosen) == TYPE_DICTIONARY and not chosen.is_empty():
+			for rule_id in chosen:
+				_rules.set_optional_rule(doc.raw(), String(rule_id), bool(chosen[rule_id]))
+
 	# Saved immediately so the hero appears in the list even if the person backs
 	# out before editing anything.
 	_store.save(doc)
+	refresh()
 	character_opened.emit(doc)
 
 
@@ -225,14 +245,17 @@ func _on_delete_pressed(file_name: String, hero_name: String) -> void:
 
 
 func _on_import_pressed() -> void:
-	# The import flow lands with the rest of the import overlay in phase 5; the
-	# button is present so the screen is not silently missing a capability.
 	if _router == null:
 		return
-	await _router.push(CONFIRM_ROUTE, {
+	var doc = await _router.push(IMPORT_ROUTE, {
 		"palette": _palette,
-		"title": "Import not migrated yet",
-		"message": "Importing a shared character still lives in the old screen and moves across in the next phase.",
-		"confirm_text": "OK",
-		"cancel_text": "Close",
+		"store": _store,
 	})
+	if not is_instance_valid(self) or doc == null:
+		return
+
+	# Saved on arrival so it appears in the list and survives a back press, the
+	# same as a newly created hero.
+	_store.save(doc)
+	refresh()
+	character_opened.emit(doc)

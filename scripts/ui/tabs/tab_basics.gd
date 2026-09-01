@@ -165,20 +165,77 @@ func _build_abilities(container: Container) -> void:
 		_build_ability_row(box, ability)
 
 	Widgets.separator(box, palette)
+	_build_generation(box)
 
-	var roll := Button.new()
-	roll.text = "Roll random abilities for profession"
-	roll.custom_minimum_size = Vector2(0, 44)
-	roll.pressed.connect(func():
-		var rolled: Dictionary = rules.roll_random_abilities_by_profession(doc.get_profession_id())
-		if rolled.is_empty():
-			return
-		doc.apply(CharacterDoc.ALL, func(c):
-			c["abilities"] = rolled.duplicate()
-			rules.clamp_abilities_to_species(c)
-			rules.clamp_trackers(c))
-		save_requested.emit())
-	box.add_child(roll)
+
+## The three ways the rules let you generate a starting spread.
+##
+## Method I rolls against the profession, Method II against the species; the
+## third is the profession-weighted random spread. All three go through
+## _apply_rolled, which clamps each score into the legal range rather than
+## trusting the roll -- a species or profession minimum can be higher than what
+## the dice produced.
+func _build_generation(parent: Container) -> void:
+	var doc := ctx.doc
+	var rules: AlternityRules = ctx.rules
+
+	Widgets.muted_text(
+		parent,
+		"Generating replaces all six scores and resets the point target.",
+		ctx.palette,
+		Widgets.FONT_CAPTION
+	)
+
+	var methods := [
+		{
+			"label": "Roll abilities (Method I)",
+			"roll": func(): return rules.roll_abilities_method_1(doc.get_profession_id()),
+		},
+		{
+			"label": "Roll abilities (Method II)",
+			"roll": func(): return rules.roll_abilities_method_2(doc.get_species_id()),
+		},
+		{
+			"label": "Random spread for profession",
+			"roll": func(): return rules.roll_random_abilities_by_profession(doc.get_profession_id()),
+		},
+	]
+
+	for method in methods:
+		var button := Button.new()
+		button.text = String(method["label"])
+		button.custom_minimum_size = Vector2(0, 44)
+		var roll: Callable = method["roll"]
+		button.pressed.connect(func(): _apply_rolled(roll.call()))
+		parent.add_child(button)
+
+
+## Clamp each rolled score into its legal band and reset the point target.
+##
+## custom_ability_target is recorded so the budget reflects what the roll cost,
+## rather than continuing to compare against a purchased spread that no longer
+## exists.
+func _apply_rolled(rolled: Variant) -> void:
+	if typeof(rolled) != TYPE_DICTIONARY or rolled.is_empty():
+		return
+
+	var doc := ctx.doc
+	var rules: AlternityRules = ctx.rules
+	doc.apply(CharacterDoc.ALL, func(c):
+		var abilities: Dictionary = c.get("abilities", {})
+		for ability in ABILITIES:
+			if not rolled.has(ability):
+				continue
+			var limits: Array = rules.ability_limits(c, ability)
+			abilities[ability] = clampi(
+				AlternityNum.as_int(rolled[ability]),
+				AlternityNum.as_int(limits[0], 4),
+				AlternityNum.as_int(limits[1], 14)
+			)
+		c["abilities"] = abilities
+		c["custom_ability_target"] = rules.ability_total(c)
+		rules.clamp_trackers(c))
+	save_requested.emit()
 
 
 func _build_ability_row(parent: Container, ability: String) -> void:

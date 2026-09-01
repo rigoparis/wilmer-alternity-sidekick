@@ -88,7 +88,19 @@ func _test_create_opens_sheet() -> void:
 	if not check(screen != null, "the select screen is present"):
 		return
 
-	screen._on_create_pressed()
+	# Creating a hero now asks which optional rules the campaign uses first,
+	# because several of them change the starting skill budget. Dismiss it the
+	# way a person would.
+	var answer_prompt := func() -> void:
+		await process_frame
+		var route = _shell.router._host.top_route()
+		check_true(route != null, "creating a hero asks about optional rules first")
+		if route != null:
+			check_eq(route._confirm_text, "Create Hero", "the prompt confirms with Create Hero")
+			route.close(null)
+	answer_prompt.call_deferred()
+
+	await screen._on_create_pressed()
 	await process_frame
 	await process_frame
 

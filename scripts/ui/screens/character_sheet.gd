@@ -23,6 +23,9 @@ const TAB_FX := preload("res://scenes/ui/tabs/tab_fx.tscn")
 const TAB_SKILLS := preload("res://scenes/ui/tabs/tab_skills.tscn")
 const TAB_PSIONICS := preload("res://scenes/ui/tabs/tab_psionics.tscn")
 const TAB_SUMMARY := preload("res://scenes/ui/tabs/tab_summary.tscn")
+
+const OPTIONAL_RULES_ROUTE := preload("res://scenes/ui/routes/optional_rules_route.tscn")
+const THEME_ROUTE := preload("res://scenes/ui/routes/theme_route.tscn")
 const TAB_CYBERTECH := preload("res://scenes/ui/tabs/tab_cybertech.tscn")
 const TAB_PERKS_FLAWS := preload("res://scenes/ui/tabs/tab_perks_flaws.tscn")
 
@@ -128,6 +131,25 @@ func _build_header(parent: Container) -> void:
 	_status.add_theme_color_override("font_color", _ctx.palette.muted)
 	_status.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
 	header.add_child(_status)
+
+	var rules_button := Button.new()
+	rules_button.text = "Rules"
+	rules_button.tooltip_text = "Optional rules"
+	rules_button.custom_minimum_size = Vector2(0, 40)
+	rules_button.pressed.connect(_open_optional_rules)
+	header.add_child(rules_button)
+
+	var theme_button := Button.new()
+	theme_button.text = "Theme"
+	theme_button.custom_minimum_size = Vector2(0, 40)
+	theme_button.pressed.connect(_open_theme)
+	header.add_child(theme_button)
+
+	var share := Button.new()
+	share.text = "Share"
+	share.custom_minimum_size = Vector2(0, 40)
+	share.pressed.connect(_share)
+	header.add_child(share)
 
 	var save := Button.new()
 	save.text = "Save"
@@ -243,6 +265,58 @@ func _on_dirty_changed(is_dirty: bool) -> void:
 		"font_color",
 		_ctx.palette.warning if is_dirty else _ctx.palette.muted
 	)
+
+
+func _open_optional_rules() -> void:
+	if _ctx == null or _ctx.router == null:
+		return
+	var changed = await _ctx.router.push(OPTIONAL_RULES_ROUTE, {
+		"palette": _ctx.palette,
+		"rules": _ctx.rules,
+		"character": _ctx.doc.raw(),
+	})
+	if not is_instance_valid(self) or typeof(changed) != TYPE_DICTIONARY or changed.is_empty():
+		return
+
+	# Optional rules move skill budgets and ability limits, so this invalidates
+	# the whole sheet rather than one section.
+	var rules: AlternityRules = _ctx.rules
+	_ctx.doc.apply(CharacterDoc.ALL, func(c):
+		for rule_id in changed:
+			rules.set_optional_rule(c, String(rule_id), bool(changed[rule_id])))
+	_save()
+
+
+func _open_theme() -> void:
+	if _ctx == null or _ctx.router == null:
+		return
+	await _ctx.router.push(THEME_ROUTE, {
+		"palette": _ctx.palette,
+		"service": get_node_or_null("/root/ThemeService"),
+	})
+
+
+## Hand the character to whatever the platform uses for sharing.
+##
+## Writes next to the save rather than opening a dialog on mobile: Android has
+## no usable native save picker here, and a file the person can find beats a
+## dialog that never appears.
+func _share() -> void:
+	if _store == null or _ctx == null or _ctx.doc == null:
+		return
+	var text := _store.export_json(_ctx.doc)
+	DisplayServer.clipboard_set(text)
+
+	var file_name := "shared_" + CharacterStore.file_name_for(_ctx.doc)
+	var path := "user://" + file_name
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	if file != null:
+		file.store_string(text)
+		file.close()
+		_status.text = "Copied, and written to %s" % file_name
+	else:
+		_status.text = "Copied to clipboard"
+	_status.add_theme_color_override("font_color", _ctx.palette.accent)
 
 
 func _save() -> void:

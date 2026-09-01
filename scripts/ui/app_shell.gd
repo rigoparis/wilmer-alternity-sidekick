@@ -12,11 +12,8 @@ extends Control
 ##   * Owns a ModalHost, so route stacking is by open order rather than by the
 ##     order nine overlays happened to be constructed in.
 ##
-## Not yet the main scene. main.tscn still runs the old UI while the remaining
-## tabs are migrated, because the app is in use for an active campaign and must
-## keep working. Run this one directly to try it:
-##
-##     godot --path . res://scenes/ui/app_shell.tscn
+## This is the main scene. It replaced main.tscn, whose 6,300-line main.gd built
+## the entire UI procedurally in one file.
 ##
 
 const RulesScript := preload("res://scripts/alternity_rules.gd")
