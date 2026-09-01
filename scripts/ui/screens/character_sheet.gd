@@ -20,18 +20,25 @@ const TAB_ACHIEVEMENTS := preload("res://scenes/ui/tabs/tab_achievements.tscn")
 const TAB_EQUIPMENT := preload("res://scenes/ui/tabs/tab_equipment.tscn")
 const TAB_MUTATIONS := preload("res://scenes/ui/tabs/tab_mutations.tscn")
 const TAB_FX := preload("res://scenes/ui/tabs/tab_fx.tscn")
+const TAB_SKILLS := preload("res://scenes/ui/tabs/tab_skills.tscn")
+const TAB_PSIONICS := preload("res://scenes/ui/tabs/tab_psionics.tscn")
+const TAB_SUMMARY := preload("res://scenes/ui/tabs/tab_summary.tscn")
 const TAB_CYBERTECH := preload("res://scenes/ui/tabs/tab_cybertech.tscn")
 const TAB_PERKS_FLAWS := preload("res://scenes/ui/tabs/tab_perks_flaws.tscn")
 
-## Migrated tabs, in display order. Phase 5 adds the remaining eight.
+## All ten tabs, in display order. A tab may still exclude itself for a given
+## character -- Mutations and Psionics both do -- see _available_tabs().
 const TABS := [
 	{"id": "basics", "label": "Basics", "scene": TAB_BASICS},
+	{"id": "skills", "label": "Skills", "scene": TAB_SKILLS},
 	{"id": "perks_flaws", "label": "Perks/Flaws", "scene": TAB_PERKS_FLAWS},
 	{"id": "cybertech", "label": "Cybertech", "scene": TAB_CYBERTECH},
 	{"id": "equipment", "label": "Equipment", "scene": TAB_EQUIPMENT},
 	{"id": "achievements", "label": "Achievements", "scene": TAB_ACHIEVEMENTS},
+	{"id": "psionics", "label": "Psionics", "scene": TAB_PSIONICS},
 	{"id": "fx", "label": "FX", "scene": TAB_FX},
 	{"id": "mutations", "label": "Mutations", "scene": TAB_MUTATIONS},
+	{"id": "summary", "label": "Summary", "scene": TAB_SUMMARY},
 ]
 
 var _ctx: SheetContext
@@ -165,11 +172,7 @@ func _build_tab_bar(parent: Container) -> void:
 func _available_tabs() -> Array:
 	var out: Array = []
 	for definition in TABS:
-		var scene: PackedScene = definition["scene"]
-		var probe := scene.instantiate()
-		var applies: bool = probe.is_available_for(_ctx) if probe is SheetTab else true
-		probe.free()
-		if applies:
+		if _is_available(definition):
 			out.append(definition)
 	return out
 
@@ -186,7 +189,11 @@ func _select_tab(id: String) -> void:
 	# because SheetTab defers its rebuild until it is shown again.
 	if not _instances.has(id):
 		var definition := _definition_for(id)
-		if definition.is_empty():
+		# _definition_for searches the whole registry, so without this a caller
+		# could open a tab that excludes itself for this character -- Psionics on
+		# a non-psionic hero. The tab bar never offers one, but nothing else
+		# stopped it.
+		if definition.is_empty() or not _is_available(definition):
 			return
 		var tab: SheetTab = definition["scene"].instantiate()
 		# Laid out by the host container, so no anchor preset here.
@@ -198,6 +205,14 @@ func _select_tab(id: String) -> void:
 
 	for tab_id in _instances:
 		_instances[tab_id].visible = tab_id == id
+
+
+## Whether a registry entry applies to the current character.
+func _is_available(definition: Dictionary) -> bool:
+	var probe = definition["scene"].instantiate()
+	var applies: bool = probe.is_available_for(_ctx) if probe is SheetTab else true
+	probe.free()
+	return applies
 
 
 func _definition_for(id: String) -> Dictionary:

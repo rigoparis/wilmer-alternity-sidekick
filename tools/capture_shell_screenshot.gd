@@ -95,7 +95,8 @@ func _capture(width: int, height: int, label: String) -> void:
 			# Shoot every migrated tab, so a broken one is visible rather than
 			# merely untested.
 			var sheet = shell._screens.get_child(0)
-			for definition in sheet.TABS:
+			# Only the tabs this character actually gets.
+			for definition in sheet._available_tabs():
 				var id := String(definition["id"])
 				sheet._select_tab(id)
 				for _i in 12:
