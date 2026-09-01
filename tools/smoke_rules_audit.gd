@@ -1804,4 +1804,50 @@ func _init() -> void:
 			dm_has_incantation = true
 	assert_true.call(dm_has_incantation, "Dark*Matter character can see Incantation faith")
 
+	# 8. Super Power FX 6 Categories & 37 Canonical Powers Verification
+	var expected_super_powers: Dictionary = {
+		"Body Alteration": ["Extra limb", "Growing", "Invisibility", "Phasing", "Shapeshifting", "Shrinking", "Stretching"],
+		"Brick": ["Body Armor", "Impact Conversion", "Invulnerability", "Life Support", "Super Constitution", "Super Strength"],
+		"Chi": ["Danger Sense", "Focus", "Healing", "Mighty Leap", "Power Climb", "Power Strike"],
+		"Energy": ["Energy Blast", "Energy Control", "Energy Field", "Energy Resistance", "Energy Sheath/Form"],
+		"Metaconscious": ["Genius", "Hyper Learning", "Super Intelligence", "Super Personality", "Super Will", "Superior Senses"],
+		"Movement": ["Flying", "Fusillade", "Lightning Speed", "Power Swimming", "Super Dexterity", "Teleportation", "Wallcrawling"]
+	}
+	var total_super_powers := 0
+	for cat_name in expected_super_powers.keys():
+		var powers: Array = expected_super_powers[cat_name]
+		for pname in powers:
+			var spec: Dictionary = rules.fx.get_specialty_skill(pname)
+			assert_true.call(not spec.is_empty(), "Super power '%s' exists" % pname)
+			assert_eq.call(String(spec.get("broad_skill", "")), cat_name, "Power '%s' belongs to category '%s'" % [pname, cat_name])
+			assert_true.call(AlternityNum.as_int(spec.get("cost", 0)) > 0, "Power '%s' has valid SP cost" % pname)
+			total_super_powers += 1
+	assert_eq.call(total_super_powers, 37, "All 37 canonical Super Power FX powers audited")
+
+	# 9. Super Ability Score Bonuses Bypassing Racial Maximums
+	var super_hero: Dictionary = rules.default_character()
+	super_hero["abilities"] = {"STR": 14, "DEX": 14, "CON": 14, "INT": 14, "WIL": 14, "PER": 14}
+	rules.ensure_character_shape(super_hero)
+
+	# Super Dexterity (Movement) Rank 4 permanent (+2 DEX)
+	rules.fx.add_fx_skill(super_hero, "Movement")
+	rules.fx.add_fx_skill(super_hero, "Super Dexterity")
+	super_hero["fx"]["selected_skills"]["Super Dexterity"] = 4
+	rules.fx.set_fx_skill_permanent(super_hero, "Super Dexterity", true)
+	assert_eq.call(rules.effective_abilities(super_hero)["DEX"], 16, "Rank 4 Super Dexterity raises DEX 14 to 16 past Human max (14)")
+
+	# Super Intelligence (Metaconscious) Rank 8 permanent (+3 INT)
+	rules.fx.add_fx_skill(super_hero, "Metaconscious")
+	rules.fx.add_fx_skill(super_hero, "Super Intelligence")
+	super_hero["fx"]["selected_skills"]["Super Intelligence"] = 8
+	rules.fx.set_fx_skill_permanent(super_hero, "Super Intelligence", true)
+	assert_eq.call(rules.effective_abilities(super_hero)["INT"], 17, "Rank 8 Super Intelligence raises INT 14 to 17 past Human max (14)")
+
+	# Multi-Category Mixing: Hero possesses Brick, Chi, Energy, Metaconscious, Movement without penalty
+	rules.fx.add_fx_skill(super_hero, "Brick")
+	rules.fx.add_fx_skill(super_hero, "Chi")
+	rules.fx.add_fx_skill(super_hero, "Energy")
+	var selected_fx = rules.fx.selected_fx_skills(super_hero)
+	assert_true.call(selected_fx.size() >= 5, "Multi-category mixing is valid for Super Power FX")
+
 	finish()
