@@ -1295,9 +1295,22 @@ func _render_basics() -> void:
 	setting.add_item("Core", 0)
 	setting.add_item("Star*Drive", 1)
 	setting.add_item("Dark*Matter", 2)
-	setting.select(0)
-	setting.set_item_disabled(1, true)
-	setting.set_item_disabled(2, true)
+	var current_setting := String(character.get("setting", "Core"))
+	if current_setting == "Star*Drive" or current_setting == "Star Drive":
+		setting.select(1)
+	elif current_setting == "Dark*Matter" or current_setting == "Dark Matter":
+		setting.select(2)
+	else:
+		setting.select(0)
+	setting.item_selected.connect(func(index):
+		var val := "Core"
+		if index == 1:
+			val = "Star*Drive"
+		elif index == 2:
+			val = "Dark*Matter"
+		character["setting"] = val
+		_render()
+	)
 	UIBuilder.add_field(basics, "Setting", setting, color_muted)
 
 	var species_option := OptionButton.new()
@@ -4288,7 +4301,7 @@ func _render_fx() -> void:
 		
 		# FX Primary Broad Skill Group Selector
 		var current_primary_fx = String(character.get("fx", {}).get("primary_broad_group", ""))
-		var fx_broads = rules.fx.get_broad_skills()
+		var fx_broads = rules.fx.get_broad_skills_for_character(character)
 		
 		var fx_option := OptionButton.new()
 		var selected_index := -1
@@ -4338,7 +4351,7 @@ func _render_fx_selected_skills(parent: VBoxContainer) -> void:
 	list.add_child(header)
 	
 	var has_skills = false
-	var broad_skills = rules.fx.get_broad_skills()
+	var broad_skills = rules.fx.get_broad_skills_for_character(character)
 	for broad in broad_skills:
 		var b_name = String(broad.get("name", ""))
 		var b_rank = rules.fx.fx_skill_rank(character, b_name)
@@ -4346,7 +4359,7 @@ func _render_fx_selected_skills(parent: VBoxContainer) -> void:
 			has_skills = true
 			_add_fx_selected_row(list, broad, false)
 			
-		var specialties = rules.fx.get_specialty_skills_for_broad(b_name)
+		var specialties = rules.fx.get_specialty_skills_for_broad_and_character(b_name, character)
 		for spec in specialties:
 			var s_name = String(spec.get("name", ""))
 			var s_rank = rules.fx.fx_skill_rank(character, s_name)
@@ -4355,7 +4368,8 @@ func _render_fx_selected_skills(parent: VBoxContainer) -> void:
 				_add_fx_selected_row(list, spec, true)
 				
 	if not has_skills:
-		UIBuilder.add_text(list, "No FX skills selected.", 13, color_muted)
+		UIBuilder.add_text(list, "No FX skills selected.", 12, color_muted)
+
 
 func _add_fx_selected_row(parent: VBoxContainer, skill: Dictionary, indented: bool) -> void:
 	var row := HBoxContainer.new()
@@ -4433,14 +4447,14 @@ func _refresh_fx_skill_rows(list: VBoxContainer) -> void:
 		child.queue_free()
 
 	var filter := fx_filter_text.strip_edges().to_lower()
-	var broad_skills = rules.fx.get_broad_skills()
+	var broad_skills = rules.fx.get_broad_skills_for_character(character)
 	
 	for broad in broad_skills:
 		if String(broad.get("category", "")) != fx_category_filter:
 			continue
 			
 		var broad_name = String(broad.get("name", ""))
-		var specialties = rules.fx.get_specialty_skills_for_broad(broad_name)
+		var specialties = rules.fx.get_specialty_skills_for_broad_and_character(broad_name, character)
 		var child_matches := []
 		for spec in specialties:
 			var spec_label = String(spec.get("name", "")).to_lower()

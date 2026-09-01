@@ -198,6 +198,17 @@
             "name": "Voodoo",
             "rank_benefits": {},
             "source": "Beyond Science: A Guide to FX, pg. 53"
+        },
+        "Incantation": {
+            "ability": "PER/WIL",
+            "category": "Faith",
+            "cost": 8.0,
+            "description": "Documented among the Sasquatch priesthood in Dark\u2022Matter, Incantation channels divine resonance through harmonic choral singing. Only Sasquatch are capable of practicing Incantation Faith FX.",
+            "meta": "Cost: 8 skill points / Governing Abilities: Personality, Will / Setting: Dark*Matter",
+            "name": "Incantation",
+            "rank_benefits": {},
+            "setting": "Dark*Matter",
+            "source": "Dark\u2022Matter, pg. 80"
         }
     },
     "specialty_skills": {
@@ -2261,6 +2272,54 @@
                 "12": "Affects 30 targets simultaneously."
             },
             "source": "Beyond Science: A Guide to FX, pgs. 28-30"
+        },
+        "Battle spirits": {
+            "ability": "PER",
+            "broad_skill": "Incantation",
+            "category": "Faith",
+            "cost": 4.0,
+            "description": "Grants allies within 30m a -1 step bonus to action checks and a -1 to -3 step bonus to Resolve\u2014mental resolve for 4 hours (inflicts stun on caster equal to number of targets affected).",
+            "meta": "Cost: 4 skill points / Energy: 1 FX point / Range: 30m / Duration: 4 hours",
+            "name": "Battle spirits",
+            "rank_benefits": {},
+            "setting": "Dark*Matter",
+            "source": "Dark\u2022Matter, pg. 80"
+        },
+        "Calming voice": {
+            "ability": "PER",
+            "broad_skill": "Incantation",
+            "category": "Faith",
+            "cost": 3.0,
+            "description": "Shifts a target's attitude 1 to 3 categories toward Fanatic for 1 hour (+2 step penalty in combat).",
+            "meta": "Cost: 3 skill points / Energy: 1 FX point / Duration: 1 hour",
+            "name": "Calming voice",
+            "rank_benefits": {},
+            "setting": "Dark*Matter",
+            "source": "Dark\u2022Matter, pg. 80"
+        },
+        "Shatter": {
+            "ability": "WIL",
+            "broad_skill": "Incantation",
+            "category": "Faith",
+            "cost": 5.0,
+            "description": "Destroys objects within 30m via harmonic resonance (requires successes equal to item durability; Good toughness adds +2 penalty, Amazing toughness adds +4 penalty).",
+            "meta": "Cost: 5 skill points / Energy: 2 FX points / Range: 30m",
+            "name": "Shatter",
+            "rank_benefits": {},
+            "setting": "Dark*Matter",
+            "source": "Dark\u2022Matter, pg. 81"
+        },
+        "Voice of rage": {
+            "ability": "WIL",
+            "broad_skill": "Incantation",
+            "category": "Faith",
+            "cost": 4.0,
+            "description": "Inspires terror within 30m; targets failing mental resolve flee for 2d8 rounds.",
+            "meta": "Cost: 4 skill points / Energy: 1 FX point / Range: 30m / Duration: 2d8 rounds",
+            "name": "Voice of rage",
+            "rank_benefits": {},
+            "setting": "Dark*Matter",
+            "source": "Dark\u2022Matter, pg. 81"
         }
     }
 }

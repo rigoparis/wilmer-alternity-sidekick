@@ -251,14 +251,22 @@ func _load_fx_catalog(path := "res://data/rules/fx_core.json") -> void:
 	var broad_dict = parsed.get("broad_skills", {})
 	for key in broad_dict.keys():
 		var broad = broad_dict[key]
+		var b_name := String(broad.get("name", ""))
 		fx_broad_skills.append(broad)
-		fx_broad_skills_by_name[String(broad.get("name", ""))] = broad
-		fx_specialty_skills_by_broad[String(broad.get("name", ""))] = []
+		fx_broad_skills_by_name[b_name] = broad
+		fx_broad_skills_by_name[key] = broad
+		fx_broad_skills_by_name[b_name.to_lower()] = broad
+		fx_broad_skills_by_name[key.to_lower()] = broad
+		fx_specialty_skills_by_broad[b_name] = []
 		
 	var spec_dict = parsed.get("specialty_skills", {})
 	for key in spec_dict.keys():
 		var spec = spec_dict[key]
-		fx_specialty_skills_by_name[String(spec.get("name", ""))] = spec
+		var s_name := String(spec.get("name", ""))
+		fx_specialty_skills_by_name[s_name] = spec
+		fx_specialty_skills_by_name[key] = spec
+		fx_specialty_skills_by_name[s_name.to_lower()] = spec
+		fx_specialty_skills_by_name[key.to_lower()] = spec
 		var broad_name = String(spec.get("broad_skill", ""))
 		if fx_specialty_skills_by_broad.has(broad_name):
 			fx_specialty_skills_by_broad[broad_name].append(spec)
@@ -453,6 +461,18 @@ func get_mutation_advantage_by_id(mutation_id: String) -> Dictionary:
 
 func get_mutation_drawback_by_id(drawback_id: String) -> Dictionary:
 	return mutation_drawbacks_by_id.get(drawback_id, {})
+
+
+func is_setting_available(character: Dictionary, target_setting: String) -> bool:
+	var s := target_setting.strip_edges().to_lower()
+	if s.is_empty() or s == "core" or s == "all":
+		return true
+	var char_setting := String(character.get("setting", "Core")).strip_edges().to_lower()
+	if (s.contains("dark") or s.contains("matter")) and (char_setting.contains("dark") or char_setting.contains("matter")):
+		return true
+	if (s.contains("star") or s.contains("drive")) and (char_setting.contains("star") or char_setting.contains("drive")):
+		return true
+	return char_setting == s
 
 
 

@@ -1751,4 +1751,57 @@ func _init() -> void:
 			total_arcane_spells += 1
 	assert_eq.call(total_arcane_spells, 52, "All 52 canonical Arcane Magic spells audited")
 
+	# 6. Faith FX 7 Canonical Faiths & 52 Core Miracles Verification
+	var expected_faith_miracles: Dictionary = {
+		"Alienism": ["Bend space", "Circle of the thousand broken angles", "Dirge of the null-mind", "Eyes of the dark ones", "Gibbering larvae", "Life siphon", "Tongue of the infinite stars"],
+		"Druidism": ["Call the sky father", "Child of the earth mother", "Kinship of beasts", "Life endures", "Surge of greenery", "Voices in the grass and sky", "Wield the ley line"],
+		"Hatire": ["Body and soul", "Disrupt technology", "Heart of the Cosimir", "Reward of toil", "Righteous wrath", "Swords into plowshares"],
+		"Monotheism": ["Aura", "Blessing", "Cure", "Demon ward", "Exorcism", "Guidance", "Signs and portents", "Vision"],
+		"Shamanism": ["Animal voice", "Dreamwalking", "Ghost dance", "Guide my hand", "Hunter's stare", "Spirit of the beast", "Trance visions", "Venom spirit"],
+		"Taoism": ["Confidence", "Embryonic breathing", "Energy spiral", "Interior alchemy", "Not doing", "Peace", "Permeation", "Talisman"],
+		"Voodoo": ["Ayza rides", "Ayza's juju", "Erzuli's fetish", "Gris-gris", "Helpful possession", "Legba rides", "Loa of healing", "Negate the spirit"]
+	}
+	var total_faith_miracles := 0
+	for faith_name in expected_faith_miracles.keys():
+		var miracles: Array = expected_faith_miracles[faith_name]
+		for mname in miracles:
+			var spec: Dictionary = rules.fx.get_specialty_skill(mname)
+			assert_true.call(not spec.is_empty(), "Faith miracle '%s' exists" % mname)
+			assert_eq.call(String(spec.get("broad_skill", "")), faith_name, "Miracle '%s' belongs to faith '%s'" % [mname, faith_name])
+			assert_true.call(AlternityNum.as_int(spec.get("cost", 0)) > 0, "Miracle '%s' has valid SP cost" % mname)
+			total_faith_miracles += 1
+	assert_eq.call(total_faith_miracles, 52, "All 52 canonical Faith FX miracles audited")
+
+	# 7. Dark*Matter Setting-Gated Faith: Incantation (Sasquatch)
+	var incantation_broad = rules.fx.get_broad_skill("Incantation")
+	assert_true.call(not incantation_broad.is_empty(), "Incantation broad skill exists in catalog")
+	assert_eq.call(String(incantation_broad.get("setting", "")), "Dark*Matter", "Incantation is gated behind Dark*Matter")
+
+	var incantation_miracles := ["Battle spirits", "Calming voice", "Shatter", "Voice of rage"]
+	for imname in incantation_miracles:
+		var spec: Dictionary = rules.fx.get_specialty_skill(imname)
+		assert_true.call(not spec.is_empty(), "Incantation miracle '%s' exists" % imname)
+		assert_eq.call(String(spec.get("broad_skill", "")), "Incantation", "Miracle '%s' belongs to Incantation" % imname)
+
+	# Test Setting Gating in get_broad_skills_for_character
+	var core_char: Dictionary = rules.default_character()
+	core_char["setting"] = "Core"
+	rules.ensure_character_shape(core_char)
+	var core_broads: Array = rules.fx.get_broad_skills_for_character(core_char)
+	var core_has_incantation := false
+	for b in core_broads:
+		if String(b.get("name", "")) == "Incantation":
+			core_has_incantation = true
+	assert_true.call(not core_has_incantation, "Core character cannot see Dark*Matter Incantation faith")
+
+	var dm_char: Dictionary = rules.default_character()
+	dm_char["setting"] = "Dark*Matter"
+	rules.ensure_character_shape(dm_char)
+	var dm_broads: Array = rules.fx.get_broad_skills_for_character(dm_char)
+	var dm_has_incantation := false
+	for b in dm_broads:
+		if String(b.get("name", "")) == "Incantation":
+			dm_has_incantation = true
+	assert_true.call(dm_has_incantation, "Dark*Matter character can see Incantation faith")
+
 	finish()

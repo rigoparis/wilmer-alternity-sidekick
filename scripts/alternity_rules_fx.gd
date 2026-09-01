@@ -40,14 +40,36 @@ func set_energy_pool(character: Dictionary, amount: int) -> void:
 func get_broad_skills() -> Array:
 	return _get_parent().fx_broad_skills
 
+func get_broad_skills_for_character(character: Dictionary) -> Array:
+	var result: Array = []
+	for broad in get_broad_skills():
+		var req_setting := String(broad.get("setting", ""))
+		if req_setting.is_empty() or _get_parent().is_setting_available(character, req_setting):
+			result.append(broad)
+	return result
+
 func get_specialty_skills_for_broad(broad_name: String) -> Array:
 	return _get_parent().fx_specialty_skills_by_broad.get(broad_name, [])
 
+func get_specialty_skills_for_broad_and_character(broad_name: String, character: Dictionary) -> Array:
+	var result: Array = []
+	for spec in get_specialty_skills_for_broad(broad_name):
+		var req_setting := String(spec.get("setting", ""))
+		if req_setting.is_empty() or _get_parent().is_setting_available(character, req_setting):
+			result.append(spec)
+	return result
+
 func get_broad_skill(skill_name: String) -> Dictionary:
-	return _get_parent().fx_broad_skills_by_name.get(skill_name, {})
+	var map: Dictionary = _get_parent().fx_broad_skills_by_name
+	if map.has(skill_name):
+		return map[skill_name]
+	return map.get(skill_name.to_lower(), {})
 
 func get_specialty_skill(skill_name: String) -> Dictionary:
-	return _get_parent().fx_specialty_skills_by_name.get(skill_name, {})
+	var map: Dictionary = _get_parent().fx_specialty_skills_by_name
+	if map.has(skill_name):
+		return map[skill_name]
+	return map.get(skill_name.to_lower(), {})
 
 func fx_skill_rank(character: Dictionary, skill_name: String) -> int:
 	var selected: Dictionary = character.get("fx", {}).get("selected_skills", {})
