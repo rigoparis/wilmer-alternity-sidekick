@@ -36,6 +36,7 @@ func _run() -> void:
 	await _test_ability_generation()
 	await _test_mutations_tab()
 	await _test_summary_tab()
+	await _test_summary_is_self_contained()
 	await _test_optional_rules_route()
 
 	finish()
@@ -147,6 +148,89 @@ func _test_summary_tab() -> void:
 	check_true(AlternityNum.as_int(durability.get("stun", 0)) > 0, "durability is computed")
 
 	tab.queue_free()
+
+
+## Summary must carry the whole character, not a set of pointers to other tabs.
+##
+## The app exists to replace reaching for the manuals mid-session, and Summary is
+## the tab that stays open at the table. A heading that says "3 perks" and makes
+## you go elsewhere to find out which ones has failed at that job, so this
+## asserts the content is actually present rather than merely counted.
+func _test_summary_is_self_contained() -> void:
+	var doc := Doc.new(_rules)
+	doc.set_species_id(0)     # Human
+	doc.set_profession_id(0)  # Combat Spec
+
+	# Give the hero one of everything Summary is supposed to spell out.
+	doc.apply(CharacterDoc.ALL, func(c):
+		for broad in _rules.broad_skills:
+			if typeof(broad) == TYPE_DICTIONARY and not _rules.is_psionic_skill(broad):
+				_rules.set_skill_rank(c, AlternityNum.as_int(broad.get("id", 0)), 1)
+				break
+		for perk in AlternityRules.PERK_DEFINITIONS:
+			var costs: Array = perk.get("cost_options", [])
+			_rules.set_perk_selected(
+				c, String(perk.get("id", "")),
+				AlternityNum.as_int(costs[0] if not costs.is_empty() else perk.get("cost", 0))
+			)
+			break
+		for flaw in AlternityRules.FLAW_DEFINITIONS:
+			var bonuses: Array = flaw.get("bonus_options", [])
+			_rules.set_flaw_selected(
+				c, String(flaw.get("id", "")),
+				AlternityNum.as_int(bonuses[0] if not bonuses.is_empty() else flaw.get("bonus", 0))
+			)
+			break
+		_rules.fx.set_fx_talent(c, true)
+		for broad in _rules.fx.get_broad_skills_for_character(c):
+			_rules.fx.add_fx_skill(c, String(broad.get("name", "")))
+			break)
+
+	var tab = _mount(TAB_SUMMARY, doc)
+	await process_frame
+
+	var headings := _labels_in(tab)
+
+	# Each of these is a section the human review asked to see inline.
+	for heading in ["Skills", "FX", "Perks and Flaws"]:
+		check_true(headings.has(heading), "Summary shows a %s section inline" % heading)
+
+	# And the entries themselves, not just the headings.
+	var skills: Array = _rules.selected_skills(doc.raw())
+	if check(not skills.is_empty(), "the test hero holds a skill"):
+		var skill_name := String(_rules.skill_label(skills[0]))
+		check_true(
+			_any_label_contains(headings, skill_name),
+			"Summary names the skill itself (%s)" % skill_name
+		)
+
+	var perks: Array = _rules.selected_perks(doc.raw())
+	if check(not perks.is_empty(), "the test hero holds a perk"):
+		check_true(
+			_any_label_contains(headings, String(perks[0].get("name", ""))),
+			"Summary names the perk itself (%s)" % String(perks[0].get("name", ""))
+		)
+
+	tab.queue_free()
+
+
+## Every Label text in the subtree, so a test can ask what is actually on screen.
+func _labels_in(node: Node) -> Array:
+	var out: Array = []
+	for child in node.get_children():
+		if child is Label:
+			out.append((child as Label).text)
+		out.append_array(_labels_in(child))
+	return out
+
+
+func _any_label_contains(labels: Array, needle: String) -> bool:
+	if needle.is_empty():
+		return false
+	for text in labels:
+		if String(text).contains(needle):
+			return true
+	return false
 
 
 ## The new-hero flow: rules chosen before the character exists, because several

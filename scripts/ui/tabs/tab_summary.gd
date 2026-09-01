@@ -32,6 +32,20 @@ func build(container: Container) -> void:
 	_build_last_resorts(container, summary)
 	_build_movement(container, summary)
 	_build_combat(container, summary)
+
+	# Everything the hero actually has, spelled out here rather than linked to.
+	# This is the tab that stays open at the table, and the point of the app is
+	# to replace reaching for a manual -- so a section that says "3 perks" and
+	# makes you go to another tab to find out which has failed at its job.
+	_build_skills(container)
+	_build_psionics(container)
+	_build_fx(container)
+	_build_perks_flaws(container)
+	_build_cybertech(container)
+	_build_mutations(container)
+	_build_achievements(container)
+	_build_species_notes(container)
+
 	_build_notes(container)
 
 
@@ -217,6 +231,286 @@ func _armor_line(row: Dictionary) -> String:
 	if not toughness.is_empty():
 		parts.append(toughness)
 	return "  |  ".join(parts)
+
+
+## Every skill the hero holds, with the score to roll against and the rules text
+## that governs it.
+##
+## Broads carry their specialties, and anything with roll notes or rank benefits
+## states them here in full: those are exactly the lines a player would otherwise
+## stop to look up mid-scene.
+func _build_skills(container: Container) -> void:
+	var rules: AlternityRules = ctx.rules
+	var palette := ctx.palette
+	var raw := ctx.doc.raw()
+
+	var rows: Array = []
+	for skill in rules.selected_skills(raw):
+		if not rules.is_psionic_skill(skill):
+			rows.append(skill)
+	if rows.is_empty():
+		return
+
+	var box := Widgets.section(container, "Skills", palette)
+	_build_skill_rows(box, rows)
+
+
+## Psionics are the same shape as skills but a separate discipline, so they get
+## their own heading rather than being mixed into the skill list.
+func _build_psionics(container: Container) -> void:
+	var rules: AlternityRules = ctx.rules
+	var raw := ctx.doc.raw()
+
+	var rows: Array = []
+	for skill in rules.selected_skills(raw):
+		if rules.is_psionic_skill(skill):
+			rows.append(skill)
+	if rows.is_empty():
+		return
+
+	var box := Widgets.section(container, "Psionics", ctx.palette)
+	_build_skill_rows(box, rows)
+
+
+func _build_skill_rows(box: Container, rows: Array) -> void:
+	var rules: AlternityRules = ctx.rules
+	var palette := ctx.palette
+	var raw := ctx.doc.raw()
+
+	# Broads first, then their specialties, so the list reads the way the tree
+	# does rather than in whatever order the ids happened to land.
+	rows.sort_custom(func(a, b):
+		var a_broad: bool = a.get("type", "") == "broad"
+		var b_broad: bool = b.get("type", "") == "broad"
+		if a_broad != b_broad:
+			return a_broad
+		return String(a.get("name", "")) < String(b.get("name", "")))
+
+	for skill in rows:
+		var is_broad: bool = skill.get("type", "") == "broad"
+		var score: Dictionary = skill.get("score", {})
+		var rank := AlternityNum.as_int(skill.get("rank", 0))
+
+		var name := String(rules.skill_label(skill))
+		if not is_broad:
+			name = "    " + name
+		var value := "rank %d  -  %d  %s" % [
+			rank,
+			AlternityNum.as_int(score.get("ordinary", 0)),
+			String(score.get("die", "")),
+		]
+		var row := Widgets.metric(box, name, value, palette)
+		if is_broad:
+			(row.get_child(0) as Label).add_theme_color_override("font_color", palette.accent)
+
+		# The reference text, inline. skill_detail resolves it against this
+		# character, so the ranks shown are the ones actually reached.
+		var detail: Dictionary = rules.skill_detail(skill, raw)
+
+		var complex := String(detail.get("complex_check", "")).strip_edges()
+		if not complex.is_empty():
+			Widgets.muted_text(box, complex, palette, Widgets.FONT_CAPTION)
+
+		for note in detail.get("roll_notes", []):
+			Widgets.muted_text(box, "- %s" % String(note), palette, Widgets.FONT_CAPTION)
+
+		var benefits: Dictionary = detail.get("rank_benefits", {})
+		for benefit_rank_value in _sorted_ranks(benefits):
+			var benefit_rank := AlternityNum.as_int(benefit_rank_value)
+			# Benefits the hero has not reached yet still show, greyed: knowing
+			# what the next rank buys is half of why you read this.
+			var reached := rank >= benefit_rank
+			Widgets.text(
+				box,
+				"Rank %d: %s" % [benefit_rank, String(benefits.get(benefit_rank, benefits.get(str(benefit_rank), "")))],
+				palette, Widgets.FONT_CAPTION,
+				palette.text if reached else palette.muted
+			)
+
+
+## Rank-benefit keys arrive as strings from JSON, so they are sorted as numbers
+## rather than lexically -- otherwise rank 12 files between rank 1 and rank 2.
+func _sorted_ranks(benefits: Dictionary) -> Array:
+	var ranks: Array = []
+	for key in benefits:
+		ranks.append(AlternityNum.as_int(key))
+	ranks.sort()
+	return ranks
+
+
+func _build_fx(container: Container) -> void:
+	var rules: AlternityRules = ctx.rules
+	var palette := ctx.palette
+	var raw := ctx.doc.raw()
+	if not rules.fx.is_fx_talent(raw):
+		return
+
+	var selected: Array = rules.fx.selected_fx_skills(raw)
+	if selected.is_empty():
+		return
+
+	var box := Widgets.section(container, "FX", palette)
+
+	var pool: int = rules.fx.energy_pool(raw)
+	var drain: int = rules.fx.permanent_fx_energy_drain(raw)
+	Widgets.metric(box, "Energy pool", str(pool), palette)
+	if drain > 0:
+		Widgets.metric(box, "Reserved by permanent powers", "-%d" % drain, palette)
+		Widgets.metric(box, "Usable", str(maxi(0, pool - drain)), palette)
+
+	for skill in selected:
+		var skill_name := String(skill.get("name", ""))
+		var is_broad: bool = String(skill.get("type", "")) == "broad"
+		var score: Dictionary = rules.fx.fx_skill_score(raw, skill_name)
+		var row := Widgets.metric(
+			box,
+			skill_name if is_broad else "    " + skill_name,
+			"rank %d  -  %d  %s" % [
+				AlternityNum.as_int(skill.get("rank", 0)),
+				AlternityNum.as_int(score.get("ordinary", 0)),
+				String(score.get("die", "")),
+			],
+			palette
+		)
+		if is_broad:
+			(row.get_child(0) as Label).add_theme_color_override("font_color", palette.accent)
+		if rules.fx.is_fx_skill_permanent(raw, skill_name):
+			Widgets.muted_text(box, "    Always active", palette, Widgets.FONT_CAPTION)
+
+		var description := String(skill.get("description", "")).strip_edges()
+		if not description.is_empty():
+			Widgets.muted_text(box, description, palette, Widgets.FONT_CAPTION)
+
+	for effect in rules.fx.permanent_fx_effects_summary(raw):
+		Widgets.muted_text(box, String(effect), palette, Widgets.FONT_CAPTION)
+
+
+func _build_perks_flaws(container: Container) -> void:
+	var rules: AlternityRules = ctx.rules
+	var palette := ctx.palette
+	var raw := ctx.doc.raw()
+
+	var perks: Array = rules.selected_perks(raw)
+	var flaws: Array = rules.selected_flaws(raw)
+	if perks.is_empty() and flaws.is_empty():
+		return
+
+	var box := Widgets.section(container, "Perks and Flaws", palette)
+	for perk in perks:
+		_build_option_entry(box, perk, "cost", "SP")
+	for flaw in flaws:
+		_build_option_entry(box, flaw, "bonus", "SP granted")
+
+
+## One perk, flaw or mutation, with the text that says what it does.
+func _build_option_entry(box: Container, entry: Dictionary, value_key: String, unit: String) -> void:
+	var palette := ctx.palette
+	var label := String(entry.get("name", ""))
+	if bool(entry.get("gm_given", false)):
+		label += "  (GM)"
+	Widgets.metric(
+		box, label, "%d %s" % [AlternityNum.as_int(entry.get(value_key, 0)), unit], palette
+	)
+	var description := String(entry.get("description", entry.get("summary", ""))).strip_edges()
+	if not description.is_empty():
+		Widgets.muted_text(box, description, palette, Widgets.FONT_CAPTION)
+
+
+func _build_cybertech(container: Container) -> void:
+	var rules: AlternityRules = ctx.rules
+	var palette := ctx.palette
+	var raw := ctx.doc.raw()
+	if not rules.cybertech.cybertech_enabled(raw):
+		return
+
+	var installed: Array = rules.cybertech.installed_cybertech(raw)
+	if installed.is_empty():
+		return
+
+	var box := Widgets.section(container, "Cybertech", palette)
+	Widgets.progress_metric(
+		box, "Cyber tolerance",
+		rules.cybertech.cyber_tolerance_used(raw),
+		rules.cybertech.cyber_tolerance_total(raw),
+		palette
+	)
+
+	for install in installed:
+		var item: Dictionary = install.get("item", {})
+		Widgets.metric(
+			box,
+			String(item.get("name", "")),
+			String(install.get("quality", "")).capitalize(),
+			palette
+		)
+		var description := String(item.get("description", item.get("summary", ""))).strip_edges()
+		if not description.is_empty():
+			Widgets.muted_text(box, description, palette, Widgets.FONT_CAPTION)
+
+
+func _build_mutations(container: Container) -> void:
+	var rules: AlternityRules = ctx.rules
+	var palette := ctx.palette
+	var raw := ctx.doc.raw()
+
+	var advantages: Array = rules.mutations.selected_mutation_advantages(raw)
+	var drawbacks: Array = rules.mutations.selected_mutation_drawbacks(raw)
+	if advantages.is_empty() and drawbacks.is_empty():
+		return
+
+	var box := Widgets.section(container, "Mutations", palette)
+	for mutation in advantages:
+		_build_option_entry(box, mutation, "cost", "points")
+	for drawback in drawbacks:
+		_build_option_entry(box, drawback, "value", "points granted")
+
+
+func _build_achievements(container: Container) -> void:
+	var rules: AlternityRules = ctx.rules
+	var palette := ctx.palette
+	var raw := ctx.doc.raw()
+
+	var purchased: Array = rules.achievements.selected_achievements(raw)
+	if purchased.is_empty():
+		return
+
+	var box := Widgets.section(container, "Achievement Benefits", palette)
+	for entry in purchased:
+		var achievement: Dictionary = rules.get_achievement_by_id(
+			String(entry.get("achievement_id", ""))
+		)
+		Widgets.metric(
+			box,
+			String(rules.achievements.achievement_display_name(achievement, entry)),
+			"%d SP" % AlternityNum.as_int(entry.get("cost", 0)),
+			palette
+		)
+		var summary_text := String(achievement.get("summary", "")).strip_edges()
+		if not summary_text.is_empty():
+			Widgets.muted_text(box, summary_text, palette, Widgets.FONT_CAPTION)
+
+
+## Species rules and the rolls they modify.
+##
+## These are the lines that decide a check at the table, and were previously
+## reachable only by remembering which species you picked and looking it up.
+func _build_species_notes(container: Container) -> void:
+	var rules: AlternityRules = ctx.rules
+	var palette := ctx.palette
+	var raw := ctx.doc.raw()
+
+	var rule_notes: Array = rules.species_rule_notes(raw)
+	var roll_notes: Array = rules.species_roll_notes_for_character(raw)
+	if rule_notes.is_empty() and roll_notes.is_empty():
+		return
+
+	var box := Widgets.section(container, "Species Rules", palette)
+	for note in rule_notes:
+		Widgets.text(box, "- %s" % String(note), palette, Widgets.FONT_CAPTION)
+	if not roll_notes.is_empty():
+		Widgets.subheading(box, "Roll notes", palette)
+		for note in roll_notes:
+			Widgets.text(box, "- %s" % String(note), palette, Widgets.FONT_CAPTION)
 
 
 ## Notes live here because this is the tab that stays open during a session.
