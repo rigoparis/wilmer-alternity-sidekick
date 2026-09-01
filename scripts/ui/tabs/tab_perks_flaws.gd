@@ -173,12 +173,22 @@ func _catalog_entries(kind: String) -> Array:
 		if options.is_empty():
 			options = [0]
 
-		for option in options:
-			var value := AlternityNum.as_int(option)
+		# Ten flaws and two perks come in several severities, and the catalog used
+		# to emit one row per severity all bearing the same name -- so Phobia
+		# appeared three times, identically, and the list read as though the
+		# dictionary were full of duplicates. Each row now says which grade it is.
+		var graded := options.size() > 1
+		for index in options.size():
+			var value := AlternityNum.as_int(options[index])
+			var display := String(definition.get("name", id))
+			var summary_text := String(definition.get("summary", ""))
+			if graded:
+				display = "%s (%s%d SP)" % [display, "" if is_perk else "+", value]
+				summary_text = "Grade %d of %d. %s" % [index + 1, options.size(), summary_text]
 			entries.append({
 				"id": "%s%s%d" % [id, TIER_SEPARATOR, value],
-				"name": String(definition.get("name", id)),
-				"summary": String(definition.get("summary", "")),
+				"name": display,
+				"summary": summary_text,
 				"meta": ("%d SP" % value) if is_perk else ("+%d SP" % value),
 				"taken": taken,
 			})

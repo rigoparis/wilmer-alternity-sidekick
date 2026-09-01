@@ -7,6 +7,7 @@ extends "res://tools/test_harness.gd"
 ## are rewritten one at a time.
 ##
 
+const RulesScript := preload("res://scripts/alternity_rules.gd")
 const Detail := preload("res://scripts/core/skill_detail.gd")
 const DetailView := preload("res://scripts/ui/skill_detail_view.gd")
 const Palette := preload("res://scripts/core/theme_palette.gd")
@@ -23,6 +24,7 @@ func _run() -> void:
 	_test_legacy_split()
 	_test_legacy_rank_benefits()
 	_test_every_shipped_fx_power()
+	_test_every_core_skill_is_described()
 	await _test_view_renders()
 	finish()
 
@@ -218,3 +220,45 @@ func _test_view_renders() -> void:
 	check_true(view.get_child_count() > 0, "an empty detail still renders a message")
 
 	view.queue_free()
+
+
+## Every core skill must have a written summary, not a generated placeholder.
+##
+## The point of the app is to replace reaching for the manual, and 44 of the 125
+## specialties -- every Science, Medical, Tactics, System Operation and
+## Entertainment branch among them -- fell through to _skill_summary's stub
+## ("Specialized use of X focused on Y."), which tells a reader nothing they
+## could not get from the skill's own name.
+##
+## Asserted against the shipped catalog rather than a fixture, so adding a skill
+## without describing it fails here.
+func _test_every_core_skill_is_described() -> void:
+	var rules = RulesScript.new()
+	rules.load_core_data()
+
+	var undescribed: Array = []
+	var counted := 0
+	for skill in rules.skills:
+		if typeof(skill) != TYPE_DICTIONARY:
+			continue
+		counted += 1
+		var detail: Dictionary = rules.skill_detail(skill)
+		var summary := String(detail.get("summary", "")).strip_edges()
+
+		# The two generated fallbacks, matched on their fixed wording.
+		var is_stub := (
+			summary.is_empty()
+			or summary.begins_with("Specialized use of")
+			or summary == "Use this broad skill for its related specialty skills."
+		)
+		if is_stub:
+			undescribed.append(String(skill.get("name", "?")))
+
+	check_true(counted > 100, "the core catalog loaded (%d skills)" % counted)
+	check_true(
+		undescribed.is_empty(),
+		"every core skill has a written summary (%d without: %s)" % [
+			undescribed.size(),
+			", ".join(undescribed.slice(0, 8)) if not undescribed.is_empty() else "",
+		]
+	)
