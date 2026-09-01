@@ -1109,4 +1109,78 @@ func _init() -> void:
 	rules.set_skill_rank(rank_hero, 21, 12)
 	assert_eq.call(rules.character_resistance_modifier(rank_hero, "DEX"), dex_rm_base + 3, "Dodge rank 12 grants +3 to ranged DEX RM")
 
+	# --- 27. Constitution (CON) Skills, Specialties & Mechanics ---
+	print("Testing CON Skills, Specialties & Mechanics...")
+	# 1. Catalog Costs, Affinities, and Untrained Verification
+	var movement_skill := rules.get_skill_by_id(48)
+	var race_skill := rules.get_skill_by_id(49)
+	var swim_skill := rules.get_skill_by_id(50)
+	var trailblazing := rules.get_skill_by_id(51)
+	var stamina_skill := rules.get_skill_by_id(52)
+	var endurance_skill := rules.get_skill_by_id(53)
+	var resist_pain := rules.get_skill_by_id(54)
+	var survival_skill := rules.get_skill_by_id(55)
+	var survival_training := rules.get_skill_by_id(56)
+
+	assert_eq.call(movement_skill["base_price"], 3, "Movement base price is 3 SP")
+	assert_eq.call(race_skill["base_price"], 2, "Race base price is 2 SP")
+	assert_eq.call(swim_skill["base_price"], 1, "Swim base price is 1 SP")
+	assert_eq.call(trailblazing["base_price"], 3, "Trailblazing base price is 3 SP")
+
+	assert_eq.call(stamina_skill["base_price"], 3, "Stamina base price is 3 SP")
+	assert_eq.call(endurance_skill["base_price"], 4, "Endurance base price is 4 SP")
+	assert_eq.call(resist_pain["base_price"], 4, "Resist Pain base price is 4 SP")
+
+	assert_eq.call(survival_skill["base_price"], 5, "Survival base price is 5 SP")
+	assert_eq.call(survival_training["base_price"], 3, "Survival Training base price is 3 SP")
+
+	# Verify all CON skills can be used untrained
+	assert_true.call(bool(movement_skill["untrained"]), "Movement can be used untrained")
+	assert_true.call(bool(race_skill["untrained"]), "Race can be used untrained")
+	assert_true.call(bool(swim_skill["untrained"]), "Swim can be used untrained")
+	assert_true.call(bool(trailblazing["untrained"]), "Trailblazing can be used untrained")
+	assert_true.call(bool(stamina_skill["untrained"]), "Stamina can be used untrained")
+	assert_true.call(bool(endurance_skill["untrained"]), "Endurance can be used untrained")
+	assert_true.call(bool(resist_pain["untrained"]), "Resist Pain can be used untrained")
+	assert_true.call(bool(survival_skill["untrained"]), "Survival can be used untrained")
+	assert_true.call(bool(survival_training["untrained"]), "Survival Training can be used untrained")
+
+	# 2. Profession Discounts
+	var con_fa: Dictionary = rules.default_character()
+	con_fa["profession_id"] = 4 # Free Agent
+	rules.ensure_character_shape(con_fa)
+	assert_eq.call(rules.skill_cost(con_fa, trailblazing), 2, "Free Agent buys Trailblazing for 2 SP (-1)")
+	assert_eq.call(rules.skill_cost(con_fa, survival_skill), 4, "Free Agent buys Survival for 4 SP (-1)")
+	assert_eq.call(rules.skill_cost(con_fa, survival_training), 2, "Free Agent buys Survival Training for 2 SP (-1)")
+
+	var con_cs: Dictionary = rules.default_character()
+	con_cs["profession_id"] = 0 # Combat Spec
+	rules.ensure_character_shape(con_cs)
+	assert_eq.call(rules.skill_cost(con_cs, endurance_skill), 3, "Combat Spec buys Endurance for 3 SP (-1)")
+	assert_eq.call(rules.skill_cost(con_cs, resist_pain), 3, "Combat Spec buys Resist Pain for 3 SP (-1)")
+	assert_eq.call(rules.skill_cost(con_cs, survival_skill), 4, "Combat Spec buys Survival for 4 SP (-1)")
+	assert_eq.call(rules.skill_cost(con_cs, survival_training), 2, "Combat Spec buys Survival Training for 2 SP (-1)")
+
+	# 3. Species Free CON Skills (Table P4)
+	assert_true.call(rules.is_free_species_skill(human_veh, 52), "Human receives Stamina (52) for free")
+	assert_true.call(rules.is_free_species_skill(sesh_hero, 52), "Sesheyan receives Stamina (52) for free")
+	assert_true.call(rules.is_free_species_skill(tsa_hero, 52), "T'sa receives Stamina (52) for free")
+
+	# 4. No Passive Resistance Modifier for CON
+	assert_eq.call(rules.character_resistance_modifier(con_cs, "CON"), 0, "Constitution has no passive resistance modifier (always 0)")
+
+	# 5. Rank Benefits formatting in skill_rank_benefit_groups
+	var benefit_hero: Dictionary = rules.default_character()
+	rules.achievements.set_achievement_points(benefit_hero, 100)
+	rules.ensure_character_shape(benefit_hero)
+	rules.set_skill_rank(benefit_hero, 52, 1) # Stamina
+	rules.set_skill_rank(benefit_hero, 53, 4) # Endurance Rank 4
+	var rank_groups := rules.skill_rank_benefit_groups(benefit_hero)
+	var found_endurance_benefit := false
+	for g in rank_groups:
+		if String(g.get("skill", "")).contains("Endurance"):
+			found_endurance_benefit = true
+			assert_true.call(g.get("entries", []).size() >= 1, "Endurance rank 4 displays rank benefit entry")
+	assert_true.call(found_endurance_benefit, "Rank 4 Endurance appears in skill_rank_benefit_groups")
+
 	finish()

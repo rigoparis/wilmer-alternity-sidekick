@@ -636,6 +636,20 @@ const RANK_BENEFIT_NOTES := {
 		8: "Breath-holding bonus improves to -3 steps, and swim/easy swim movement each increase by another 1 meter. Source: Player's Handbook p. 77.",
 		12: "Breath-holding bonus improves to -4 steps, and swim/easy swim movement each increase by another 1 meter. Source: Player's Handbook p. 77.",
 	},
+	53: {
+		4: "Checks to resist physical exhaustion, fatigue damage, and knockout attempts gain a -1 step bonus. Source: Player's Handbook p. 77.",
+		8: "Exhaustion and knockout resistance bonus improves to -2 steps. Source: Player's Handbook p. 77.",
+		12: "Exhaustion and knockout resistance bonus improves to -3 steps. Source: Player's Handbook p. 77.",
+	},
+	54: {
+		4: "Checks to resist pain, shock, and wound penalties gain a -1 step bonus. Source: Player's Handbook p. 77.",
+		8: "Resist pain bonus improves to -2 steps. Source: Player's Handbook p. 77.",
+		12: "Resist pain bonus improves to -3 steps. Source: Player's Handbook p. 77.",
+	},
+	56: {
+		3: "May select a second specific environmental biome specialization. Source: Player's Handbook p. 77.",
+		6: "May select a third biome or gain a -1 step bonus in an existing environment. Source: Player's Handbook p. 77.",
+	},
 	59: {
 		1: "Illegal-transaction penalties are reduced by 1 step; this can eliminate but never create a bonus. Source: Player's Handbook p. 79.",
 		4: "Illegal-transaction penalty reduction improves to 2 steps. Source: Player's Handbook p. 79.",
