@@ -15,11 +15,13 @@ extends Control
 ## Leave the sheet and return to the character list.
 signal closed
 
+const TAB_BASICS := preload("res://scenes/ui/tabs/tab_basics.tscn")
 const TAB_CYBERTECH := preload("res://scenes/ui/tabs/tab_cybertech.tscn")
 const TAB_PERKS_FLAWS := preload("res://scenes/ui/tabs/tab_perks_flaws.tscn")
 
 ## Migrated tabs, in display order. Phase 5 adds the remaining eight.
 const TABS := [
+	{"id": "basics", "label": "Basics", "scene": TAB_BASICS},
 	{"id": "perks_flaws", "label": "Perks/Flaws", "scene": TAB_PERKS_FLAWS},
 	{"id": "cybertech", "label": "Cybertech", "scene": TAB_CYBERTECH},
 ]

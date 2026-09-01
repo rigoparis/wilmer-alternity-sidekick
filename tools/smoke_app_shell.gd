@@ -102,19 +102,34 @@ func _test_tabs() -> void:
 	if not check(sheet != null, "the sheet is open"):
 		return
 
-	# Both migrated tabs should be offered; the other eight are simply absent
-	# while they are still in the old UI.
-	check_eq(sheet._buttons.size(), 2, "both migrated tabs are listed")
-	check_true(sheet._buttons.has("perks_flaws"), "Perks/Flaws is listed")
-	check_true(sheet._buttons.has("cybertech"), "Cybertech is listed")
-	check_eq(sheet._active_id, "perks_flaws", "the first tab is selected on open")
+	# Assert against the registry rather than a hardcoded count, so migrating a
+	# tab in phase 5 does not break this test every time.
+	var registry: Array = sheet.TABS
+	check_true(registry.size() >= 2, "at least two tabs are migrated (%d)" % registry.size())
+	check_eq(sheet._buttons.size(), registry.size(), "every migrated tab is listed")
+	for definition in registry:
+		check_true(sheet._buttons.has(String(definition["id"])), "%s is listed" % definition["id"])
 
-	sheet._select_tab("cybertech")
+	var first_id := String(registry[0]["id"])
+	check_eq(sheet._active_id, first_id, "the first tab is selected on open")
+
+	# Switching to any other tab keeps the first one alive but hidden.
+	var second_id := String(registry[1]["id"])
+	sheet._select_tab(second_id)
 	await process_frame
-	check_eq(sheet._active_id, "cybertech", "switching tabs changes the active id")
-	check_true(sheet._instances.has("cybertech"), "the tab is instantiated on first visit")
-	check_true(sheet._instances["cybertech"].visible, "the active tab is visible")
-	check_false(sheet._instances["perks_flaws"].visible, "the previous tab is hidden, not destroyed")
+	check_eq(sheet._active_id, second_id, "switching tabs changes the active id")
+	check_true(sheet._instances.has(second_id), "the tab is instantiated on first visit")
+	check_true(sheet._instances[second_id].visible, "the active tab is visible")
+	check_false(sheet._instances[first_id].visible, "the previous tab is hidden, not destroyed")
+
+	# Every migrated tab must at least build without erroring.
+	for definition in registry:
+		var id := String(definition["id"])
+		sheet._select_tab(id)
+		await process_frame
+		var tab = sheet._instances.get(id)
+		if check(tab != null, "%s instantiates" % id):
+			check_true(tab.get_child_count() > 0, "%s draws content" % id)
 
 
 func _test_cybertech_edits() -> void:

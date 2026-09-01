@@ -29,7 +29,7 @@ func build(container: Container) -> void:
 
 
 func _build_budget(container: Container) -> void:
-	var rules = ctx.rules
+	var rules: AlternityRules = ctx.rules
 	var palette := ctx.palette
 	var raw := ctx.doc.raw()
 
@@ -43,7 +43,7 @@ func _build_budget(container: Container) -> void:
 
 
 func _build_list(container: Container, kind: String) -> void:
-	var rules = ctx.rules
+	var rules: AlternityRules = ctx.rules
 	var palette := ctx.palette
 	var raw := ctx.doc.raw()
 	var is_perk := kind == "perk"
@@ -108,7 +108,7 @@ func _build_selected_row(parent: Container, entry: Dictionary, kind: String) -> 
 
 
 func _remove(kind: String, entry_id: String) -> void:
-	var rules = ctx.rules
+	var rules: AlternityRules = ctx.rules
 	# Selecting with a value of 0 is how the rules layer clears a choice.
 	ctx.doc.apply([CharacterDoc.PERKS_FLAWS], func(c):
 		if kind == "perk":
@@ -135,7 +135,7 @@ func _open_catalog(kind: String) -> void:
 	if typeof(chosen) != TYPE_ARRAY or chosen.is_empty():
 		return
 
-	var rules = ctx.rules
+	var rules: AlternityRules = ctx.rules
 	ctx.doc.apply([CharacterDoc.PERKS_FLAWS], func(c):
 		for entry_id in chosen:
 			var parts := String(entry_id).split(TIER_SEPARATOR)
@@ -151,7 +151,7 @@ func _open_catalog(kind: String) -> void:
 ## One entry per cost tier, so a perk offering 4 or 8 points appears twice with
 ## its price rather than needing a second picker to choose between them.
 func _catalog_entries(kind: String) -> Array:
-	var rules = ctx.rules
+	var rules: AlternityRules = ctx.rules
 	var raw := ctx.doc.raw()
 	var is_perk := kind == "perk"
 	var source: Dictionary = rules.perks_by_id if is_perk else rules.flaws_by_id
@@ -183,7 +183,7 @@ func _catalog_entries(kind: String) -> Array:
 ## of what is already spent, which is the thing you previously had to close the
 ## catalog to find out.
 func _budget_text(selected_ids: Array, kind: String) -> String:
-	var rules = ctx.rules
+	var rules: AlternityRules = ctx.rules
 	var raw := ctx.doc.raw()
 	var is_perk := kind == "perk"
 

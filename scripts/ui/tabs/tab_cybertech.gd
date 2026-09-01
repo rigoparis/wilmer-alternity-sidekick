@@ -25,7 +25,7 @@ func watched_sections() -> Array:
 
 func build(container: Container) -> void:
 	var doc := ctx.doc
-	var rules = ctx.rules
+	var rules: AlternityRules = ctx.rules
 	var palette := ctx.palette
 
 	var top := Widgets.section(container, "Cybertech", palette)
@@ -66,7 +66,7 @@ func build(container: Container) -> void:
 	_build_catalog(container, doc, rules, palette)
 
 
-func _build_metrics(parent: Container, doc: CharacterDoc, rules, palette: ThemePalette) -> void:
+func _build_metrics(parent: Container, doc: CharacterDoc, rules: AlternityRules, palette: ThemePalette) -> void:
 	var box := VBoxContainer.new()
 	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	box.add_theme_constant_override("separation", Widgets.GAP_ROW)
@@ -102,7 +102,7 @@ func _build_metrics(parent: Container, doc: CharacterDoc, rules, palette: ThemeP
 		save_requested.emit())
 
 
-func _build_catalog(container: Container, doc: CharacterDoc, rules, palette: ThemePalette) -> void:
+func _build_catalog(container: Container, doc: CharacterDoc, rules: AlternityRules, palette: ThemePalette) -> void:
 	var catalog := Widgets.section(container, "Cybertech Catalog", palette)
 
 	var installed_ids := {}
@@ -120,7 +120,7 @@ func _build_catalog_row(
 	item: Dictionary,
 	installed_ids: Dictionary,
 	doc: CharacterDoc,
-	rules,
+	rules: AlternityRules,
 	palette: ThemePalette
 ) -> void:
 	var item_id := String(item.get("id", ""))

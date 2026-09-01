@@ -90,13 +90,17 @@ func _capture(width: int, height: int, label: String) -> void:
 			shell._open_sheet(doc)
 			for _i in 12:
 				await process_frame
-			_save(shell, "%s_sheet_perks" % label)
+			_save(shell, "%s_sheet_first" % label)
 
+			# Shoot every migrated tab, so a broken one is visible rather than
+			# merely untested.
 			var sheet = shell._screens.get_child(0)
-			sheet._select_tab("cybertech")
-			for _i in 12:
-				await process_frame
-			_save(shell, "%s_sheet_cybertech" % label)
+			for definition in sheet.TABS:
+				var id := String(definition["id"])
+				sheet._select_tab(id)
+				for _i in 12:
+					await process_frame
+				_save(shell, "%s_tab_%s" % [label, id])
 
 	shell.queue_free()
 	await process_frame

@@ -18,7 +18,13 @@ var doc: CharacterDoc
 
 ## The rules engine. Shared across contexts: it is catalog data plus pure
 ## functions, with no per-character state.
-var rules
+##
+## Typed rather than left as a Variant. Untyped inference is an error in this
+## project, so an untyped handle makes every `var x := rules.something()` in
+## every tab a parse error, and forces an explicit annotation on each. Typing it
+## once here fixes all of them -- and lets the parser check arity, turning
+## wrong-argument calls into parse errors instead of runtime ones.
+var rules: AlternityRules
 
 ## Navigation, for opening catalogs, forms and detail views.
 var router: UiRouter
@@ -34,7 +40,7 @@ var is_wide_layout: bool = false
 
 func _init(
 	p_doc: CharacterDoc = null,
-	p_rules = null,
+	p_rules: AlternityRules = null,
 	p_router: UiRouter = null,
 	p_palette: ThemePalette = null,
 	p_is_wide: bool = false

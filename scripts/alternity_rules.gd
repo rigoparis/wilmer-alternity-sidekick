@@ -463,6 +463,58 @@ func get_mutation_drawback_by_id(drawback_id: String) -> Dictionary:
 	return mutation_drawbacks_by_id.get(drawback_id, {})
 
 
+## Broad skills whose specialties may carry the Combat Spec situation bonus.
+##
+## Armor Operation, Heavy Weapons, Melee Weapons, Unarmed Attack, Modern Ranged
+## Weapons, Primitive Ranged Weapons. Source: Player's Handbook p. 30.
+const COMBAT_SPEC_BONUS_BROAD_IDS := [0, 8, 11, 15, 30, 34]
+
+
+## Specialties a Combat Spec may choose for their bonus, sorted by name.
+##
+## The eligibility list was previously inlined in the Basics renderer, which put
+## a rules citation inside the UI and meant any other view offering the choice
+## would have to repeat it.
+func combat_spec_bonus_specialties(_character: Dictionary = {}) -> Array:
+	var out: Array = []
+	for skill in skills:
+		if typeof(skill) != TYPE_DICTIONARY:
+			continue
+		if String(skill.get("type", "")) != "specialty":
+			continue
+		if COMBAT_SPEC_BONUS_BROAD_IDS.has(AlternityNum.as_int(skill.get("broad_id", -1), -1)):
+			out.append(skill)
+	out.sort_custom(func(a, b): return String(a.get("name", "")) < String(b.get("name", "")))
+	return out
+
+
+## Whether a catalog entry is available to this character, by its own "setting".
+##
+## Every gated catalog repeats the same idiom: read the entry's setting, treat
+## an empty one as always available, otherwise ask is_setting_available. That is
+## five call sites already (FX broads and specialties, mutation advantages and
+## drawbacks, and random mutation rolling), and every migrated tab that shows a
+## catalog would add another chance to forget it.
+##
+## Filtering belongs at the catalog boundary, not in each view: a tab that omits
+## the check does not fail loudly, it just quietly offers Dark Matter content in
+## a Core campaign.
+func is_entry_available(character: Dictionary, entry: Dictionary) -> bool:
+	var required := String(entry.get("setting", "")).strip_edges()
+	if required.is_empty():
+		return true
+	return is_setting_available(character, required)
+
+
+## Filter a catalog to the entries this character's setting permits.
+func available_entries(character: Dictionary, entries: Array) -> Array:
+	var out: Array = []
+	for entry in entries:
+		if typeof(entry) == TYPE_DICTIONARY and is_entry_available(character, entry):
+			out.append(entry)
+	return out
+
+
 func is_setting_available(character: Dictionary, target_setting: String) -> bool:
 	var s := target_setting.strip_edges().to_lower()
 	if s.is_empty() or s == "core" or s == "all":
