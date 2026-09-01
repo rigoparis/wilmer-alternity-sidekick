@@ -145,6 +145,26 @@ static func table_cell(parent: GridContainer, content: String, palette: ThemePal
 	return label
 
 
+## A labelled on/off row.
+##
+## CheckButton rather than CheckBox: ThemeService deliberately strips the
+## CheckBox styleboxes so the old custom check artwork can show through, which
+## would leave a plain CheckBox here looking unstyled. The switch is also a
+## larger touch target.
+static func toggle_row(parent: Container, label_text: String, pressed: bool, palette: ThemePalette) -> CheckButton:
+	var toggle := CheckButton.new()
+	toggle.text = label_text
+	toggle.button_pressed = pressed
+	toggle.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	toggle.custom_minimum_size = Vector2(0, 44)
+	toggle.add_theme_color_override("font_color", palette.text)
+	toggle.add_theme_color_override("font_pressed_color", palette.text)
+	toggle.add_theme_color_override("font_hover_color", palette.text)
+	toggle.add_theme_font_size_override("font_size", FONT_DETAIL)
+	parent.add_child(toggle)
+	return toggle
+
+
 static func separator(parent: Container, palette: ThemePalette) -> HSeparator:
 	var line := HSeparator.new()
 	var style := StyleBoxLine.new()
