@@ -708,7 +708,7 @@ func character_resistance_modifier(character: Dictionary, ability: String) -> in
 	var skill_bonus := 0
 	if ability == "STR":
 		var max_melee_bonus := 0
-		for skill_id in [12, 13, 14, 17]: # Blade, Bludgeon, Powered weapon, Power Martial Arts
+		for skill_id in [12, 13, 14, 17, 20]: # Blade, Bludgeon, Powered weapon, Power Martial Arts, Defensive Martial Arts
 			var r := skill_rank(character, skill_id)
 			var b := 0
 			if r >= 12:
@@ -797,11 +797,29 @@ func resolve_feat_check(character: Dictionary, ability: String, control_die: int
 	return resolve_check(control_die, situation_roll, target, die_str)
 
 
-## Calculates lifting thresholds based on Strength score.
-## Automatic lift: STR * 2 kg (no check).
-## Marginal feat: STR * 3 kg (+d0).
-## Slight feat: STR * 5 kg (+d4).
-## Max lift: STR * 6 kg (+d6 / +d8).
+## Strength Feat lifting ladder (deadlift / short hoist). Distinct from Table P12
+## encumbrance, which governs sustained carried loads -- see encumbrance().
+##
+##   Marginal  up to STR *  5 kg   +0 steps  (base +d4 feat die)
+##   Slight    up to STR * 10 kg   +1 step   (+d6)
+##   Moderate  up to STR * 15 kg   +2 steps  (+d8)
+##   Extreme   up to STR * 20 kg   +3 steps  (+d12)
+##
+## Clean-and-jerk / overhead press adds a further +2 steps and requires a
+## Stamina-endurance fatigue check. Weights above STR * 20 kg need an Amazing
+## success on an Extreme feat check and inflict fatigue damage.
+## Source: Gamemaster Guide p. 70; Player's Handbook p. 63-64.
+const LIFTING_TIERS := [
+	{"id": "marginal", "name": "Marginal", "multiplier": 5.0, "extra_steps": 0},
+	{"id": "slight", "name": "Slight", "multiplier": 10.0, "extra_steps": 1},
+	{"id": "moderate", "name": "Moderate", "multiplier": 15.0, "extra_steps": 2},
+	{"id": "extreme", "name": "Extreme", "multiplier": 20.0, "extra_steps": 3},
+]
+
+## Extra step penalty for a clean-and-jerk / overhead press, on top of the tier.
+const LIFTING_CLEAN_AND_JERK_STEPS := 2
+
+
 func lifting_capacity(character_or_str) -> Dictionary:
 	var str_score := 10
 	if typeof(character_or_str) == TYPE_DICTIONARY:
@@ -809,12 +827,43 @@ func lifting_capacity(character_or_str) -> Dictionary:
 		str_score = _as_int(abilities.get("STR", 10))
 	else:
 		str_score = _as_int(character_or_str)
+
+	var tiers := []
+	for tier in LIFTING_TIERS:
+		var base_step: int = 1 + _as_int(tier.get("extra_steps", 0))
+		tiers.append({
+			"id": String(tier.get("id", "")),
+			"name": String(tier.get("name", "")),
+			"limit_kg": str_score * _as_float(tier.get("multiplier", 1.0)),
+			"extra_steps": _as_int(tier.get("extra_steps", 0)),
+			"step": base_step,
+			"situation_die": action_step_die(base_step),
+			"clean_and_jerk_step": base_step + LIFTING_CLEAN_AND_JERK_STEPS,
+			"clean_and_jerk_die": action_step_die(base_step + LIFTING_CLEAN_AND_JERK_STEPS),
+		})
+
 	return {
-		"automatic_lift_kg": str_score * 2.0,
-		"marginal_feat_kg": str_score * 3.0,
-		"slight_feat_kg": str_score * 5.0,
-		"max_lift_kg": str_score * 6.0,
+		"strength": str_score,
+		# Table P12 normal load: carried without a check or penalty.
+		"automatic_carry_kg": str_score * 2.0,
+		"marginal_feat_kg": str_score * 5.0,
+		"slight_feat_kg": str_score * 10.0,
+		"moderate_feat_kg": str_score * 15.0,
+		"extreme_feat_kg": str_score * 20.0,
+		"max_lift_kg": str_score * 20.0,
+		"tiers": tiers,
+		"clean_and_jerk_extra_steps": LIFTING_CLEAN_AND_JERK_STEPS,
+		"note": "Clean-and-jerk adds +2 steps and a Stamina-endurance fatigue check. Above STR x 20 kg requires an Amazing success on an Extreme feat check and inflicts fatigue damage.",
 	}
+
+
+## The lightest lifting tier that can move `mass_kg`, or an empty dictionary when
+## the weight exceeds STR * 20 kg (Amazing-on-Extreme territory).
+func lifting_tier_for_mass(character_or_str, mass_kg: float) -> Dictionary:
+	for tier in lifting_capacity(character_or_str).get("tiers", []):
+		if mass_kg <= _as_float(tier.get("limit_kg", 0.0)):
+			return tier
+	return {}
 
 
 ## Table G21: Resolves Strength Feat parameters for breaking objects.
@@ -964,7 +1013,12 @@ func movement(character: Dictionary) -> Dictionary:
 	var enc := encumbrance(character)
 	var mult: float = _as_float(enc.get("movement_multiplier", 1.0), 1.0)
 
-	return {
+	# A hero untrained in Armor Operation who is wearing armor that carries an
+	# Armor Operation penalty is restricted to a walk: no running, sprinting, or
+	# jumping. Source: Player's Handbook p. 64; Gamemaster Guide p. 70.
+	var armor_locked := equipment.armor_restricts_untrained_movement(character)
+
+	var result := {
 		"total": movement_total,
 		"sprint": int(floor(sprint * mult)),
 		"run": int(floor(run * mult)),
@@ -975,7 +1029,16 @@ func movement(character: Dictionary) -> Dictionary:
 		"fly": str(int(floor(sprint * 2 * mult))) if can_fly else "-",
 		"effects": MOVEMENT_EFFECTS,
 		"encumbrance": enc,
+		"armor_restricted": armor_locked,
 	}
+	if armor_locked:
+		result["sprint"] = 0
+		result["run"] = 0
+		result["can_jump"] = false
+		result["armor_restriction_note"] = "Untrained in Armor Operation while wearing penalty-bearing armor: walk only, no running, sprinting, or jumping. Source: Player's Handbook p. 64."
+	else:
+		result["can_jump"] = true
+	return result
 
 
 ## Table P7: Actions Per Round. Source: Player's Handbook p. 33.
@@ -1009,18 +1072,29 @@ func is_mindwalker_profession(character: Dictionary) -> bool:
 	return String(profession.get("code", "")) == "M" or String(profession.get("secondary_code", "")) == "M" or prof_id == 6 or prof_id == 7
 
 
+## Whether the hero has a psionic energy pool at all.
+##
+## Mindwalkers always do. Everyone else needs an actual psionic skill: enabling
+## the Psionic Talents optional rule only makes those skills purchasable, it
+## does not by itself grant a pool. Fraal qualify automatically because Telepathy
+## is one of their free species broad skills (Table P4), not because they are
+## Fraal -- so a Fraal who sold Telepathy off has no pool.
+## Source: Player's Handbook Chapter 14; Table P4 p. 34.
 func is_psionic_character(character: Dictionary) -> bool:
-	var species_info := get_species_by_id(_as_int(character.get("species_id", 0)))
-	if String(species_info.get("name", "")) == "Fraal" or _as_int(character.get("species_id", 0)) == 1:
-		return true
 	if is_mindwalker_profession(character):
 		return true
-	if optional_rule_enabled(character, "psionic_talents"):
-		return true
+	return has_psionic_skill(character)
+
+
+## True when the hero holds at least one psionic skill, whether purchased or
+## granted free by species.
+func has_psionic_skill(character: Dictionary) -> bool:
+	for skill_id in get_free_skill_ids(character):
+		if free_species_skill_rank(character, skill_id) > 0 and is_psionic_skill(get_skill_by_id(skill_id)):
+			return true
 	var selected: Dictionary = character.get("selected_skills", {})
 	for key in selected.keys():
-		var sk := get_skill_by_id(_as_int(key))
-		if is_psionic_skill(sk):
+		if skill_rank(character, _as_int(key)) > 0 and is_psionic_skill(get_skill_by_id(_as_int(key))):
 			return true
 	return false
 
@@ -1136,11 +1210,14 @@ func additional_broad_skill_limit(character: Dictionary) -> int:
 	var current_species := get_species_by_id(_as_int(character.get("species_id", 0)))
 	var is_human := String(current_species.get("name", "")) == "Human" or _as_int(character.get("species_id", 0)) == 0
 	var human_bonus := 1 if is_human else 0
-	if optional_rule_enabled(character, "2b"):
-		var intelligence_rm := character_resistance_modifier(character, "INT")
-		return max(0, 6 + intelligence_rm + human_bonus)
 	var abilities := effective_abilities(character)
 	var int_score := _as_int(abilities.get("INT", 10))
+	if optional_rule_enabled(character, "2b"):
+		# Raw Table P2 modifier from the INT score only. Broad skill capacity
+		# reflects innate mental processing, so it deliberately excludes perks,
+		# the Free Agent RM pick, and gear/cyber modifiers that
+		# character_resistance_modifier() folds in.
+		return max(0, 6 + resistance_modifier(int_score) + human_bonus)
 	return int(floor(int_score / 2.0)) + human_bonus
 
 
@@ -1477,12 +1554,38 @@ func selected_skills(character: Dictionary) -> Array:
 	return rows
 
 
+## Skill check score. Callers reach this for skills the hero actually holds, but
+## it also answers honestly for one they do not:
+##   * a trained-only skill (blue type in Table P19 -- Powered Armor, Power
+##     Martial Arts, Computer Operation, First Aid, ...) at rank 0 reports
+##     usable = false; it cannot be attempted at all, at any score.
+##   * any other skill at rank 0 falls back to the untrained score,
+##     floor(ability / 2), rather than the full ability score.
+## Source: Player's Handbook p. 63; Table P19.
 func skill_score(character: Dictionary, skill: Dictionary) -> Dictionary:
 	var abilities := effective_abilities(character)
 	var skill_id := _as_int(skill.get("id", -1))
 	var ability := String(skill.get("stat", "STR"))
-	var rank_bonus := 0 if skill.get("type", "") == "broad" else skill_rank(character, skill_id)
-	var ordinary := _as_int(abilities.get(ability, 10)) + rank_bonus
+	var is_broad: bool = String(skill.get("type", "")) == "broad"
+	var rank := skill_rank(character, skill_id)
+	var trained_only: bool = not bool(skill.get("untrained", true))
+	var held: bool = rank > 0 or (is_broad and is_skill_selected(character, skill_id))
+
+	var rank_bonus := 0 if is_broad else rank
+	var base_ability := _as_int(abilities.get(ability, 10))
+	if not held:
+		if trained_only:
+			return {
+				"ordinary": 0,
+				"good": 0,
+				"amazing": 0,
+				"die": "+d0",
+				"usable": false,
+				"trained_only": true,
+				"reason": "%s cannot be attempted untrained. Source: Player's Handbook p. 63." % skill_label(skill),
+			}
+		base_ability = untrained_score(base_ability)
+	var ordinary := base_ability + rank_bonus
 	var good := int(floor(ordinary / 2.0))
 	var step := 1 if skill.get("type", "") == "broad" else 0
 	step += _species_skill_step_bonus(character, skill_id)
@@ -1510,6 +1613,8 @@ func skill_score(character: Dictionary, skill: Dictionary) -> Dictionary:
 		"good": good,
 		"amazing": int(floor(ordinary / 4.0)),
 		"die": action_step_die(step),
+		"usable": true,
+		"trained_only": trained_only,
 	}
 
 
@@ -1531,6 +1636,7 @@ func validate(character: Dictionary) -> Array:
 	_validate_perks_and_flaws(character, messages)
 	_validate_achievements(character, messages)
 	_validate_mutations(character, messages)
+	_validate_cybertech(character, messages)
 
 	return messages
 
@@ -1656,6 +1762,18 @@ func _validate_mutations(character: Dictionary, messages: Array) -> void:
 				messages.append("Mutation drawbacks exceed the selected point distribution for %s by %d." % [tier, count - allowed_count])
 
 
+func _validate_cybertech(character: Dictionary, messages: Array) -> void:
+	if not cybertech.cybertech_enabled(character):
+		return
+	var remaining := cybertech.cyber_tolerance_remaining(character)
+	if remaining < 0:
+		messages.append("Installed cybertech exceeds cyber tolerance by %d (%d of %d used). Source: Player's Handbook Chapter 15." % [
+			abs(remaining),
+			cybertech.cyber_tolerance_used(character),
+			cybertech.cyber_tolerance_total(character),
+		])
+
+
 func summary(character: Dictionary) -> Dictionary:
 	ensure_character_shape(character)
 	var current_hash := character.hash()
@@ -1779,16 +1897,51 @@ func resolve_check(control_die: int, situation_roll: int, target_score: int, sit
 ## Secondary Damage from Mortal: floor(attack_damage / 2) Wound and floor(attack_damage / 2) Stun.
 ## Heavy Stun overflow: 2 excess stun -> 1 wound.
 ## Heavy Wound overflow: 2 excess wound -> 1 mortal.
-func apply_damage(character: Dictionary, attack_damage: int, damage_type: String, armor_absorption: int = 0) -> Dictionary:
+## Applies one incoming hit, in the printed order (Player's Handbook p. 52):
+##   1. firepower degradation, when the Firepower Scaling optional rule is on
+##   2. subtract armor absorption from the primary damage
+##   3. assess the remaining primary damage to its track
+##   4. derive secondary damage from what actually got through, not the raw roll
+##      -- 1 stun per 2 points of wound; 1 wound and 1 stun per 2 points of mortal
+##   5. overflow stun into wound and wound into mortal, 2 points to 1
+##
+## `weapon_grade` and `target_toughness` are "O" / "G" / "A". Leave them empty to
+## skip degradation entirely. Set `strikes_armor` false for damage the armor
+## cannot intercept -- suffocation, vacuum, heat, psionic attacks -- which
+## disables the Shaking Off Stuns reduction.
+func apply_damage(character: Dictionary, attack_damage: int, damage_type: String, armor_absorption: int = 0, weapon_grade: String = "", target_toughness: String = "", strikes_armor: bool = true) -> Dictionary:
+	var original_type := damage_type
+	damage_type = character_degraded_damage_grade(character, damage_type, weapon_grade, target_toughness)
+	if damage_type == "none":
+		return {
+			"primary_damage": 0,
+			"secondary_stun": 0,
+			"secondary_wound": 0,
+			"damage_type": "none",
+			"original_damage_type": original_type,
+			"negated": true,
+			"damage": character.get("damage", {}),
+		}
+
 	var primary_dmg: int = max(0, attack_damage - armor_absorption)
 	var secondary_stun := 0
 	var secondary_wound := 0
 
 	if damage_type == "wound":
-		secondary_stun = int(floor(attack_damage / 2.0))
+		secondary_stun = int(floor(primary_dmg / 2.0))
 	elif damage_type == "mortal":
-		secondary_wound = int(floor(attack_damage / 2.0))
-		secondary_stun = int(floor(attack_damage / 2.0))
+		secondary_wound = int(floor(primary_dmg / 2.0))
+		secondary_stun = int(floor(primary_dmg / 2.0))
+
+	# Shaking Off Stuns: the Armor Operation rank benefit soaks stun from attacks
+	# that strike the armor. `strikes_armor` is false for suffocation, vacuum,
+	# heat, and psionic attacks, which the benefit does not cover.
+	var stun_soak := 0
+	if strikes_armor:
+		stun_soak = equipment.equipped_armor_stun_reduction(character)
+		if damage_type == "stun":
+			primary_dmg = max(0, primary_dmg - stun_soak)
+		secondary_stun = max(0, secondary_stun - stun_soak)
 
 	var dur := durability(character)
 	var damage: Dictionary = character.get("damage", {}).duplicate()
@@ -1840,6 +1993,10 @@ func apply_damage(character: Dictionary, attack_damage: int, damage_type: String
 		"primary_damage": primary_dmg,
 		"secondary_stun": secondary_stun,
 		"secondary_wound": secondary_wound,
+		"damage_type": damage_type,
+		"original_damage_type": original_type,
+		"negated": false,
+		"stun_soaked": stun_soak,
 		"damage": damage,
 	}
 
@@ -1934,6 +2091,34 @@ func roll_random_abilities_by_species(species_id: int) -> Dictionary:
 	return RANDOM_ABILITY_ROLLS_BY_SPECIES.get(sp_key, RANDOM_ABILITY_ROLLS_BY_SPECIES.get("human", {}))
 
 
+## Rolls Table G2 (Method I, by profession) into concrete ability scores.
+## Returns {} when the profession has no table row.
+func roll_abilities_method_1(profession_id: int, rng: RngSource = null) -> Dictionary:
+	return _roll_ability_formulas(roll_random_abilities_by_profession(profession_id), rng)
+
+
+## Rolls Table G3 (Method II, by species) into concrete ability scores.
+## Returns {} when the species has no table row.
+func roll_abilities_method_2(species_id: int, rng: RngSource = null) -> Dictionary:
+	return _roll_ability_formulas(roll_random_abilities_by_species(species_id), rng)
+
+
+func _roll_ability_formulas(formulas: Dictionary, rng: RngSource = null) -> Dictionary:
+	if formulas.is_empty():
+		return {}
+	var source := rng if rng != null else RngSource.new()
+	var scores := {}
+	for ability in ABILITIES:
+		if not formulas.has(ability):
+			continue
+		var term := DiceNotation.parse(String(formulas[ability]))
+		if not bool(term.get("ok", false)):
+			push_error("Unparseable random ability formula for %s: %s" % [ability, formulas[ability]])
+			continue
+		scores[ability] = source.roll(term, ability).total
+	return scores
+
+
 ## Method III: Die Allocation Pool (Gamemaster Guide Chapter 2 p. 14).
 ## Rolls 7d6. All 6 Ability Scores start at a baseline of 5.
 ## The player distributes the 7 rolled die values freely among the abilities.
@@ -1951,6 +2136,16 @@ func roll_method_3_dice(rng: RandomNumberGenerator = null) -> Array:
 ## When weapon firepower is lower than armor/target toughness:
 ## 1 step difference: Mortal -> Wound, Wound -> Stun, Stun -> None.
 ## 2 steps difference: Mortal -> Stun, Wound -> None, Stun -> None.
+## degrade_damage_grade() gated on the Firepower Scaling optional rule. Returns
+## `damage_type` unchanged when the rule is off or either grade is unspecified.
+func character_degraded_damage_grade(character: Dictionary, damage_type: String, weapon_grade: String, target_toughness: String) -> String:
+	if weapon_grade.is_empty() or target_toughness.is_empty():
+		return damage_type
+	if not optional_rule_enabled(character, "firepower_scaling"):
+		return damage_type
+	return degrade_damage_grade(damage_type, weapon_grade, target_toughness)
+
+
 func degrade_damage_grade(damage_type: String, weapon_grade: String, target_toughness: String) -> String:
 	var w_idx := FIREPOWER_GRADES.find(weapon_grade.to_upper())
 	var t_idx := FIREPOWER_GRADES.find(target_toughness.to_upper())

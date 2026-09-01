@@ -38,26 +38,44 @@ func cyber_tolerance_total(character: Dictionary) -> int:
 	return con
 
 
+## Slot size of a catalog item. Most items carry a flat "size"; a few are priced
+## per quality grade and carry "size_ordinary" / "size_good" / "size_amazing".
+func cybertech_item_size(item: Dictionary, quality: String = "ordinary") -> int:
+	if item.has("size"):
+		return AlternityNum.as_int(item.get("size", 0))
+	return AlternityNum.as_int(item.get("size_%s" % quality, 0))
+
+
+## Tolerance capacity split into its three threshold bands, plus the slots used.
+## `right` is the remainder by construction, so left + center + right == total
+## for every value of total.
 func cyber_tolerance_breakdown(character: Dictionary) -> Dictionary:
 	var total := cyber_tolerance_total(character)
 	var left := int(ceil(total / 2.0))
 	var center := int(ceil((total - left) / 2.0))
-	var right := int(ceil(float(total - left) / 2.0 / 2.0))
-	# Fallback to avoid rounding issues if the sum isn't exactly total
-	if left + center + right != total:
-		right = total - left - center
-	var used := 0
-	for item in installed_cybertech(character):
-		var size = AlternityNum.as_int(item.get("item", {}).get("size", item.get("item", {}).get("size_%s" % String(item.get("quality", "ordinary")), 0)))
-		used += size
+	var right := total - left - center
 
 	return {
 		"total": total,
 		"left": left,
 		"center": center,
 		"right": right,
-		"used": used
+		"used": cyber_tolerance_used(character),
 	}
+
+
+## Total tolerance slots consumed by everything currently installed.
+func cyber_tolerance_used(character: Dictionary) -> int:
+	var used := 0
+	for row in installed_cybertech(character):
+		used += cybertech_item_size(row.get("item", {}), String(row.get("quality", "ordinary")))
+	return used
+
+
+## Remaining tolerance capacity. Negative when a character is over its limit,
+## which a saved character can be if CON later dropped.
+func cyber_tolerance_remaining(character: Dictionary) -> int:
+	return cyber_tolerance_total(character) - cyber_tolerance_used(character)
 
 func cykosis_total(character: Dictionary) -> int:
 	var abilities: Dictionary = _get_parent().effective_abilities(character)
@@ -87,17 +105,40 @@ func installed_cybertech(character: Dictionary) -> Array:
 		rows.append(row)
 	return rows
 
-func install_cybertech(character: Dictionary, item_id: String, quality: String) -> Dictionary:
+## Whether `item_id` can be installed at `quality`, and why not when it cannot.
+## Mirrors can_purchase_achievement so the UI can disable the button and show
+## the reason. Cyber tolerance is capped by CON (Mechalus CON + 4).
+## Source: Player's Handbook Chapter 15; Mechalus tolerance p. 24.
+func can_install_cybertech(character: Dictionary, item_id: String, quality: String) -> Dictionary:
 	var item := get_cybertech_item_by_id(item_id)
 	if item.is_empty():
-		return {"ok": false, "reason": "Unknown cybertech item."}
+		return {"allowed": false, "reason": "Unknown cybertech item."}
+
+	for row in _cybertech_data(character).get("installed", []):
+		if String(row.get("item_id", "")) == item_id:
+			return {"allowed": false, "reason": "Already installed."}
+
+	var size := cybertech_item_size(item, quality)
+	var remaining := cyber_tolerance_remaining(character)
+	if size > remaining:
+		return {
+			"allowed": false,
+			"reason": "Needs %d cyber tolerance; only %d of %d left." % [
+				size, maxi(0, remaining), cyber_tolerance_total(character),
+			],
+		}
+
+	return {"allowed": true, "reason": "", "size": size}
+
+
+func install_cybertech(character: Dictionary, item_id: String, quality: String) -> Dictionary:
+	var check := can_install_cybertech(character, item_id, quality)
+	if not bool(check.get("allowed", false)):
+		return {"ok": false, "reason": String(check.get("reason", ""))}
+
+	var item := get_cybertech_item_by_id(item_id)
 	var cybertech_data := _cybertech_data(character)
 	var installed: Array = cybertech_data.get("installed", [])
-
-	# Check if already installed
-	for row in installed:
-		if String(row.get("item_id", "")) == item_id:
-			return {"ok": false, "reason": "Already installed."}
 	installed.append({"item_id": item_id, "quality": quality})
 	cybertech_data["installed"] = installed
 	character["cybertech"] = cybertech_data

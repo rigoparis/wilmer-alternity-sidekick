@@ -1,27 +1,22 @@
-extends SceneTree
+extends "res://tools/test_harness.gd"
 
 # Exhaustive rules audit testing all Core tables (P1-P30, G1-G21), Species & Profession mechanics,
 # Ability feats, Passive/Active architecture, Encumbrance, Check resolution, and Damage propagation.
+#
+# Reports through the shared harness (tools/test_harness.gd) so run_tests.sh sees the
+# same "[suite] passed (N checks)" line as every other suite. assert_eq / assert_true
+# stay as thin forwarders so the call sites below read unchanged.
 
 func _init() -> void:
-	print("--- Running Alternity Rules Engine Audit ---")
+	begin("rules audit")
 	var rules := AlternityRules.new()
 	rules.load_core_data()
-	var results := {"pass": 0, "fail": 0}
 
 	var assert_eq = func(actual, expected, msg: String):
-		if actual == expected:
-			results["pass"] += 1
-		else:
-			results["fail"] += 1
-			printerr("FAIL: %s | Expected: %s, Got: %s" % [msg, str(expected), str(actual)])
+		check_eq(actual, expected, msg)
 
 	var assert_true = func(cond: bool, msg: String):
-		if cond:
-			results["pass"] += 1
-		else:
-			results["fail"] += 1
-			printerr("FAIL: %s | Condition was false" % msg)
+		check_true(cond, msg)
 
 	# --- 1. Check Resolution & Degrees of Success ---
 	print("Testing Core Check Resolution...")
@@ -421,11 +416,31 @@ func _init() -> void:
 
 	# --- 18. Raw Strength Feats & Breaking Objects (Table G21) ---
 	print("Testing Raw Strength Feats & Breaking Objects...")
+	# Lifting ladder (GMG p. 70 / PHB p. 63-64) is separate from Table P12
+	# encumbrance: Marginal 5x, Slight 10x, Moderate 15x, Extreme 20x.
 	var str12_lifts: Dictionary = rules.lifting_capacity(12)
-	assert_eq.call(str12_lifts.automatic_lift_kg, 24.0, "STR 12 automatic lift = 24kg (2x)")
-	assert_eq.call(str12_lifts.marginal_feat_kg, 36.0, "STR 12 marginal feat = 36kg (3x)")
-	assert_eq.call(str12_lifts.slight_feat_kg, 60.0, "STR 12 slight feat = 60kg (5x)")
-	assert_eq.call(str12_lifts.max_lift_kg, 72.0, "STR 12 max lift = 72kg (6x)")
+	assert_eq.call(str12_lifts.automatic_carry_kg, 24.0, "STR 12 normal carried load = 24kg (2x, Table P12)")
+	assert_eq.call(str12_lifts.marginal_feat_kg, 60.0, "STR 12 marginal feat = 60kg (5x)")
+	assert_eq.call(str12_lifts.slight_feat_kg, 120.0, "STR 12 slight feat = 120kg (10x)")
+	assert_eq.call(str12_lifts.moderate_feat_kg, 180.0, "STR 12 moderate feat = 180kg (15x)")
+	assert_eq.call(str12_lifts.extreme_feat_kg, 240.0, "STR 12 extreme feat = 240kg (20x)")
+	assert_eq.call(str12_lifts.max_lift_kg, 240.0, "STR 12 max lift = 240kg (20x)")
+
+	# Each tier's situation die: Marginal +d4, Slight +d6, Moderate +d8, Extreme +d12.
+	var lift_tiers: Array = str12_lifts.tiers
+	assert_eq.call(lift_tiers.size(), 4, "Lifting ladder has four feat tiers")
+	assert_eq.call(lift_tiers[0].situation_die, "+d4", "Marginal lift die = +d4 (+0 steps)")
+	assert_eq.call(lift_tiers[1].situation_die, "+d6", "Slight lift die = +d6 (+1 step)")
+	assert_eq.call(lift_tiers[2].situation_die, "+d8", "Moderate lift die = +d8 (+2 steps)")
+	assert_eq.call(lift_tiers[3].situation_die, "+d12", "Extreme lift die = +d12 (+3 steps)")
+	assert_eq.call(lift_tiers[0].clean_and_jerk_die, "+d8", "Clean-and-jerk adds +2 steps to a Marginal lift")
+
+	# Tier selection by mass.
+	assert_eq.call(String(rules.lifting_tier_for_mass(12, 55.0).get("id", "")), "marginal", "55kg at STR 12 is a Marginal feat")
+	assert_eq.call(String(rules.lifting_tier_for_mass(12, 115.0).get("id", "")), "slight", "115kg at STR 12 is a Slight feat")
+	assert_eq.call(String(rules.lifting_tier_for_mass(12, 175.0).get("id", "")), "moderate", "175kg at STR 12 is a Moderate feat")
+	assert_eq.call(String(rules.lifting_tier_for_mass(12, 235.0).get("id", "")), "extreme", "235kg at STR 12 is an Extreme feat")
+	assert_true.call(rules.lifting_tier_for_mass(12, 900.0).is_empty(), "Above STR x 20 kg no ordinary tier applies")
 
 	# Breaking Objects Table G21
 	var brk_ord: Dictionary = rules.breaking_object_feat(12, "ordinary")
@@ -524,6 +539,21 @@ func _init() -> void:
 		rules.ensure_character_shape(human_2b)
 		assert_eq.call(rules.additional_broad_skill_limit(human_2b), expected_2b[stat_int][1], "Rule 2B Human INT %d Broad Limit = %d" % [stat_int, expected_2b[stat_int][1]])
 
+	# Rule 2B reads the raw Table P2 modifier for the INT score. Broad skill
+	# capacity is innate mental processing, so situational resistance bonuses --
+	# here the Free Agent's +1 RM pick -- must not widen the cap.
+	var fa_2b: Dictionary = rules.default_character()
+	fa_2b["species_id"] = 0 # Human
+	fa_2b["profession_id"] = 4 # Free Agent
+	fa_2b["abilities"]["INT"] = 10
+	fa_2b["optional_rules"] = {"2b": true}
+	rules.ensure_character_shape(fa_2b)
+	var fa_cap_before := rules.additional_broad_skill_limit(fa_2b)
+	assert_eq.call(fa_cap_before, 7, "Rule 2B Free Agent INT 10 human cap = 7")
+	fa_2b["free_agent_rm_bonus"] = "INT"
+	assert_eq.call(rules.character_resistance_modifier(fa_2b, "INT"), 1, "Free Agent RM pick does raise the defensive INT RM")
+	assert_eq.call(rules.additional_broad_skill_limit(fa_2b), fa_cap_before, "Rule 2B cap ignores the Free Agent RM pick")
+
 	# Optional Rule 2C: Flat Specialty Advancement Cost
 	var skill_base3 := rules.get_skill_by_id(12) # Blade (Specialty, base 3, Combat Spec)
 	var skill_base5 := rules.get_skill_by_id(89) # Surgery (Specialty, base 5, Tech Op)
@@ -579,7 +609,25 @@ func _init() -> void:
 	rules.ensure_character_shape(talent_hero)
 	assert_eq.call(rules.skill_cost(talent_hero, psi_broad), 7, "Talent broad psionic cost = 6 + 1 = 7 SP (+1 surcharge)")
 	assert_eq.call(rules.skill_cost(talent_hero, psi_spec), 4, "Talent specialty psionic cost = 3 + 1 = 4 SP (+1 surcharge)")
+
+	# Enabling the optional rule only makes psionic skills purchasable. The pool
+	# arrives with the first psionic skill actually bought (PHB Ch. 14).
+	assert_eq.call(rules.psionic_energy_points(talent_hero), 0, "Talent with the rule on but no psionic skill has no pool")
+	assert_true.call(not rules.is_psionic_character(talent_hero), "Talent without a psionic skill is not psionic")
+	rules.set_skill_rank(talent_hero, 901, 1) # buy Telepathy
+	assert_true.call(rules.is_psionic_character(talent_hero), "Buying a psionic broad skill makes the talent psionic")
 	assert_eq.call(rules.psionic_energy_points(talent_hero), 6, "Talent psionic energy pool = ceil(11 * 0.5) = 6")
+
+	# Every fraal starts with Telepathy free (Table P4), so every fraal has a pool.
+	var fraal_pool_hero: Dictionary = rules.default_character()
+	fraal_pool_hero["species_id"] = 1 # Fraal
+	fraal_pool_hero["profession_id"] = 0 # Combat Spec, not a Mindwalker
+	fraal_pool_hero["abilities"]["WIL"] = 12
+	rules.ensure_character_shape(fraal_pool_hero)
+	assert_eq.call(rules.free_species_skill_rank(fraal_pool_hero, 901), 1, "Fraal receive Telepathy (skill 901) free")
+	assert_eq.call(rules.psionic_energy_points(fraal_pool_hero), 12, "Fraal talent pool = full WIL (12), not half")
+	fraal_pool_hero["sold_species_skills"] = [901]
+	assert_eq.call(rules.psionic_energy_points(fraal_pool_hero), 0, "A fraal who sold Telepathy off has no pool")
 
 	# Non-Mindwalker without psionic_talents rule enabled triggers validation warning
 	var illegal_talent: Dictionary = rules.default_character()
@@ -616,6 +664,31 @@ func _init() -> void:
 	assert_eq.call(rules.degrade_damage_grade("mortal", "O", "A"), "stun", "O vs A -> Mortal degrades to Stun (2 steps)")
 	assert_eq.call(rules.degrade_damage_grade("wound", "O", "A"), "none", "O vs A -> Wound degrades to None (2 steps)")
 	assert_eq.call(rules.degrade_damage_grade("mortal", "A", "G"), "mortal", "A vs G -> higher firepower, no degradation")
+
+	# The toggle has to actually gate it: degradation only applies when the
+	# Firepower Scaling optional rule is on and both grades are supplied.
+	var fp_char: Dictionary = rules.default_character()
+	fp_char["abilities"]["CON"] = 12
+	rules.ensure_character_shape(fp_char)
+	assert_eq.call(rules.character_degraded_damage_grade(fp_char, "mortal", "O", "A"), "mortal", "Firepower rule off -> no degradation")
+	rules.set_optional_rule(fp_char, "firepower_scaling", true)
+	assert_eq.call(rules.character_degraded_damage_grade(fp_char, "mortal", "O", "A"), "stun", "Firepower rule on -> Mortal vs Amazing degrades to Stun")
+	assert_eq.call(rules.character_degraded_damage_grade(fp_char, "mortal", "", ""), "mortal", "Unspecified grades -> no degradation")
+
+	# A negated hit marks no boxes at all.
+	var negated: Dictionary = rules.apply_damage(fp_char, 10, "wound", 0, "O", "A")
+	assert_true.call(bool(negated.negated), "Ordinary weapon vs Amazing toughness negates wound damage")
+	assert_eq.call(negated.primary_damage, 0, "Negated hit inflicts no primary damage")
+	assert_eq.call(rules._as_int(fp_char["damage"]["wound"]), 0, "Negated hit marks no wound boxes")
+
+	# Secondary damage derives from what got through armor, not the raw roll
+	# (PHB p. 52): 8 wound less 6 absorbed is 2 through, so 1 secondary stun.
+	var armored: Dictionary = rules.default_character()
+	armored["abilities"]["CON"] = 12
+	rules.ensure_character_shape(armored)
+	var soaked: Dictionary = rules.apply_damage(armored, 8, "wound", 6)
+	assert_eq.call(soaked.primary_damage, 2, "8 wound less 6 armor leaves 2 primary")
+	assert_eq.call(soaked.secondary_stun, 1, "Secondary stun derives from post-armor damage (2 -> 1), not the raw 8")
 
 	# --- 23. Method III Random Ability Allocation Pool ---
 	print("Testing Method III Die Allocation Pool...")
@@ -759,10 +832,12 @@ func _init() -> void:
 	var pma_attacks_7 := rules.equipment.attack_forms_for_character(pma_hero)
 	assert_eq.call(pma_attacks_7[0]["damage"], "d6+3s/d4+1w/d4+3w", "PMA rank 7 upgraded damage formula")
 
-	# Power Martial Arts Rank 12: d4+1w/d4+3w/d4m + STR(+1) -> d4+2w/d4+4w/d4+1m
+	# Power Martial Arts has no printed rank 12 damage increase -- rank 12 grants a
+	# third +1 step to the STR Resistance Modifier instead (asserted below), so the
+	# rank 7 damage line still stands at rank 12.
 	rules.set_skill_rank(pma_hero, 17, 12)
 	var pma_attacks_12 := rules.equipment.attack_forms_for_character(pma_hero)
-	assert_eq.call(pma_attacks_12[0]["damage"], "d4+2w/d4+4w/d4+1m", "PMA rank 12 master damage formula")
+	assert_eq.call(pma_attacks_12[0]["damage"], "d6+3s/d4+1w/d4+3w", "PMA rank 12 keeps the rank 7 damage line")
 
 	# 5. STR Resistance Modifier bonuses from Melee / PMA Ranks
 	rules.set_skill_rank(pma_hero, 17, 0)
@@ -774,11 +849,264 @@ func _init() -> void:
 	rules.set_skill_rank(pma_hero, 17, 12)
 	assert_eq.call(rules.character_resistance_modifier(pma_hero, "STR"), rm_base + 3, "PMA rank 12 grants +3 to STR Resistance Modifier")
 
-	print("\n--- Audit Summary: %d Passed, %d Failed ---" % [results["pass"], results["fail"]])
-	if results["fail"] == 0:
-		print("ALL ALTERNITY RULES AUDIT TESTS PASSED SUCCESSFULLY!")
-		quit(0)
-	else:
-		printerr("SOME ALTERNITY RULES AUDIT TESTS FAILED!")
-		quit(1)
+	# --- 25b. Trained-only skills and untrained scores (PHB p. 63, Table P19) ---
+	print("Testing Trained-Only Skills & Untrained Scores...")
+	var untrained_hero: Dictionary = rules.default_character()
+	untrained_hero["species_id"] = 0
+	untrained_hero["abilities"]["STR"] = 12
+	rules.ensure_character_shape(untrained_hero)
 
+	var pma_skill: Dictionary = rules.get_skill_by_id(17) # Power Martial Arts, trained only
+	var pma_unheld: Dictionary = rules.skill_score(untrained_hero, pma_skill)
+	assert_true.call(not bool(pma_unheld.usable), "Power Martial Arts at rank 0 is not usable")
+	assert_true.call(bool(pma_unheld.trained_only), "Power Martial Arts is flagged trained-only")
+	assert_eq.call(pma_unheld.ordinary, 0, "An unusable trained-only skill reports no score")
+
+	var powered_armor_skill: Dictionary = rules.get_skill_by_id(2) # Powered armor, trained only
+	assert_true.call(not bool(rules.skill_score(untrained_hero, powered_armor_skill).usable), "Powered armor at rank 0 is not usable")
+
+	# A skill that may be tried untrained falls back to floor(ability / 2), not
+	# the full ability score.
+	var brawl_skill: Dictionary = rules.get_skill_by_id(16) # Brawl, untrained allowed
+	var brawl_unheld: Dictionary = rules.skill_score(untrained_hero, brawl_skill)
+	assert_true.call(bool(brawl_unheld.usable), "Brawl may be attempted untrained")
+	assert_eq.call(brawl_unheld.ordinary, 6, "Untrained Brawl uses floor(STR 12 / 2) = 6, not 12")
+
+	# Once bought it uses the full ability score plus rank.
+	rules.set_skill_rank(untrained_hero, 15, 1) # Unarmed Attack broad
+	rules.set_skill_rank(untrained_hero, 16, 2) # Brawl rank 2
+	var brawl_held: Dictionary = rules.skill_score(untrained_hero, brawl_skill)
+	assert_true.call(bool(brawl_held.usable), "A purchased skill is usable")
+	assert_eq.call(brawl_held.ordinary, 14, "Brawl rank 2 at STR 12 scores 14")
+
+	# --- 25c. Armor Operation untrained restrictions (PHB p. 64) ---
+	print("Testing Armor Operation Untrained Restrictions...")
+	var unarmored: Dictionary = rules.default_character()
+	rules.ensure_character_shape(unarmored)
+	assert_true.call(not bool(rules.movement(unarmored).armor_restricted), "No armor means no movement restriction")
+	assert_true.call(bool(rules.movement(unarmored).can_jump), "An unarmored hero can jump")
+
+	# --- 26. Cybertech Tolerance Capacity (PHB Chapter 15) ---
+	print("Testing Cybertech Tolerance Capacity...")
+	var cyber_hero: Dictionary = rules.default_character()
+	cyber_hero["species_id"] = 0 # Human
+	cyber_hero["abilities"]["CON"] = 10
+	rules.ensure_character_shape(cyber_hero)
+	rules.cybertech.set_cybertech_enabled(cyber_hero, true)
+	assert_eq.call(rules.cybertech.cyber_tolerance_total(cyber_hero), 10, "Human cyber tolerance = CON")
+
+	var mech_hero: Dictionary = rules.default_character()
+	mech_hero["species_id"] = 2 # Mechalus
+	mech_hero["abilities"]["CON"] = 10
+	rules.ensure_character_shape(mech_hero)
+	assert_eq.call(rules.cybertech.cyber_tolerance_total(mech_hero), 14, "Mechalus cyber tolerance = CON + 4")
+
+	# The three threshold bands always account for the whole pool.
+	for con_score in [4, 7, 10, 13, 16]:
+		var band_hero: Dictionary = rules.default_character()
+		band_hero["species_id"] = 0
+		band_hero["abilities"]["CON"] = con_score
+		rules.ensure_character_shape(band_hero)
+		var bands: Dictionary = rules.cybertech.cyber_tolerance_breakdown(band_hero)
+		assert_eq.call(
+			rules._as_int(bands.left) + rules._as_int(bands.center) + rules._as_int(bands.right),
+			rules._as_int(bands.total),
+			"Cyber tolerance bands sum to the total at CON %d" % con_score
+		)
+
+	# Installing past the limit is refused rather than silently allowed.
+	var over_hero: Dictionary = rules.default_character()
+	over_hero["species_id"] = 0
+	over_hero["abilities"]["CON"] = 4
+	rules.ensure_character_shape(over_hero)
+	rules.cybertech.set_cybertech_enabled(over_hero, true)
+	var refused := 0
+	for catalog_item in rules.cybertech_catalog:
+		var install_result: Dictionary = rules.cybertech.install_cybertech(over_hero, String(catalog_item.get("id", "")), "ordinary")
+		if not bool(install_result.get("ok", false)):
+			refused += 1
+	assert_true.call(refused > 0, "Cybertech installs are refused once tolerance runs out")
+	assert_true.call(rules.cybertech.cyber_tolerance_used(over_hero) <= 4, "Installed cybertech never exceeds CON 4 tolerance")
+	assert_true.call(rules.cybertech.cyber_tolerance_remaining(over_hero) >= 0, "Cyber tolerance remaining never goes negative")
+
+	# A hero can still end up over capacity without the installer's help -- CON can
+	# drop after the fact. validate() has to catch that.
+	var shrunk: Dictionary = rules.default_character()
+	shrunk["species_id"] = 0
+	shrunk["abilities"]["CON"] = 14
+	rules.ensure_character_shape(shrunk)
+	rules.cybertech.set_cybertech_enabled(shrunk, true)
+	for catalog_item in rules.cybertech_catalog:
+		rules.cybertech.install_cybertech(shrunk, String(catalog_item.get("id", "")), "ordinary")
+	var filled_used := rules.cybertech.cyber_tolerance_used(shrunk)
+	assert_true.call(filled_used > 4, "CON 14 hero installs more than a CON 4 hero could hold")
+	assert_true.call(rules.validate(shrunk).filter(func(m): return String(m).contains("cyber tolerance")).is_empty(), "A within-capacity hero raises no cyber tolerance message")
+
+	shrunk["abilities"]["CON"] = 4
+	var cyber_messages: Array = rules.validate(shrunk).filter(func(m): return String(m).contains("cyber tolerance"))
+	assert_true.call(not cyber_messages.is_empty(), "validate() reports cybertech over capacity after a CON drop")
+
+	# --- 26. Dexterity (DEX) Skills, Specialties & Mechanics ---
+	print("Testing DEX Skills, Specialties & Mechanics...")
+	# 1. Catalog Costs, Affinities, and Trained-Only Verification
+	var acrobatics := rules.get_skill_by_id(18)
+	var daredevil := rules.get_skill_by_id(19)
+	var dma := rules.get_skill_by_id(20)
+	var dodge := rules.get_skill_by_id(21)
+	var fall := rules.get_skill_by_id(22)
+	var flight := rules.get_skill_by_id(23)
+	var zero_g := rules.get_skill_by_id(24)
+	var manipulation := rules.get_skill_by_id(26)
+	var lockpick := rules.get_skill_by_id(27)
+	var pickpocket := rules.get_skill_by_id(28)
+	var prestidigitation := rules.get_skill_by_id(29)
+	var mrw := rules.get_skill_by_id(30)
+	var pistol := rules.get_skill_by_id(31)
+	var rifle := rules.get_skill_by_id(32)
+	var smg := rules.get_skill_by_id(33)
+	var prw := rules.get_skill_by_id(34)
+	var bow := rules.get_skill_by_id(35)
+	var crossbow := rules.get_skill_by_id(36)
+	var flintlock := rules.get_skill_by_id(37)
+	var sling := rules.get_skill_by_id(38)
+	var stealth := rules.get_skill_by_id(39)
+	var hide := rules.get_skill_by_id(40)
+	var shadow := rules.get_skill_by_id(41)
+	var sneak := rules.get_skill_by_id(42)
+	var veh_op := rules.get_skill_by_id(43)
+	var air_veh := rules.get_skill_by_id(44)
+	var land_veh := rules.get_skill_by_id(45)
+	var space_veh := rules.get_skill_by_id(46)
+	var water_veh := rules.get_skill_by_id(47)
+
+	# Verify Base Costs
+	assert_eq.call(acrobatics["base_price"], 7, "Acrobatics base price is 7 SP")
+	assert_eq.call(daredevil["base_price"], 4, "Daredevil base price is 4 SP")
+	assert_eq.call(dma["base_price"], 5, "Defensive Martial Arts base price is 5 SP")
+	assert_eq.call(dodge["base_price"], 4, "Dodge base price is 4 SP")
+	assert_eq.call(fall["base_price"], 3, "Fall base price is 3 SP")
+	assert_eq.call(flight["base_price"], 2, "Flight base price is 2 SP")
+	assert_eq.call(zero_g["base_price"], 2, "Zero-G Training base price is 2 SP")
+
+	assert_eq.call(manipulation["base_price"], 6, "Manipulation base price is 6 SP")
+	assert_eq.call(lockpick["base_price"], 4, "Lockpick base price is 4 SP")
+	assert_eq.call(pickpocket["base_price"], 4, "Pickpocket base price is 4 SP")
+	assert_eq.call(prestidigitation["base_price"], 3, "Prestidigitation base price is 3 SP")
+
+	assert_eq.call(mrw["base_price"], 6, "Modern Ranged Weapons base price is 6 SP")
+	assert_eq.call(pistol["base_price"], 4, "Pistol base price is 4 SP")
+	assert_eq.call(rifle["base_price"], 4, "Rifle base price is 4 SP")
+	assert_eq.call(smg["base_price"], 4, "SMG base price is 4 SP")
+
+	assert_eq.call(prw["base_price"], 7, "Primitive Ranged Weapons base price is 7 SP")
+	assert_eq.call(bow["base_price"], 4, "Bow base price is 4 SP")
+	assert_eq.call(crossbow["base_price"], 3, "Crossbow base price is 3 SP")
+	assert_eq.call(flintlock["base_price"], 3, "Flintlock base price is 3 SP")
+	assert_eq.call(sling["base_price"], 4, "Sling base price is 4 SP")
+
+	assert_eq.call(stealth["base_price"], 7, "Stealth base price is 7 SP")
+	assert_eq.call(hide["base_price"], 4, "Hide base price is 4 SP")
+	assert_eq.call(shadow["base_price"], 4, "Shadow base price is 4 SP")
+	assert_eq.call(sneak["base_price"], 5, "Sneak base price is 5 SP")
+
+	assert_eq.call(veh_op["base_price"], 3, "Vehicle Operation base price is 3 SP")
+	assert_eq.call(air_veh["base_price"], 5, "Air Vehicle base price is 5 SP")
+	assert_eq.call(land_veh["base_price"], 3, "Land Vehicle base price is 3 SP")
+	assert_eq.call(space_veh["base_price"], 5, "Space Vehicle base price is 5 SP")
+	assert_eq.call(water_veh["base_price"], 3, "Water Vehicle base price is 3 SP")
+
+	# Verify Trained-Only Demarcations
+	assert_true.call(not bool(dma["untrained"]), "Defensive Martial Arts is Trained Only")
+	assert_true.call(not bool(flight["untrained"]), "Flight is Trained Only")
+	assert_true.call(not bool(zero_g["untrained"]), "Zero-G Training is Trained Only")
+	assert_true.call(not bool(air_veh["untrained"]), "Air Vehicle is Trained Only")
+	assert_true.call(not bool(space_veh["untrained"]), "Space Vehicle is Trained Only")
+
+	# 2. Profession Discounts
+	var dex_fa: Dictionary = rules.default_character()
+	dex_fa["profession_id"] = 4 # Free Agent
+	rules.ensure_character_shape(dex_fa)
+	assert_eq.call(rules.skill_cost(dex_fa, acrobatics), 6, "Free Agent buys Acrobatics for 6 SP (-1)")
+	assert_eq.call(rules.skill_cost(dex_fa, dma), 4, "Free Agent buys Defensive Martial Arts for 4 SP (-1)")
+	assert_eq.call(rules.skill_cost(dex_fa, dodge), 3, "Free Agent buys Dodge for 3 SP (-1)")
+	assert_eq.call(rules.skill_cost(dex_fa, fall), 2, "Free Agent buys Fall for 2 SP (-1)")
+	assert_eq.call(rules.skill_cost(dex_fa, lockpick), 3, "Free Agent buys Lockpick for 3 SP (-1)")
+	assert_eq.call(rules.skill_cost(dex_fa, pickpocket), 3, "Free Agent buys Pickpocket for 3 SP (-1)")
+	assert_eq.call(rules.skill_cost(dex_fa, stealth), 6, "Free Agent buys Stealth for 6 SP (-1)")
+	assert_eq.call(rules.skill_cost(dex_fa, hide), 3, "Free Agent buys Hide for 3 SP (-1)")
+	assert_eq.call(rules.skill_cost(dex_fa, shadow), 3, "Free Agent buys Shadow for 3 SP (-1)")
+	assert_eq.call(rules.skill_cost(dex_fa, sneak), 4, "Free Agent buys Sneak for 4 SP (-1)")
+
+	var dex_cs: Dictionary = rules.default_character()
+	dex_cs["profession_id"] = 0 # Combat Spec
+	rules.ensure_character_shape(dex_cs)
+	assert_eq.call(rules.skill_cost(dex_cs, dma), 4, "Combat Spec buys Defensive Martial Arts for 4 SP (-1)")
+	assert_eq.call(rules.skill_cost(dex_cs, dodge), 3, "Combat Spec buys Dodge for 3 SP (-1)")
+	assert_eq.call(rules.skill_cost(dex_cs, zero_g), 1, "Combat Spec buys Zero-G Training for 1 SP (-1)")
+	assert_eq.call(rules.skill_cost(dex_cs, mrw), 5, "Combat Spec buys Modern Ranged Weapons for 5 SP (-1)")
+	assert_eq.call(rules.skill_cost(dex_cs, pistol), 3, "Combat Spec buys Pistol for 3 SP (-1)")
+	assert_eq.call(rules.skill_cost(dex_cs, rifle), 3, "Combat Spec buys Rifle for 3 SP (-1)")
+	assert_eq.call(rules.skill_cost(dex_cs, smg), 3, "Combat Spec buys SMG for 3 SP (-1)")
+	assert_eq.call(rules.skill_cost(dex_cs, prw), 6, "Combat Spec buys Primitive Ranged Weapons for 6 SP (-1)")
+	assert_eq.call(rules.skill_cost(dex_cs, bow), 3, "Combat Spec buys Bow for 3 SP (-1)")
+	assert_eq.call(rules.skill_cost(dex_cs, crossbow), 2, "Combat Spec buys Crossbow for 2 SP (-1)")
+	assert_eq.call(rules.skill_cost(dex_cs, flintlock), 2, "Combat Spec buys Flintlock for 2 SP (-1)")
+	assert_eq.call(rules.skill_cost(dex_cs, sling), 3, "Combat Spec buys Sling for 3 SP (-1)")
+
+	var dex_dip: Dictionary = rules.default_character()
+	dex_dip["profession_id"] = 2 # Diplomat
+	rules.ensure_character_shape(dex_dip)
+	assert_eq.call(rules.skill_cost(dex_dip, prestidigitation), 2, "Diplomat buys Prestidigitation for 2 SP (-1)")
+
+	var dex_to: Dictionary = rules.default_character()
+	dex_to["profession_id"] = 5 # Tech Op
+	rules.ensure_character_shape(dex_to)
+	assert_eq.call(rules.skill_cost(dex_to, zero_g), 1, "Tech Op buys Zero-G Training for 1 SP (-1)")
+	assert_eq.call(rules.skill_cost(dex_to, air_veh), 4, "Tech Op buys Air Vehicle for 4 SP (-1)")
+	assert_eq.call(rules.skill_cost(dex_to, land_veh), 2, "Tech Op buys Land Vehicle for 2 SP (-1)")
+	assert_eq.call(rules.skill_cost(dex_to, space_veh), 4, "Tech Op buys Space Vehicle for 4 SP (-1)")
+	assert_eq.call(rules.skill_cost(dex_to, water_veh), 2, "Tech Op buys Water Vehicle for 2 SP (-1)")
+
+	# 3. Species Free DEX Skills (Table P4)
+	var sesh_hero: Dictionary = rules.default_character()
+	sesh_hero["species_id"] = 3 # Sesheyan
+	rules.ensure_character_shape(sesh_hero)
+	assert_true.call(rules.is_free_species_skill(sesh_hero, 18), "Sesheyan receives Acrobatics (18) for free")
+
+	var tsa_hero: Dictionary = rules.default_character()
+	tsa_hero["species_id"] = 4 # T'sa
+	rules.ensure_character_shape(tsa_hero)
+	assert_true.call(rules.is_free_species_skill(tsa_hero, 26), "T'sa receives Manipulation (26) for free")
+
+	var human_veh: Dictionary = rules.default_character()
+	human_veh["species_id"] = 0 # Human
+	rules.ensure_character_shape(human_veh)
+	assert_true.call(rules.is_free_species_skill(human_veh, 43), "Human receives Vehicle Operation (43) for free")
+
+	# 4. Defensive Martial Arts and Dodge RM Rank Benefits
+	var rank_hero: Dictionary = rules.default_character()
+	rules.achievements.set_achievement_points(rank_hero, 100) # Level 10 allows up to Rank 12
+	rank_hero["abilities"]["STR"] = 10
+	rank_hero["abilities"]["DEX"] = 10
+	rules.ensure_character_shape(rank_hero)
+
+	# Defensive Martial Arts -> STR RM
+	var str_rm_base := rules.character_resistance_modifier(rank_hero, "STR")
+	rules.set_skill_rank(rank_hero, 20, 4)
+	assert_eq.call(rules.character_resistance_modifier(rank_hero, "STR"), str_rm_base + 1, "DMA rank 4 grants +1 to close-combat STR RM")
+	rules.set_skill_rank(rank_hero, 20, 8)
+	assert_eq.call(rules.character_resistance_modifier(rank_hero, "STR"), str_rm_base + 2, "DMA rank 8 grants +2 to close-combat STR RM")
+	rules.set_skill_rank(rank_hero, 20, 12)
+	assert_eq.call(rules.character_resistance_modifier(rank_hero, "STR"), str_rm_base + 3, "DMA rank 12 grants +3 to close-combat STR RM")
+	rules.set_skill_rank(rank_hero, 20, 0)
+
+	# Dodge -> DEX RM
+	var dex_rm_base := rules.character_resistance_modifier(rank_hero, "DEX")
+	rules.set_skill_rank(rank_hero, 21, 4)
+	assert_eq.call(rules.character_resistance_modifier(rank_hero, "DEX"), dex_rm_base + 1, "Dodge rank 4 grants +1 to ranged DEX RM")
+	rules.set_skill_rank(rank_hero, 21, 8)
+	assert_eq.call(rules.character_resistance_modifier(rank_hero, "DEX"), dex_rm_base + 2, "Dodge rank 8 grants +2 to ranged DEX RM")
+	rules.set_skill_rank(rank_hero, 21, 12)
+	assert_eq.call(rules.character_resistance_modifier(rank_hero, "DEX"), dex_rm_base + 3, "Dodge rank 12 grants +3 to ranged DEX RM")
+
+	finish()

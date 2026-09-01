@@ -101,7 +101,7 @@
         125,
         134,
         155,
-        525
+        901
       ],
       "notes": [
         "Psionic Powers: Fraal use the optional psionics rules when fraal are present in a campaign. Source: Player's Handbook p. 22-23.",
@@ -629,11 +629,11 @@
       "stat_id": 2,
       "type": "broad",
       "broad_id": 18,
-      "base_price": 1,
+      "base_price": 7,
       "untrained": true,
       "multi": false,
       "custom_name": false,
-      "professions": "",
+      "professions": "F",
       "source": "core"
     },
     {
@@ -700,7 +700,7 @@
       "type": "specialty",
       "broad_id": 18,
       "base_price": 2,
-      "untrained": true,
+      "untrained": false,
       "multi": false,
       "custom_name": false,
       "professions": "",

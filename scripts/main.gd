@@ -24,6 +24,10 @@ var psionic_filter := ""
 var active_skill_ability_tab := "STR"
 var active_psionic_ability_tab := "WIL"
 var fx_filter_text := ""
+## Transient Method III (die allocation pool) state. Deliberately not part of the
+## character dictionary -- it is scratch work for the roll, discarded on apply.
+var method3_pool: Array = []
+var method3_assignments: Array = []
 var _sticky_scroll_pos := 0
 var deleting_files: Dictionary = {}
 var close_char_button: Button
@@ -1518,6 +1522,200 @@ func _render_abilities_to(parent: Container) -> void:
 
 	for ability in AlternityRules.ABILITIES:
 		_add_ability_row(ability_parent, ability)
+
+	_add_random_ability_generation(box)
+
+
+## Optional random ability generation (Gamemaster Guide Chapter 2, Tables G2/G3).
+## Method I rolls per profession, Method II per species, Method III rolls 7d6 for
+## the player to distribute over a baseline of 5 in every ability.
+func _add_random_ability_generation(parent: Container) -> void:
+	var panel := FoldableContainer.new()
+	panel.title = "Random Ability Generation (Optional)"
+	panel.folded = method3_pool.is_empty()
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	parent.add_child(panel)
+
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 8)
+	panel.add_child(box)
+
+	UIBuilder.add_text(box, "Instead of spending the ability point pool, the Gamemaster may have you roll. Rolling replaces your current scores. Source: Gamemaster Guide Chapter 2, Tables G2 and G3.", 12, color_muted)
+
+	var buttons := HFlowContainer.new()
+	buttons.add_theme_constant_override("h_separation", 8)
+	buttons.add_theme_constant_override("v_separation", 8)
+	box.add_child(buttons)
+
+	var profession_id := rules._as_int(character.get("profession_id", 0))
+	var species_id := rules._as_int(character.get("species_id", 0))
+
+	var method1 := Button.new()
+	method1.text = "Method I - By Profession"
+	method1.disabled = rules.roll_random_abilities_by_profession(profession_id).is_empty()
+	method1.pressed.connect(func():
+		_apply_rolled_abilities(rules.roll_abilities_method_1(profession_id))
+	)
+	buttons.add_child(method1)
+
+	var method2 := Button.new()
+	method2.text = "Method II - By Species"
+	method2.disabled = rules.roll_random_abilities_by_species(species_id).is_empty()
+	method2.pressed.connect(func():
+		_apply_rolled_abilities(rules.roll_abilities_method_2(species_id))
+	)
+	buttons.add_child(method2)
+
+	var method3 := Button.new()
+	method3.text = "Method III - Die Pool"
+	method3.pressed.connect(func():
+		method3_pool = rules.roll_method_3_dice()
+		method3_assignments = []
+		for _i in method3_pool.size():
+			method3_assignments.append(-1)
+		_render()
+	)
+	buttons.add_child(method3)
+
+	if not method3_pool.is_empty():
+		_add_method3_allocation(box)
+
+
+## Method III: every ability starts at 5 and the seven rolled dice are handed out
+## freely. Each die gets its own ability picker so the whole thing works by tap.
+func _add_method3_allocation(parent: VBoxContainer) -> void:
+	UIBuilder.add_thin_separator(parent, color_border)
+	UIBuilder.add_text(parent, "Method III: all six abilities start at 5. Assign each rolled die to an ability.", 12, color_muted)
+
+	var totals := _method3_totals()
+
+	for index in method3_pool.size():
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		parent.add_child(row)
+
+		var die_label := Label.new()
+		die_label.text = "Die %d:  %d" % [index + 1, rules._as_int(method3_pool[index])]
+		die_label.add_theme_color_override("font_color", color_text)
+		die_label.add_theme_font_size_override("font_size", 14)
+		die_label.custom_minimum_size = Vector2(90, 0)
+		row.add_child(die_label)
+
+		var picker := OptionButton.new()
+		picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		picker.add_item("Unassigned", 0)
+		for ability_index in AlternityRules.ABILITIES.size():
+			picker.add_item(String(AlternityRules.ABILITIES[ability_index]), ability_index + 1)
+		picker.selected = rules._as_int(method3_assignments[index]) + 1
+		picker.item_selected.connect(func(selected_index: int):
+			method3_assignments[index] = selected_index - 1
+			_render()
+		)
+		row.add_child(picker)
+
+	var preview := HFlowContainer.new()
+	preview.add_theme_constant_override("h_separation", 12)
+	parent.add_child(preview)
+	for ability in AlternityRules.ABILITIES:
+		var cell := Label.new()
+		cell.text = "%s %d" % [ability, rules._as_int(totals.get(ability, 5))]
+		cell.add_theme_color_override("font_color", color_text)
+		cell.add_theme_font_size_override("font_size", 14)
+		preview.add_child(cell)
+
+	var unassigned := 0
+	for value in method3_assignments:
+		if rules._as_int(value, -1) < 0:
+			unassigned += 1
+	if unassigned > 0:
+		UIBuilder.add_text(parent, "%d die(s) still unassigned." % unassigned, 12, color_warning)
+
+	var actions := HFlowContainer.new()
+	actions.add_theme_constant_override("h_separation", 8)
+	parent.add_child(actions)
+
+	var apply := Button.new()
+	apply.text = "Apply Scores"
+	apply.disabled = unassigned > 0
+	apply.pressed.connect(func():
+		_apply_rolled_abilities(_method3_totals())
+		method3_pool = []
+		method3_assignments = []
+	)
+	actions.add_child(apply)
+
+	var discard := Button.new()
+	discard.text = "Discard Roll"
+	discard.pressed.connect(func():
+		method3_pool = []
+		method3_assignments = []
+		_render()
+	)
+	actions.add_child(discard)
+
+
+func _method3_totals() -> Dictionary:
+	var totals := {}
+	for ability in AlternityRules.ABILITIES:
+		totals[ability] = 5
+	for index in method3_pool.size():
+		var target := rules._as_int(method3_assignments[index], -1)
+		if target < 0 or target >= AlternityRules.ABILITIES.size():
+			continue
+		var ability := String(AlternityRules.ABILITIES[target])
+		totals[ability] = rules._as_int(totals.get(ability, 5)) + rules._as_int(method3_pool[index])
+	return totals
+
+
+## Writes rolled scores onto the hero, clamped to the species and profession
+## bounds so a roll can never produce an illegal sheet.
+func _apply_rolled_abilities(rolled: Dictionary) -> void:
+	if rolled.is_empty():
+		return
+	var abilities: Dictionary = character.get("abilities", {})
+	for ability in AlternityRules.ABILITIES:
+		if not rolled.has(ability):
+			continue
+		var limits := rules.ability_limits(character, ability)
+		abilities[ability] = clampi(rules._as_int(rolled[ability]), rules._as_int(limits[0]), rules._as_int(limits[1]))
+	character["abilities"] = abilities
+	character["custom_ability_target"] = rules.ability_total(character)
+	char_manager.save_character(notes_editing, notes_draft)
+	_render()
+
+
+## Raw Strength feat reference: the lifting ladder (GMG p. 70) and Table G21
+## breaking objects, both resolved against the hero's current STR.
+func _add_strength_feats_section(parent: Container) -> void:
+	var box := UIBuilder.add_section(parent, "Strength Feats", null, color_surface, color_border, color_text)
+	var lifting: Dictionary = rules.lifting_capacity(character)
+	var strength := rules._as_int(lifting.get("strength", 10))
+
+	_add_metric(box, "Carry without a check", "%s kg  (STR %d x 2)" % [
+		UIBuilder.format_number(rules._as_float(lifting.get("automatic_carry_kg", 0.0))),
+		strength,
+	])
+
+	UIBuilder.add_subheading(box, "Lifting (d20 + situation die vs STR %d)" % strength, color_text)
+	for tier in lifting.get("tiers", []):
+		_add_metric(box, "%s  %s" % [String(tier.get("name", "")), String(tier.get("situation_die", ""))],
+			"up to %s kg" % UIBuilder.format_number(rules._as_float(tier.get("limit_kg", 0.0))))
+	UIBuilder.add_text(box, String(lifting.get("note", "")), 12, color_muted)
+
+	UIBuilder.add_subheading(box, "Breaking Objects (Table G21)", color_text)
+	for toughness in ["ordinary", "good", "amazing"]:
+		var feat: Dictionary = rules.breaking_object_feat(character, toughness)
+		_add_metric(box, "%s / %s  %s" % [
+			String(feat.get("toughness", "")),
+			String(feat.get("durability", "")),
+			String(feat.get("situation_die", "")),
+		], "O %d  G %d  A %d" % [
+			rules._as_int(feat.get("ordinary", 0)),
+			rules._as_int(feat.get("good", 0)),
+			rules._as_int(feat.get("amazing", 0)),
+		])
+		UIBuilder.add_text(box, String(feat.get("examples", "")), 11, color_muted)
+	UIBuilder.add_text(box, "Source: Gamemaster Guide p. 70 and Table G21; Player's Handbook p. 63-64.", 11, color_muted)
 
 
 func _add_ability_row(parent: Container, ability: String) -> void:
@@ -3955,11 +4153,17 @@ func _render_cybertech() -> void:
 			)
 			action_row.add_child(btn_remove)
 		else:
+			var blocked_reason := ""
 			for q in ["ordinary", "good", "amazing"]:
 				var cost = item.get("cost_%s" % q, 0)
 				if rules._as_int(cost) > 0:
+					var check := rules.cybertech.can_install_cybertech(character, String(item.get("id", "")), q)
+					var allowed := bool(check.get("allowed", false))
 					var btn_add = Button.new()
 					btn_add.text = "Install %s" % q.capitalize()
+					btn_add.disabled = not allowed
+					if not allowed:
+						blocked_reason = String(check.get("reason", ""))
 					btn_add.pressed.connect(func():
 						var res = rules.cybertech.install_cybertech(character, String(item.get("id", "")), q)
 						if res.get("ok", false):
@@ -3967,6 +4171,8 @@ func _render_cybertech() -> void:
 							_render()
 					)
 					action_row.add_child(btn_add)
+			if not blocked_reason.is_empty():
+				UIBuilder.add_text(row, blocked_reason, 12, color_warning)
 		UIBuilder.add_thin_separator(row, color_border)
 
 func _render_fx_psionics() -> void:
@@ -4722,6 +4928,10 @@ func _render_summary() -> void:
 	])
 	for effect in movement.get("effects", []):
 		UIBuilder.add_text(movement_box, "%s: %s" % [effect.get("mode", ""), effect.get("effect", "")], 12, color_muted)
+	if bool(movement.get("armor_restricted", false)):
+		UIBuilder.add_text(movement_box, String(movement.get("armor_restriction_note", "")), 12, color_warning)
+
+	_add_strength_feats_section(left_parent)
 
 	var equipment_summary: Dictionary = summary.get("equipment", {})
 	var attack_forms_box := UIBuilder.add_section(left_parent, "Attack Forms", null, color_surface, color_border, color_text)

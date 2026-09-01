@@ -16,6 +16,10 @@ extends RefCounted
 ##                       "d4s/d4+2w/d6+2m"
 ##                       (alternity_rules_equipment._damage_segment_with_bonus)
 ##
+##   random abilities    10+d4, 8+d6, 4+d10 -- constant first, die second.
+##                       Tables G2 and G3 are written this way throughout;
+##                       "10+d4" parses to the same term as "d4+10".
+##
 ## Parsing is separated from rolling on purpose: what dice a notation describes
 ## is pure string work, and stays the same whether the roll is resolved by a
 ## seeded RNG (headless, tests, mutation tables) or by tumbling physical dice on
@@ -39,8 +43,14 @@ const _DICE_PATTERN := "^([+-])?([0-9]*)[dD]([0-9]+)([+-][0-9]+)?([swmfSWMF])?$"
 ## A flat value with no die at all: 3, -2, 5w
 const _FLAT_PATTERN := "^([+-]?[0-9]+)([swmfSWMF])?$"
 
+## Leading-constant form used by the random ability tables (G2/G3): the constant
+## comes first and the die second -- 10+d4, 8+d6, 4+d10, 3-d6. Equivalent to
+## d4+10 but written the other way round throughout those tables.
+const _LEADING_CONSTANT_PATTERN := "^([+-]?[0-9]+)([+-])([0-9]*)[dD]([0-9]+)([swmfSWMF])?$"
+
 static var _dice_regex: RegEx
 static var _flat_regex: RegEx
+static var _leading_constant_regex: RegEx
 
 
 ## Parse one notation term.
@@ -91,6 +101,21 @@ static func parse(text: String) -> Dictionary:
 			"modifier": AlternityNum.as_int(flat_match.get_string(1), 0),
 			"sign": 1,
 			"damage_type": flat_match.get_string(2).to_lower(),
+			"source": text,
+		}
+
+	# "10+d4" is the same term as "d4+10"; the ability tables write the constant
+	# first. A minus ("3-d6") subtracts the die, which the sign field carries.
+	var leading_match := _leading_constant_regex.search(clean)
+	if leading_match != null:
+		var lead_count_text := leading_match.get_string(3)
+		return {
+			"ok": true,
+			"count": 1 if lead_count_text.is_empty() else AlternityNum.as_int(lead_count_text, 1),
+			"sides": AlternityNum.as_int(leading_match.get_string(4), 0),
+			"modifier": AlternityNum.as_int(leading_match.get_string(1), 0),
+			"sign": -1 if leading_match.get_string(2) == "-" else 1,
+			"damage_type": leading_match.get_string(5).to_lower(),
 			"source": text,
 		}
 
@@ -166,3 +191,6 @@ static func _ensure_regexes() -> void:
 	if _flat_regex == null:
 		_flat_regex = RegEx.new()
 		_flat_regex.compile(_FLAT_PATTERN)
+	if _leading_constant_regex == null:
+		_leading_constant_regex = RegEx.new()
+		_leading_constant_regex.compile(_LEADING_CONSTANT_PATTERN)

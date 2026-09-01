@@ -437,12 +437,17 @@ func _unarmed_attack_form(character: Dictionary) -> Dictionary:
 	var abilities: Dictionary = _get_parent().effective_abilities(character)
 	var strength_bonus := strength_damage_bonus(AlternityNum.as_int(abilities.get("STR", 10)))
 
+	# Unarmed damage by training (PHB p. 40, 69-70), before the STR adjustment:
+	#   untrained / broad / Brawl 1-7 : d4s/d4+1s/d4+2s
+	#   Brawl rank 8 benefit          : d6s/d6+2s/d4w
+	#   Power Martial Arts 1-6        : d6s/d6+2s/d4w
+	#   Power Martial Arts rank 7     : d6+2s/d4w/d4+2w
+	# PMA rank 12 has no printed damage increase -- it grants a third +1 step to
+	# the STR Resistance Modifier instead (handled in character_resistance_modifier).
 	var base_damage := "d4s/d4+1s/d4+2s"
 	if _get_parent().skill_rank(character, 17) > 0:
 		base_damage = "d6s/d6+2s/d4w"
-		if _get_parent().skill_rank(character, 17) >= 12:
-			base_damage = "d4+1w/d4+3w/d4m"
-		elif _get_parent().skill_rank(character, 17) >= 7:
+		if _get_parent().skill_rank(character, 17) >= 7:
 			base_damage = "d6+2s/d4w/d4+2w"
 	elif _get_parent().skill_rank(character, 16) >= 8:
 		base_damage = "d6s/d6+2s/d4w"
@@ -510,6 +515,47 @@ func equipped_armor_action_penalty(character: Dictionary) -> int:
 func armor_stun_damage_reduction(character: Dictionary, armor_skill_id: int) -> int:
 	var rank: int = _get_parent().skill_rank(character, armor_skill_id)
 	return mini(6, int(floor(rank / 2.0)))
+
+
+## Shaking Off Stuns for whatever the hero currently wears, taking the best
+## equipped suit. Applies only to stun (and secondary stun) from attacks that
+## strike the armor -- not to suffocation, vacuum, heat, or psionic attacks.
+## Source: Player's Handbook p. 64.
+func equipped_armor_stun_reduction(character: Dictionary) -> int:
+	var best := 0
+	for row in carried_equipment(character):
+		if not bool(row.get("equipped", false)):
+			continue
+		var item: Dictionary = row.get("item", {})
+		if not equipment_has_combat_role(item, "armor"):
+			continue
+		var skill_id := AlternityNum.as_int(item.get("combat", {}).get("skill_id", 0))
+		best = maxi(best, armor_stun_damage_reduction(character, skill_id))
+	return best
+
+
+## True when the hero is untrained in Armor Operation but is wearing armor that
+## carries an Armor Operation penalty. Such a hero may only walk, and cannot run,
+## sprint, jump, or take strenuous physical actions. Powered armor additionally
+## cannot be operated untrained at all.
+## Source: Player's Handbook p. 64; Gamemaster Guide p. 70.
+func armor_restricts_untrained_movement(character: Dictionary) -> bool:
+	if _get_parent().skill_rank(character, 0) > 0: # Armor Operation broad skill
+		return false
+	for row in carried_equipment(character):
+		if not bool(row.get("equipped", false)):
+			continue
+		var item: Dictionary = row.get("item", {})
+		if not equipment_has_combat_role(item, "armor"):
+			continue
+		var combat: Dictionary = item.get("combat", {})
+		if AlternityNum.as_int(combat.get("action_penalty", 0)) <= 0:
+			continue
+		# The specialty alone still counts as training for this restriction.
+		if _get_parent().skill_rank(character, AlternityNum.as_int(combat.get("skill_id", 0))) > 0:
+			continue
+		return true
+	return false
 
 
 func _weapon_attack_form(character: Dictionary, item: Dictionary) -> Dictionary:

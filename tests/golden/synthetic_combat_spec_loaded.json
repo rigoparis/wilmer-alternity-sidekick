@@ -375,6 +375,8 @@
 		},
 		"max_broad_skills": 11,
 		"movement": {
+			"armor_restricted": false,
+			"can_jump": true,
 			"easy_swim": 1,
 			"effects": [
 				{
