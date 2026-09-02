@@ -312,6 +312,7 @@ func default_character() -> Dictionary:
 			"PER": 10,
 		},
 		"sold_species_skills": [],
+		"skill_ranks_at_level": {},
 		"selected_skills": {},
 		"selected_perks": {},
 		"selected_flaws": {},
@@ -361,7 +362,11 @@ func ensure_character_shape(character: Dictionary) -> Dictionary:
 	# Normalize achievement points and level first: skill rank clamping below
 	# depends on the achievement level being up to date.
 	character["achievement_points"] = max(0, _as_int(character.get("achievement_points", 0)))
+	var previous_level := _as_int(character.get("achievement_level", 1), 1)
 	character["achievement_level"] = achievements.achievement_level_for_points(_as_int(character.get("achievement_points", 0)))
+	# Reaching a new level starts a fresh one-rank allowance for every skill.
+	if _as_int(character.get("achievement_level", 1), 1) > previous_level:
+		snapshot_skill_ranks(character)
 	character["achievement_points_spent_other"] = max(0, _as_int(character.get("achievement_points_spent_other", 0)))
 
 	# Migrate saves written with the old dotted character keys.
@@ -389,6 +394,22 @@ func ensure_character_shape(character: Dictionary) -> Dictionary:
 			if not norm_sold.has(sold_id):
 				norm_sold.append(sold_id)
 		character["sold_species_skills"] = norm_sold
+
+	# Where each specialty stood when the hero reached their current level. A
+	# specialty may gain one rank per level, and "one rank" has to be measured
+	# from somewhere fixed -- measured from the live rank instead, a player could
+	# climb 3 to 4 to 5 in a single sitting, each step legal on its own.
+	#
+	# A character saved before this existed is seeded from their present ranks,
+	# which lets every skill gain its next rank and takes nothing away.
+	if not character.has("skill_ranks_at_level") or typeof(character["skill_ranks_at_level"]) != TYPE_DICTIONARY:
+		character["skill_ranks_at_level"] = _skill_rank_snapshot(character)
+	else:
+		var norm_snapshot := {}
+		for key in character["skill_ranks_at_level"]:
+			norm_snapshot[str(_as_int(key))] = _as_int(character["skill_ranks_at_level"][key])
+		character["skill_ranks_at_level"] = norm_snapshot
+
 	if not character.has("selected_perks") or typeof(character["selected_perks"]) != TYPE_DICTIONARY:
 		character["selected_perks"] = {}
 	else:
@@ -1425,6 +1446,33 @@ func skill_rank_total_cost(character: Dictionary, skill: Dictionary) -> int:
 
 ## Specialty skill ranks are capped at Rank 3 at creation (Level 1), and Level + 2 in play (capped at 12).
 ## Source: Player's Handbook p. 34.
+## Every specialty's current rank, as the baseline for the coming level.
+func _skill_rank_snapshot(character: Dictionary) -> Dictionary:
+	var snapshot := {}
+	var selected: Dictionary = character.get("selected_skills", {})
+	for key in selected.keys():
+		var skill_id := _as_int(key)
+		var skill := get_skill_by_id(skill_id)
+		if skill.get("type", "") != "specialty":
+			continue
+		snapshot[str(skill_id)] = _selected_skill_entry_rank(selected[key])
+	return snapshot
+
+
+## Freeze the current ranks as the baseline for the level just reached.
+##
+## Called when the hero gains a level. Everything they hold now is what "one
+## more rank" is measured against until the next level.
+func snapshot_skill_ranks(character: Dictionary) -> void:
+	character["skill_ranks_at_level"] = _skill_rank_snapshot(character)
+
+
+## What this specialty's rank was when the hero reached their current level.
+func skill_rank_at_level_start(character: Dictionary, skill_id: int) -> int:
+	var snapshot: Dictionary = character.get("skill_ranks_at_level", {})
+	return _as_int(snapshot.get(str(skill_id), snapshot.get(skill_id, 0)))
+
+
 ## The highest rank a specialty may legally sit at for this hero.
 ##
 ## A ceiling, not a purchase limit: rank 3 while the hero is being created, and
@@ -1462,7 +1510,17 @@ func max_rank_for_skill(character: Dictionary, skill_id: int) -> int:
 	var level := _as_int(character.get("achievement_level", 1), 1)
 	if level <= 1:
 		return CREATION_SPECIALTY_RANK
-	return clampi(skill_rank(character, skill_id) + 1, 1, MAX_SPECIALTY_RANK)
+
+	# One rank per level, measured from where the skill stood when the level
+	# began -- otherwise buying a rank raises the ceiling that permitted it, and
+	# a hero climbs several ranks in one sitting.
+	#
+	# Also never more than one above the live rank: a player who sold a rank 3
+	# skill down to 1 must climb back through 2, not jump to 4 on the strength
+	# of a stale baseline.
+	var from_level_start := skill_rank_at_level_start(character, skill_id) + 1
+	var from_current := skill_rank(character, skill_id) + 1
+	return clampi(mini(from_level_start, from_current), 1, MAX_SPECIALTY_RANK)
 
 
 
@@ -1522,6 +1580,11 @@ func set_skill_rank(character: Dictionary, skill_id: int, rank: int) -> void:
 ## something being purchased a step at a time. The rank ceiling still applies.
 func force_skill_rank(character: Dictionary, skill_id: int, rank: int) -> void:
 	_write_skill_rank(character, skill_id, rank, true)
+	# The awarded rank becomes the baseline too, or the hero would be unable to
+	# raise the skill they were just given.
+	var snapshot: Dictionary = character.get("skill_ranks_at_level", {})
+	snapshot[str(skill_id)] = skill_rank(character, skill_id)
+	character["skill_ranks_at_level"] = snapshot
 
 
 func _write_skill_rank(character: Dictionary, skill_id: int, rank: int, allow_jump: bool) -> void:

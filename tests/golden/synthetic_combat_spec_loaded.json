@@ -118,6 +118,10 @@
 			"31": 3
 		},
 		"setting": "Core",
+		"skill_ranks_at_level": {
+			"1": 2,
+			"31": 3
+		},
 		"sold_species_skills": [],
 		"species_id": 0.0
 	},

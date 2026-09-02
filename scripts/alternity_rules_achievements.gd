@@ -31,9 +31,13 @@ func achievement_points_for_current_level(points: int) -> int:
 
 
 func set_achievement_points(character: Dictionary, points: int) -> void:
+	var previous_level := AlternityNum.as_int(character.get("achievement_level", 1), 1)
 	character["achievement_points"] = max(0, points)
 	character["achievement_level"] = achievement_level_for_points(AlternityNum.as_int(character["achievement_points"]))
 	character["achievement_points_available"] = achievement_points_available(character)
+	# Gaining a level starts a fresh one-rank allowance for every specialty.
+	if AlternityNum.as_int(character["achievement_level"], 1) > previous_level:
+		_get_parent().snapshot_skill_ranks(character)
 
 
 func achievement_points_used(character: Dictionary) -> int:

@@ -154,19 +154,132 @@ func _init() -> void:
 		"A new specialty bought at 5th level may only reach rank 1"
 	)
 
-	# And it climbs one rank at a time from wherever it sits.
+	# And the level's one rank is spent once taken: buying it does not unlock
+	# the next, because the allowance is measured from the level-up snapshot.
 	rules.set_skill_rank(climber, ranked_specialty, 1)
 	assert_eq.call(rules.skill_rank(climber, ranked_specialty), 1, "the specialty is at rank 1")
 	assert_eq.call(
-		rules.max_rank_for_skill(climber, ranked_specialty), 2,
-		"a rank 1 specialty may next reach rank 2"
+		rules.max_rank_for_skill(climber, ranked_specialty), 1,
+		"this level's rank is spent, so rank 2 waits for the next level"
 	)
 
-	# Asking for a jump is clamped to the single step rather than granted.
+	# Asking for a jump is clamped rather than granted.
 	rules.set_skill_rank(climber, ranked_specialty, 7)
 	assert_eq.call(
-		rules.skill_rank(climber, ranked_specialty), 2,
-		"asking to jump from rank 1 to 7 grants rank 2, not rank 7"
+		rules.skill_rank(climber, ranked_specialty), 1,
+		"asking to jump from rank 1 to 7 grants nothing further"
+	)
+
+	# One rank per level, measured from a snapshot taken at level-up.
+	#
+	# Measured from the live rank instead, buying a rank raises the ceiling that
+	# permitted it, so a hero climbs 3 to 4 to 5 in one sitting with every step
+	# legal on its own.
+	print("Testing One Rank Per Level...")
+	var stepper: Dictionary = rules.default_character()
+	stepper["species_id"] = 0
+	rules.ensure_character_shape(stepper)
+
+	# A specialty and the broad it hangs from.
+	var step_specialty := -1
+	var step_broad := -1
+	for skill_entry in rules.skills:
+		if typeof(skill_entry) != TYPE_DICTIONARY or skill_entry.get("type", "") != "specialty":
+			continue
+		step_specialty = AlternityNum.as_int(skill_entry.get("id", -1), -1)
+		step_broad = AlternityNum.as_int(skill_entry.get("broad_id", -1), -1)
+		break
+	assert_true.call(step_specialty >= 0, "found a specialty to test the step rule with")
+	rules.force_skill_rank(stepper, step_broad, 1)
+
+	# Creation allows rank 3 outright.
+	rules.set_skill_rank(stepper, step_specialty, 3)
+	assert_eq.call(rules.skill_rank(stepper, step_specialty), 3, "creation buys straight to rank 3")
+
+	# Reaching 2nd level freezes rank 3 as the baseline, so rank 4 is allowed.
+	rules.achievements.set_achievement_points(stepper, rules.achievements.achievement_points_for_level(2))
+	assert_eq.call(
+		rules.skill_rank_at_level_start(stepper, step_specialty), 3,
+		"levelling up records the rank the skill held"
+	)
+	assert_eq.call(
+		rules.max_rank_for_skill(stepper, step_specialty), 4,
+		"a rank 3 skill may reach rank 4 this level"
+	)
+	rules.set_skill_rank(stepper, step_specialty, 4)
+	assert_eq.call(rules.skill_rank(stepper, step_specialty), 4, "the skill reaches rank 4")
+
+	# And no further this level: the baseline has not moved.
+	assert_eq.call(
+		rules.max_rank_for_skill(stepper, step_specialty), 4,
+		"buying the rank does not unlock the next one in the same level"
+	)
+	rules.set_skill_rank(stepper, step_specialty, 5)
+	assert_eq.call(
+		rules.skill_rank(stepper, step_specialty), 4,
+		"a second rank in one level is refused"
+	)
+
+	# The next level starts a fresh allowance.
+	rules.achievements.set_achievement_points(stepper, rules.achievements.achievement_points_for_level(3))
+	assert_eq.call(
+		rules.max_rank_for_skill(stepper, step_specialty), 5,
+		"the next level allows one more rank"
+	)
+
+	# Selling down does not bank the difference: from rank 2 the skill must
+	# climb back through 3, not jump to 5 on a stale baseline.
+	rules.set_skill_rank(stepper, step_specialty, 2)
+	assert_eq.call(rules.skill_rank(stepper, step_specialty), 2, "the skill can be sold down")
+	assert_eq.call(
+		rules.max_rank_for_skill(stepper, step_specialty), 3,
+		"a sold-down skill climbs back one rank at a time"
+	)
+
+	# A brand-new specialty bought after creation starts at rank 1 and stops.
+	var fresh_specialty := -1
+	for skill_entry in rules.skills:
+		if typeof(skill_entry) != TYPE_DICTIONARY or skill_entry.get("type", "") != "specialty":
+			continue
+		var candidate := AlternityNum.as_int(skill_entry.get("id", -1), -1)
+		if candidate != step_specialty and AlternityNum.as_int(skill_entry.get("broad_id", -1), -1) == step_broad:
+			fresh_specialty = candidate
+			break
+	if fresh_specialty >= 0:
+		assert_eq.call(
+			rules.max_rank_for_skill(stepper, fresh_specialty), 1,
+			"a specialty taken up after creation starts at rank 1"
+		)
+		rules.set_skill_rank(stepper, fresh_specialty, 3)
+		assert_eq.call(
+			rules.skill_rank(stepper, fresh_specialty), 1,
+			"asking for rank 3 on a new specialty grants rank 1"
+		)
+
+	# A Gamemaster award moves the baseline with it, or the hero could not raise
+	# the skill they were just handed.
+	rules.force_skill_rank(stepper, step_specialty, 7)
+	assert_eq.call(rules.skill_rank(stepper, step_specialty), 7, "an awarded rank applies outright")
+	assert_eq.call(
+		rules.max_rank_for_skill(stepper, step_specialty), 8,
+		"an awarded rank becomes the new baseline"
+	)
+
+	# A character saved before snapshots existed is seeded from present ranks,
+	# so every skill can still gain its next rank and nothing is taken away.
+	var legacy: Dictionary = rules.default_character()
+	legacy["species_id"] = 0
+	legacy["achievement_points"] = rules.achievements.achievement_points_for_level(5)
+	legacy["selected_skills"] = {str(step_broad): 1, str(step_specialty): 4}
+	legacy.erase("skill_ranks_at_level")
+	rules.ensure_character_shape(legacy)
+	assert_eq.call(
+		rules.skill_rank_at_level_start(legacy, step_specialty), 4,
+		"an old save is seeded from the ranks it already holds"
+	)
+	assert_eq.call(
+		rules.max_rank_for_skill(legacy, step_specialty), 5,
+		"and can still gain its next rank"
 	)
 
 	# --- 5. Table P6: Last Resort Points & Recovery Costs ---

@@ -88,6 +88,9 @@
 			"900": 1
 		},
 		"setting": "Core",
+		"skill_ranks_at_level": {
+
+		},
 		"sold_species_skills": [],
 		"species_id": 1.0
 	},
