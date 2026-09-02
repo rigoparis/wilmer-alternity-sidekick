@@ -96,6 +96,8 @@ func _init() -> void:
 	_test_armor_operation()
 	_test_unarmed_damage()
 	_test_power_martial_arts_resistance()
+	_test_melee_weapons_grant_no_resistance()
+	_test_heightened_ability()
 
 	finish()
 
@@ -285,3 +287,89 @@ func _test_power_martial_arts_resistance() -> void:
 				AlternityNum.as_int(rank), AlternityNum.as_int(expected[rank]),
 			]
 		)
+
+
+## Blade, Bludgeon and Powered Weapon grant no passive resistance.
+##
+## All three carried the +1/+2/+3 template copied from Power Martial Arts, in
+## the calculation and in their rank benefit text, with a citation to the page
+## that describes their real benefits. Those are combat manoeuvres -- reaction
+## parry at rank 4, a second strike at 6, a third at 9, disarms and damage.
+## Source: Player's Handbook p. 68.
+func _test_melee_weapons_grant_no_resistance() -> void:
+	var melee := {"Blade": 12, "Bludgeon": 13, "Powered weapon": 14}
+	for name in melee:
+		for rank in [4, 8, 12]:
+			var character: Dictionary = _rules.default_character()
+			character["species_id"] = 0
+			character["abilities"]["STR"] = 10   # base modifier of 0
+			_rules.ensure_character_shape(character)
+			_rules.achievements.set_achievement_points(character, 200)
+			_rules.force_skill_rank(character, 11, 1)   # Melee Weapons broad
+			_rules.force_skill_rank(character, AlternityNum.as_int(melee[name]), rank)
+			check_eq(
+				_rules.character_resistance_modifier(character, "STR"), 0,
+				"%s rank %d grants no passive Strength resistance" % [name, rank]
+			)
+
+		# The genuine benefits are still described.
+		var skill: Dictionary = _skill_named(String(name))
+		var benefits: Dictionary = _rules.skill_detail(skill).get("rank_benefits", {})
+		for rank in [4, 6, 9]:
+			check_true(
+				benefits.has(rank) or benefits.has(str(rank)),
+				"%s keeps its rank %d combat manoeuvre" % [name, rank]
+			)
+
+
+## Heightened Ability raises the ability the player chose, and says nothing
+## until they choose one.
+##
+## The choice was read from four places and written in none: no screen made it,
+## nothing defaulted it, and selected_perks holds a plain cost rather than a
+## dictionary, so the perk-level lookups could never have found it. Ten skill
+## points bought nothing.
+func _test_heightened_ability() -> void:
+	var character: Dictionary = _rules.default_character()
+	character["species_id"] = 0
+	for ability in ["STR", "DEX", "CON", "INT", "WIL", "PER"]:
+		character["abilities"][ability] = 10
+	_rules.ensure_character_shape(character)
+
+	var before: int = AlternityNum.as_int(_rules.effective_abilities(character).get("WIL", 0))
+	_rules.set_perk_selected(character, "heightened_ability", 10)
+
+	# Taken but unassigned, it does nothing -- and says so rather than silently
+	# picking an ability.
+	check_eq(
+		_rules.heightened_ability_target(character), "",
+		"a freshly taken Heightened Ability has no target yet"
+	)
+	check_eq(
+		AlternityNum.as_int(_rules.effective_abilities(character).get("WIL", 0)), before,
+		"and raises nothing until one is chosen"
+	)
+
+	_rules.set_heightened_ability_target(character, "WIL")
+	check_eq(_rules.heightened_ability_target(character), "WIL", "the choice is recorded")
+	check_eq(
+		AlternityNum.as_int(_rules.effective_abilities(character).get("WIL", 0)), before + 1,
+		"the chosen ability rises by one"
+	)
+	check_eq(
+		AlternityNum.as_int(_rules.effective_abilities(character).get("INT", 0)), 10,
+		"and no other ability moves"
+	)
+
+	# It cannot push past the species maximum.
+	var limits: Array = _rules.ability_limits(character, "WIL")
+	character["abilities"]["WIL"] = AlternityNum.as_int(limits[1])
+	check_eq(
+		AlternityNum.as_int(_rules.effective_abilities(character).get("WIL", 0)),
+		AlternityNum.as_int(limits[1]),
+		"Heightened Ability cannot exceed the species maximum"
+	)
+
+	# An unknown ability is refused rather than stored.
+	_rules.set_heightened_ability_target(character, "LUCK")
+	check_eq(_rules.heightened_ability_target(character), "", "an unknown ability is not recorded")

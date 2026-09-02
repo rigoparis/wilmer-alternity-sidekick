@@ -41,6 +41,7 @@
 			}
 		},
 		"fx_campaign_scale": "heroic",
+		"heightened_ability_stat": "",
 		"hero_name": "Optional Rules Hero",
 		"last_resorts_rebought": 0.0,
 		"last_resorts_used": 0,

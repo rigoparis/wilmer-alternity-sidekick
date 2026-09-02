@@ -603,25 +603,19 @@ const RANK_BENEFIT_NOTES := {
 		12: "Running jump distance increases by another 1 meter. Source: Player's Handbook p. 67.",
 	},
 	12: {
-		4: "Strength resistance modifier improves by +1 for close-combat defense, and reaction parry becomes available. Source: Player's Handbook p. 68.",
+		4: "Reaction parry becomes available: an incoming melee or unarmed attack may be parried using the next available action. Source: Player's Handbook p. 68.",
 		6: "Double-strike becomes available: two attacks in one phase with one control die and two situation dice at +1 and +2 step penalties. Source: Player's Handbook p. 68.",
-		8: "Strength resistance modifier improves by another +1 for close-combat defense. Source: Player's Handbook p. 68.",
 		9: "Multistrike becomes available: three attacks in one phase, with +1, +2, and +3 step penalties on the situation dice. Source: Player's Handbook p. 68.",
-		12: "Strength resistance modifier improves by another +1 for close-combat defense. Source: Player's Handbook p. 68.",
 	},
 	13: {
-		4: "Strength resistance modifier improves by +1 for close-combat defense, and reaction parry becomes available. Source: Player's Handbook p. 68.",
+		4: "Reaction parry becomes available: an incoming melee or unarmed attack may be parried using the next available action. Source: Player's Handbook p. 68.",
 		6: "Double-strike becomes available: two attacks in one phase with one control die and two situation dice at +1 and +2 step penalties. Source: Player's Handbook p. 68.",
-		8: "Strength resistance modifier improves by another +1 for close-combat defense. Source: Player's Handbook p. 68.",
 		9: "Multistrike becomes available: three attacks in one phase, with +1, +2, and +3 step penalties on the situation dice. Source: Player's Handbook p. 68.",
-		12: "Strength resistance modifier improves by another +1 for close-combat defense. Source: Player's Handbook p. 68.",
 	},
 	14: {
-		4: "Strength resistance modifier improves by +1 for close-combat defense, and reaction parry becomes available. Source: Player's Handbook p. 68.",
+		4: "Reaction parry becomes available: an incoming melee or unarmed attack may be parried using the next available action. Source: Player's Handbook p. 68.",
 		6: "Double-strike becomes available: two attacks in one phase with one control die and two situation dice at +1 and +2 step penalties. Source: Player's Handbook p. 68.",
-		8: "Strength resistance modifier improves by another +1 for close-combat defense. Source: Player's Handbook p. 68.",
 		9: "Multistrike becomes available: three attacks in one phase, with +1, +2, and +3 step penalties on the situation dice. Source: Player's Handbook p. 68.",
-		12: "Strength resistance modifier improves by another +1 for close-combat defense. Source: Player's Handbook p. 68.",
 	},
 	16: {
 		4: "Knockout attempts impose a +1 step penalty on the opponent's Stamina-endurance check after an Amazing success. Source: Player's Handbook p. 69.",

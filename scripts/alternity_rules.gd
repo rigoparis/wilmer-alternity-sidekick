@@ -312,6 +312,7 @@ func default_character() -> Dictionary:
 			"PER": 10,
 		},
 		"sold_species_skills": [],
+		"heightened_ability_stat": "",
 		"skill_ranks_at_level": {},
 		"selected_skills": {},
 		"selected_perks": {},
@@ -358,6 +359,8 @@ func ensure_character_shape(character: Dictionary) -> Dictionary:
 		character["age_category"] = "young_adult"
 	if not character.has("fx_campaign_scale") or fx_campaign_scale(character).is_empty():
 		character["fx_campaign_scale"] = FX_CAMPAIGN_SCALE_DEFAULT
+	if not character.has("heightened_ability_stat"):
+		character["heightened_ability_stat"] = ""
 
 	# Normalize achievement points and level first: skill rank clamping below
 	# depends on the achievement level being up to date.
@@ -703,16 +706,35 @@ func age_adjusted_abilities(character: Dictionary) -> Dictionary:
 	return result
 
 
+## Which ability the Heightened Ability perk raises, if one has been chosen.
+##
+## Older saves recorded it under heightened_ability_target, so that is still
+## read as a fallback.
+func heightened_ability_target(character: Dictionary) -> String:
+	var chosen := String(character.get("heightened_ability_stat", "")).strip_edges().to_upper()
+	if chosen.is_empty():
+		chosen = String(character.get("heightened_ability_target", "")).strip_edges().to_upper()
+	return chosen if ABILITIES.has(chosen) else ""
+
+
+func set_heightened_ability_target(character: Dictionary, ability: String) -> void:
+	var upper := ability.strip_edges().to_upper()
+	character["heightened_ability_stat"] = upper if ABILITIES.has(upper) else ""
+
+
 func achievement_adjusted_abilities(character: Dictionary) -> Dictionary:
 	var result := age_adjusted_abilities(character)
 
-	# Heightened Ability perk bonus (+1 to chosen ability, clamped to species max)
+	# Heightened Ability raises one chosen ability by a point, clamped to the
+	# species maximum.
+	#
+	# The choice used to be looked for in four places -- two character fields and
+	# two keys inside the stored perk -- and written in none of them. There was no
+	# screen to make it, nothing defaulted it, and selected_perks holds a plain
+	# cost rather than a dictionary, so the perk-level lookups could never have
+	# found anything either. A hero paid ten skill points for nothing.
 	if is_perk_selected(character, "heightened_ability"):
-		var target_stat := String(character.get("heightened_ability_stat", character.get("heightened_ability_target", "")))
-		if target_stat.is_empty():
-			var perk_raw = character.get("selected_perks", {}).get("heightened_ability", {})
-			if typeof(perk_raw) == TYPE_DICTIONARY:
-				target_stat = String(perk_raw.get("target_ability", perk_raw.get("target_stat", "")))
+		var target_stat := heightened_ability_target(character)
 		if ABILITIES.has(target_stat):
 			var limits := ability_limits(character, target_stat)
 			result[target_stat] = clampi(_as_int(result.get(target_stat, 10)) + 1, _as_int(limits[0]), _as_int(limits[1]))
@@ -861,8 +883,15 @@ func character_resistance_modifier(character: Dictionary, ability: String) -> in
 	# Skill Rank Benefits
 	var skill_bonus := 0
 	if ability == "STR":
+		# Only the two martial-arts skills. Blade, Bludgeon and Powered Weapon
+		# used to sit in this list as well, carrying the same +1/+2/+3 template
+		# copied from Power Martial Arts. Their genuine rank benefits are combat
+		# manoeuvres -- reaction parry, second and third strikes, disarms and
+		# damage -- and no passive resistance at all.
+		# Source: Player's Handbook p. 68 for the melee weapons, pp. 69-70 for
+		# the martial arts that do grant it.
 		var max_melee_bonus := 0
-		for skill_id in [12, 13, 14, 17, 20]: # Blade, Bludgeon, Powered weapon, Power Martial Arts, Defensive Martial Arts
+		for skill_id in [17, 20]: # Power Martial Arts, Defensive Martial Arts
 			var r := skill_rank(character, skill_id)
 			var b := 0
 			if r >= 12:

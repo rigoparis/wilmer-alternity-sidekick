@@ -12,6 +12,9 @@ extends SheetTab
 ## than opening a second picker, so the flat list stays flat.
 ##
 
+## The six abilities, in sheet order.
+const ABILITIES := ["STR", "DEX", "CON", "INT", "WIL", "PER"]
+
 const CATALOG_ROUTE := preload("res://scenes/ui/routes/catalog_route.tscn")
 
 ## Separates the perk id from its chosen cost in a catalog entry id.
@@ -73,12 +76,56 @@ func _build_list(container: Container, kind: String) -> void:
 
 	for entry in selected:
 		_build_selected_row(box, entry, kind)
+		# A perk that asks the player a question renders it beneath its row.
+		if is_perk and String(entry.get("id", "")) == "heightened_ability":
+			_build_heightened_ability_picker(box)
 
 	var add := Button.new()
 	add.text = "Add %s" % ("Perk" if is_perk else "Flaw")
 	add.custom_minimum_size = Vector2(0, 44)
 	add.pressed.connect(_open_catalog.bind(kind))
 	box.add_child(add)
+
+
+## Which ability Heightened Ability raises.
+##
+## Without this the perk did nothing: the rules looked for the choice and no
+## screen could make it, so ten skill points bought a point of nothing.
+func _build_heightened_ability_picker(parent: Container) -> void:
+	var doc := ctx.doc
+	var rules: AlternityRules = ctx.rules
+	var palette := ctx.palette
+	var current := rules.heightened_ability_target(doc.raw())
+
+	var label := Label.new()
+	label.text = "Ability raised by Heightened Ability"
+	label.add_theme_color_override("font_color", palette.muted)
+	label.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
+	parent.add_child(label)
+
+	var picker := OptionButton.new()
+	picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	picker.custom_minimum_size = Vector2(0, 42)
+	picker.add_item("Not chosen yet", 0)
+	var selected_index := 0
+	for index in ABILITIES.size():
+		var ability := String(ABILITIES[index])
+		picker.add_item(ability, index + 1)
+		if ability == current:
+			selected_index = index + 1
+	picker.select(selected_index)
+	picker.item_selected.connect(func(index: int):
+		var chosen := "" if index <= 0 else String(ABILITIES[index - 1])
+		doc.apply(CharacterDoc.ALL, func(c): rules.set_heightened_ability_target(c, chosen))
+		save_requested.emit())
+	parent.add_child(picker)
+
+	if current.is_empty():
+		Widgets.muted_text(
+			parent,
+			"Choose one, or the perk grants nothing.",
+			palette, Widgets.FONT_CAPTION
+		)
 
 
 func _build_selected_row(parent: Container, entry: Dictionary, kind: String) -> void:
