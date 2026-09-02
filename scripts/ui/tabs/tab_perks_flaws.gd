@@ -217,17 +217,16 @@ func _catalog_entries(kind: String) -> Array:
 	var entries: Array = []
 	for id in ids:
 		var definition: Dictionary = source[id]
+		if not rules.is_entry_available(raw, definition):
+			continue
 		var taken: bool = rules.is_perk_selected(raw, id) if is_perk else rules.is_flaw_selected(raw, id)
 		var options: Array = definition.get("cost_options" if is_perk else "bonus_options", [])
 		if options.is_empty():
 			options = [0]
 
-		# Ten flaws and two perks come in several severities, and the catalog used
-		# to emit one row per severity all bearing the same name -- so Phobia
-		# appeared three times, identically, and the list read as though the
-		# dictionary were full of duplicates. Each row now says which grade it is.
+		# Graded flaws and perks come in several severities. Each row indicates its grade/severity.
 		var graded := options.size() > 1
-		var severities := _severity_names(options)
+		var severities := _severity_names(options, id)
 		for index in options.size():
 			var value := AlternityNum.as_int(options[index])
 			var display := String(definition.get("name", id))
@@ -235,7 +234,8 @@ func _catalog_entries(kind: String) -> Array:
 			if graded:
 				# Named where the manuals name them, priced where they do not.
 				var severity := String(severities[index]) if index < severities.size() else ""
-				display = "%s (%s)" % [display, severity] if not severity.is_empty() 					else "%s (%s%d SP)" % [display, "" if is_perk else "+", value]
+				display = "%s (%s)" % [display, severity] if not severity.is_empty() \
+					else "%s (%s%d SP)" % [display, "" if is_perk else "+", value]
 				summary_text = "Grade %d of %d. %s" % [index + 1, options.size(), summary_text]
 			entries.append({
 				"id": "%s%s%d" % [id, TIER_SEPARATOR, value],
@@ -247,25 +247,27 @@ func _catalog_entries(kind: String) -> Array:
 	return entries
 
 
-## Severity labels for a graded flaw or perk, or an empty array if the manuals
-## give it none.
-##
-## Table P27 and Table F2 list tiers only by point value, but the descriptive
-## text names them for the 2/4/6 ladder -- Infamy is Minor, Moderate and Severe,
-## and Powerful Enemy runs Minor Enemy up to Truly Powerful. Ladders that do not
-## follow 2/4/6 (Clumsy is 5/6, Vigor 2/3/4) are left priced instead of given
-## names the manuals never use.
-const SEVERITY_LADDER := [2, 4, 6]
-const SEVERITY_NAMES := ["Minor", "Moderate", "Severe"]
+## Severity labels for a graded flaw or perk, or an empty array if priced by default.
+func _severity_names(options: Array, option_id: String = "") -> Array:
+	var vals := []
+	for o in options:
+		vals.append(AlternityNum.as_int(o))
 
-
-func _severity_names(options: Array) -> Array:
-	if options.size() != SEVERITY_LADDER.size():
-		return []
-	for index in options.size():
-		if AlternityNum.as_int(options[index]) != SEVERITY_LADDER[index]:
-			return []
-	return SEVERITY_NAMES
+	if vals == [2, 4, 6]:
+		return ["Minor", "Moderate", "Severe"]
+	elif vals == [1, 3, 5]:
+		return ["Rare Material", "Uncommon Material", "Common Material"]
+	elif vals == [3, 6, 9]:
+		return ["1 FX Type", "2 FX Types", "3 FX Types"]
+	elif vals == [4, 8]:
+		return ["Neutral Spirit", "Hostile Spirit"]
+	elif vals == [2, 4]:
+		return ["Delayed/Looping", "Erroneous Action"]
+	elif vals == [3, 6] and option_id == "hidden_identity":
+		return ["No Records (Cash Only)", "Complete False Identity"]
+	elif vals == [4, 6] and option_id == "superior_talent":
+		return ["2 Broads (2 Specs each)", "1 Broad (Up to 4 Specs)"]
+	return []
 
 
 ## Live header text while choosing. Shows what the selection would cost on top

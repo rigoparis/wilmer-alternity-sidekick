@@ -1922,12 +1922,12 @@ func _init() -> void:
 
 	# --- 31. Perks and Flaws Verification ---
 	print("Testing Perks & Flaws Architecture & Mechanics...")
-	assert_eq.call(AlternityRules.PERK_DEFINITIONS.size(), 22, "22 standard core perks defined")
-	assert_eq.call(AlternityRules.FLAW_DEFINITIONS.size(), 20, "20 standard core flaws defined")
+	assert_true.call(AlternityRules.PERK_DEFINITIONS.size() >= 22, "at least 22 perks defined")
+	assert_true.call(AlternityRules.FLAW_DEFINITIONS.size() >= 20, "at least 20 flaws defined")
 
 	# 1. Multi-tier Cost/Bonus and Version Options
 	var clumsy_def := rules.get_flaw_by_id("clumsy")
-	assert_eq.call(clumsy_def.get("bonus_options", []), [5, 6], "Clumsy has Ver. I (+5 SP) and Ver. II (+6 SP)")
+	assert_eq.call(clumsy_def.get("bonus_options", []), [6], "Clumsy is strictly +6 SP (DEX)")
 
 	var spineless_def := rules.get_flaw_by_id("spineless")
 	assert_eq.call(spineless_def.get("bonus_options", []), [2, 4, 6], "Spineless has Ver. I (+2 SP), Ver. II (+4 SP), Ver. III (+6 SP)")

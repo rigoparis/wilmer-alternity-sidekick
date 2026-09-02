@@ -1086,6 +1086,8 @@ func action_check(character: Dictionary) -> Dictionary:
 	var good := int(floor(ordinary / 2.0))
 	var amazing := int(floor(ordinary / 4.0))
 	var action_step := _as_int(current_species.get("action_step", 0)) + achievements.achievement_effect_total(character, "action_check_step") + mutations.mutation_action_check_step(character) + cybertech.cybertech_action_check_step(character)
+	if is_flaw_selected(character, "slow"):
+		action_step += 1
 	var armor_penalty := equipment.equipped_armor_action_penalty(character)
 	var penalty := dazed_penalty(character) + armor_penalty
 	return {
@@ -2329,6 +2331,23 @@ func _validate_perks_and_flaws(character: Dictionary, messages: Array) -> void:
 	if flaws_limit_count > 3:
 		messages.append("A starting hero can have no more than three standard flaws (excluding GM-given). Current: %d. Source: Player's Handbook p. 107." % flaws_limit_count)
 
+	# Dark Matter: Dilettante (no skill rank may exceed current hero level)
+	if is_flaw_selected(character, "dilettante"):
+		var lvl := _as_int(character.get("achievement_level", 1), 1)
+		for skill in selected_skills(character):
+			var r := skill_rank(character, _as_int(skill.get("id", -1)))
+			if r > lvl:
+				messages.append("Dilettante flaw restricts skill ranks to hero level (%d). %s has rank %d. Source: Dark Matter p. 61." % [lvl, skill_label(skill), r])
+
+	# Dark Matter: Criminal Record incompatible with Hidden Identity (3 pt)
+	if is_flaw_selected(character, "criminal_record") and is_perk_selected(character, "hidden_identity"):
+		if perk_cost_selected(character, "hidden_identity") == 3:
+			messages.append("Criminal Record flaw is incompatible with the 3-point version of Hidden Identity. Source: Dark Matter p. 61.")
+
+	# Dataware: Unarmored incompatible with Hidden System
+	if is_flaw_selected(character, "unarmored") and is_perk_selected(character, "hidden_system"):
+		messages.append("Unarmored flaw cannot be taken with the Hidden System perk. Source: Dataware p. 81.")
+
 
 func _validate_achievements(character: Dictionary, messages: Array) -> void:
 	for entry in achievements.selected_achievements(character):
@@ -2678,14 +2697,25 @@ func age_category_for_years(species_val, age_years: int, pl: int = 5) -> String:
 		return "ancient"
 
 
-## Table P30: Returns starting funds dice expression for a profession.
+## Table P30: Returns starting funds dice expression for a profession or character.
+## A character with Dirt Poor gets 1 die (e.g. 1d6); Filthy Rich gets double (10 dice).
 func starting_funds_dice(character_or_prof_id) -> String:
 	var prof_id := 0
+	var is_dirt_poor := false
+	var is_filthy_rich := false
 	if typeof(character_or_prof_id) == TYPE_DICTIONARY:
-		prof_id = _as_int(character_or_prof_id.get("profession_id", 0))
+		var c: Dictionary = character_or_prof_id
+		prof_id = _as_int(c.get("profession_id", 0))
+		is_dirt_poor = is_flaw_selected(c, "dirt_poor")
+		is_filthy_rich = is_perk_selected(c, "filthy_rich")
 	else:
 		prof_id = _as_int(character_or_prof_id)
-	return String(STARTING_FUNDS_BY_PROFESSION.get(prof_id, "5d6"))
+	var formula := String(STARTING_FUNDS_BY_PROFESSION.get(prof_id, "5d6"))
+	if is_dirt_poor:
+		return formula.replace("5d", "1d")
+	elif is_filthy_rich:
+		return formula.replace("5d", "10d")
+	return formula
 
 
 ## Table G2: Returns the random ability roll formulas for a profession.
@@ -2839,6 +2869,83 @@ func _skill_sources(skill: Dictionary) -> Array:
 	return _unique_strings(sources)
 
 
+func flaw_roll_notes_for_character(character: Dictionary) -> Array:
+	var notes := []
+	for flaw in selected_flaws(character):
+		var id := String(flaw.get("id", ""))
+		var bonus := _as_int(flaw.get("bonus", 0))
+		match id:
+			"bad_luck":
+				notes.append("Bad Luck: A Critical Failure occurs whenever the control die shows 19 or 20. Source: Player's Handbook p. 108.")
+			"clumsy":
+				notes.append("Clumsy: Suffers a +1 step penalty to all Dexterity-based skill checks and Dexterity feat checks. Source: Player's Handbook p. 108; Gamemaster Guide p. 84.")
+			"slow":
+				notes.append("Slow: Suffers a +1 step penalty to action checks (and +2 steps in pure reaction contests). Source: Player's Handbook p. 110; Gamemaster Guide p. 86.")
+			"delicate":
+				notes.append("Delicate: Successful Unarmed Attack checks inflict 1 stun on the hero; cannot attack unarmed while stun is below half. Source: Player's Handbook p. 109.")
+			"forgetful":
+				notes.append("Forgetful: Suffers a +1 step penalty to all Intelligence-based skill checks. Source: Player's Handbook p. 109.")
+			"fragile":
+				notes.append("Fragile: Suffers a +1 step penalty to Stamina-endurance checks caused by damage. Source: Player's Handbook p. 109.")
+			"oblivious":
+				notes.append("Oblivious: Suffers a +1 step penalty to Awareness-perception checks (and Investigate-search/track when perceptiveness matters). Source: Player's Handbook p. 109; Gamemaster Guide p. 85.")
+			"poor_looks":
+				notes.append("Poor Looks: Suffers a +1 step penalty to Personality-based skill checks when appearance could hurt the encounter. Source: Player's Handbook p. 110.")
+			"infamy":
+				var step := 1 if bonus <= 2 else (2 if bonus <= 4 else 3)
+				notes.append("Infamy: Suffers a +%d step penalty to Personality-based skill checks when recognized. Source: Player's Handbook p. 109." % step)
+			"obsessed":
+				var step := 1 if bonus <= 2 else (2 if bonus <= 4 else 3)
+				notes.append("Obsessed: Suffers a +%d step penalty to actions not related to the obsession when distracted. Source: Player's Handbook p. 109." % step)
+			"old_injury":
+				var dmg_desc := "1 wound" if bonus <= 2 else ("2 wound + 1 stun" if bonus <= 4 else "3 wound + 1 stun")
+				notes.append("Old Injury: Physical triggers cause %s damage once per scene (armor does not reduce). Source: Player's Handbook p. 109." % dmg_desc)
+			"phobia":
+				var effect := "+1 step penalty to all actions" if bonus <= 2 else ("+2 step penalty to all actions" if bonus <= 4 else "freezes or flees")
+				notes.append("Phobia: Suffers %s while exposed to the fear. Source: Player's Handbook p. 109-110." % effect)
+			"primitive":
+				var step := 1 if bonus <= 2 else (2 if bonus <= 4 else 3)
+				notes.append("Primitive: Suffers a +%d step penalty when using higher-PL technology. Source: Player's Handbook p. 110." % step)
+			"spineless":
+				var step := 1 if bonus <= 2 else (2 if bonus <= 4 else 3)
+				notes.append("Spineless: Will resistance modifier reduced by %d step(s); +%d step penalty to Resolve-mental resolve on courage issues. Source: Player's Handbook p. 110; Gamemaster Guide p. 86." % [step, step])
+			"temper":
+				var step := 1 if bonus <= 2 else (2 if bonus <= 4 else 3)
+				notes.append("Temper: Suffers a +%d step penalty to actions while enraged. Source: Player's Handbook p. 110." % step)
+			"clueless":
+				var step := 1 if bonus <= 2 else (2 if bonus <= 4 else 3)
+				notes.append("Clueless: Overestimates ability in a secret specialty skill with a +%d step penalty. Source: Player's Handbook p. 108." % step)
+			"dirt_poor":
+				notes.append("Dirt Poor: Starts with 1 die of funds and takes a +1 step penalty to Personality checks dealing upward socially/financially. Source: Player's Handbook p. 109, 132.")
+			"abductee":
+				notes.append("Abductee: Must make Resolve-mental resolve check each round near abductor aliens or fight/flee. Source: Dark Matter p. 61.")
+			"rebellious":
+				notes.append("Rebellious: Suffers a +2 step penalty to Personality-based skill checks with law enforcement/government. Source: Dark Matter p. 62.")
+			"wild_talent":
+				notes.append("Wild Talent: If dazed or failing Stamina/Resolve, must make Will feat check or psionics unleash uncontrollably for d4 phases. Source: Dark Matter p. 62.")
+			"rampant_paranoia":
+				notes.append("Rampant Paranoia: Personality feat check when trusting someone; failure adds +1 step penalty to actions for d6 hours. Source: Dark Matter p. 62.")
+			"doublespeak":
+				notes.append("Doublespeak: +1 step penalty to all Personality skill checks and feats; repeats words. Source: Dataware p. 79.")
+			"honesty":
+				notes.append("Honesty: Cannot lie; failure on Personality checks compels embarrassing truth; Will feat to lie (Crit Fail knocks out). Source: Dataware p. 79.")
+			"incomplete_coding":
+				notes.append("Incomplete Coding: Faulty code causes actions to stall or execute erroneous commands on Marginal/Critical Failure. Source: Dataware p. 79-80.")
+			"inferior_tech":
+				notes.append("Inferior Tech: Has a fatigue rating; Critical Failure on STR/DEX/CON skill checks inflicts 1 fatigue. Source: Dataware p. 80.")
+			"memory_lapse":
+				notes.append("Memory Lapse: +1 step penalty to all Intelligence-based skill checks. Source: Dataware p. 80.")
+			"overheat":
+				notes.append("Overheat: Fatigue-inducing conditions require Stamina-endurance check or emergency shutdown knockout. Source: Dataware p. 80.")
+			"short_circuit":
+				notes.append("Short Circuit: Critical Failures inflict 2 stun damage; drains power at 1.5x rate. Source: Dataware p. 80.")
+			"unarmored":
+				notes.append("Unarmored: Uncovered chassis suffers full damage and hazard penalties; cannot take Hidden System. Source: Dataware p. 81.")
+			"fx_susceptibility":
+				notes.append("FX Susceptibility: Suffers a -2 step penalty to resistance modifier against FX powers. Source: Beyond Science p. 7.")
+	return notes
+
+
 func skill_roll_notes_for_character(character: Dictionary) -> Array:
 	var notes := []
 	var selected := selected_skills(character)
@@ -2850,6 +2957,8 @@ func skill_roll_notes_for_character(character: Dictionary) -> Array:
 	for note in species_roll_notes_for_character(character):
 		notes.append(String(note))
 	for note in mutations.mutation_roll_notes_for_character(character):
+		notes.append(String(note))
+	for note in flaw_roll_notes_for_character(character):
 		notes.append(String(note))
 	if selected.is_empty():
 		return _unique_strings(notes)

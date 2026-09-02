@@ -24,6 +24,7 @@ func _init() -> void:
 	_test_catalog_filtering()
 	_test_gated_content_exists()
 	_test_switching_setting_changes_availability()
+	_test_switching_setting_perks_and_flaws()
 
 	finish()
 
@@ -130,3 +131,36 @@ func _test_switching_setting_changes_availability() -> void:
 		_rules.fx.get_broad_skills_for_character(doc.raw()).size(), core_broads.size(),
 		"switching back to Core hides the gated content again"
 	)
+
+
+func _test_switching_setting_perks_and_flaws() -> void:
+	var doc := Doc.new(_rules)
+
+	doc.apply([CharacterDoc.META], func(c): c["setting"] = "Core")
+	var core_flaws := _rules.available_entries(doc.raw(), _rules.flaws_by_id.values())
+	var core_perks := _rules.available_entries(doc.raw(), _rules.perks_by_id.values())
+
+	doc.apply([CharacterDoc.META], func(c): c["setting"] = "Dark*Matter")
+	var dark_flaws := _rules.available_entries(doc.raw(), _rules.flaws_by_id.values())
+	var dark_perks := _rules.available_entries(doc.raw(), _rules.perks_by_id.values())
+
+	check_true(
+		dark_flaws.size() > core_flaws.size(),
+		"Dark Matter offers more flaws than Core (%d vs %d)" % [dark_flaws.size(), core_flaws.size()]
+	)
+	check_true(
+		dark_perks.size() > core_perks.size(),
+		"Dark Matter offers more perks than Core (%d vs %d)" % [dark_perks.size(), core_perks.size()]
+	)
+
+	# Switching back to Core hides Dark Matter perks & flaws
+	doc.apply([CharacterDoc.META], func(c): c["setting"] = "Core")
+	check_eq(
+		_rules.available_entries(doc.raw(), _rules.flaws_by_id.values()).size(), core_flaws.size(),
+		"switching back to Core hides Dark Matter flaws again"
+	)
+	check_eq(
+		_rules.available_entries(doc.raw(), _rules.perks_by_id.values()).size(), core_perks.size(),
+		"switching back to Core hides Dark Matter perks again"
+	)
+
