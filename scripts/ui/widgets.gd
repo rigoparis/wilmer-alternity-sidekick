@@ -87,8 +87,9 @@ static func muted_text(parent: Container, content: String, palette: ThemePalette
 ## rather than each keeping a copy.
 ## Source: Player's Handbook Chapter 14 p. 202; Beyond Science: A Guide to FX p. 5.
 static func rest_row(
-	parent: Container, palette: ThemePalette, is_wide: bool, on_rest: Callable
-) -> HBoxContainer:
+	parent: Container, palette: ThemePalette, is_wide: bool, on_rest: Callable,
+	extra_outcomes: Array = []
+) -> Container:
 	muted_text(
 		parent,
 		"After a full uninterrupted hour of rest, roll Resolve - mental resolve "
@@ -96,27 +97,36 @@ static func rest_row(
 		palette, FONT_CAPTION
 	)
 
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", GAP_ROW)
-	# Three buttons sharing a 1900px window are three 600px buttons. On a phone
-	# they need every pixel, so only the wide layout pins them to their own size
-	# and leaves them grouped at the left.
-	row.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN if is_wide else Control.SIZE_EXPAND_FILL
+	# A flow container, not a box.
+	#
+	# Three buttons fitted a 390px phone; five did not, and an HBoxContainer does
+	# not wrap -- it grew past the viewport and dragged the whole sheet into
+	# sideways scrolling, cutting off every budget bar on the tab. Flowing wraps
+	# to a second line instead.
+	var row := HFlowContainer.new()
+	row.add_theme_constant_override("h_separation", GAP_ROW)
+	row.add_theme_constant_override("v_separation", GAP_TIGHT)
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	parent.add_child(row)
 
-	for entry in [["Ordinary", "ordinary", 1], ["Good", "good", 2], ["Amazing", "amazing", 3]]:
+	# Each entry is [label, key, tooltip]. The three degrees of success are
+	# common to both pools; anything else -- a Critical Failure that costs a
+	# point, or the eight-hour rest that needs no check -- is the caller's.
+	var outcomes := [
+		["Ordinary +1", "ordinary", "An Ordinary Resolve - mental resolve check recovers 1 point."],
+		["Good +2", "good", "A Good Resolve - mental resolve check recovers 2 points."],
+		["Amazing +3", "amazing", "An Amazing Resolve - mental resolve check recovers 3 points."],
+	]
+	outcomes.append_array(extra_outcomes)
+
+	for entry in outcomes:
 		var degree := String(entry[1])
-		var points := AlternityNum.as_int(entry[2])
 		var button := Button.new()
-		button.text = "%s +%d" % [entry[0], points]
-		button.tooltip_text = "An %s Resolve - mental resolve check recovers %d point(s)." % [
-			String(entry[0]).to_lower(), points
-		]
-		if is_wide:
-			button.custom_minimum_size = Vector2(150, 40)
-		else:
-			button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			button.custom_minimum_size = Vector2(1, 40)
+		button.text = String(entry[0])
+		button.tooltip_text = String(entry[2])
+		# Sized to themselves either way, so the flow can measure them and decide
+		# where to break.
+		button.custom_minimum_size = Vector2(150 if is_wide else 112, 40)
 		button.pressed.connect(func(): on_rest.call(degree))
 		row.add_child(button)
 

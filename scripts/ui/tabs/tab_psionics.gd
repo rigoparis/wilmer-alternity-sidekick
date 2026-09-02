@@ -52,6 +52,21 @@ func _build_trackers(container: Container) -> void:
 		save_requested.emit())
 
 	Widgets.metric(box, "Pool", str(maximum), palette)
-	Widgets.rest_row(box, palette, ctx.is_wide_layout, func(degree: String):
-		doc.apply([CharacterDoc.DAMAGE], func(c): rules.rest_psionic_energy(c, degree))
-		save_requested.emit())
+	Widgets.rest_row(
+		box, palette, ctx.is_wide_layout,
+		func(degree: String):
+			doc.apply([CharacterDoc.DAMAGE], func(c):
+				if degree == "full":
+					rules.full_rest_psionic_energy(c)
+				else:
+					rules.rest_psionic_energy(c, degree))
+			save_requested.emit(),
+		[
+			["Critical -1", "critical failure",
+				"A Critical Failure on the hourly check costs a point, or a point of fatigue "
+					+ "if there is none left to lose. Player's Handbook p. 228."],
+			["8 hours: full", "full",
+				"Eight unbroken hours without using a psionic skill recover the whole pool, "
+					+ "with no check. Player's Handbook p. 228."],
+		]
+	)

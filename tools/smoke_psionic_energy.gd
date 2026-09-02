@@ -24,10 +24,15 @@ func _init() -> void:
 	check_true(rules.is_psionic_character(character), "Human Mindwalker is psionic")
 	check_eq(rules.psionic_energy_points(character), 11, "Human Mindwalker energy equals WIL")
 
-	# Diplomat (Mindwalker): full WIL, not one-half WIL.
+	# Diplomat (Mindwalker): one-half WIL, rounded up.
+	#
+	# This used to expect the full Will score. "A Diplomat with the Mindwalker
+	# secondary profession has psionic energy points equal to one-half his Will
+	# score" -- Player's Handbook p. 228. Drawing the full score made the
+	# second career free, which is the whole price of the profession.
 	character["profession_id"] = 7
 	check_true(rules.is_psionic_character(character), "Diplomat (Mindwalker) is psionic")
-	check_eq(rules.psionic_energy_points(character), 11, "Diplomat (Mindwalker) energy equals WIL")
+	check_eq(rules.psionic_energy_points(character), 6, "Diplomat (Mindwalker) energy is half of WIL 11")
 
 	# Fraal talent without the Mindwalker profession: full WIL.
 	character["species_id"] = 1

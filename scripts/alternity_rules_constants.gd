@@ -18,8 +18,41 @@ const ENERGY_RECOVERY_PER_HOUR := {
 	"amazing": 3,
 }
 
-## Resolve -- mental resolve. The check an hour of rest is settled with.
+## Resolve -- mental resolve. The check an hour of rest is settled with; a Will
+## feat check may be rolled instead. Source: Player's Handbook p. 228.
 const ENERGY_RECOVERY_SKILL_ID := 135
+
+## What a psionic action costs, whatever power is used.
+##
+## The cost is flat and does not vary by discipline or specialty: a specialty
+## check costs 1 point whether it succeeds or fails, leaning on the broad skill
+## instead costs 2, and a Critical Failure costs 3. A hero must hold 2 points to
+## attempt a broad skill at all. Source: Player's Handbook p. 228.
+const PSIONIC_COST_SPECIALTY := 1
+const PSIONIC_COST_BROAD := 2
+const PSIONIC_COST_CRITICAL_FAILURE := 3
+
+## Powers whose own description overrides the flat cost above.
+## Source: Player's Handbook p. 233.
+const PSIONIC_ACTIVATION_OVERRIDES := {
+	90310: 2,   # Sensitivity: "Activating the skill requires the hero to use 2"
+}
+
+## An hour of rest that ends in a Critical Failure costs a point rather than
+## returning one, and a hero with none to lose takes fatigue instead.
+## Source: Player's Handbook p. 228.
+const PSIONIC_REST_CRITICAL_FAILURE_LOSS := 1
+
+## Eight unbroken hours without a psionic skill refill the pool outright, with
+## no check at all. Source: Player's Handbook p. 228.
+const PSIONIC_FULL_REST_HOURS := 8
+
+## A talent holds one psionic broad skill and at most two specialties beneath
+## it: one may reach rank 6, the other stops at rank 3.
+## Source: Player's Handbook p. 228; p. 22 for the fraal case.
+const PSIONIC_TALENT_MAX_BROADS := 1
+const PSIONIC_TALENT_MAX_SPECIALTIES := 2
+const PSIONIC_TALENT_RANK_CAPS := [6, 3]
 
 const CREATION_SPECIALTY_RANK := 3
 const ABILITY_NAMES := {

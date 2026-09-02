@@ -1310,16 +1310,25 @@ func psionic_energy_points(character: Dictionary) -> int:
 	var prof_id := _as_int(character.get("profession_id", 0))
 	var is_primary_mindwalker := prof_id == 6 or (is_mw and String(get_profession_by_id(prof_id).get("code", "")) == "M")
 
-	# Fraal Mindwalkers use WIL x 1.5. Fraal talents, Mindwalkers, and Diplomats
-	# with Mindwalker as secondary profession use full WIL instead of one-half
-	# WIL. Standard species talents use ceil(WIL * 0.5).
-	# Source: Player's Handbook p. 22 and Chapter 14.
-	if is_fraal and is_primary_mindwalker:
-		return int(will * 1.5)
-	elif is_mw or is_fraal:
+	# "Each Mindwalker starts with psionic energy points equal to his Will score.
+	# A Diplomat with the Mindwalker secondary profession has psionic energy
+	# points equal to one-half his Will score." (Player's Handbook p. 228.)
+	#
+	# That second sentence was being ignored: a Diplomat (Mindwalker) drew the
+	# full Will score, the same as a full Mindwalker, which is the profession's
+	# whole cost -- psionics at half strength in exchange for a second career.
+	#
+	# Fraal are the exception to all of it. "A fraal who is a talent, or one who
+	# is a Diplomat with Mindwalker as his secondary profession, has psionic
+	# energy points equal to his Will score (instead of one-half Will for other
+	# such characters). A fraal who selects the Mindwalker profession has psionic
+	# energy points equal to his Will score x 1.5." (Player's Handbook p. 22.)
+	if is_fraal:
+		return int(will * 1.5) if is_primary_mindwalker else will
+	if is_primary_mindwalker:
 		return will
-	else:
-		return int(ceil(will * 0.5))
+	# A Diplomat (Mindwalker) and an ordinary talent land in the same place.
+	return int(ceil(will * 0.5))
 
 
 ## The live psionic energy pool: its size, what has been spent out of it, and
@@ -1338,6 +1347,42 @@ func psionic_energy(character: Dictionary) -> Dictionary:
 		"used": used,
 		"available": max_points - used,
 	}
+
+
+## What one psionic action costs.
+##
+## Flat, and the same for every discipline: 1 point for a specialty check,
+## 2 for leaning on the broad skill instead, 3 for a Critical Failure. A few
+## powers name their own price and override it.
+## Source: Player's Handbook p. 228, p. 233.
+func psionic_activation_cost(character: Dictionary, skill: Dictionary) -> Dictionary:
+	var skill_id := _as_int(skill.get("id", -1))
+	var is_broad: bool = String(skill.get("type", "")) == "broad"
+	var holds_specialty: bool = (not is_broad) and skill_rank(character, skill_id) > 0
+
+	var points := PSIONIC_COST_SPECIALTY
+	var through_broad := false
+	if is_broad or not holds_specialty:
+		points = PSIONIC_COST_BROAD
+		through_broad = true
+	if PSIONIC_ACTIVATION_OVERRIDES.has(skill_id) and not through_broad:
+		points = _as_int(PSIONIC_ACTIVATION_OVERRIDES[skill_id])
+
+	return {
+		"points": points,
+		"through_broad": through_broad,
+		"critical_failure": PSIONIC_COST_CRITICAL_FAILURE,
+		"affordable": _as_int(psionic_energy(character).get("available", 0)) >= points,
+	}
+
+
+## Eight unbroken hours without a psionic skill refill the pool, no check.
+## Source: Player's Handbook p. 228.
+func full_rest_psionic_energy(character: Dictionary) -> int:
+	var pool := psionic_energy(character)
+	var restored := _as_int(pool.get("used", 0))
+	set_psionic_energy_used(character, 0)
+	return restored
 
 
 func set_psionic_energy_used(character: Dictionary, used: int) -> void:
@@ -1371,8 +1416,24 @@ func energy_recovered_for_result(result: String) -> int:
 	return _as_int(ENERGY_RECOVERY_PER_HOUR.get(result.strip_edges().to_lower(), 0))
 
 
-## Rest for an hour and take the recovery the check earned.
+## Rest for an hour and take what the check earned.
+##
+## A Critical Failure runs the other way: the hero loses a point, and takes
+## fatigue instead if there was none to lose. Source: Player's Handbook p. 228.
 func rest_psionic_energy(character: Dictionary, result: String) -> int:
+	if result.strip_edges().to_lower() in ["critical failure", "critical_failure"]:
+		var pool := psionic_energy(character)
+		var spare := _as_int(pool.get("available", 0))
+		if spare <= 0:
+			var damage: Dictionary = character.get("damage", {})
+			damage["fatigue"] = _as_int(damage.get("fatigue", 0)) + PSIONIC_REST_CRITICAL_FAILURE_LOSS
+			character["damage"] = damage
+			clamp_trackers(character)
+			return 0
+		set_psionic_energy_used(
+			character, _as_int(pool.get("used", 0)) + PSIONIC_REST_CRITICAL_FAILURE_LOSS
+		)
+		return -PSIONIC_REST_CRITICAL_FAILURE_LOSS
 	return restore_psionic_energy(character, energy_recovered_for_result(result))
 
 
@@ -2083,6 +2144,7 @@ func validate(character: Dictionary) -> Array:
 	_validate_skills(character, messages)
 	_validate_perks_and_flaws(character, messages)
 	_validate_achievements(character, messages)
+	_validate_psionics(character, messages)
 	_validate_fx(character, messages)
 	_validate_mutations(character, messages)
 	_validate_cybertech(character, messages)
@@ -2151,6 +2213,60 @@ func _validate_skills(character: Dictionary, messages: Array) -> void:
 		if not is_skill_selected(character, broad_id):
 			var broad_skill := get_skill_by_id(broad_id)
 			messages.append("%s requires the %s broad skill." % [skill.get("name", "Specialty"), broad_skill.get("name", "parent")])
+
+
+## What a psionic talent -- anyone who is not a Mindwalker -- may hold.
+##
+## "A talent is entitled to purchase one psionic broad skill... He is allowed to
+## purchase as many as two psionic specialty skills... One of those specialty
+## skills can be improved to as high as rank 6, while the other one can be
+## raised to rank 3." (Player's Handbook p. 228.)
+##
+## None of it was enforced. A Combat Spec could hold all four disciplines and
+## every power under them, each at rank 12.
+func _validate_psionics(character: Dictionary, messages: Array) -> void:
+	if is_mindwalker_profession(character):
+		return
+
+	var broads := []
+	var specialties := []
+	for skill_id in selected_skill_ids(character):
+		var skill := get_skill_by_id(_as_int(skill_id))
+		if skill.is_empty() or not is_psionic_skill(skill):
+			continue
+		if String(skill.get("type", "")) == "broad":
+			broads.append(skill_label(skill))
+		elif skill_rank(character, _as_int(skill_id)) > 0:
+			specialties.append([skill_label(skill), skill_rank(character, _as_int(skill_id))])
+
+	if broads.is_empty():
+		return
+
+	if broads.size() > PSIONIC_TALENT_MAX_BROADS:
+		messages.append(
+			"A psionic talent may hold only %d psionic broad skill, and this hero holds %d (%s). Source: Player's Handbook p. 228."
+			% [PSIONIC_TALENT_MAX_BROADS, broads.size(), ", ".join(broads)]
+		)
+
+	if specialties.size() > PSIONIC_TALENT_MAX_SPECIALTIES:
+		messages.append(
+			"A psionic talent may buy at most %d psionic specialty skills, and this hero has %d. Source: Player's Handbook p. 228."
+			% [PSIONIC_TALENT_MAX_SPECIALTIES, specialties.size()]
+		)
+
+	# One specialty may reach rank 6 and the other rank 3, so sort by rank and
+	# hold each to the cap at its position.
+	specialties.sort_custom(func(a, b): return _as_int(a[1]) > _as_int(b[1]))
+	for index in specialties.size():
+		var cap := 0
+		if index < PSIONIC_TALENT_RANK_CAPS.size():
+			cap = _as_int(PSIONIC_TALENT_RANK_CAPS[index])
+		var rank := _as_int(specialties[index][1])
+		if rank > cap:
+			messages.append(
+				"%s is at rank %d. A psionic talent may raise one specialty to rank 6 and a second to rank 3. Source: Player's Handbook p. 228."
+				% [specialties[index][0], rank]
+			)
 
 
 ## How many schools, faiths and categories a hero may hold at once.

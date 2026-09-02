@@ -140,9 +140,21 @@ func _build_energy_tracker(container: Container) -> void:
 		doc.apply([CharacterDoc.FX], func(c): rules.fx.set_energy_used(c, value))
 		save_requested.emit())
 
-	Widgets.rest_row(parent, palette, ctx.is_wide_layout, func(degree: String):
-		doc.apply([CharacterDoc.FX], func(c): rules.fx.rest_energy(c, degree))
-		save_requested.emit())
+	Widgets.rest_row(
+		parent, palette, ctx.is_wide_layout,
+		func(degree: String):
+			doc.apply([CharacterDoc.FX], func(c):
+				if degree == "full":
+					rules.fx.full_rest_energy(c)
+				else:
+					rules.fx.rest_energy(c, degree))
+			save_requested.emit(),
+		[
+			["8 hours: full", "full",
+				"Eight unbroken hours without using FX recover the whole pool, with no check. "
+					+ "Beyond Science: A Guide to FX p. 5."],
+		]
+	)
 
 
 func _build_primary_group_picker(parent: Container) -> void:

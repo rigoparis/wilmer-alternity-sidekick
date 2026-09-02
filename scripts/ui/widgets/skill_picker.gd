@@ -310,6 +310,15 @@ func _build_row(parent: Container, skill: Dictionary, is_broad: bool) -> void:
 	# a psionic power without its discipline actually is.
 	var usable: bool = bool(score.get("usable", true))
 	var via_broad: bool = bool(score.get("via_broad", false))
+	# What a psionic action costs, on the row. The pool is the whole constraint
+	# on how often a psion can act, and the cost is not on the power -- it is 1
+	# for a specialty you hold, 2 for reaching one through its discipline.
+	# Source: Player's Handbook p. 228.
+	var energy := ""
+	if usable and rules.is_psionic_skill(skill):
+		var activation: Dictionary = rules.psionic_activation_cost(raw, skill)
+		energy = "%d PSP" % AlternityNum.as_int(activation.get("points", 0))
+
 	var stats_text := ""
 	if not usable:
 		stats_text = "Rank %d   not available" % rank
@@ -320,6 +329,8 @@ func _build_row(parent: Container, skill: Dictionary, is_broad: bool) -> void:
 		stats_text = "Rank %d (broad)   score %d   %s" % [rank, ordinary, die]
 	else:
 		stats_text = "Rank %d   score %d   %s" % [rank, ordinary, die]
+	if not energy.is_empty():
+		stats_text += "   -   %s" % energy
 	if not price.is_empty():
 		stats_text += "   -   %s" % price
 

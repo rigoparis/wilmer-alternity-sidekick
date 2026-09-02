@@ -19,9 +19,12 @@ extends "res://tools/test_harness.gd"
 ##   * each individual power's own description, which states its training
 ##     requirement in its own words.
 ##
-## Energy costs per power are still NOT pinned. The one column that could be
-## checked against the catalog's prose disagreed with it twice -- Sensitivity
-## and Precognition -- so the whole column is an open question.
+## Since then the manuals themselves have been read, page by page, out of
+## manuals/. Anything citing a page number below was taken off that page rather
+## than from any breakdown -- and where the two disagreed, the page won.
+##
+## The per-power energy column both breakdowns supplied turned out not to exist:
+## the cost is flat (Player's Handbook p. 228).
 ##
 
 const RulesScript := preload("res://scripts/alternity_rules.gd")
@@ -68,6 +71,9 @@ func _init() -> void:
 	_test_energy_pool()
 	_test_pool_needs_training()
 	_test_energy_recovery_table()
+	_test_activation_costs_are_flat()
+	_test_critical_failure_and_full_rest()
+	_test_talent_limits()
 	_test_spending_and_resting()
 	_test_fx_pool_shares_the_rest_rule()
 	_test_skill_pricing()
@@ -411,11 +417,26 @@ func _test_energy_pool() -> void:
 			"a talent with WIL %d has a pool of %d" % [t_will, int(ceil(t_will * 0.5))]
 		)
 
-	# A Diplomat carrying Mindwalker as a secondary profession draws full WIL.
+	# A Diplomat carrying Mindwalker as a secondary profession draws half.
+	#
+	# "A Diplomat with the Mindwalker secondary profession has psionic energy
+	# points equal to one-half his Will score." (Player's Handbook p. 228.) This
+	# suite originally asserted the opposite, following a breakdown rather than
+	# the page.
 	var diplomat: Dictionary = _character(SPECIES_HUMAN, PROFESSION_DIPLOMAT_MINDWALKER, 11)
 	check_eq(
-		_rules.psionic_energy_points(diplomat), _will_of(diplomat),
-		"a Diplomat (Mindwalker) draws full WIL, not half"
+		_rules.psionic_energy_points(diplomat), int(ceil(_will_of(diplomat) * 0.5)),
+		"a Diplomat (Mindwalker) draws half of Will"
+	)
+
+	# Unless they are fraal. "A fraal who is a talent, or one who is a Diplomat
+	# with Mindwalker as his secondary profession, has psionic energy points
+	# equal to his Will score (instead of one-half Will for other such
+	# characters)." (Player's Handbook p. 22.)
+	var fraal_diplomat: Dictionary = _character(SPECIES_FRAAL, PROFESSION_DIPLOMAT_MINDWALKER, 12)
+	check_eq(
+		_rules.psionic_energy_points(fraal_diplomat), _will_of(fraal_diplomat),
+		"a fraal Diplomat (Mindwalker) draws all of it"
 	)
 
 
@@ -470,6 +491,160 @@ func _test_energy_recovery_table() -> void:
 		AlternityRules.ENERGY_RECOVERY_SKILL_ID, 135,
 		"rest is settled on Resolve -- mental resolve"
 	)
+
+
+## "Action / Energy Lost: Critical Failure result 3; Broad skill, success or
+## failure 2; Specialty skill, success or failure 1."
+## (Player's Handbook p. 228.)
+##
+## Flat, for every power in every discipline. Both supplied breakdowns invented
+## a per-power column instead -- Heal 2, Morph 2, Postcognition 2 and so on --
+## and neither matched the page.
+func _test_activation_costs_are_flat() -> void:
+	var psion: Dictionary = _character(SPECIES_HUMAN, PROFESSION_MINDWALKER, 14)
+	_rules.force_skill_rank(psion, SKILL_ESP, 1)
+
+	var broad: Dictionary = _rules.psionic_activation_cost(psion, _skill(SKILL_ESP))
+	check_eq(AlternityNum.as_int(broad.get("points", -1)), 2, "a discipline check costs 2 points")
+	check_eq(
+		AlternityNum.as_int(broad.get("critical_failure", -1)), 3,
+		"and a Critical Failure costs 3"
+	)
+
+	# Leaning on the discipline for a specialty is a broad skill check, so it
+	# costs the broad skill's 2.
+	var carried: Dictionary = _rules.psionic_activation_cost(psion, _skill(SKILL_CLAIRAUDIENCE))
+	check_eq(
+		AlternityNum.as_int(carried.get("points", -1)), 2,
+		"reaching a power through the discipline costs the discipline's 2"
+	)
+	check_true(bool(carried.get("through_broad", false)), "and is flagged as such")
+
+	# A rank of your own drops it to 1, whatever the power is.
+	for skill_id in [90302, 90303, 90305, 90307, 90308, 90309]:
+		_rules.force_skill_rank(psion, skill_id, 1)
+		var own: Dictionary = _rules.psionic_activation_cost(psion, _skill(skill_id))
+		check_eq(
+			AlternityNum.as_int(own.get("points", -1)), 1,
+			"%s costs 1 point with a rank of its own" % _skill(skill_id).get("name", "?")
+		)
+
+	# Sensitivity names its own price and overrides the flat rate.
+	# "Activating the skill requires the hero to use 2 psionic energy points."
+	# (Player's Handbook p. 233.)
+	_rules.force_skill_rank(psion, 90310, 1)
+	check_eq(
+		AlternityNum.as_int(_rules.psionic_activation_cost(psion, _skill(90310)).get("points", -1)), 2,
+		"Sensitivity costs 2 to activate even with a rank of its own"
+	)
+
+	# A hero must hold what the action costs.
+	_rules.set_psionic_energy_used(psion, _rules.psionic_energy_points(psion) - 1)
+	check_false(
+		bool(_rules.psionic_activation_cost(psion, _skill(SKILL_ESP)).get("affordable", true)),
+		"one point left cannot pay for a discipline check"
+	)
+	check_true(
+		bool(_rules.psionic_activation_cost(psion, _skill(90302)).get("affordable", false)),
+		"but can pay for a specialty"
+	)
+
+
+## A Critical Failure on the hourly check costs a point instead of returning
+## one, and a hero with none to lose takes fatigue. Eight unbroken hours refill
+## the pool with no check at all. Source: Player's Handbook p. 228.
+func _test_critical_failure_and_full_rest() -> void:
+	var psion: Dictionary = _character(SPECIES_HUMAN, PROFESSION_MINDWALKER, 12)
+	var size: int = _rules.psionic_energy_points(psion)
+	_rules.spend_psionic_energy(psion, 4)
+
+	check_eq(
+		_rules.rest_psionic_energy(psion, "critical failure"), -1,
+		"a Critical Failure costs a point rather than returning one"
+	)
+	check_eq(
+		AlternityNum.as_int(_rules.psionic_energy(psion).get("used", -1)), 5,
+		"which deepens the spend"
+	)
+
+	# Emptied out, there is nothing left to lose, so it lands as fatigue.
+	_rules.spend_psionic_energy(psion, size)
+	var before := AlternityNum.as_int(psion.get("damage", {}).get("fatigue", 0))
+	check_eq(
+		_rules.rest_psionic_energy(psion, "critical failure"), 0,
+		"an empty pool loses no points"
+	)
+	check_eq(
+		AlternityNum.as_int(psion.get("damage", {}).get("fatigue", 0)), before + 1,
+		"and takes a point of fatigue instead"
+	)
+
+	check_eq(
+		_rules.full_rest_psionic_energy(psion), size,
+		"eight hours give back everything that was spent"
+	)
+	check_eq(
+		AlternityNum.as_int(_rules.psionic_energy(psion).get("available", -1)), size,
+		"leaving a full pool"
+	)
+
+
+## "A talent is entitled to purchase one psionic broad skill... as many as two
+## psionic specialty skills... One of those specialty skills can be improved to
+## as high as rank 6, while the other one can be raised to rank 3."
+## (Player's Handbook p. 228.)
+func _test_talent_limits() -> void:
+	var talent: Dictionary = _character(SPECIES_HUMAN, PROFESSION_COMBAT_SPEC, 12)
+	talent["optional_rules"] = {"psionic_talents": true}
+	_rules.force_skill_rank(talent, SKILL_ESP, 1)
+	check_false(_complains(talent, "only 1 psionic broad"), "one discipline is allowed")
+
+	_rules.force_skill_rank(talent, 902, 1)   # Telekinesis as well
+	check_true(_complains(talent, "only 1 psionic broad"), "a second discipline is not")
+
+	var counted: Dictionary = _character(SPECIES_HUMAN, PROFESSION_COMBAT_SPEC, 12)
+	counted["optional_rules"] = {"psionic_talents": true}
+	_rules.force_skill_rank(counted, SKILL_ESP, 1)
+	_rules.force_skill_rank(counted, 90302, 1)
+	_rules.force_skill_rank(counted, 90303, 1)
+	check_false(_complains(counted, "at most 2 psionic specialty"), "two powers are allowed")
+	_rules.force_skill_rank(counted, 90305, 1)
+	check_true(_complains(counted, "at most 2 psionic specialty"), "a third is not")
+
+	# One power to rank 6, the other to rank 3.
+	var ranked: Dictionary = _character(SPECIES_HUMAN, PROFESSION_COMBAT_SPEC, 12)
+	ranked["optional_rules"] = {"psionic_talents": true}
+	ranked["achievement_level"] = 10
+	_rules.force_skill_rank(ranked, SKILL_ESP, 1)
+	_rules.force_skill_rank(ranked, 90302, 6)
+	_rules.force_skill_rank(ranked, 90303, 3)
+	check_false(_complains(ranked, "raise one specialty to rank 6"), "6 and 3 is legal")
+
+	_rules.force_skill_rank(ranked, 90303, 4)
+	check_true(_complains(ranked, "raise one specialty to rank 6"), "6 and 4 is not")
+
+	_rules.force_skill_rank(ranked, 90303, 3)
+	_rules.force_skill_rank(ranked, 90302, 7)
+	check_true(_complains(ranked, "raise one specialty to rank 6"), "and neither is 7 and 3")
+
+	# A Mindwalker is held to none of it.
+	var mindwalker: Dictionary = _character(SPECIES_HUMAN, PROFESSION_MINDWALKER, 12)
+	mindwalker["achievement_level"] = 10
+	for broad_id in [900, 901, 902, 903]:
+		_rules.force_skill_rank(mindwalker, broad_id, 1)
+	for skill_id in [90302, 90303, 90305, 90307]:
+		_rules.force_skill_rank(mindwalker, skill_id, 8)
+	check_false(
+		_complains(mindwalker, "psionic broad") or _complains(mindwalker, "psionic specialty"),
+		"a Mindwalker may hold every discipline and raise every power"
+	)
+
+
+func _complains(character: Dictionary, fragment: String) -> bool:
+	for message in _rules.validate(character):
+		if String(message).contains(fragment):
+			return true
+	return false
 
 
 ## The pool is spent from and rested back, and never leaves its own range.

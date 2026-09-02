@@ -162,6 +162,14 @@ func rest_energy(character: Dictionary, result: String) -> int:
 	return restore_energy(character, _get_parent().energy_recovered_for_result(result))
 
 
+## Eight unbroken hours without using FX refill the pool outright, no check.
+## Source: Beyond Science: A Guide to FX p. 5.
+func full_rest_energy(character: Dictionary) -> int:
+	var restored := energy_used(character)
+	set_energy_used(character, 0)
+	return restored
+
+
 func permanent_fx_energy_drain(character: Dictionary) -> int:
 	var total_drain := 0
 	var perms: Dictionary = character.get("fx", {}).get("permanent_skills", {})
