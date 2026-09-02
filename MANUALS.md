@@ -28,8 +28,8 @@ distinctive in both books.
 |---|---|---|---|
 | P2 | Resistance Modifiers | 32 | **yes** — bands match |
 | P3 | Ability Score Limits | 33 | **yes** — all 36 cells match |
-| P4 | Free Broad Skills for Heroes | 34 | |
-| P5 | Hero Starting Skill Points | 34 | |
+| P4 | Free Broad Skills for Heroes | 34 | **yes** — all six species |
+| P5 | Hero Starting Skill Points | 34 | **yes** — all 13 rows |
 | P6 | Last Resort Points | 38 | **yes** — matches |
 | P7 | Actions Per Round | 38 | |
 | P8 | Combat Movement Rates | 39 | |

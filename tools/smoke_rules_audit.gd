@@ -2072,6 +2072,67 @@ func _init() -> void:
 		assert_eq.call(String(broad.get("category", "")), "Super Hero", "%s is Super Hero" % bname)
 
 	# 2. FX Skill Scores and Dual-Ability Resolution
+	# Table P5: what a starting hero gets to spend, and how many broad skills
+	# they may hold, by Intelligence. A human gets 5 more points and one more
+	# broad skill than the table states.
+	# Source: Player's Handbook p. 34; Table P5.
+	var table_p5 := {
+		4: [15, 2], 5: [20, 2], 6: [25, 3], 7: [30, 3], 8: [35, 4], 9: [40, 4],
+		10: [45, 5], 11: [50, 5], 12: [55, 6], 13: [60, 6], 14: [65, 7],
+		15: [70, 7], 16: [75, 8],
+	}
+	for int_score in table_p5:
+		var row: Array = table_p5[int_score]
+		# Fraal reach INT 15, so they cover the top of the table; the species
+		# minimum keeps the low rows out of reach, hence the range check.
+		var alien: Dictionary = rules.default_character()
+		alien["species_id"] = 4   # T'sa, INT 8-14
+		alien["abilities"]["INT"] = AlternityNum.as_int(int_score)
+		rules.ensure_character_shape(alien)
+		var effective := AlternityNum.as_int(rules.effective_abilities(alien).get("INT", 0))
+		if effective != AlternityNum.as_int(int_score):
+			continue
+		assert_eq.call(rules.starting_skill_budget(alien), AlternityNum.as_int(row[0]),
+			"Table P5: INT %d starts an alien with %d skill points" % [int_score, row[0]])
+		assert_eq.call(rules.additional_broad_skill_limit(alien), AlternityNum.as_int(row[1]),
+			"Table P5: INT %d allows %d broad skills" % [int_score, row[1]])
+
+		var human: Dictionary = rules.default_character()
+		human["species_id"] = 0
+		human["abilities"]["INT"] = AlternityNum.as_int(int_score)
+		rules.ensure_character_shape(human)
+		if AlternityNum.as_int(rules.effective_abilities(human).get("INT", 0)) != AlternityNum.as_int(int_score):
+			continue
+		assert_eq.call(rules.starting_skill_budget(human), AlternityNum.as_int(row[0]) + 5,
+			"Table P5: a human with INT %d gets 5 more" % int_score)
+		assert_eq.call(rules.additional_broad_skill_limit(human), AlternityNum.as_int(row[1]) + 1,
+			"Table P5: a human with INT %d may hold one more broad skill" % int_score)
+
+	# Table P4: the six broad skills every hero begins with, by species.
+	# Source: Player's Handbook p. 34; Table P4.
+	var table_p4 := {
+		"Human": ["Athletics", "Vehicle Operation", "Stamina", "Knowledge", "Awareness", "Interaction"],
+		"Fraal": ["Vehicle Operation", "Knowledge", "Awareness", "Resolve", "Interaction", "Telepathy"],
+		"Mechalus": ["Athletics", "Vehicle Operation", "Stamina", "Computer Science", "Knowledge", "Awareness"],
+		"Sesheyan": ["Melee Weapons", "Acrobatics", "Stamina", "Knowledge", "Awareness", "Interaction"],
+		"T'sa": ["Athletics", "Manipulation", "Stamina", "Knowledge", "Awareness", "Interaction"],
+		"Weren": ["Athletics", "Unarmed Attack", "Stamina", "Knowledge", "Awareness", "Interaction"],
+	}
+	for species_name in table_p4:
+		var species := {}
+		for candidate in rules.species:
+			if typeof(candidate) == TYPE_DICTIONARY and String(candidate.get("name", "")) == String(species_name):
+				species = candidate
+				break
+		assert_true.call(not species.is_empty(), "Table P4: %s is in the catalog" % species_name)
+		var got := []
+		for skill_id in species.get("free_skill_ids", []):
+			got.append(rules.skill_name_for_id(AlternityNum.as_int(skill_id)))
+		got.sort()
+		var want: Array = table_p4[species_name].duplicate()
+		want.sort()
+		assert_eq.call(got, want, "Table P4: %s begins with its six free broad skills" % species_name)
+
 	# Table P2: the resistance modifier every ability score carries.
 	# Source: Player's Handbook p. 32; Table P2.
 	var table_p2 := {
