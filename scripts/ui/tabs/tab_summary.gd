@@ -443,14 +443,19 @@ func _build_fx(container: Container) -> void:
 		var skill_name := String(skill.get("name", ""))
 		var is_broad: bool = String(skill.get("type", "")) == "broad"
 		var score: Dictionary = rules.fx.fx_skill_score(raw, skill_name)
+		# A power whose school was sold off is still on the sheet but can no
+		# longer be cast. Printing "0 +d0" read as a legal but hopeless roll.
+		var reading := "rank %d  -  %d  %s" % [
+			AlternityNum.as_int(skill.get("rank", 0)),
+			AlternityNum.as_int(score.get("ordinary", 0)),
+			String(score.get("die", "")),
+		]
+		if not bool(score.get("usable", true)):
+			reading = "rank %d  -  not available" % AlternityNum.as_int(skill.get("rank", 0))
 		var row := Widgets.metric(
 			box,
 			skill_name if is_broad else "    " + skill_name,
-			"rank %d  -  %d  %s" % [
-				AlternityNum.as_int(skill.get("rank", 0)),
-				AlternityNum.as_int(score.get("ordinary", 0)),
-				String(score.get("die", "")),
-			],
+			reading,
 			palette
 		)
 		if is_broad:

@@ -263,7 +263,7 @@ func _build_row(parent: Container, skill: Dictionary, is_broad: bool) -> void:
 	name_button.tooltip_text = skill_name
 	name_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	name_button.clip_text = true
+	name_button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	name_button.custom_minimum_size = Vector2(1, 36)
 	if is_broad:
 		name_button.add_theme_color_override("font_color", palette.accent)
@@ -280,14 +280,45 @@ func _build_row(parent: Container, skill: Dictionary, is_broad: bool) -> void:
 	var score: Dictionary = rules.fx.fx_skill_score(raw, skill_name)
 	var ordinary := AlternityNum.as_int(score.get("ordinary", 0))
 	var die := String(score.get("die", ""))
+	var usable: bool = bool(score.get("usable", true))
+	var via_broad: bool = bool(score.get("via_broad", false))
 	var reading := "Ordinary score %d, step die %s, rank %d" % [ordinary, die, rank]
 
+	# What one use costs, said on the row. The pool is the constraint on how
+	# often any of this can be cast, so the price belongs beside the score
+	# rather than buried in the reference text.
+	var activation: Dictionary = rules.fx.fx_activation_cost(raw, skill_name)
+	var energy := ""
+	if not is_broad and AlternityNum.as_int(activation.get("total", 0)) > 0:
+		energy = "%d FX" % AlternityNum.as_int(activation.get("total", 0))
+		var top := AlternityNum.as_int(activation.get("points_max", 0))
+		if top > AlternityNum.as_int(activation.get("points", 0)):
+			energy = "%d-%d FX" % [AlternityNum.as_int(activation.get("total", 0)), top]
+		# The surcharge is already inside that number; "Rank 0 (broad)" on the
+		# same row is what says why. Spelling it out per row wrapped a sentence
+		# beside every one of the fifty-odd miracles a faith carries.
+
 	var stats := Label.new()
-	stats.text = ("Rank %d   score %d   %s" % [rank, ordinary, die]) if owned else "Not taken"
+	if owned:
+		stats.text = "Rank %d   score %d   %s" % [rank, ordinary, die]
+	elif via_broad:
+		# Reachable on the broad skill alone. Saying "Not taken" hid a power the
+		# hero can actually use today.
+		stats.text = "Rank 0 (broad)   score %d   %s" % [ordinary, die]
+		reading = ("Cast through the broad skill, at its score and its die. "
+			+ "Costs %s, a point more than it would with a rank of its own."
+		) % energy
+	elif not usable:
+		stats.text = "Not taken"
+		reading = String(score.get("reason", "This power cannot be attempted."))
+	else:
+		stats.text = "Not taken"
+	if not energy.is_empty() and (owned or via_broad):
+		stats.text += "   -   %s" % energy
 	stats.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stats.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	stats.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT if compact else HORIZONTAL_ALIGNMENT_RIGHT
-	stats.clip_text = true
+	stats.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	stats.custom_minimum_size = Vector2(1 if compact else 150, 0)
 	stats.add_theme_color_override("font_color", palette.muted)
 	stats.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)

@@ -224,7 +224,11 @@ func add_fx_skill(character: Dictionary, skill_name: String) -> void:
 	var specialty = get_specialty_skill(skill_name)
 	if not specialty.is_empty():
 		var current = fx_skill_rank(character, skill_name)
-		character["fx"]["selected_skills"][skill_name] = current + 1
+		# A specialty stops at rank 12 like every other specialty in the game.
+		# Nothing capped this, so repeated buys walked straight past it.
+		character["fx"]["selected_skills"][skill_name] = mini(
+			current + 1, AlternityRules.MAX_SPECIALTY_RANK
+		)
 
 func remove_fx_skill(character: Dictionary, skill_name: String) -> void:
 	_normalize_fx(character)
@@ -399,41 +403,80 @@ func _extract_ranks_from_text(text: String) -> Array:
 	return ranks
 
 
+## What an FX power actually rolls, and whether it may be attempted at all.
+##
+## Three rules from the same paragraph, none of which were computed:
+##
+##   * No FX broad skill can ever be used untrained. An unheld school scored
+##     the caster's full ability, so a hero with no magic at all rolled
+##     Illusion better than one who had paid for it.
+##   * Holding a broad skill is not untrained use. The halving was attached to
+##     the wrong branch, so buying a school HALVED its score -- INT 12 went
+##     from 12 to 6 the moment it was paid for.
+##   * A spell, miracle or power is reachable only through its own school,
+##     faith or category, exactly as a psionic power is reachable only through
+##     its discipline.
+##
+## Source: Beyond Science: A Guide to FX p. 5.
 func fx_skill_score(character: Dictionary, skill_name: String) -> Dictionary:
 	var abilities: Dictionary = _get_parent().effective_abilities(character)
-	var specialty = get_specialty_skill(skill_name)
-	var ability = "WIL"
-	if not specialty.is_empty():
-		ability = String(specialty.get("ability", "WIL"))
-	else:
-		var broad = get_broad_skill(skill_name)
-		if not broad.is_empty():
-			ability = String(broad.get("ability", "WIL"))
-			
-	var ability_score = 10
+	var specialty := get_specialty_skill(skill_name)
+	var broad := get_broad_skill(skill_name)
+	var is_broad := not broad.is_empty()
+	var entry: Dictionary = broad if is_broad else specialty
+
+	var ability := String(entry.get("ability", "WIL"))
+	var ability_score := 10
 	if ability.contains("/"):
-		var parts = ability.split("/")
-		var max_val = 0
-		for part in parts:
-			var val = AlternityNum.as_int(abilities.get(part.strip_edges(), 10))
-			if val > max_val:
-				max_val = val
-		ability_score = max_val
+		# Several broads answer to more than one ability; the caster uses whichever
+		# of them serves them best.
+		var best := 0
+		for part in ability.split("/"):
+			var value := AlternityNum.as_int(abilities.get(part.strip_edges(), 10))
+			if value > best:
+				best = value
+		ability_score = best
 	else:
 		ability_score = AlternityNum.as_int(abilities.get(ability, 10))
-	var rank = fx_skill_rank(character, skill_name)
-	var base = ability_score + rank
-	var ordinary = base
-	var good = int(floor(ordinary / 2.0))
-	var amazing = int(floor(good / 2.0))
-	
-	var is_broad := not get_broad_skill(skill_name).is_empty()
-	if is_broad and rank > 0:
-		base = int(floor(ability_score / 2.0))
-		ordinary = base
-		good = int(floor(ordinary / 2.0))
-		amazing = int(floor(good / 2.0))
-	var step := 1 if is_broad else 0
+
+	var rank := fx_skill_rank(character, skill_name)
+	var parent_name := "" if is_broad else String(specialty.get("broad_skill", ""))
+	var parent_held: bool = (not is_broad) and is_fx_skill_selected(character, parent_name)
+
+	if entry.is_empty():
+		return _fx_unusable("This FX skill is not in the catalog.")
+
+	if is_broad and rank <= 0:
+		return _fx_unusable(
+			"%s cannot be used untrained. No FX broad skill can be, so the school, faith or category has to be bought before anything under it can be attempted. Source: Beyond Science: A Guide to FX p. 5."
+			% skill_name
+		)
+
+	if not is_broad and not parent_held:
+		return _fx_unusable(
+			"%s needs the %s broad skill. FX powers are reachable only through the school, faith or category they belong to. Source: Beyond Science: A Guide to FX p. 5."
+			% [skill_name, parent_name]
+		)
+
+	# A held specialty rolls its own rank at +d0. Without a rank the parent broad
+	# carries it, at the broad score and the broad's +d4 -- but only where the
+	# entry permits untrained use, which is most Faith miracles and almost no
+	# Arcane spell or Super Power.
+	var via_broad := false
+	if not is_broad and rank <= 0:
+		if not bool(specialty.get("untrained", false)):
+			return _fx_unusable(
+				"%s cannot be used untrained; the %s broad skill alone is not enough. Source: Beyond Science: A Guide to FX p. 5."
+				% [skill_name, parent_name]
+			)
+		via_broad = true
+		ability_score = _broad_ability_score(character, parent_name)
+
+	var rank_bonus := 0 if (is_broad or via_broad) else rank
+	var ordinary := ability_score + rank_bonus
+	var good := int(floor(ordinary / 2.0))
+	var amazing := int(floor(good / 2.0))
+	var step := 1 if (is_broad or via_broad) else 0
 	step += _get_parent().dazed_penalty(character)
 
 	return {
@@ -441,7 +484,62 @@ func fx_skill_score(character: Dictionary, skill_name: String) -> Dictionary:
 		"ordinary": ordinary,
 		"good": good,
 		"amazing": amazing,
-		"base": base,
+		"base": ability_score,
 		"step": step,
+		"usable": true,
+		"via_broad": via_broad,
 		"die": _get_parent().action_step_die(step)
+	}
+
+
+func _fx_unusable(reason: String) -> Dictionary:
+	return {
+		"marginal": 0,
+		"ordinary": 0,
+		"good": 0,
+		"amazing": 0,
+		"base": 0,
+		"step": 0,
+		"usable": false,
+		"via_broad": false,
+		"reason": reason,
+		"die": "+d0",
+	}
+
+
+## The score a broad skill itself rolls, used when it carries one of its own
+## specialties.
+func _broad_ability_score(character: Dictionary, broad_name: String) -> int:
+	var broad := get_broad_skill(broad_name)
+	if broad.is_empty():
+		return 0
+	var abilities: Dictionary = _get_parent().effective_abilities(character)
+	var ability := String(broad.get("ability", "WIL"))
+	if not ability.contains("/"):
+		return AlternityNum.as_int(abilities.get(ability, 10))
+	var best := 0
+	for part in ability.split("/"):
+		var value := AlternityNum.as_int(abilities.get(part.strip_edges(), 10))
+		if value > best:
+			best = value
+	return best
+
+
+## What one activation costs, and why.
+##
+## Every entry states its cost; leaning on the broad skill instead of a rank of
+## your own adds a point.
+## Source: Beyond Science: A Guide to FX p. 5.
+func fx_activation_cost(character: Dictionary, skill_name: String) -> Dictionary:
+	var specialty := get_specialty_skill(skill_name)
+	if specialty.is_empty():
+		return {"points": 0, "untrained_surcharge": 0, "total": 0}
+	var base := AlternityNum.as_int(specialty.get("fx_cost", 1), 1)
+	var maximum := AlternityNum.as_int(specialty.get("fx_cost_max", base), base)
+	var surcharge := 1 if fx_skill_rank(character, skill_name) <= 0 else 0
+	return {
+		"points": base,
+		"points_max": maxi(base, maximum),
+		"untrained_surcharge": surcharge,
+		"total": base + surcharge,
 	}

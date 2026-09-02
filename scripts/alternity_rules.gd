@@ -2083,6 +2083,7 @@ func validate(character: Dictionary) -> Array:
 	_validate_skills(character, messages)
 	_validate_perks_and_flaws(character, messages)
 	_validate_achievements(character, messages)
+	_validate_fx(character, messages)
 	_validate_mutations(character, messages)
 	_validate_cybertech(character, messages)
 
@@ -2150,6 +2151,57 @@ func _validate_skills(character: Dictionary, messages: Array) -> void:
 		if not is_skill_selected(character, broad_id):
 			var broad_skill := get_skill_by_id(broad_id)
 			messages.append("%s requires the %s broad skill." % [skill.get("name", "Specialty"), broad_skill.get("name", "parent")])
+
+
+## How many schools, faiths and categories a hero may hold at once.
+##
+## The three pillars answer this differently, and none of the three was checked:
+## a hero could hold two religions and two arcane schools at the same time.
+## Source: Beyond Science: A Guide to FX.
+func _validate_fx(character: Dictionary, messages: Array) -> void:
+	var faiths := []
+	var schools := []
+	for broad in fx.get_broad_skills():
+		if typeof(broad) != TYPE_DICTIONARY:
+			continue
+		var broad_name := String(broad.get("name", ""))
+		if not fx.is_fx_skill_selected(character, broad_name):
+			continue
+		match String(broad.get("category", "")):
+			"Faith":
+				faiths.append(broad_name)
+			"Arcane Magic":
+				schools.append(broad_name)
+
+	# A believer holds one faith. Taking up another abandons the first outright,
+	# along with its miracles.
+	if faiths.size() > 1:
+		messages.append(
+			"A hero may hold only one Faith at a time, and currently holds %d (%s). Taking up a new faith forfeits the old one and its miracles. Source: Beyond Science: A Guide to FX."
+			% [faiths.size(), ", ".join(faiths)]
+		)
+
+	# An arcanist studies one school to the exclusion of the others.
+	if schools.size() > 1:
+		messages.append(
+			"Arcane Magic is studied one school at a time, and this hero holds %d (%s). Source: Beyond Science: A Guide to FX."
+			% [schools.size(), ", ".join(schools)]
+		)
+
+	# Super Power categories are deliberately not checked here: they are the one
+	# pillar a hero may mix freely.
+
+	for skill_name in character.get("fx", {}).get("selected_skills", {}).keys():
+		var name := String(skill_name)
+		var specialty := fx.get_specialty_skill(name)
+		if specialty.is_empty():
+			continue
+		var rank := fx.fx_skill_rank(character, name)
+		if rank > MAX_SPECIALTY_RANK:
+			messages.append("%s cannot exceed rank %d." % [name, MAX_SPECIALTY_RANK])
+		var parent := String(specialty.get("broad_skill", ""))
+		if not fx.is_fx_skill_selected(character, parent):
+			messages.append("%s requires the %s broad skill." % [name, parent])
 
 
 func _validate_perks_and_flaws(character: Dictionary, messages: Array) -> void:

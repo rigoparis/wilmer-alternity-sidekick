@@ -73,6 +73,7 @@ func _seed_store() -> void:
 		# reserved-off-the-top case is in shot too.
 		rules.fx.set_fx_talent(c, true)
 		rules.fx.set_energy_pool(c, 10)
+		rules.fx.add_fx_skill(c, "Monotheism")
 		for broad in rules.fx.get_broad_skills_for_character(c):
 			var broad_name := String(broad.get("name", ""))
 			rules.fx.add_fx_skill(c, broad_name)

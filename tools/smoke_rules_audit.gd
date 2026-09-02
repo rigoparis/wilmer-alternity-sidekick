@@ -2073,8 +2073,15 @@ func _init() -> void:
 	rules.ensure_character_shape(fx_char)
 	rules.fx.add_fx_skill(fx_char, "Alienism") # Broad skill (WIL/INT)
 	var alienism_score: Dictionary = rules.fx.fx_skill_score(fx_char, "Alienism")
-	# Uses higher stat (WIL 14) -> half is 7
-	assert_eq.call(alienism_score.ordinary, 7, "Alienism broad score uses max(INT 12, WIL 14) / 2 = 7")
+	# Uses the higher of its two abilities, whole.
+	#
+	# This check used to expect 7 -- half of WIL 14 -- and so defended the bug it
+	# was meant to catch. Halving is what an untrained hero does, and no FX broad
+	# skill can be used untrained at all; a hero who has paid for Alienism rolls
+	# its ability score at the broad skill's +d4, exactly as every other broad
+	# skill in the game does.
+	assert_eq.call(alienism_score.ordinary, 14, "Alienism broad score uses max(INT 12, WIL 14) = 14")
+	assert_eq.call(String(alienism_score.die), "+d4", "and rolls at the broad skill's +d4")
 
 	# 3. Permanent FX Powers (Super Strength)
 	var perm_hero: Dictionary = rules.default_character()
