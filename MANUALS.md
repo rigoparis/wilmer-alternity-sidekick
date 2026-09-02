@@ -26,11 +26,11 @@ distinctive in both books.
 
 | | Table | Page | Verified against the app |
 |---|---|---|---|
-| P2 | Resistance Modifiers | 32 | |
-| P3 | Ability Score Limits | 33 | |
+| P2 | Resistance Modifiers | 32 | **yes** — bands match |
+| P3 | Ability Score Limits | 33 | **yes** — all 36 cells match |
 | P4 | Free Broad Skills for Heroes | 34 | |
 | P5 | Hero Starting Skill Points | 34 | |
-| P6 | Last Resort Points | 38 | |
+| P6 | Last Resort Points | 38 | **yes** — matches |
 | P7 | Actions Per Round | 38 | |
 | P8 | Combat Movement Rates | 39 | |
 | P9 | Strength & Damage | 40 | |
@@ -124,6 +124,17 @@ wrapped entries, and a one-row slip silently encodes the wrong rule. Read the
 individual skill description instead — a trained-only skill carries *"This skill
 can't be used untrained."* on its own line under the cost line. Table P52 in the
 Player's Handbook uses the same convention and is far cleaner to read.
+
+## Open questions
+
+- **Does Constitution carry a resistance modifier?** p. 33 says only that
+  "Personality doesn't have a resistance modifier, as most other Ability Scores
+  do", which implies Constitution does. But Table P10 never lists Constitution
+  as a resisting ability, so nothing is ever resisted with it. The app returns 0
+  for both CON and PER. Harmless today; worth settling.
+- **The Arcane Magic training column in Beyond Science.** Rend the weave is a
+  confirmed false positive in the catalog; the rest of that pillar needs a pass
+  through the individual spell descriptions on pp. 16-35.
 
 ## Still unread
 

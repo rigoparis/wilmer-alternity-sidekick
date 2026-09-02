@@ -2072,6 +2072,17 @@ func _init() -> void:
 		assert_eq.call(String(broad.get("category", "")), "Super Hero", "%s is Super Hero" % bname)
 
 	# 2. FX Skill Scores and Dual-Ability Resolution
+	# Table P2: the resistance modifier every ability score carries.
+	# Source: Player's Handbook p. 32; Table P2.
+	var table_p2 := {
+		1: -2, 4: -2, 5: -1, 6: -1, 7: 0, 10: 0, 11: 1, 12: 1,
+		13: 2, 14: 2, 15: 3, 16: 3, 17: 4, 18: 4, 19: 5, 24: 5,
+	}
+	for score in table_p2:
+		assert_eq.call(rules.resistance_modifier(AlternityNum.as_int(score)),
+			AlternityNum.as_int(table_p2[score]),
+			"Table P2: a score of %d resists at %d step(s)" % [score, table_p2[score]])
+
 	# Table P10: which ability a target resists a skill with. Twelve rows, and
 	# nothing else in the game opposes a skill check -- so a skill that is not
 	# listed has no opposed roll.
