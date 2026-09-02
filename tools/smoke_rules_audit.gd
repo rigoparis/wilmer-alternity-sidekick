@@ -506,6 +506,54 @@ func _init() -> void:
 	rules.set_optional_rule(max_int_char, "age_effects", true)
 	assert_eq.call(rules.effective_abilities(max_int_char).INT, 14, "Mature age bonus cannot exceed species max (14)")
 
+	# Table G1 accumulates. It is an event list -- adjust the scores when a hero
+	# reaches each new category -- so an ancient hero carries the mental gains
+	# earned through mature, middle age and old age as well as the full physical
+	# decline. Read as exclusive rows, ancient stripped every mental gain,
+	# because that row lists only physical penalties.
+	# Source: Gamemaster Guide ch. 2 p. 20.
+	var age_expected := {
+		"adolescent": {"STR": -1, "DEX": 1, "INT": -1, "WIL": -1, "CON": 0, "PER": 0},
+		"young_adult": {"STR": 0, "DEX": 0, "CON": 0, "INT": 0, "WIL": 0, "PER": 0},
+		"mature": {"INT": 1, "PER": 1, "STR": 0, "DEX": 0, "CON": 0, "WIL": 0},
+		"middle_aged": {"DEX": -1, "INT": 2, "WIL": 1, "PER": 1, "STR": 0, "CON": 0},
+		"old": {"STR": -1, "CON": -1, "DEX": -2, "INT": 2, "WIL": 2, "PER": 2},
+		"ancient": {"STR": -2, "CON": -2, "DEX": -3, "INT": 2, "WIL": 2, "PER": 2},
+	}
+	for category in age_expected:
+		for ability in ["STR", "DEX", "CON", "INT", "WIL", "PER"]:
+			var aged: Dictionary = rules.default_character()
+			aged["species_id"] = 0
+			aged["age_category"] = String(category)
+			rules.ensure_character_shape(aged)
+			rules.set_optional_rule(aged, "age_effects", true)
+			assert_eq.call(
+				rules.age_modifier(aged, ability),
+				AlternityNum.as_int(age_expected[category].get(ability, 0)),
+				"%s adjusts %s by %+d" % [
+					category, ability,
+					AlternityNum.as_int(age_expected[category].get(ability, 0)),
+				]
+			)
+
+	# And the adjustment never pushes a score past its species bounds.
+	var ancient_human: Dictionary = rules.default_character()
+	ancient_human["species_id"] = 0
+	ancient_human["abilities"]["DEX"] = 5
+	ancient_human["age_category"] = "ancient"
+	rules.ensure_character_shape(ancient_human)
+	rules.set_optional_rule(ancient_human, "age_effects", true)
+	# The species bound, not ability_limits -- that folds in the profession
+	# requirement, and age is bounded by what the body can be, not by what the
+	# job asks for.
+	var human_species: Dictionary = rules.get_species_by_id(0)
+	var human_dex: Array = human_species.get("ability_limits", {}).get("DEX", [4, 14])
+	assert_eq.call(
+		AlternityNum.as_int(rules.effective_abilities(ancient_human).get("DEX", 0)),
+		AlternityNum.as_int(human_dex[0]),
+		"age cannot push an ability below its species minimum"
+	)
+
 	# With the rule off the campaign treats everyone as a young adult, while the
 	# recorded category is left alone so a player can still note their age.
 	var ageless: Dictionary = rules.default_character()
@@ -1434,14 +1482,22 @@ func _init() -> void:
 	assert_eq.call(rules.character_resistance_modifier(rank_hero, "STR"), str_rm_base + 3, "DMA rank 12 grants +3 to close-combat STR RM")
 	rules.set_skill_rank(rank_hero, 20, 0)
 
-	# Dodge -> DEX RM
+	# Dodge grants no passive resistance at any rank.
+	#
+	# It is an active defence: it costs an action and applies only from the phase
+	# it is rolled in. Its printed benefits are the rank 3 second action, the
+	# reaction dodge and Hitting the Deck. This suite used to assert a passive
+	# +1/+2/+3 at ranks 4, 8 and 12 -- the martial-arts template copied onto a
+	# skill the manuals never give it to.
+	# Source: Player's Handbook pp. 67-68; Gamemaster Guide p. 72.
 	var dex_rm_base := rules.character_resistance_modifier(rank_hero, "DEX")
-	rules.force_skill_rank(rank_hero, 21, 4)
-	assert_eq.call(rules.character_resistance_modifier(rank_hero, "DEX"), dex_rm_base + 1, "Dodge rank 4 grants +1 to ranged DEX RM")
-	rules.force_skill_rank(rank_hero, 21, 8)
-	assert_eq.call(rules.character_resistance_modifier(rank_hero, "DEX"), dex_rm_base + 2, "Dodge rank 8 grants +2 to ranged DEX RM")
-	rules.force_skill_rank(rank_hero, 21, 12)
-	assert_eq.call(rules.character_resistance_modifier(rank_hero, "DEX"), dex_rm_base + 3, "Dodge rank 12 grants +3 to ranged DEX RM")
+	for dodge_rank in [4, 8, 12]:
+		rules.force_skill_rank(rank_hero, 21, dodge_rank)
+		assert_eq.call(
+			rules.character_resistance_modifier(rank_hero, "DEX"), dex_rm_base,
+			"Dodge rank %d grants no passive DEX resistance" % dodge_rank
+		)
+	rules.set_skill_rank(rank_hero, 21, 0)
 
 	# --- 27. Constitution (CON) Skills, Specialties & Mechanics ---
 	print("Testing CON Skills, Specialties & Mechanics...")

@@ -862,14 +862,12 @@ func character_resistance_modifier(character: Dictionary, ability: String) -> in
 			if b > max_melee_bonus:
 				max_melee_bonus = b
 		skill_bonus += max_melee_bonus
-	elif ability == "DEX":
-		var r := skill_rank(character, 21) # Dodge
-		if r >= 12:
-			skill_bonus += 3
-		elif r >= 8:
-			skill_bonus += 2
-		elif r >= 4:
-			skill_bonus += 1
+	# Dodge deliberately grants nothing here. It is an active defence -- it costs
+	# an action and applies only from the phase it is rolled in -- and its
+	# printed benefits are the rank 3 second action, the reaction dodge and
+	# Hitting the Deck. The passive +1/+2/+3 that used to sit here was the
+	# martial-arts template copied onto a skill the manuals never give it to.
+	# Source: Player's Handbook pp. 67-68; Gamemaster Guide p. 72.
 	elif ability == "INT":
 		var r := skill_rank(character, 71) # Deduction
 		if r >= 12:

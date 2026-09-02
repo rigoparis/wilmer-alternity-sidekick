@@ -25,13 +25,26 @@ const AGE_CATEGORIES := [
 	{"id": "ancient", "name": "Ancient", "summary": "-1 STR, -1 CON, -1 DEX."},
 ]
 
+## Net ability adjustment for each age category, measured from young adult.
+##
+## Table G1 is an event list -- "when a hero reaches a new age category, adjust
+## his ability scores as follows" -- so the rows accumulate as a hero ages
+## rather than replacing one another. Stored here already summed, because the
+## app picks a category rather than walking a lifetime.
+##
+## Treating the rows as exclusive was wrong twice over: it under-counted the
+## physical decline, and it stripped an ancient hero of every mental gain earned
+## through mature, middle age and old age, since the ancient row lists only
+## physical penalties.
+##
+## Source: Gamemaster Guide ch. 2 p. 20, Table G1.
 const AGE_MODIFIERS := {
 	"young_adult": {},
 	"adolescent": {"STR": -1, "DEX": 1, "INT": -1, "WIL": -1},
 	"mature": {"INT": 1, "PER": 1},
-	"middle_aged": {"DEX": -1, "INT": 1, "WIL": 1},
-	"old": {"STR": -1, "CON": -1, "DEX": -1, "WIL": 1, "PER": 1},
-	"ancient": {"STR": -1, "CON": -1, "DEX": -1},
+	"middle_aged": {"DEX": -1, "INT": 2, "WIL": 1, "PER": 1},
+	"old": {"STR": -1, "CON": -1, "DEX": -2, "INT": 2, "WIL": 2, "PER": 2},
+	"ancient": {"STR": -2, "CON": -2, "DEX": -3, "INT": 2, "WIL": 2, "PER": 2},
 }
 
 ## Table G1: Age Thresholds by Species and Progress Level (PL 0-3 through PL 9).
