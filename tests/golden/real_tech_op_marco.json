@@ -209,6 +209,7 @@
 		},
 		"fx": {
 			"energy_pool": 5.0,
+			"energy_used": 0,
 			"is_fx_talent": true,
 			"permanent_skills": {
 				"Super Strength": true
@@ -267,6 +268,7 @@
 		},
 		"player_name": "Fixture",
 		"profession_id": 5.0,
+		"psionic_energy_used": 0,
 		"selected_achievements": [],
 		"selected_flaws": {
 

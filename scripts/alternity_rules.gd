@@ -341,6 +341,7 @@ func default_character() -> Dictionary:
 			"fatigue": 0,
 		},
 		"last_resorts_used": 0,
+		"psionic_energy_used": 0,
 		"equipment": {
 			"carried": [],
 			"custom_items": [],
@@ -455,6 +456,8 @@ func ensure_character_shape(character: Dictionary) -> Dictionary:
 			character["damage"][damage_type] = 0
 	if not character.has("last_resorts_used"):
 		character["last_resorts_used"] = 0
+	if not character.has("psionic_energy_used"):
+		character["psionic_energy_used"] = 0
 	if not character.has("last_resorts_rebought"):
 		character["last_resorts_rebought"] = 0
 	if not character.has("equipment") or typeof(character["equipment"]) != TYPE_DICTIONARY:
@@ -1319,6 +1322,60 @@ func psionic_energy_points(character: Dictionary) -> int:
 		return int(ceil(will * 0.5))
 
 
+## The live psionic energy pool: its size, what has been spent out of it, and
+## what is left.
+##
+## psionic_energy_points() only ever gave the size. A Mindwalker at the table
+## needs the other two, because every power costs points and the pool is the
+## whole constraint on how often they can act.
+## Source: Player's Handbook Chapter 14: Psionics.
+func psionic_energy(character: Dictionary) -> Dictionary:
+	var max_points := psionic_energy_points(character)
+	var used := clampi(_as_int(character.get("psionic_energy_used", 0)), 0, max_points)
+	character["psionic_energy_used"] = used
+	return {
+		"max": max_points,
+		"used": used,
+		"available": max_points - used,
+	}
+
+
+func set_psionic_energy_used(character: Dictionary, used: int) -> void:
+	character["psionic_energy_used"] = clampi(used, 0, psionic_energy_points(character))
+
+
+## Spend points, returning how many actually came out of the pool -- which is
+## fewer than asked for when the pool cannot cover it.
+func spend_psionic_energy(character: Dictionary, points: int) -> int:
+	if points <= 0:
+		return 0
+	var pool := psionic_energy(character)
+	var spent := mini(points, _as_int(pool.get("available", 0)))
+	set_psionic_energy_used(character, _as_int(pool.get("used", 0)) + spent)
+	return spent
+
+
+## Put points back, returning how many the pool had room for.
+func restore_psionic_energy(character: Dictionary, points: int) -> int:
+	if points <= 0:
+		return 0
+	var pool := psionic_energy(character)
+	var restored := mini(points, _as_int(pool.get("used", 0)))
+	set_psionic_energy_used(character, _as_int(pool.get("used", 0)) - restored)
+	return restored
+
+
+## How many points one uninterrupted hour of rest gives back, by how well the
+## Resolve -- mental resolve check went. Source: Player's Handbook p. 202.
+func energy_recovered_for_result(result: String) -> int:
+	return _as_int(ENERGY_RECOVERY_PER_HOUR.get(result.strip_edges().to_lower(), 0))
+
+
+## Rest for an hour and take the recovery the check earned.
+func rest_psionic_energy(character: Dictionary, result: String) -> int:
+	return restore_psionic_energy(character, energy_recovered_for_result(result))
+
+
 func last_resorts(character: Dictionary) -> Dictionary:
 	var abilities := effective_abilities(character)
 	var profession := get_profession_by_id(_as_int(character.get("profession_id", 0)))
@@ -1358,6 +1415,8 @@ func clamp_trackers(character: Dictionary) -> void:
 		damage[damage_type] = clampi(_as_int(damage.get(damage_type, 0)), 0, _as_int(durability_scores.get(damage_type, 0)))
 	character["damage"] = damage
 	set_last_resorts_used(character, _as_int(character.get("last_resorts_used", 0)))
+	set_psionic_energy_used(character, _as_int(character.get("psionic_energy_used", 0)))
+	fx.set_energy_used(character, fx.energy_used(character))
 
 
 ## Table P5: Starting Skill Point Budget. Source: Player's Handbook p. 34.

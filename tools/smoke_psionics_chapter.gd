@@ -58,6 +58,9 @@ func _init() -> void:
 	_test_specialties_follow_their_discipline()
 	_test_energy_pool()
 	_test_pool_needs_training()
+	_test_energy_recovery_table()
+	_test_spending_and_resting()
+	_test_fx_pool_shares_the_rest_rule()
 	_test_skill_pricing()
 	_test_broad_skill_allotment()
 	_test_discipline_gate()
@@ -223,6 +226,151 @@ func _test_pool_needs_training() -> void:
 		_rules.psionic_energy_points(untrained), int(ceil(opened_will * 0.5)),
 		"and opens a pool of ceil(WIL %d x 0.5)" % opened_will
 	)
+
+
+## One full uninterrupted hour of rest, settled on a Resolve -- mental resolve
+## check: Ordinary 1 point, Good 2, Amazing 3. Anything short of Ordinary gives
+## nothing back.
+func _test_energy_recovery_table() -> void:
+	var table := {
+		"failure": 0,
+		"marginal": 0,
+		"ordinary": 1,
+		"good": 2,
+		"amazing": 3,
+	}
+	for result in table:
+		check_eq(
+			_rules.energy_recovered_for_result(String(result)),
+			AlternityNum.as_int(table[result]),
+			"an %s rest recovers %d point(s)" % [result, AlternityNum.as_int(table[result])]
+		)
+	check_eq(
+		_rules.energy_recovered_for_result("Amazing"), 3,
+		"the degree is read whatever its casing"
+	)
+	check_eq(
+		_rules.energy_recovered_for_result("nonsense"), 0,
+		"an unrecognised result recovers nothing"
+	)
+	check_eq(
+		AlternityRules.ENERGY_RECOVERY_SKILL_ID, 135,
+		"rest is settled on Resolve -- mental resolve"
+	)
+
+
+## The pool is spent from and rested back, and never leaves its own range.
+func _test_spending_and_resting() -> void:
+	var psion: Dictionary = _character(SPECIES_HUMAN, PROFESSION_MINDWALKER, 12)
+	var size: int = _rules.psionic_energy_points(psion)
+
+	var pool: Dictionary = _rules.psionic_energy(psion)
+	check_eq(AlternityNum.as_int(pool.get("max", -1)), size, "the pool starts at its full size")
+	check_eq(AlternityNum.as_int(pool.get("used", -1)), 0, "with nothing spent")
+	check_eq(AlternityNum.as_int(pool.get("available", -1)), size, "and all of it available")
+
+	check_eq(_rules.spend_psionic_energy(psion, 3), 3, "spending 3 points takes 3")
+	pool = _rules.psionic_energy(psion)
+	check_eq(AlternityNum.as_int(pool.get("used", -1)), 3, "3 are marked spent")
+	check_eq(AlternityNum.as_int(pool.get("available", -1)), size - 3, "and the rest remain")
+
+	# A power cannot be paid for with points the hero does not have.
+	check_eq(
+		_rules.spend_psionic_energy(psion, size), size - 3,
+		"a pool that cannot cover the cost gives only what it has"
+	)
+	check_eq(
+		AlternityNum.as_int(_rules.psionic_energy(psion).get("available", -1)), 0,
+		"leaving it empty, never negative"
+	)
+	check_eq(_rules.spend_psionic_energy(psion, 1), 0, "an empty pool pays nothing")
+
+	check_eq(_rules.rest_psionic_energy(psion, "good"), 2, "a Good hour gives 2 back")
+	check_eq(_rules.rest_psionic_energy(psion, "amazing"), 3, "an Amazing hour gives 3")
+	check_eq(_rules.rest_psionic_energy(psion, "failure"), 0, "a failed hour gives none")
+	check_eq(
+		AlternityNum.as_int(_rules.psionic_energy(psion).get("used", -1)), size - 5,
+		"and the spend falls by exactly what was recovered"
+	)
+
+	# Resting past full puts back only what was actually spent.
+	for _i in 40:
+		_rules.rest_psionic_energy(psion, "amazing")
+	var rested: Dictionary = _rules.psionic_energy(psion)
+	check_eq(AlternityNum.as_int(rested.get("used", -1)), 0, "rest stops at a full pool")
+	check_eq(AlternityNum.as_int(rested.get("available", -1)), size, "with everything back")
+
+	# A pool that shrinks -- a lost point of Will, a sold discipline -- drags the
+	# spend down with it rather than leaving a hero owing more than they hold.
+	_rules.spend_psionic_energy(psion, size)
+	psion["abilities"]["WIL"] = 8
+	_rules.ensure_character_shape(psion)
+	_rules.clamp_trackers(psion)
+	var shrunk: Dictionary = _rules.psionic_energy(psion)
+	check_eq(
+		AlternityNum.as_int(shrunk.get("used", -1)),
+		AlternityNum.as_int(shrunk.get("max", -1)),
+		"a shrinking pool clamps the spend to its new size"
+	)
+	check_true(
+		AlternityNum.as_int(shrunk.get("available", -1)) >= 0,
+		"and never reports a negative remainder"
+	)
+
+
+## FX pools rest on the same table, and a permanently active power holds its
+## cost against the pool the whole time it runs.
+func _test_fx_pool_shares_the_rest_rule() -> void:
+	var mage: Dictionary = _character(SPECIES_HUMAN, PROFESSION_COMBAT_SPEC, 12)
+	_rules.fx.set_fx_talent(mage, true)
+	_rules.fx.set_energy_pool(mage, 10)
+
+	var pool: Dictionary = _rules.fx.fx_energy(mage)
+	check_eq(AlternityNum.as_int(pool.get("max", -1)), 10, "the FX pool is its stated size")
+	check_eq(AlternityNum.as_int(pool.get("available", -1)), 10, "and starts wholly available")
+
+	check_eq(_rules.fx.spend_energy(mage, 4), 4, "spending 4 takes 4")
+	check_eq(
+		AlternityNum.as_int(_rules.fx.fx_energy(mage).get("available", -1)), 6,
+		"leaving 6"
+	)
+	check_eq(_rules.fx.rest_energy(mage, "ordinary"), 1, "an Ordinary hour gives 1 back")
+	check_eq(_rules.fx.rest_energy(mage, "amazing"), 3, "an Amazing hour gives 3")
+	check_eq(
+		AlternityNum.as_int(_rules.fx.fx_energy(mage).get("used", -1)), 0,
+		"which clears the spend"
+	)
+
+	# A permanent power is not spendable capacity.
+	var made_permanent := false
+	for broad in _rules.fx.get_broad_skills_for_character(mage):
+		var broad_name := String(broad.get("name", ""))
+		_rules.fx.add_fx_skill(mage, broad_name)
+		for power in _rules.fx.get_specialty_skills_for_broad_and_character(broad_name, mage):
+			var power_name := String(power.get("name", ""))
+			if not _rules.fx.can_fx_skill_be_permanent(power_name):
+				continue
+			_rules.fx.add_fx_skill(mage, power_name)
+			_rules.fx.set_fx_skill_permanent(mage, power_name, true)
+			made_permanent = true
+			break
+		if made_permanent:
+			break
+
+	if check(made_permanent, "a permanently active power could be set up"):
+		var held: Dictionary = _rules.fx.fx_energy(mage)
+		var reserved := AlternityNum.as_int(held.get("reserved", 0))
+		check_true(reserved > 0, "the permanent power holds points against the pool")
+		check_eq(
+			AlternityNum.as_int(held.get("spendable", -1)),
+			AlternityNum.as_int(held.get("max", 0)) - reserved,
+			"which come off the top before anything is spent"
+		)
+		check_eq(
+			_rules.fx.spend_energy(mage, 99),
+			AlternityNum.as_int(held.get("spendable", 0)),
+			"so only the unreserved remainder can be spent"
+		)
 
 
 ## Mindwalkers pay 1 SP less; everyone else pays 1 SP more.

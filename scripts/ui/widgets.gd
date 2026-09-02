@@ -80,6 +80,49 @@ static func muted_text(parent: Container, content: String, palette: ThemePalette
 	return text(parent, content, palette, font_size, palette.muted)
 
 
+## The three degrees of a successful hour of rest, as buttons.
+##
+## Psionic and FX pools recover on the same table -- an hour, a Resolve - mental
+## resolve check, and 1, 2 or 3 points back -- so both tabs draw the same row
+## rather than each keeping a copy.
+## Source: Player's Handbook Chapter 14 p. 202; Beyond Science: A Guide to FX p. 5.
+static func rest_row(
+	parent: Container, palette: ThemePalette, is_wide: bool, on_rest: Callable
+) -> HBoxContainer:
+	muted_text(
+		parent,
+		"After a full uninterrupted hour of rest, roll Resolve - mental resolve "
+			+ "and take the result.",
+		palette, FONT_CAPTION
+	)
+
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", GAP_ROW)
+	# Three buttons sharing a 1900px window are three 600px buttons. On a phone
+	# they need every pixel, so only the wide layout pins them to their own size
+	# and leaves them grouped at the left.
+	row.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN if is_wide else Control.SIZE_EXPAND_FILL
+	parent.add_child(row)
+
+	for entry in [["Ordinary", "ordinary", 1], ["Good", "good", 2], ["Amazing", "amazing", 3]]:
+		var degree := String(entry[1])
+		var points := AlternityNum.as_int(entry[2])
+		var button := Button.new()
+		button.text = "%s +%d" % [entry[0], points]
+		button.tooltip_text = "An %s Resolve - mental resolve check recovers %d point(s)." % [
+			String(entry[0]).to_lower(), points
+		]
+		if is_wide:
+			button.custom_minimum_size = Vector2(150, 40)
+		else:
+			button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			button.custom_minimum_size = Vector2(1, 40)
+		button.pressed.connect(func(): on_rest.call(degree))
+		row.add_child(button)
+
+	return row
+
+
 static func subheading(parent: Container, content: String, palette: ThemePalette) -> Label:
 	var label := Label.new()
 	label.text = content

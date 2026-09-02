@@ -64,7 +64,26 @@ func _seed_store() -> void:
 		rules.force_skill_rank(c, 90302, 2)   # Clairaudience, rank 2
 		var tracks: Dictionary = c.get("damage", {})
 		tracks["stun"] = 2
-		c["damage"] = tracks)
+		c["damage"] = tracks
+		# Part of the pool spent, so the tracker is photographed mid-use rather
+		# than full -- an empty track hides whether the boxes fill at all.
+		rules.spend_psionic_energy(c, 4)
+
+		# And an FX pool beside it, with one power permanently active, so the
+		# reserved-off-the-top case is in shot too.
+		rules.fx.set_fx_talent(c, true)
+		rules.fx.set_energy_pool(c, 10)
+		for broad in rules.fx.get_broad_skills_for_character(c):
+			var broad_name := String(broad.get("name", ""))
+			rules.fx.add_fx_skill(c, broad_name)
+			for power in rules.fx.get_specialty_skills_for_broad_and_character(broad_name, c):
+				var power_name := String(power.get("name", ""))
+				rules.fx.add_fx_skill(c, power_name)
+				if rules.fx.can_fx_skill_be_permanent(power_name):
+					rules.fx.set_fx_skill_permanent(c, power_name, true)
+				break
+			break
+		rules.fx.spend_energy(c, 2))
 	store.save(doc)
 	store.clear_last_opened()
 
@@ -99,7 +118,7 @@ func _capture(width: int, height: int, label: String) -> void:
 		await process_frame
 
 	var sheet = shell._screens.get_child(0)
-	for id in ["skills", "psionics", "summary"]:
+	for id in ["psionics", "fx", "skills", "summary"]:
 		for definition in sheet._available_tabs():
 			if String(definition["id"]) != id:
 				continue

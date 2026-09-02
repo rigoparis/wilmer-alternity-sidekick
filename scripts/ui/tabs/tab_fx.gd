@@ -30,6 +30,7 @@ func build(container: Container) -> void:
 	_build_pool(container)
 	if not ctx.rules.fx.is_fx_talent(ctx.doc.raw()):
 		return
+	_build_energy_tracker(container)
 	_build_picker(container)
 
 
@@ -110,6 +111,40 @@ func _build_pool(container: Container) -> void:
 ## Powers outside it cost double, so this is not decoration -- and until now it
 ## could be neither seen nor set, which left one real character paying twice for
 ## powers in schools they owned.
+## The spendable half of the pool, tracked the way psionic energy and damage
+## are. FX rests on the same table: an hour, a Resolve -- mental resolve check,
+## and 1, 2 or 3 points back.
+## Source: Beyond Science: A Guide to FX p. 5.
+func _build_energy_tracker(container: Container) -> void:
+	var doc := ctx.doc
+	var rules: AlternityRules = ctx.rules
+	var palette := ctx.palette
+	var pool: Dictionary = rules.fx.fx_energy(doc.raw())
+	var spendable := AlternityNum.as_int(pool.get("spendable", 0))
+	if spendable <= 0:
+		return
+
+	var parent := Widgets.section(container, "FX Energy", palette)
+
+	var reserved := AlternityNum.as_int(pool.get("reserved", 0))
+	if reserved > 0:
+		Widgets.metric(
+			parent, "Held by permanent powers",
+			"%d of %d" % [reserved, AlternityNum.as_int(pool.get("max", 0))], palette
+		)
+
+	var tracker := DamageTrack.new()
+	parent.add_child(tracker)
+	tracker.setup(palette, "Energy spent", AlternityNum.as_int(pool.get("used", 0)), spendable)
+	tracker.value_changed.connect(func(value: int):
+		doc.apply([CharacterDoc.FX], func(c): rules.fx.set_energy_used(c, value))
+		save_requested.emit())
+
+	Widgets.rest_row(parent, palette, ctx.is_wide_layout, func(degree: String):
+		doc.apply([CharacterDoc.FX], func(c): rules.fx.rest_energy(c, degree))
+		save_requested.emit())
+
+
 func _build_primary_group_picker(parent: Container) -> void:
 	var doc := ctx.doc
 	var rules: AlternityRules = ctx.rules

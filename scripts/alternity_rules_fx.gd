@@ -17,6 +17,8 @@ func _normalize_fx(character: Dictionary) -> void:
 		fx_data["is_fx_talent"] = false
 	if not fx_data.has("energy_pool"):
 		fx_data["energy_pool"] = 0
+	if not fx_data.has("energy_used"):
+		fx_data["energy_used"] = 0
 	if not fx_data.has("selected_skills"):
 		fx_data["selected_skills"] = {}
 	if not fx_data.has("permanent_skills"):
@@ -105,6 +107,60 @@ func set_fx_skill_permanent(character: Dictionary, skill_name: String, is_perman
 		character["fx"]["permanent_skills"][skill_name] = true
 	else:
 		character["fx"]["permanent_skills"].erase(skill_name)
+
+## The live FX pool. A permanently active power holds its cost against the pool
+## for as long as it runs, so those come off the top before anything is spent.
+## Source: Beyond Science: A Guide to FX p. 5.
+func fx_energy(character: Dictionary) -> Dictionary:
+	var total := total_energy_pool(character)
+	var reserved: int = mini(permanent_fx_energy_drain(character), total)
+	var spendable := total - reserved
+	var used := clampi(energy_used(character), 0, spendable)
+	_normalize_fx(character)
+	character["fx"]["energy_used"] = used
+	return {
+		"max": total,
+		"reserved": reserved,
+		"spendable": spendable,
+		"used": used,
+		"available": spendable - used,
+	}
+
+
+func energy_used(character: Dictionary) -> int:
+	return AlternityNum.as_int(character.get("fx", {}).get("energy_used", 0))
+
+
+func set_energy_used(character: Dictionary, used: int) -> void:
+	_normalize_fx(character)
+	var total := total_energy_pool(character)
+	var spendable: int = total - mini(permanent_fx_energy_drain(character), total)
+	character["fx"]["energy_used"] = clampi(used, 0, maxi(0, spendable))
+
+
+func spend_energy(character: Dictionary, points: int) -> int:
+	if points <= 0:
+		return 0
+	var pool := fx_energy(character)
+	var spent: int = mini(points, AlternityNum.as_int(pool.get("available", 0)))
+	set_energy_used(character, AlternityNum.as_int(pool.get("used", 0)) + spent)
+	return spent
+
+
+func restore_energy(character: Dictionary, points: int) -> int:
+	if points <= 0:
+		return 0
+	var pool := fx_energy(character)
+	var restored: int = mini(points, AlternityNum.as_int(pool.get("used", 0)))
+	set_energy_used(character, AlternityNum.as_int(pool.get("used", 0)) - restored)
+	return restored
+
+
+## An hour of rest, settled the same way a psionic one is.
+## Source: Beyond Science: A Guide to FX p. 5.
+func rest_energy(character: Dictionary, result: String) -> int:
+	return restore_energy(character, _get_parent().energy_recovered_for_result(result))
+
 
 func permanent_fx_energy_drain(character: Dictionary) -> int:
 	var total_drain := 0

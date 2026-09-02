@@ -30,7 +30,16 @@ func watched_sections() -> Array:
 
 func build(container: Container) -> void:
 	_build_budget(container)
+	_build_trackers(container)
 	_build_picker(container)
+
+
+## A tab whose skills draw on a live resource puts its tracker here, between the
+## budget and the catalog: the budget is a creation-time question, the catalog a
+## shopping one, and the tracker the only part of the tab used mid-session. The
+## Skills tab itself has no such resource.
+func _build_trackers(_container: Container) -> void:
+	pass
 
 
 func _build_budget(container: Container) -> void:

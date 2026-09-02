@@ -6,6 +6,21 @@ const MAX_SPECIALTY_RANK := 12
 
 ## Specialties may be bought up to rank 3 while the hero is being created.
 ## Source: Player's Handbook Table P28.
+## Energy recovered per full, uninterrupted hour of rest, by the degree of the
+## Resolve -- mental resolve check that ends it. The same table governs psionic
+## and FX pools.
+## Source: Player's Handbook Chapter 14 p. 202; Beyond Science: A Guide to FX p. 5.
+const ENERGY_RECOVERY_PER_HOUR := {
+	"failure": 0,
+	"marginal": 0,
+	"ordinary": 1,
+	"good": 2,
+	"amazing": 3,
+}
+
+## Resolve -- mental resolve. The check an hour of rest is settled with.
+const ENERGY_RECOVERY_SKILL_ID := 135
+
 const CREATION_SPECIALTY_RANK := 3
 const ABILITY_NAMES := {
 	"STR": "Strength",

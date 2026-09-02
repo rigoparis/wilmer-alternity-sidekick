@@ -32,6 +32,7 @@
 		},
 		"fx": {
 			"energy_pool": 0.0,
+			"energy_used": 0,
 			"is_fx_talent": false,
 			"permanent_skills": {
 
@@ -77,6 +78,7 @@
 		},
 		"player_name": "Fixture",
 		"profession_id": 0.0,
+		"psionic_energy_used": 0,
 		"selected_achievements": [],
 		"selected_flaws": {
 

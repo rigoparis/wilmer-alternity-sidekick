@@ -22,3 +22,36 @@ func is_available_for(context: SheetContext) -> bool:
 	if context == null or context.doc == null or context.rules == null:
 		return false
 	return context.rules.is_psionic_character(context.doc.raw())
+
+
+## The energy pool, as a thing you spend from rather than a number you read.
+##
+## The app computed the pool size from the first commit and gave no way to use
+## it. Every power costs points, so the pool is the whole constraint on how
+## often a Mindwalker can act -- and a psion at the table was tracking it on
+## paper beside an app that knew the number.
+func _build_trackers(container: Container) -> void:
+	var doc := ctx.doc
+	var rules: AlternityRules = ctx.rules
+	var palette := ctx.palette
+	var pool: Dictionary = rules.psionic_energy(doc.raw())
+	var maximum := AlternityNum.as_int(pool.get("max", 0))
+	if maximum <= 0:
+		return
+
+	var box := Widgets.section(container, "Psionic Energy", palette)
+
+	# Boxes rather than a stepper, matching damage and last resorts: what a
+	# psion needs mid-scene is how many powers they have left, which is a shape,
+	# not a figure.
+	var tracker := DamageTrack.new()
+	box.add_child(tracker)
+	tracker.setup(palette, "Spent", AlternityNum.as_int(pool.get("used", 0)), maximum)
+	tracker.value_changed.connect(func(value: int):
+		doc.apply([CharacterDoc.DAMAGE], func(c): rules.set_psionic_energy_used(c, value))
+		save_requested.emit())
+
+	Widgets.metric(box, "Pool", str(maximum), palette)
+	Widgets.rest_row(box, palette, ctx.is_wide_layout, func(degree: String):
+		doc.apply([CharacterDoc.DAMAGE], func(c): rules.rest_psionic_energy(c, degree))
+		save_requested.emit())
