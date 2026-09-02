@@ -2,14 +2,16 @@ extends "res://tools/test_harness.gd"
 ##
 ## Table P29 pinned to the shipped achievement catalog.
 ##
-## Every purchasable benefit, its skill-point cost and its minimum achievement
-## level, for all five professions. Transcribed from the Player's Handbook
-## breakdown rather than from the data, so this fails if the catalog drifts --
-## which is how a wrong entry gets noticed rather than quietly costing someone
-## the wrong number of points mid-campaign.
+## Every purchasable benefit, its achievement point cost and its minimum
+## achievement level, for all five professions -- read off Table P29 on p. 127,
+## and checked cell by cell against the catalog. 169 of the 170 matched.
 ##
-## It caught new_perk_powerful_ally sitting at 4th level for a Free Agent where
-## the table says 7th.
+## The one that did not is worth recording. This suite originally read the table
+## from a breakdown, and on that authority it "caught" new_perk_powerful_ally
+## sitting at 4th level for a Free Agent and had it changed to 7th. The page says
+## 4th. The catalog had been right, the breakdown was wrong, and an audit made
+## the data worse -- which is the argument for reading the book rather than a
+## summary of it.
 ##
 ## Profession order matches achievements_core.json's "profiles":
 ## combat_spec, diplomat, free_agent, tech_op, mindwalker.
@@ -62,7 +64,7 @@ const TABLE_P29 := {
 	"new_perk_fortitude": [[5, 3], [6, 5], [6, 5], [5, 5], [6, 8]],
 	"new_perk_observant": [[5, 3], [5, 4], [5, 3], [6, 5], [5, 5]],
 	"new_perk_photo_memory": [[5, 8], [4, 5], [5, 7], [4, 7], [4, 3]],
-	"new_perk_powerful_ally": [[5, 4], [5, 6], [5, 7], [6, 7], [6, 8]],
+	"new_perk_powerful_ally": [[5, 4], [5, 6], [5, 4], [6, 7], [6, 8]],   # p. 127
 	"new_perk_reflexes": [[6, 4], [6, 6], [5, 3], [5, 4], [6, 6]],
 	"new_perk_reputation": [[4, 4], [5, 5], [5, 5], [5, 4], [4, 6]],
 	"new_perk_tough_as_nails": [[5, 3], [6, 9], [6, 6], [5, 5], [6, 9]],

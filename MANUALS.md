@@ -52,7 +52,7 @@ distinctive in both books.
 | P25 | Encounter Skill Effects | 96 | |
 | P26 | Perks | 103 | |
 | P27 | Flaws | 107 | |
-| P29 | Achievement Benefits | 127 | |
+| P29 | Achievement Benefits | 127 | **yes** — all 170 cells; 1 corrected |
 | P30 | Money on Hand | 129 | |
 | P31 | Rich and Poor | 130 | |
 | P32 | Progress Levels | 131 | |
