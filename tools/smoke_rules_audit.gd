@@ -422,6 +422,65 @@ func _init() -> void:
 		assert_eq.call(rules.free_species_skill_rank(seller, free_id), 1, "Species broad is granted again")
 		assert_eq.call(rules.skill_budget(seller), budget_before, "Taking it back gives the 3 SP up again")
 
+	# --- 9c. FX primary school surcharge ---
+	# Powers outside the primary school cost double. A stale primary school --
+	# one the hero does not actually have -- silently doubled the price of every
+	# power they owned, and nothing in the app could set or clear the field.
+	print("Testing FX Primary School Surcharge...")
+	var caster: Dictionary = rules.default_character()
+	caster["species_id"] = 0
+	rules.ensure_character_shape(caster)
+	rules.fx.set_fx_talent(caster, true)
+
+	# Two schools, and a power under the second.
+	var school_a := ""
+	var school_b := ""
+	for broad in rules.fx.get_broad_skills_for_character(caster):
+		var broad_name := String(broad.get("name", ""))
+		if rules.fx.get_specialty_skills_for_broad_and_character(broad_name, caster).is_empty():
+			continue
+		if school_a.is_empty():
+			school_a = broad_name
+		elif school_b.is_empty():
+			school_b = broad_name
+			break
+	assert_true.call(not school_b.is_empty(), "found two FX schools with powers")
+
+	rules.fx.add_fx_skill(caster, school_b)
+	var power := String(
+		rules.fx.get_specialty_skills_for_broad_and_character(school_b, caster)[0].get("name", "")
+	)
+	var list_price: int = rules.fx.fx_skill_cost_for_rank(caster, power, 1)
+
+	# A primary school the hero does not own is ignored, not charged against.
+	rules.fx.set_primary_broad_group(caster, school_a)
+	assert_eq.call(
+		rules.fx.primary_broad_group(caster), "",
+		"a primary school the hero does not have is treated as unset"
+	)
+	assert_eq.call(
+		rules.fx.fx_skill_cost_for_rank(caster, power, 1), list_price,
+		"and does not double the price of a power they do own"
+	)
+
+	# Owning it makes it real, and then the surcharge applies.
+	rules.fx.add_fx_skill(caster, school_a)
+	assert_eq.call(
+		rules.fx.primary_broad_group(caster), school_a,
+		"a primary school the hero has is honoured"
+	)
+	assert_eq.call(
+		rules.fx.fx_skill_cost_for_rank(caster, power, 1), list_price * 2,
+		"a power outside the primary school costs double"
+	)
+
+	# Clearing it returns everything to list price.
+	rules.fx.set_primary_broad_group(caster, "")
+	assert_eq.call(
+		rules.fx.fx_skill_cost_for_rank(caster, power, 1), list_price,
+		"with no primary school every power costs list price"
+	)
+
 	# --- 10. Age Modifiers ---
 	# Age categories are an optional rule now, so every case here turns it on
 	# explicitly. The rule being off is itself asserted at the end.

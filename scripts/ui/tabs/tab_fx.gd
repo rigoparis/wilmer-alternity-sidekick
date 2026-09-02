@@ -72,6 +72,7 @@ func _build_pool(container: Container) -> void:
 		Widgets.metric(box, "Total pool", str(rules.fx.total_energy_pool(doc.raw())), palette)
 
 	_build_scale_picker(box)
+	_build_primary_group_picker(box)
 
 	# Always-active powers permanently reserve part of the pool, so the usable
 	# figure is the one that matters in play.
@@ -102,6 +103,58 @@ func _build_pool(container: Container) -> void:
 			"%s: %s" % [effect_name, description] if not description.is_empty() else effect_name,
 			palette, Widgets.FONT_CAPTION
 		)
+
+
+## Which school the hero's FX is centred on.
+##
+## Powers outside it cost double, so this is not decoration -- and until now it
+## could be neither seen nor set, which left one real character paying twice for
+## powers in schools they owned.
+func _build_primary_group_picker(parent: Container) -> void:
+	var doc := ctx.doc
+	var rules: AlternityRules = ctx.rules
+	var palette := ctx.palette
+	var raw := doc.raw()
+
+	# Only schools the hero actually has: a primary school you do not practise
+	# is what caused the problem.
+	var owned: Array = []
+	for broad in rules.fx.get_broad_skills_for_character(raw):
+		var broad_name := String(broad.get("name", ""))
+		if rules.fx.is_fx_skill_selected(raw, broad_name):
+			owned.append(broad_name)
+	if owned.is_empty():
+		return
+
+	var label := Label.new()
+	label.text = "Primary school"
+	label.add_theme_color_override("font_color", palette.muted)
+	label.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
+	parent.add_child(label)
+
+	var current := rules.fx.primary_broad_group(raw)
+	var picker := OptionButton.new()
+	picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	picker.custom_minimum_size = Vector2(0, 42)
+	picker.add_item("None - every school costs list price", 0)
+	var selected := 0
+	for index in owned.size():
+		picker.add_item(String(owned[index]), index + 1)
+		if String(owned[index]) == current:
+			selected = index + 1
+	picker.select(selected)
+	picker.item_selected.connect(func(index: int):
+		var chosen := "" if index <= 0 else String(owned[index - 1])
+		doc.apply([CharacterDoc.FX], func(c): rules.fx.set_primary_broad_group(c, chosen))
+		save_requested.emit())
+	parent.add_child(picker)
+
+	Widgets.muted_text(
+		parent,
+		"Powers from any other school cost double." if not current.is_empty()
+			else "With no primary school chosen, every power costs its list price.",
+		palette, Widgets.FONT_CAPTION
+	)
 
 
 ## What the campaign charges in achievement points for a point of FX pool.

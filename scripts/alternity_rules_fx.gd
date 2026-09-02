@@ -208,6 +208,28 @@ func selected_fx_skills(character: Dictionary) -> Array:
 	result.sort_custom(func(a, b): return String(a.get("name", "")) < String(b.get("name", "")))
 	return result
 
+## The school this hero's FX is centred on, if they still have it.
+##
+## Powers outside the primary school cost double, so a stale value here silently
+## doubles the price of everything. A real saved character had this set to
+## Alienism while owning Brick, Druidism and Taoism -- so every power in a school
+## they did own was charged at twice its price, and nothing in the app could set
+## or clear the field to fix it.
+##
+## A primary school the hero does not have is treated as unset: the surcharge is
+## defined relative to a school you actually practise.
+func primary_broad_group(character: Dictionary) -> String:
+	var stored := String(character.get("fx", {}).get("primary_broad_group", "")).strip_edges()
+	if stored.is_empty():
+		return ""
+	return stored if is_fx_skill_selected(character, stored) else ""
+
+
+func set_primary_broad_group(character: Dictionary, broad_name: String) -> void:
+	_normalize_fx(character)
+	character["fx"]["primary_broad_group"] = broad_name
+
+
 func fx_skill_cost(character: Dictionary, skill_name: String) -> int:
 	var broad = get_broad_skill(skill_name)
 	if not broad.is_empty():
@@ -225,7 +247,7 @@ func fx_skill_cost_for_rank(character: Dictionary, skill_name: String, rank: int
 	var specialty = get_specialty_skill(skill_name)
 	if not specialty.is_empty():
 		var base_cost = AlternityNum.as_int(specialty.get("cost", 0))
-		var primary_group = String(character.get("fx", {}).get("primary_broad_group", ""))
+		var primary_group := primary_broad_group(character)
 		var skill_broad = String(specialty.get("broad_skill", ""))
 		if not primary_group.is_empty() and skill_broad != primary_group:
 			base_cost *= 2

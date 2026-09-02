@@ -749,14 +749,14 @@
 		],
 		"racial_broad_skills": 6,
 		"skill_budget": 77,
-		"skill_points_remaining": -25,
-		"skill_points_used": 102,
+		"skill_points_remaining": -21,
+		"skill_points_used": 98,
 		"skill_purchase_points_used": 73,
 		"sold_broads_count": 2,
 		"starting_skill_budget": 77,
 		"validations": [
 			"Ability total must be 55; current total is 62.",
-			"Skill points are overspent by 25."
+			"Skill points are overspent by 21."
 		]
 	}
 }
