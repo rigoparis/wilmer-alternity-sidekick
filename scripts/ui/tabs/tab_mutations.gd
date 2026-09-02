@@ -122,7 +122,7 @@ func _build_distribution(parent: Container, kind: String) -> void:
 		data.get("drawback_points" if kind == "drawback" else "advantage_points", 0)
 	)
 
-	var options: Array = rules.mutations.mutation_distribution_options(kind, points)
+	var options: Array = rules.mutations.mutation_distribution_options(kind, points, doc.raw())
 	if options.is_empty():
 		return
 
@@ -278,11 +278,21 @@ func _catalog_entries(kind: String) -> Array:
 		var allowed := bool(verdict.get("allowed", false))
 		var reason := String(verdict.get("reason", ""))
 
+		var roll_num: int = AlternityNum.as_int(mutation.get("table_roll", 0))
+		var tier_str := String(mutation.get("tier", "")).capitalize()
+		var ability_str := String(mutation.get("related_ability", ""))
+		var meta_parts := []
+		if roll_num > 0:
+			meta_parts.append("#%d" % roll_num)
+		meta_parts.append(tier_str)
+		if not ability_str.is_empty():
+			meta_parts.append(ability_str)
+
 		entries.append({
 			"id": mutation_id,
 			"name": String(mutation.get("name", mutation_id)),
 			"summary": String(mutation.get("summary", mutation.get("description", ""))),
-			"meta": String(mutation.get("tier", "")).capitalize(),
+			"meta": " • ".join(meta_parts),
 			# "Already selected" is a reason, not a disabled state to hide.
 			"taken": reason.to_lower().contains("already"),
 			"disabled": not allowed,

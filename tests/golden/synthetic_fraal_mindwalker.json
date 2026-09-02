@@ -300,8 +300,10 @@
 				"Mutants are a character species derived from human stock. Mutant heroes use the mutant species entry and have human free broad skills, but do not receive the human skill point or broad skill bonus. Source: Player's Handbook p. 213-214.",
 				"Every mutant hero has at least one advantageous mutation and one mutation drawback. Source: Player's Handbook p. 214.",
 				"Ordinary advantageous mutations and Slight drawbacks cost 1 point, Good mutations and Moderate drawbacks cost 2 points, and Amazing mutations or Extreme drawbacks cost 4 points. Source: Player's Handbook p. 214; Table P47.",
-				"A mutant can have no more than three Ordinary, two Good, and one Amazing advantageous mutations. Source: Player's Handbook p. 216.",
-				"Mutation powers that require a check use the listed skill, or an untrained check using one-half of the related ability score with a +d4 situation die. Source: Player's Handbook p. 216."
+				"A mutant can have no more than three Ordinary (Slight), two Good (Moderate), and one Amazing (Extreme) mutation traits. Source: Player's Handbook p. 216.",
+				"In the Dark Matter setting, mutant heroes are restricted to Ordinary and Good advantages and Slight and Moderate drawbacks (Amazing mutations and Extreme drawbacks are prohibited). Source: Dark Matter Campaign Setting p. 74.",
+				"Mutation powers that require a check use the listed skill, or an untrained check using one-half of the related ability score with a +d4 situation die. Source: Player's Handbook p. 216.",
+				"Drawbacks reducing ability scores or causing temporary weakness reduce the corresponding score from Table P51: Related Abilities (STR->INT, DEX->STR, CON->DEX, INT->PER, WIL->CON, PER->WIL). Source: Player's Handbook p. 223-224; Table P51."
 			],
 			"uniqueness": {
 				"advantage_points": "d4",

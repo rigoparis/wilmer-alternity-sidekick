@@ -1325,12 +1325,16 @@ func psionic_energy_points(character: Dictionary) -> int:
 	# energy points equal to his Will score (instead of one-half Will for other
 	# such characters). A fraal who selects the Mindwalker profession has psionic
 	# energy points equal to his Will score x 1.5." (Player's Handbook p. 22.)
+	var base: int = 0
 	if is_fraal:
-		return int(will * 1.5) if is_primary_mindwalker else will
-	if is_primary_mindwalker:
-		return will
-	# A Diplomat (Mindwalker) and an ordinary talent land in the same place.
-	return int(ceil(will * 0.5))
+		base = int(will * 1.5) if is_primary_mindwalker else will
+	elif is_primary_mindwalker:
+		base = will
+	else:
+		# A Diplomat (Mindwalker) and an ordinary talent land in the same place.
+		base = int(ceil(will * 0.5))
+	var bought := _as_int(character.get("psionic_energy_bought", 0))
+	return base + bought
 
 
 ## The live psionic energy pool: its size, what has been spent out of it, and
@@ -2073,6 +2077,18 @@ func skill_score(character: Dictionary, skill: Dictionary) -> Dictionary:
 				"assist_only": true,
 				"reason": "%s cannot be resolved untrained on its own. An untrained hero may only assist someone who is trained, adding a step bonus to their check. Source: Player's Handbook p. 63; Table P19." % skill_label(skill),
 			}
+		if is_psionic_skill(skill) and not is_broad and is_setting_available(character, "Dark*Matter") and not is_mindwalker_profession(character):
+			return {
+				"ordinary": 0,
+				"good": 0,
+				"amazing": 0,
+				"die": "+d0",
+				"usable": false,
+				"trained_only": true,
+				"assist_only": false,
+				"via_broad": false,
+				"reason": "%s cannot be used untrained by human talents in Dark*Matter. Source: Dark*Matter Campaign Setting p. 71." % skill_label(skill),
+			}
 		if not using_broad_score:
 			# Psionics is a closed system. Every discipline says so in its own
 			# words -- "This skill can't be used untrained" -- and a specialty
@@ -2230,8 +2246,14 @@ func _validate_psionics(character: Dictionary, messages: Array) -> void:
 	if is_mindwalker_profession(character):
 		return
 
+	var is_dm: bool = is_setting_available(character, "Dark*Matter")
+	var has_superior_talent: bool = is_perk_selected(character, "superior_talent")
+	var superior_talent_cost: int = perk_cost_selected(character, "superior_talent") if has_superior_talent else 0
+
 	var broads := []
 	var specialties := []
+	var specialties_by_broad: Dictionary = {}
+
 	for skill_id in selected_skill_ids(character):
 		var skill := get_skill_by_id(_as_int(skill_id))
 		if skill.is_empty() or not is_psionic_skill(skill):
@@ -2239,36 +2261,72 @@ func _validate_psionics(character: Dictionary, messages: Array) -> void:
 		if String(skill.get("type", "")) == "broad":
 			broads.append(skill_label(skill))
 		elif skill_rank(character, _as_int(skill_id)) > 0:
-			specialties.append([skill_label(skill), skill_rank(character, _as_int(skill_id))])
+			var broad_id := _as_int(skill.get("broad_id", -1))
+			specialties.append([skill_label(skill), skill_rank(character, _as_int(skill_id)), broad_id])
+			if not specialties_by_broad.has(broad_id):
+				specialties_by_broad[broad_id] = 0
+			specialties_by_broad[broad_id] += 1
 
 	if broads.is_empty():
 		return
 
-	if broads.size() > PSIONIC_TALENT_MAX_BROADS:
+	var max_broads: int = PSIONIC_TALENT_MAX_BROADS
+	var max_specialties: int = PSIONIC_TALENT_MAX_SPECIALTIES
+	var rank_caps: Array = PSIONIC_TALENT_RANK_CAPS
+
+	if is_dm:
+		if has_superior_talent and superior_talent_cost == 4:
+			max_broads = 2
+			max_specialties = 4
+			rank_caps = [12, 6, 6, 6]
+			for b_id in specialties_by_broad:
+				if specialties_by_broad[b_id] > 2:
+					var b_name := skill_name_for_id(b_id)
+					messages.append(
+						"Superior Talent (4 SP) allows at most 2 specialty skills per broad skill, but %s has %d. Source: Dark Matter p. 60."
+						% [b_name, specialties_by_broad[b_id]]
+					)
+		elif has_superior_talent and superior_talent_cost == 6:
+			max_broads = 1
+			max_specialties = 4
+			rank_caps = [12, 6, 6, 6]
+		else:
+			max_broads = 1
+			max_specialties = 2
+			rank_caps = [12, 6]
+
+	if broads.size() > max_broads:
+		var src := "Dark Matter p. 60" if (is_dm and has_superior_talent) else ("Dark Matter p. 71" if is_dm else "Player's Handbook p. 228")
 		messages.append(
-			"A psionic talent may hold only %d psionic broad skill, and this hero holds %d (%s). Source: Player's Handbook p. 228."
-			% [PSIONIC_TALENT_MAX_BROADS, broads.size(), ", ".join(broads)]
+			"A psionic talent may hold only %d psionic broad skill(s), and this hero holds %d (%s). Source: %s."
+			% [max_broads, broads.size(), ", ".join(broads), src]
 		)
 
-	if specialties.size() > PSIONIC_TALENT_MAX_SPECIALTIES:
+	if specialties.size() > max_specialties:
+		var src := "Dark Matter p. 60" if (is_dm and has_superior_talent) else ("Dark Matter p. 71" if is_dm else "Player's Handbook p. 228")
 		messages.append(
-			"A psionic talent may buy at most %d psionic specialty skills, and this hero has %d. Source: Player's Handbook p. 228."
-			% [PSIONIC_TALENT_MAX_SPECIALTIES, specialties.size()]
+			"A psionic talent may buy at most %d psionic specialty skills, and this hero has %d. Source: %s."
+			% [max_specialties, specialties.size(), src]
 		)
 
-	# One specialty may reach rank 6 and the other rank 3, so sort by rank and
-	# hold each to the cap at its position.
+	# Sort by rank and hold each to the cap at its position.
 	specialties.sort_custom(func(a, b): return _as_int(a[1]) > _as_int(b[1]))
 	for index in specialties.size():
 		var cap := 0
-		if index < PSIONIC_TALENT_RANK_CAPS.size():
-			cap = _as_int(PSIONIC_TALENT_RANK_CAPS[index])
+		if index < rank_caps.size():
+			cap = _as_int(rank_caps[index])
 		var rank := _as_int(specialties[index][1])
 		if rank > cap:
-			messages.append(
-				"%s is at rank %d. A psionic talent may raise one specialty to rank 6 and a second to rank 3. Source: Player's Handbook p. 228."
-				% [specialties[index][0], rank]
-			)
+			if is_dm:
+				messages.append(
+					"%s is at rank %d. In Dark*Matter, a talent may raise one specialty to rank 12 and other specialties to rank 6. Source: Dark Matter p. 71."
+					% [specialties[index][0], rank]
+				)
+			else:
+				messages.append(
+					"%s is at rank %d. A psionic talent may raise one specialty to rank 6 and a second to rank 3. Source: Player's Handbook p. 228."
+					% [specialties[index][0], rank]
+				)
 
 
 ## How many schools, faiths and categories a hero may hold at once.

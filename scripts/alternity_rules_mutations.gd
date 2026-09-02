@@ -153,11 +153,12 @@ func roll_mutation_point_total(character: Dictionary, kind: String) -> int:
 	return points
 
 
-func mutation_distribution_options(kind: String, points: int) -> Array:
+func mutation_distribution_options(kind: String, points: int, character: Dictionary = {}) -> Array:
 	var safe_points: int = max(0, points)
+	var is_dm := _is_dark_matter(character)
 	if kind == "drawback":
-		return _mutation_drawback_distribution_options(safe_points)
-	return _mutation_advantage_distribution_options(safe_points)
+		return _mutation_drawback_distribution_options(safe_points, is_dm)
+	return _mutation_advantage_distribution_options(safe_points, is_dm)
 
 
 func mutation_distribution(character: Dictionary, kind: String) -> Dictionary:
@@ -172,7 +173,7 @@ func set_mutation_distribution(character: Dictionary, kind: String, distribution
 	var mutations := _mutation_data(character)
 	var points_key := "drawback_points" if kind == "drawback" else "advantage_points"
 	var distribution_key := "drawback_distribution" if kind == "drawback" else "advantage_distribution"
-	var options := mutation_distribution_options(kind, AlternityNum.as_int(mutations.get(points_key, 0)))
+	var options := mutation_distribution_options(kind, AlternityNum.as_int(mutations.get(points_key, 0)), character)
 	for option_value in options:
 		if typeof(option_value) != TYPE_DICTIONARY:
 			continue
@@ -186,7 +187,7 @@ func set_mutation_distribution(character: Dictionary, kind: String, distribution
 func roll_mutation_distribution(character: Dictionary, kind: String) -> Dictionary:
 	var mutations := _mutation_data(character)
 	var points_key := "drawback_points" if kind == "drawback" else "advantage_points"
-	var options := mutation_distribution_options(kind, AlternityNum.as_int(mutations.get(points_key, 0)))
+	var options := mutation_distribution_options(kind, AlternityNum.as_int(mutations.get(points_key, 0)), character)
 	if options.is_empty():
 		return {}
 	var option: Dictionary = options[randi_range(0, options.size() - 1)]
@@ -263,13 +264,15 @@ func can_add_mutation_advantage(character: Dictionary, mutation: Dictionary) -> 
 	var mutation_setting := String(mutation.get("setting", ""))
 	if not mutation_setting.is_empty() and not _get_parent().is_setting_available(character, mutation_setting):
 		return {"allowed": false, "reason": "Requires %s setting." % mutation_setting}
+	var tier := String(mutation.get("tier", "Ordinary"))
+	if tier == "Amazing" and _is_dark_matter(character):
+		return {"allowed": false, "reason": "Amazing mutations are prohibited in the Dark*Matter setting. Source: Dark*Matter Campaign Setting p. 74."}
 	if _mutation_selected(character, "advantages", mutation_id):
 		return {"allowed": false, "reason": "Already selected."}
 	var remaining := mutation_advantage_points_remaining(character)
 	var points: int = AlternityNum.as_int(mutation.get("points", 0))
 	if remaining < points:
 		return {"allowed": false, "reason": "Requires %d available advantageous mutation points." % points}
-	var tier := String(mutation.get("tier", "Ordinary"))
 	var distribution := mutation_distribution(character, "advantage")
 	var allowed_count: int = AlternityNum.as_int(distribution.get(tier, 0))
 	if allowed_count <= 0:
@@ -291,19 +294,35 @@ func can_add_mutation_drawback(character: Dictionary, drawback: Dictionary) -> D
 	var drawback_setting := String(drawback.get("setting", ""))
 	if not drawback_setting.is_empty() and not _get_parent().is_setting_available(character, drawback_setting):
 		return {"allowed": false, "reason": "Requires %s setting." % drawback_setting}
+	var tier := String(drawback.get("tier", "Slight"))
+	if tier == "Extreme" and _is_dark_matter(character):
+		return {"allowed": false, "reason": "Extreme drawbacks are prohibited in the Dark*Matter setting. Source: Dark*Matter Campaign Setting p. 74."}
 	if _mutation_selected(character, "drawbacks", drawback_id):
 		return {"allowed": false, "reason": "Already selected."}
+	if drawback_id == "wild_mutation":
+		var mutations: Dictionary = character.get("mutations", {})
+		var selected_advs: Array = mutations.get("advantages", [])
+		var has_compatible := false
+		for adv_id_val in selected_advs:
+			var adv_id := String(adv_id_val)
+			if _get_parent().WILD_MUTATION_COMPATIBLE_MUTATIONS.has(adv_id):
+				has_compatible = true
+				break
+		if not has_compatible:
+			return {"allowed": false, "reason": "Wild Mutation requires at least one compatible advantageous mutation (Adrenal Control, Acid Touch, Electric Aura, Increased Metabolism, Natural Attack, Chameleon Flesh, Hyper Metabolism, or Improved Natural Attack). Source: Player's Handbook p. 225."}
 	var remaining := mutation_drawback_points_remaining(character)
 	var points: int = AlternityNum.as_int(drawback.get("points", 0))
 	if remaining < points:
 		return {"allowed": false, "reason": "Requires %d available drawback mutation points." % points}
-	var tier := String(drawback.get("tier", "Slight"))
 	var distribution := mutation_distribution(character, "drawback")
 	var allowed_count: int = AlternityNum.as_int(distribution.get(tier, 0))
 	if allowed_count <= 0:
 		return {"allowed": false, "reason": "The point distribution has no %s drawback slot." % tier}
 	if _mutation_tier_count(selected_mutation_drawbacks(character), tier) >= allowed_count:
 		return {"allowed": false, "reason": "The selected point distribution has no remaining %s drawback slot." % tier}
+	var cap := _mutation_drawback_tier_cap(tier)
+	if cap > 0 and _mutation_tier_count(selected_mutation_drawbacks(character), tier) >= cap:
+		return {"allowed": false, "reason": "A mutant can have no more than %d %s drawback%s." % [cap, tier, "" if cap == 1 else "s"]}
 	return {"allowed": true, "reason": ""}
 
 
@@ -437,6 +456,48 @@ func mutation_roll_notes_for_character(character: Dictionary) -> Array:
 	return _get_parent()._unique_strings(notes)
 
 
+func mutation_related_ability_table_p51(ability: String) -> String:
+	return String(_get_parent().MUTATION_RELATED_ABILITIES_TABLE_P51.get(ability, ""))
+
+
+func untrained_mutation_check(character: Dictionary, ability: String) -> Dictionary:
+	var abilities: Dictionary = _get_parent().effective_abilities(character)
+	var score: int = int(floor(AlternityNum.as_int(abilities.get(ability, 10)) / 2.0))
+	return {
+		"ability": ability,
+		"score": score,
+		"situation_die": "+d4",
+		"display": "%s untrained (%d, +d4)" % [ability, score],
+		"reference": "Player's Handbook p. 216.",
+	}
+
+
+func roll_table_p49_advantage(tier: String, excluded: Array = []) -> Dictionary:
+	var candidates := []
+	for item in _get_parent().mutation_advantages:
+		if typeof(item) != TYPE_DICTIONARY:
+			continue
+		var m: Dictionary = item
+		if String(m.get("tier", "")) == tier and not excluded.has(String(m.get("id", ""))):
+			candidates.append(m)
+	if candidates.is_empty():
+		return {}
+	return candidates[randi_range(0, candidates.size() - 1)].duplicate(true)
+
+
+func roll_table_p50_drawback(tier: String, excluded: Array = []) -> Dictionary:
+	var candidates := []
+	for item in _get_parent().mutation_drawbacks:
+		if typeof(item) != TYPE_DICTIONARY:
+			continue
+		var m: Dictionary = item
+		if String(m.get("tier", "")) == tier and not excluded.has(String(m.get("id", ""))):
+			candidates.append(m)
+	if candidates.is_empty():
+		return {}
+	return candidates[randi_range(0, candidates.size() - 1)].duplicate(true)
+
+
 func _append_mutation_notes(mutation: Dictionary, effect_type: String, notes: Array) -> void:
 	for effect in _mutation_effects(mutation, effect_type):
 		var text := String(effect.get("text", "")).strip_edges()
@@ -540,8 +601,8 @@ func _normalize_mutations(character: Dictionary) -> void:
 		"uniqueness": uniqueness_id,
 		"advantage_points": max(0, AlternityNum.as_int(mutations.get("advantage_points", 0))),
 		"drawback_points": max(0, AlternityNum.as_int(mutations.get("drawback_points", 0))),
-		"advantage_distribution": _normalized_mutation_distribution(mutations.get("advantage_distribution", {}), "advantage", max(0, AlternityNum.as_int(mutations.get("advantage_points", 0)))),
-		"drawback_distribution": _normalized_mutation_distribution(mutations.get("drawback_distribution", {}), "drawback", max(0, AlternityNum.as_int(mutations.get("drawback_points", 0)))),
+		"advantage_distribution": _normalized_mutation_distribution(mutations.get("advantage_distribution", {}), "advantage", max(0, AlternityNum.as_int(mutations.get("advantage_points", 0))), character),
+		"drawback_distribution": _normalized_mutation_distribution(mutations.get("drawback_distribution", {}), "drawback", max(0, AlternityNum.as_int(mutations.get("drawback_points", 0))), character),
 		"advantages": _normalized_mutation_id_list(mutations.get("advantages", []), _get_parent().mutation_advantages_by_id),
 		"drawbacks": _normalized_mutation_id_list(mutations.get("drawbacks", []), _get_parent().mutation_drawbacks_by_id),
 	}
@@ -572,13 +633,13 @@ func _normalized_mutation_id_list(value, catalog: Dictionary) -> Array:
 	return result
 
 
-func _normalized_mutation_distribution(value, kind: String, points: int) -> Dictionary:
+func _normalized_mutation_distribution(value, kind: String, points: int, character: Dictionary = {}) -> Dictionary:
 	var order: Array = _get_parent().MUTATION_DRAWBACK_TIERS if kind == "drawback" else _get_parent().MUTATION_ADVANTAGE_TIERS
 	var raw: Dictionary = value if typeof(value) == TYPE_DICTIONARY else {}
 	var result := {}
 	for tier in order:
 		result[tier] = max(0, AlternityNum.as_int(raw.get(tier, 0)))
-	var options := mutation_distribution_options(kind, points)
+	var options := mutation_distribution_options(kind, points, character)
 	var id := _mutation_distribution_id(result, order)
 	for option_value in options:
 		if typeof(option_value) == TYPE_DICTIONARY and String(option_value.get("id", "")) == id:
@@ -598,13 +659,14 @@ func _ensure_mutation_distribution(character: Dictionary, kind: String) -> void:
 	var mutations: Dictionary = character.get("mutations", {})
 	var points_key := "drawback_points" if kind == "drawback" else "advantage_points"
 	var distribution_key := "drawback_distribution" if kind == "drawback" else "advantage_distribution"
-	mutations[distribution_key] = _normalized_mutation_distribution(mutations.get(distribution_key, {}), kind, AlternityNum.as_int(mutations.get(points_key, 0)))
+	mutations[distribution_key] = _normalized_mutation_distribution(mutations.get(distribution_key, {}), kind, AlternityNum.as_int(mutations.get(points_key, 0)), character)
 	character["mutations"] = mutations
 
 
-func _mutation_advantage_distribution_options(points: int) -> Array:
+func _mutation_advantage_distribution_options(points: int, is_dm: bool = false) -> Array:
 	var rows := []
-	for amazing in range(mini(1, int(floor(points / 4.0))), -1, -1):
+	var max_amazing: int = 0 if is_dm else mini(1, int(floor(points / 4.0)))
+	for amazing in range(max_amazing, -1, -1):
 		for good in range(mini(2, int(floor((points - (4 * amazing)) / 2.0))), -1, -1):
 			var ordinary: int = points - (4 * amazing) - (2 * good)
 			if ordinary <= 3:
@@ -617,12 +679,13 @@ func _mutation_advantage_distribution_options(points: int) -> Array:
 	return rows
 
 
-func _mutation_drawback_distribution_options(points: int) -> Array:
+func _mutation_drawback_distribution_options(points: int, is_dm: bool = false) -> Array:
 	var rows := []
-	for moderate in range(mini(8, int(floor(points / 2.0))), -1, -1):
-		for extreme in range(mini(8, int(floor((points - (2 * moderate)) / 4.0))), -1, -1):
+	var max_extreme: int = 0 if is_dm else mini(1, int(floor(points / 4.0)))
+	for extreme in range(max_extreme, -1, -1):
+		for moderate in range(mini(2, int(floor((points - (4 * extreme)) / 2.0))), -1, -1):
 			var slight: int = points - (2 * moderate) - (4 * extreme)
-			if slight <= 8:
+			if slight <= 3:
 				var counts := {
 					"Slight": slight,
 					"Moderate": moderate,
@@ -692,6 +755,17 @@ func _mutation_advantage_tier_cap(tier: String) -> int:
 		"Good":
 			return 2
 		"Amazing":
+			return 1
+	return 0
+
+
+func _mutation_drawback_tier_cap(tier: String) -> int:
+	match tier:
+		"Slight":
+			return 3
+		"Moderate":
+			return 2
+		"Extreme":
 			return 1
 	return 0
 
@@ -771,6 +845,13 @@ func _mutation_effects(mutation: Dictionary, effect_type: String) -> Array:
 		if String(effect.get("type", "")) == effect_type:
 			result.append(effect)
 	return result
+
+
+func _is_dark_matter(character: Dictionary) -> bool:
+	if character.is_empty():
+		return false
+	var setting := String(character.get("setting", "")).strip_edges().to_lower()
+	return setting.contains("dark") or setting.contains("matter")
 
 
 func _roll_mutation_formula(formula: String) -> int:

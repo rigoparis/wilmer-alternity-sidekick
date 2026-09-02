@@ -275,6 +275,30 @@ const MUTATION_ADVANTAGE_TIERS := ["Ordinary", "Good", "Amazing"]
 const MUTATION_DRAWBACK_TIERS := ["Slight", "Moderate", "Extreme"]
 const MUTATION_ADVANTAGE_LABEL_ORDER := ["Amazing", "Good", "Ordinary"]
 const MUTATION_DRAWBACK_LABEL_ORDER := ["Extreme", "Moderate", "Slight"]
+
+## Table P51: Related Abilities. Source: Player's Handbook p. 223-224; Table P51.
+const MUTATION_RELATED_ABILITIES_TABLE_P51 := {
+	"STR": "INT",
+	"DEX": "STR",
+	"CON": "DEX",
+	"INT": "PER",
+	"WIL": "CON",
+	"PER": "WIL"
+}
+
+## Advantageous mutations compatible with the Wild Mutation extreme drawback.
+## Source: Player's Handbook p. 225.
+const WILD_MUTATION_COMPATIBLE_MUTATIONS := [
+	"adrenal_control",
+	"acid_touch",
+	"electric_aura",
+	"increased_metabolism",
+	"natural_attack",
+	"chameleon_flesh",
+	"hyper_metabolism",
+	"improved_natural_attack"
+]
+
 const CORE_SKILL_ROLL_SOURCE := "Source: Player's Handbook p. 61-63."
 
 ## Table P10: which ability a target resists with, by the skill being used
@@ -1045,9 +1069,26 @@ const RANK_BENEFIT_NOTES := {
 		5: "Damage becomes d4+2s/d6+2s/d8+2s. Source: Player's Handbook p. 236.",
 		9: "Damage caused by the skill goes to 2d4+2s/2d6+2s/2d8+2s. Source: Player's Handbook p. 236."
 	},
+	90106: {
+		6: "Programmed Suggestion: can implant a suggestion that activates when the subject experiences a sensory cue (up to 1 hour, 1 day, or 1 month later depending on check result). Source: Dark*Matter p. 74."
+	},
+	90108: {
+		4: "Greater Duration: need only expend psionic energy points once every 5 rounds (1 minute) to maintain the skill activation. Source: Dark*Matter p. 74.",
+		8: "Selective Amnesia: can will onlookers to completely ignore specific aspects of a scene (a number of individuals equal to rank). Each receives an additional +2 penalty on Will feat check to recall. Source: Dark*Matter p. 74."
+	},
+	90109: {
+		4: "Increased Mastery: victim's Resolve-mental resolve checks to break control suffer a +1 step penalty (+2 at rank 8, +3 at rank 12). Source: Dark*Matter p. 74.",
+		6: "Greater Duration: duration between target's Resolve-mental resolve skill checks increases to 1 minute, 1 hour, and 1 day, respectively. Source: Dark*Matter p. 74.",
+		8: "Increased Mastery: victim's mental resolve penalty improves to +2 steps. Source: Dark*Matter p. 74.",
+		9: "Greater Duration: duration between target's Resolve-mental resolve skill checks increases to 1 hour, 1 day, and 1 week, respectively. Source: Dark*Matter p. 74.",
+		12: "Increased Mastery: victim's mental resolve penalty improves to +3 steps. Source: Dark*Matter p. 74."
+	},
 	90201: {
+		4: "Short Circuit: can disable an electronic device or security system by touch. Source: Dark*Matter p. 72.",
 		5: "Damage becomes d6+2s/d4w/d4+2w. Source: Player's Handbook p. 233.",
-		9: "Damage caused by the skill goes to d4+2w/d6+2w/d8+2w. Source: Player's Handbook p. 233."
+		8: "System Override: can remotely operate powered machinery or electronic locks up to 16 meters away. Source: Dark*Matter p. 72.",
+		9: "Damage caused by the skill goes to d4+2w/d6+2w/d8+2w. Source: Player's Handbook p. 233.",
+		12: "Jamming: can jam electromagnetic signals within 20 meters (+20m per extra PEP) for 5 rounds. Source: Dark*Matter p. 72."
 	},
 	90206: {
 		5: "Damage becomes d6+2w/d8+2w/d4m. Source: Player's Handbook p. 234.",
@@ -1057,6 +1098,11 @@ const RANK_BENEFIT_NOTES := {
 		1: "Select one Navigation specialty (surface, system astrogation, or drivespace astrogation) to apply this mental ability. Source: Player's Handbook p. 232.",
 		5: "A second Navigation specialty becomes available. Source: Player's Handbook p. 232.",
 		9: "The remaining Navigation specialty becomes available. Source: Player's Handbook p. 232."
+	},
+	90311: {
+		6: "Dowsing radius expands from 30 meters to 100 meters. Source: Dark*Matter p. 72.",
+		9: "Dowsing radius expands to 1 kilometer. Source: Dark*Matter p. 72.",
+		12: "Dowsing radius expands to 100 kilometers. Source: Dark*Matter p. 72."
 	}
 }
 
@@ -1139,9 +1185,12 @@ const SKILL_SOURCE_REFERENCES := {
 	90305: ["Player's Handbook p. 231-232."],
 	90306: ["Player's Handbook p. 232."],
 	90307: ["Player's Handbook p. 232."],
+	90108: ["Dark Matter Campaign Setting p. 74."],
+	90109: ["Dark Matter Campaign Setting p. 74."],
 	90308: ["Player's Handbook p. 232."],
 	90309: ["Player's Handbook p. 232."],
-	90310: ["Player's Handbook p. 233."]
+	90310: ["Player's Handbook p. 233."],
+	90311: ["Dark Matter Campaign Setting p. 72."]
 }
 
 
@@ -1621,7 +1670,10 @@ const FLAW_DEFINITIONS := [
 	{
 		"id": "clumsy",
 		"name": "Clumsy",
-		"bonus_options": [6],
+		# Table P27 on p. 107 reads "Clumsy 5", between Clueless 2/4/6 and Code
+		# of Honor 3. The catalog carried a spurious [5, 6] ladder; collapsing it
+		# to one value was right, but the value is 5.
+		"bonus_options": [5],
 		"ability": "DEX",
 		"summary": "The hero has poor coordination and an unsteady hand, taking a +1 step penalty to all Dexterity-based skill checks and Dexterity feat checks.",
 		"source": "Player's Handbook p. 108, Table P27; Gamemaster Guide p. 84.",

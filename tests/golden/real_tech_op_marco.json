@@ -554,6 +554,7 @@
 					"reference": "Player's Handbook p. 220; Table P49 p. 215.",
 					"related_ability": "WIL",
 					"summary": "Permanently raises Will by 2.",
+					"table_roll": 14.0,
 					"tier": "Good"
 				},
 				{
@@ -578,6 +579,7 @@
 					"reference": "Player's Handbook p. 220; Table P49 p. 215.",
 					"related_ability": "WIL",
 					"summary": "Awareness-perception and Investigate checks involving touch, taste, smell, sight, or hearing gain -2 steps.",
+					"table_roll": 12.0,
 					"tier": "Good"
 				},
 				{
@@ -593,6 +595,7 @@
 					"reference": "Player's Handbook p. 219; Table P49 p. 215.",
 					"related_ability": "WIL",
 					"summary": "Reduces obscurity penalties from low light by 2 steps; no benefit in total darkness.",
+					"table_roll": 17.0,
 					"tier": "Ordinary"
 				},
 				{
@@ -608,6 +611,7 @@
 					"reference": "Player's Handbook p. 218; Table P49 p. 215.",
 					"related_ability": "DEX",
 					"summary": "Action checks gain a -1 step bonus.",
+					"table_roll": 13.0,
 					"tier": "Ordinary"
 				}
 			],
@@ -633,6 +637,7 @@
 					"points": 2.0,
 					"reference": "Player's Handbook p. 224; Table P50.",
 					"summary": "Choose energy, low impact, or high impact. Primary damage of that type is increased by 1 point.",
+					"table_roll": 6.0,
 					"tier": "Moderate"
 				},
 				{
@@ -647,6 +652,7 @@
 					"points": 1.0,
 					"reference": "Player's Handbook p. 222-223; Table P50 p. 223.",
 					"summary": "In light brighter than twilight, actions suffer +1/+2/+3 steps in Ordinary/Good/Amazing light; goggles can reduce but never below +1.",
+					"table_roll": 2.0,
 					"tier": "Slight"
 				},
 				{
@@ -687,6 +693,7 @@
 					"points": 2.0,
 					"reference": "Player's Handbook p. 224; Table P50.",
 					"summary": "Athletics, Melee Weapons, Unarmed Attack, Acrobatics, and Movement suffer +2 steps; physical actions also cost fatigue at the GM's time scale.",
+					"table_roll": 2.0,
 					"tier": "Moderate"
 				},
 				{
@@ -701,6 +708,7 @@
 					"points": 1.0,
 					"reference": "Player's Handbook p. 223; Table P50.",
 					"summary": "Stamina or Survival checks in hot or cold conditions suffer +2 steps; protective clothing can remove the need for checks.",
+					"table_roll": 6.0,
 					"tier": "Slight"
 				}
 			],
@@ -731,8 +739,10 @@
 				"Mutants are a character species derived from human stock. Mutant heroes use the mutant species entry and have human free broad skills, but do not receive the human skill point or broad skill bonus. Source: Player's Handbook p. 213-214.",
 				"Every mutant hero has at least one advantageous mutation and one mutation drawback. Source: Player's Handbook p. 214.",
 				"Ordinary advantageous mutations and Slight drawbacks cost 1 point, Good mutations and Moderate drawbacks cost 2 points, and Amazing mutations or Extreme drawbacks cost 4 points. Source: Player's Handbook p. 214; Table P47.",
-				"A mutant can have no more than three Ordinary, two Good, and one Amazing advantageous mutations. Source: Player's Handbook p. 216.",
-				"Mutation powers that require a check use the listed skill, or an untrained check using one-half of the related ability score with a +d4 situation die. Source: Player's Handbook p. 216."
+				"A mutant can have no more than three Ordinary (Slight), two Good (Moderate), and one Amazing (Extreme) mutation traits. Source: Player's Handbook p. 216.",
+				"In the Dark Matter setting, mutant heroes are restricted to Ordinary and Good advantages and Slight and Moderate drawbacks (Amazing mutations and Extreme drawbacks are prohibited). Source: Dark Matter Campaign Setting p. 74.",
+				"Mutation powers that require a check use the listed skill, or an untrained check using one-half of the related ability score with a +d4 situation die. Source: Player's Handbook p. 216.",
+				"Drawbacks reducing ability scores or causing temporary weakness reduce the corresponding score from Table P51: Related Abilities (STR->INT, DEX->STR, CON->DEX, INT->PER, WIL->CON, PER->WIL). Source: Player's Handbook p. 223-224; Table P51."
 			],
 			"uniqueness": {
 				"advantage_points": "d4+3",

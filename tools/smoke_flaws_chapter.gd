@@ -33,7 +33,7 @@ func _init() -> void:
 		check_eq(String(flaw.get("setting", "")), "", "core flaw '%s' has no setting requirement" % flaw_id)
 
 	# Verify specific Core Flaw costs and abilities (Table P27)
-	check_eq(rules.get_flaw_by_id("clumsy").get("bonus_options"), [6], "clumsy is strictly +6 SP (DEX)")
+	check_eq(rules.get_flaw_by_id("clumsy").get("bonus_options"), [5], "clumsy is strictly +5 SP (DEX), per Table P27 p. 107")
 	check_eq(rules.get_flaw_by_id("clumsy").get("ability"), "DEX", "clumsy is DEX ability")
 	check_eq(rules.get_flaw_by_id("bad_luck").get("bonus_options"), [6], "bad luck is +6 SP (WIL)")
 	check_eq(rules.get_flaw_by_id("bad_luck").get("ability"), "WIL", "bad luck is WIL ability")
@@ -177,7 +177,7 @@ func _init() -> void:
 	var notes_hero := {
 		"selected_flaws": {
 			"bad_luck": 6,
-			"clumsy": 6,
+			"clumsy": 5,
 			"delicate": 3,
 		}
 	}
@@ -191,7 +191,7 @@ func _init() -> void:
 	var val_hero := {
 		"selected_flaws": {
 			"bad_luck": 6,
-			"clumsy": 6,
+			"clumsy": 5,
 			"delicate": 3,
 			"forgetful": 5, # 4th standard flaw -> exceeds limit of 3
 		}

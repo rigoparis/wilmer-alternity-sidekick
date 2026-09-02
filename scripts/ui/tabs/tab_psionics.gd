@@ -21,7 +21,14 @@ func heading() -> String:
 func is_available_for(context: SheetContext) -> bool:
 	if context == null or context.doc == null or context.rules == null:
 		return false
-	return context.rules.is_psionic_character(context.doc.raw())
+	var raw: Dictionary = context.doc.raw()
+	var rules: AlternityRules = context.rules
+	return (
+		rules.is_psionic_character(raw)
+		or rules.optional_rule_enabled(raw, "psionic_talents")
+		or rules.is_perk_selected(raw, "superior_talent")
+		or rules.is_setting_available(raw, "Dark*Matter")
+	)
 
 
 ## The energy pool, as a thing you spend from rather than a number you read.

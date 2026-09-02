@@ -74,6 +74,10 @@ func _init() -> void:
 	_test_activation_costs_are_flat()
 	_test_critical_failure_and_full_rest()
 	_test_talent_limits()
+	_test_dark_matter_talent_limits()
+	_test_dark_matter_untrained_specialty_restriction()
+	_test_psionic_rank_benefits()
+	_test_psionic_energy_bought()
 	_test_spending_and_resting()
 	_test_fx_pool_shares_the_rest_rule()
 	_test_skill_pricing()
@@ -230,7 +234,7 @@ const SPECIALTY_PRICES := {
 ## The Dark*Matter additions, which a Core campaign never sees.
 ## name -> [id, discipline, skill points, untrained use allowed]
 const DARK_MATTER_SPECIALTIES := {
-	"Psycholocation": [90311, 903, 3, true],
+	"Psycholocation": [90311, 903, 2, true],
 	"Obscure": [90108, 901, 3, true],
 	"Possess": [90109, 901, 4, false],
 }
@@ -644,6 +648,101 @@ func _test_talent_limits() -> void:
 	check_false(
 		_complains(mindwalker, "psionic broad") or _complains(mindwalker, "psionic specialty"),
 		"a Mindwalker may hold every discipline and raise every power"
+	)
+
+
+## Dark*Matter Mindwalking: talents may raise 1 specialty to rank 12 and 1 to rank 6.
+## With Superior Talent perk:
+## - 4 SP: up to 2 broads with up to 2 specialties each; 1 specialty to rank 12, others to rank 6.
+## - 6 SP: up to 1 broad with up to 4 specialties; 1 specialty to rank 12, others to rank 6.
+## Source: Dark Matter Campaign Setting p. 60, 71.
+func _test_dark_matter_talent_limits() -> void:
+	var dm_talent: Dictionary = _character(SPECIES_HUMAN, PROFESSION_COMBAT_SPEC, 12)
+	dm_talent["setting"] = "Dark*Matter"
+	dm_talent["achievement_level"] = 10
+	_rules.force_skill_rank(dm_talent, SKILL_ESP, 1)
+	_rules.force_skill_rank(dm_talent, 90302, 12)
+	_rules.force_skill_rank(dm_talent, 90303, 6)
+	check_false(_complains(dm_talent, "rank"), "Dark*Matter talent allows rank 12 and rank 6")
+
+	_rules.force_skill_rank(dm_talent, 90303, 7)
+	check_true(_complains(dm_talent, "rank 12 and other specialties to rank 6"), "rank 12 and 7 is not allowed for standard DM talent")
+
+	# Superior Talent (4 SP): 2 broads, max 2 specialties each
+	var sup4: Dictionary = _character(SPECIES_HUMAN, PROFESSION_COMBAT_SPEC, 12)
+	sup4["setting"] = "Dark*Matter"
+	sup4["achievement_level"] = 10
+	sup4["selected_perks"] = {"superior_talent": 4}
+	_rules.force_skill_rank(sup4, SKILL_ESP, 1)
+	_rules.force_skill_rank(sup4, 901, 1)
+	_rules.force_skill_rank(sup4, 90302, 12)
+	_rules.force_skill_rank(sup4, 90303, 6)
+	_rules.force_skill_rank(sup4, 90101, 6)
+	_rules.force_skill_rank(sup4, 90103, 6)
+	check_false(_complains(sup4, "broad") or _complains(sup4, "specialty"), "Superior Talent 4 SP allows 2 broads and 4 specialties total")
+
+	# Adding a 3rd specialty to ESP exceeds 2 per broad
+	_rules.force_skill_rank(sup4, 90305, 1)
+	check_true(_complains(sup4, "at most 2 specialty skills per broad skill"), "Superior Talent 4 SP rejects >2 specialties in one broad")
+
+	# Superior Talent (6 SP): 1 broad, up to 4 specialties
+	var sup6: Dictionary = _character(SPECIES_HUMAN, PROFESSION_COMBAT_SPEC, 12)
+	sup6["setting"] = "Dark*Matter"
+	sup6["achievement_level"] = 10
+	sup6["selected_perks"] = {"superior_talent": 6}
+	_rules.force_skill_rank(sup6, SKILL_ESP, 1)
+	_rules.force_skill_rank(sup6, 90302, 12)
+	_rules.force_skill_rank(sup6, 90303, 6)
+	_rules.force_skill_rank(sup6, 90305, 6)
+	_rules.force_skill_rank(sup6, 90307, 6)
+	check_false(_complains(sup6, "broad") or _complains(sup6, "specialty"), "Superior Talent 6 SP allows 1 broad and 4 specialties")
+
+
+## "For the purposes of a DARK*MATTER campaign, however, no psionic specialty skill
+## may be used untrained by human talents." (Dark Matter Table D5 p. 71.)
+func _test_dark_matter_untrained_specialty_restriction() -> void:
+	var dm_talent: Dictionary = _character(SPECIES_HUMAN, PROFESSION_COMBAT_SPEC, 12)
+	dm_talent["setting"] = "Dark*Matter"
+	_rules.force_skill_rank(dm_talent, SKILL_ESP, 1)
+
+	var score: Dictionary = _rules.skill_score(dm_talent, _skill(SKILL_CLAIRAUDIENCE))
+	check_false(bool(score.get("usable", false)), "untrained psionic specialty is unusable for human talent in Dark*Matter")
+	check_true(String(score.get("reason", "")).contains("Dark*Matter"), "reason cites Dark*Matter restriction")
+
+
+## Psionic rank benefits are defined in RANK_BENEFIT_NOTES.
+func _test_psionic_rank_benefits() -> void:
+	var expected_benefit_skills := [
+		90003, # Heal (Rank 6 mortal)
+		90004, # Morph (Forms at 1, 3, 5, 7, 10, 12)
+		90104, # Mind Blast (Damage at 5, 9)
+		90106, # Suggest (Programmed suggestion at 6)
+		90108, # Obscure (Duration at 4, Amnesia at 8)
+		90109, # Possess (Mastery at 4/8/12, Duration at 6/9)
+		90201, # Electrokinetics (Short circuit at 4, Damage at 5/9, Override at 8, Jamming at 12)
+		90206, # Pyrokinetics (Damage at 5, 9)
+		90306, # Navcognition (Specialties at 1, 5, 9)
+		90311, # Psycholocation (Radius at 6, 9, 12)
+	]
+	for skill_id in expected_benefit_skills:
+		var detail: Dictionary = _rules.skill_detail(_skill(skill_id))
+		var benefits: Dictionary = detail.get("rank_benefits", {})
+		check_true(not benefits.is_empty(), "%s has rank benefits defined" % _skill(skill_id).get("name", "?"))
+
+
+## Psionic energy pool can be enlarged via psionic_energy_bought.
+func _test_psionic_energy_bought() -> void:
+	var psion: Dictionary = _character(SPECIES_HUMAN, PROFESSION_MINDWALKER, 12)
+	var base_pts: int = _rules.psionic_energy_points(psion)
+	psion["psionic_energy_bought"] = 3
+	check_eq(
+		_rules.psionic_energy_points(psion), base_pts + 3,
+		"psionic_energy_bought increases psionic_energy_points"
+	)
+	var energy: Dictionary = _rules.psionic_energy(psion)
+	check_eq(
+		AlternityNum.as_int(energy.get("max", 0)), base_pts + 3,
+		"psionic_energy max reflects bought points"
 	)
 
 

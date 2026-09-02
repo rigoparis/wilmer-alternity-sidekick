@@ -1927,7 +1927,7 @@ func _init() -> void:
 
 	# 1. Multi-tier Cost/Bonus and Version Options
 	var clumsy_def := rules.get_flaw_by_id("clumsy")
-	assert_eq.call(clumsy_def.get("bonus_options", []), [6], "Clumsy is strictly +6 SP (DEX)")
+	assert_eq.call(clumsy_def.get("bonus_options", []), [5], "Clumsy is +5 SP (DEX), per Table P27 p. 107")
 
 	var spineless_def := rules.get_flaw_by_id("spineless")
 	assert_eq.call(spineless_def.get("bonus_options", []), [2, 4, 6], "Spineless has Ver. I (+2 SP), Ver. II (+4 SP), Ver. III (+6 SP)")
@@ -2049,6 +2049,41 @@ func _init() -> void:
 	# 4. Psionic Combat Attack Forms (Mind Blast, TK Blow, Pyrokinetics)
 	assert_eq.call(rules.get_skill_by_id(90104).get("stat", ""), "PER", "Mind Blast keyed to PER/WIL")
 	assert_eq.call(rules.get_skill_by_id(90206).get("stat", ""), "WIL", "Pyrokinetics keyed to WIL/CON")
+
+	# 5. Dark*Matter Psionic Skills & Setting Gating
+	var psycholoc := rules.get_skill_by_id(90311)
+	var obscure_skill := rules.get_skill_by_id(90108)
+	var possess_skill := rules.get_skill_by_id(90109)
+	assert_eq.call(AlternityNum.as_int(psycholoc.get("base_price", 0)), 2, "Psycholocation base price is 2 SP per Dark Matter Table D5")
+	assert_eq.call(String(psycholoc.get("setting", "")), "Dark*Matter", "Psycholocation is gated to Dark*Matter")
+	assert_eq.call(String(obscure_skill.get("setting", "")), "Dark*Matter", "Obscure is gated to Dark*Matter")
+	assert_eq.call(String(possess_skill.get("setting", "")), "Dark*Matter", "Possess is gated to Dark*Matter")
+
+	# 6. Dark*Matter Talent Limits & Superior Talent Validation
+	var dm_talent: Dictionary = rules.default_character()
+	dm_talent["setting"] = "Dark*Matter"
+	dm_talent["achievement_level"] = 10
+	rules.set_skill_rank(dm_talent, 903, 1) # ESP
+	rules.set_skill_rank(dm_talent, 90302, 12) # Clairaudience rank 12
+	rules.set_skill_rank(dm_talent, 90303, 6) # Clairvoyance rank 6
+	var dm_messages: Array = []
+	rules._validate_psionics(dm_talent, dm_messages)
+	assert_true.call(dm_messages.is_empty(), "Dark*Matter talent allows ranks 12 and 6 without error")
+
+	# Dark*Matter human talent cannot use untrained specialties
+	var dm_untrained_score: Dictionary = rules.skill_score(dm_talent, rules.get_skill_by_id(90305)) # Mind Reading untrained
+	assert_true.call(not bool(dm_untrained_score.get("usable", false)), "Dark*Matter human talent cannot use psionic specialties untrained")
+
+	# 7. Psionic Energy Bought via AP
+	psi_calc_hero["species_id"] = 0 # Human
+	psi_calc_hero["psionic_energy_bought"] = 3
+	assert_eq.call(rules.psionic_energy_points(psi_calc_hero), 17, "Mindwalker Energy Pool includes bought PEP (14 + 3 = 17)")
+
+	# 8. Psionic Rank Benefits in Constants
+	var benefit_skills := [90003, 90004, 90104, 90106, 90108, 90109, 90201, 90206, 90306, 90311]
+	for b_id in benefit_skills:
+		var detail: Dictionary = rules.skill_detail(rules.get_skill_by_id(b_id))
+		assert_true.call(not detail.get("rank_benefits", {}).is_empty(), "Skill %d has rank benefits" % b_id)
 
 	# --- 33. FX (Special Effects) Skills & Pillars (Beyond Science: A Guide to FX) ---
 	print("Testing FX Skills, Pillars & Permanent Powers...")
