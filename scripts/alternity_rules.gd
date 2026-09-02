@@ -818,8 +818,20 @@ func is_passive_resistance_ability(ability: String) -> bool:
 	return PASSIVE_RESISTANCE_ABILITIES.has(ability)
 
 
+## The passive step penalty an opponent takes when acting against this hero.
+##
+## Two of the six abilities have no entry on Table P2 and never grant one.
+## Constitution is rolled actively to endure hazards, and Personality is
+## deployed actively to shift attitudes -- an opponent resisting a Personality
+## skill rolls against their own Intelligence or Will modifier instead, never
+## against the hero's Personality.
+##
+## Personality used to fall through to the generic table here and quietly hand
+## out a modifier it should never have had.
+##
+## Source: Player's Handbook Table P2; Table P10 for what resists what.
 func character_resistance_modifier(character: Dictionary, ability: String) -> int:
-	if ability == "CON":
+	if ability == "CON" or ability == "PER":
 		return 0
 
 	var score = 10

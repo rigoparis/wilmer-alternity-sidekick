@@ -26,15 +26,24 @@ func _init() -> void:
 			"Table P2 resistance modifier for score %d" % score
 		)
 
-	# Free Agent resistance bonus applies to PER (any ability except CON qualifies).
+	# The Free Agent bonus raises a resistance modifier the hero actually has.
+	# Constitution and Personality have none -- both are rolled actively rather
+	# than resisted against -- so the pick does nothing when aimed at them.
 	var free_agent := rules.default_character()
 	rules.ensure_character_shape(free_agent)
 	free_agent["profession_id"] = 4
+	free_agent["free_agent_rm_bonus"] = "WIL"
+	free_agent["abilities"]["WIL"] = 12
+	check_eq(
+		rules.character_resistance_modifier(free_agent, "WIL"), 2,
+		"Free Agent WIL 12 with the resistance bonus is +2"
+	)
+
 	free_agent["free_agent_rm_bonus"] = "PER"
 	free_agent["abilities"]["PER"] = 12
 	check_eq(
-		rules.character_resistance_modifier(free_agent, "PER"), 2,
-		"Free Agent PER 12 with resistance bonus"
+		rules.character_resistance_modifier(free_agent, "PER"), 0,
+		"Personality has no resistance modifier for the bonus to raise"
 	)
 
 	# Combat Spec situation bonus: the chosen specialty improves from +d0 to -d4,

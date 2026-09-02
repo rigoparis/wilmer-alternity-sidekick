@@ -520,10 +520,12 @@ func _build_profession_options(container: Container) -> void:
 func _free_agent_row(parent: Container) -> void:
 	var doc := ctx.doc
 	var current := String(doc.raw().get("free_agent_rm_bonus", ""))
-	# Any ability except Constitution qualifies for the resistance bonus.
+	# Only abilities that have a resistance modifier to raise. Constitution and
+	# Personality have none -- both are rolled actively rather than resisted
+	# against -- so offering them would let a player spend the pick on nothing.
 	var choices: Array = []
 	for ability in ABILITIES:
-		if ability != "CON":
+		if ability != "CON" and ability != "PER":
 			choices.append({"id": ability, "name": ABILITY_NAMES.get(ability, ability)})
 
 	_string_picker(parent, "Resistance bonus ability", choices, current, func(value: String):

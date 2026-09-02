@@ -739,7 +739,11 @@ func _init() -> void:
 	rules.ensure_character_shape(hero_passive)
 	assert_eq.call(rules.character_resistance_modifier(hero_passive, "STR"), 2, "STR 14 passive RM is +2")
 	assert_eq.call(rules.character_resistance_modifier(hero_passive, "CON"), 0, "CON 14 RM is 0 (no RM)")
-	assert_eq.call(rules.character_resistance_modifier(hero_passive, "PER"), 2, "PER 14 RM is +2")
+	# Personality has no entry on Table P2. It is deployed actively, and an
+	# opponent resisting a Personality skill rolls against their own Intelligence
+	# or Will modifier -- never against the hero's Personality.
+	# Source: Player's Handbook Table P2; Table P10.
+	assert_eq.call(rules.character_resistance_modifier(hero_passive, "PER"), 0, "PER 14 RM is 0 (no RM)")
 
 	# --- 18. Raw Strength Feats & Breaking Objects (Table G21) ---
 	print("Testing Raw Strength Feats & Breaking Objects...")
