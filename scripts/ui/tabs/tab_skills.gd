@@ -50,7 +50,21 @@ func _build_budget(container: Container) -> void:
 	var broad_left := AlternityNum.as_int(summary.get("broad_skills_remaining", 0))
 	Widgets.progress_metric(box, "Broad skills", broad_used, broad_used + broad_left, palette)
 
-	Widgets.metric(box, "Max specialty rank", str(rules.max_skill_rank_for_character(ctx.doc.raw())), palette)
+	# Two different limits, and conflating them is what let a skill jump several
+	# ranks at once, so both are stated.
+	var raw := ctx.doc.raw()
+	var level := AlternityNum.as_int(raw.get("achievement_level", 1), 1)
+	Widgets.metric(
+		box, "Specialty rank ceiling",
+		str(rules.max_skill_rank_for_character(raw)), palette
+	)
+	Widgets.muted_text(
+		box,
+		"Specialties may be bought up to rank 3 while creating the hero."
+			if level <= 1 else
+		"After creation a specialty gains at most one rank at a time.",
+		palette, Widgets.FONT_CAPTION
+	)
 
 
 func _build_picker(container: Container) -> void:

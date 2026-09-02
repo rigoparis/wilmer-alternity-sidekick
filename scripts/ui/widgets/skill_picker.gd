@@ -240,7 +240,9 @@ func _build_row(parent: Container, skill: Dictionary, is_broad: bool) -> void:
 
 	var skill_id := AlternityNum.as_int(skill.get("id", -1), -1)
 	var rank: int = rules.skill_rank(raw, skill_id)
-	var max_rank: int = 1 if is_broad else rules.max_skill_rank_for_character(raw)
+	# Per skill, not per character: after creation a specialty may only gain one
+	# rank at a time, so the ceiling depends on where this skill already sits.
+	var max_rank: int = 1 if is_broad else rules.max_rank_for_skill(raw, skill_id)
 
 	# On a phone the name, two numbers and two buttons cannot share one line:
 	# whatever is left after the fixed-width controls is not enough to read a

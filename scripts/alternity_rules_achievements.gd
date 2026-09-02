@@ -209,6 +209,9 @@ func achievement_granted_perks(character: Dictionary) -> Array:
 		var row: Dictionary = perk.duplicate(true)
 		row["cost"] = 0
 		row["granted_by_achievement"] = true
+		# Whether it was bought or handed over decides if it counts against the
+		# three-perk career limit, so the award flag travels with the perk.
+		row["gm_given"] = bool(entry.get("gm_given", false))
 		row["achievement_name"] = String(achievement.get("name", "Achievement"))
 		row["perk_value"] = AlternityNum.as_int(effect.get("perk_value", 0))
 		rows.append(row)
@@ -237,12 +240,29 @@ func fx_energy_pool_increase_limit(character: Dictionary) -> int:
 	return max(0, _get_parent().fx.energy_pool(character))
 
 
-func can_purchase_achievement(character: Dictionary, achievement: Dictionary, target_id := "", target_value := 0) -> Dictionary:
+## Whether the hero may take this benefit, and why not when they may not.
+##
+## `gm_given` is the Gamemaster awarding a benefit narratively rather than the
+## player buying one in downtime. The Gamemaster Guide lets the GM hand out a
+## perk, remove a flaw or grant a windfall as a story reward, so such an award
+## skips both the skill-point cost and the achievement-level prerequisite --
+## Table P29 prices purchases, not gifts.
+##
+## What it does not skip are the hard ceilings: a species ability maximum and
+## the four-actions-per-round limit are physiology, not economics, and still
+## apply however the benefit arrived.
+func can_purchase_achievement(
+	character: Dictionary,
+	achievement: Dictionary,
+	target_id := "",
+	target_value := 0,
+	gm_given := false
+) -> Dictionary:
 	var achievement_id := String(achievement.get("id", ""))
 	var cost_info := achievement_cost_entry(achievement, character)
 	var min_level: int = AlternityNum.as_int(cost_info.get("min_level", 99))
 	var current_level := achievement_level_for_points(AlternityNum.as_int(character.get("achievement_points", 0)))
-	if current_level < min_level:
+	if not gm_given and current_level < min_level:
 		return {"allowed": false, "reason": "Requires hero level %d." % min_level}
 
 	var effect: Dictionary = achievement.get("effect", {})
@@ -285,9 +305,9 @@ func can_purchase_achievement(character: Dictionary, achievement: Dictionary, ta
 			return {"allowed": false, "reason": "The pool is already twice its starting value."}
 		# Paid in achievement points off the unbanked track, not in skill
 		# points, so it is checked here and skips the skill-point test below.
-		var ap_cost := fx_energy_pool_ap_cost(character)
+		var ap_cost := 0 if gm_given else fx_energy_pool_ap_cost(character)
 		var ap_available := achievement_points_available(character)
-		if ap_available < ap_cost:
+		if not gm_given and ap_available < ap_cost:
 			return {
 				"allowed": false,
 				"reason": "Requires %d achievement points; %d banked toward the next level." % [
@@ -299,7 +319,9 @@ func can_purchase_achievement(character: Dictionary, achievement: Dictionary, ta
 		var perk_id := String(effect.get("perk_id", ""))
 		if _get_parent().is_perk_selected(character, perk_id):
 			return {"allowed": false, "reason": "That perk is already selected."}
-		if _get_parent().non_gm_perk_count(character) >= 3:
+		# The three-perk career limit counts perks the player bought. A perk the
+		# Gamemaster hands over is a story reward and does not spend that budget.
+		if not gm_given and _get_parent().non_gm_perk_count(character) >= 3:
 			return {"allowed": false, "reason": "The hero already has three standard perks."}
 	if effect_type == "remove_flaw":
 		if String(target_id).is_empty():
@@ -312,12 +334,13 @@ func can_purchase_achievement(character: Dictionary, achievement: Dictionary, ta
 			if String(prior_effect.get("type", "")) == "remove_flaw" and String(entry.get("target_id", "")) == String(target_id):
 				return {"allowed": false, "reason": "That flaw has already been removed."}
 
-	var cost := achievement_purchase_cost(character, achievement, target_value)
-	var available_points: int = _get_parent().skill_budget(character) - _get_parent().skill_points_used(character)
-	if effect_type == "remove_flaw":
-		available_points -= max(0, AlternityNum.as_int(target_value))
-	if available_points < cost:
-		return {"allowed": false, "reason": "Requires %d available skill points." % cost}
+	var cost := 0 if gm_given else achievement_purchase_cost(character, achievement, target_value)
+	if not gm_given:
+		var available_points: int = _get_parent().skill_budget(character) - _get_parent().skill_points_used(character)
+		if effect_type == "remove_flaw":
+			available_points -= max(0, AlternityNum.as_int(target_value))
+		if available_points < cost:
+			return {"allowed": false, "reason": "Requires %d available skill points." % cost}
 	return {"allowed": true, "reason": "", "cost": cost, "min_level": min_level}
 
 
@@ -331,12 +354,19 @@ func achievement_ability_purchase_count(character: Dictionary, ability: String) 
 	return count
 
 
-func add_achievement_purchase(character: Dictionary, achievement_id: String, target_id := "", target_value := 0, notes := "") -> Dictionary:
+func add_achievement_purchase(
+	character: Dictionary,
+	achievement_id: String,
+	target_id := "",
+	target_value := 0,
+	notes := "",
+	gm_given := false
+) -> Dictionary:
 	var achievement: Dictionary = _get_parent().get_achievement_by_id(achievement_id)
 	if achievement.is_empty():
 		return {"ok": false, "reason": "Unknown achievement."}
-	var cost := achievement_purchase_cost(character, achievement, target_value)
-	var check := can_purchase_achievement(character, achievement, target_id, target_value)
+	var cost := 0 if gm_given else achievement_purchase_cost(character, achievement, target_value)
+	var check := can_purchase_achievement(character, achievement, target_id, target_value, gm_given)
 	if not bool(check.get("allowed", false)):
 		return {"ok": false, "reason": String(check.get("reason", ""))}
 
@@ -347,7 +377,7 @@ func add_achievement_purchase(character: Dictionary, achievement_id: String, tar
 	# -- never counts it against the skill budget.
 	var effect_for_cost: Dictionary = achievement.get("effect", {})
 	var ap_cost := 0
-	if String(effect_for_cost.get("type", "")) == "fx_energy_pool":
+	if not gm_given and String(effect_for_cost.get("type", "")) == "fx_energy_pool":
 		ap_cost = AlternityNum.as_int(check.get("ap_cost", fx_energy_pool_ap_cost(character)))
 		cost = 0
 		character["achievement_points"] = max(
@@ -363,6 +393,7 @@ func add_achievement_purchase(character: Dictionary, achievement_id: String, tar
 		"target_id": String(target_id),
 		"target_value": AlternityNum.as_int(target_value),
 		"notes": String(notes),
+		"gm_given": gm_given,
 	}
 	selected.append(entry)
 	character["selected_achievements"] = selected

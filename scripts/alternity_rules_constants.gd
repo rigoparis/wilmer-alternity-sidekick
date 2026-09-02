@@ -3,6 +3,10 @@ extends RefCounted
 
 const ABILITIES := ["STR", "DEX", "CON", "INT", "WIL", "PER"]
 const MAX_SPECIALTY_RANK := 12
+
+## Specialties may be bought up to rank 3 while the hero is being created.
+## Source: Player's Handbook Table P28.
+const CREATION_SPECIALTY_RANK := 3
 const ABILITY_NAMES := {
 	"STR": "Strength",
 	"DEX": "Dexterity",

@@ -114,6 +114,8 @@ func _run() -> void:
 	_test_italic_perks_are_unavailable()
 	_test_fx_energy_pool_spends_achievement_points()
 	_test_monetary_award_ceiling()
+	_test_gm_granted_benefits()
+	_test_perk_career_limit()
 
 
 func _test_every_entry_present() -> void:
@@ -349,4 +351,116 @@ func _test_monetary_award_ceiling() -> void:
 	check_false(
 		_rules.optional_rule_enabled(character, "monetary_awards_uncapped"),
 		"awards are capped unless the campaign says otherwise"
+	)
+
+
+## A Gamemaster award skips the price and the level, but not physiology.
+##
+## The Gamemaster Guide lets the GM hand out a perk, remove a flaw or grant a
+## windfall as a story reward. Table P29 prices purchases, not gifts, so a
+## granted benefit ignores both the skill-point cost and the achievement-level
+## prerequisite -- while species ability maximums and the four-action ceiling
+## still apply, being physiology rather than economics.
+func _test_gm_granted_benefits() -> void:
+	var character: Dictionary = _rules.default_character()
+	character["species_id"] = 0      # Human, ability ceiling 14
+	character["profession_id"] = 0   # Combat Spec
+	_rules.ensure_character_shape(character)
+
+	# A 1st-level hero with no points cannot buy an increase that needs 3rd.
+	var achievement: Dictionary = _rules.get_achievement_by_id("str_increase_1")
+	if not check(not achievement.is_empty(), "STR Increase #1 resolves"):
+		return
+	var bought: Dictionary = _rules.achievements.can_purchase_achievement(character, achievement)
+	check_false(bool(bought.get("allowed", false)), "a 1st-level hero cannot buy STR Increase #1")
+
+	# The Gamemaster may still award it.
+	var granted: Dictionary = _rules.achievements.can_purchase_achievement(
+		character, achievement, "", 0, true
+	)
+	check_true(bool(granted.get("allowed", false)), "the Gamemaster may grant it regardless of level")
+	check_eq(AlternityNum.as_int(granted.get("cost", -1)), 0, "a granted benefit costs nothing")
+
+	var before: int = _rules.effective_abilities(character).get("STR", 0)
+	var used_before: int = _rules.skill_points_used(character)
+	var result: Dictionary = _rules.achievements.add_achievement_purchase(
+		character, "str_increase_1", "", 0, "", true
+	)
+	check_true(bool(result.get("ok", false)), "the award applies")
+	check_eq(
+		AlternityNum.as_int(_rules.effective_abilities(character).get("STR", 0)), before + 1,
+		"a granted ability increase raises the score"
+	)
+	check_eq(
+		_rules.skill_points_used(character), used_before,
+		"a granted benefit spends no skill points"
+	)
+
+	# Hard ceilings still hold. Push STR to the Human maximum and the award is
+	# refused even from the Gamemaster.
+	var limits: Array = _rules.ability_limits(character, "STR")
+	character["abilities"]["STR"] = AlternityNum.as_int(limits[1])
+	var capped: Dictionary = _rules.achievements.can_purchase_achievement(
+		character, _rules.get_achievement_by_id("str_increase_2"), "", 0, true
+	)
+	check_false(
+		bool(capped.get("allowed", false)),
+		"even a granted increase respects the species ability maximum"
+	)
+
+
+## Three purchased perks is a career limit; gifts do not spend it.
+##
+## An achievement-bought perk is still a purchase and counts. Every
+## achievement-granted perk used to be exempt, which let a hero buy an unlimited
+## number of them after creation.
+func _test_perk_career_limit() -> void:
+	var character: Dictionary = _rules.default_character()
+	character["species_id"] = 0
+	character["profession_id"] = 0
+	_rules.ensure_character_shape(character)
+	# High enough level and budget that only the perk limit can refuse.
+	_rules.achievements.set_achievement_points(character, 200)
+
+	check_eq(_rules.non_gm_perk_count(character), 0, "a new hero has no perks")
+
+	var perk_benefits := [
+		"new_perk_fortitude", "new_perk_observant", "new_perk_tough_as_nails",
+	]
+	var taken := 0
+	for id in perk_benefits:
+		var achievement: Dictionary = _rules.get_achievement_by_id(id)
+		if achievement.is_empty():
+			continue
+		if bool(_rules.achievements.add_achievement_purchase(character, id).get("ok", false)):
+			taken += 1
+	check_eq(taken, 3, "three perks can be bought as achievement benefits")
+	check_eq(
+		_rules.non_gm_perk_count(character), 3,
+		"perks bought as achievement benefits count toward the career limit"
+	)
+
+	# A fourth purchase is refused.
+	var fourth: Dictionary = _rules.get_achievement_by_id("new_perk_reflexes")
+	if not check(not fourth.is_empty(), "a fourth perk benefit exists"):
+		return
+	check_false(
+		bool(_rules.achievements.can_purchase_achievement(character, fourth).get("allowed", false)),
+		"a fourth purchased perk is refused"
+	)
+
+	# But the Gamemaster may still hand one over, and it does not count.
+	check_true(
+		bool(_rules.achievements.can_purchase_achievement(character, fourth, "", 0, true).get("allowed", false)),
+		"the Gamemaster may still grant a perk beyond the limit"
+	)
+	check_true(
+		bool(_rules.achievements.add_achievement_purchase(
+			character, "new_perk_reflexes", "", 0, "", true
+		).get("ok", false)),
+		"the granted perk applies"
+	)
+	check_eq(
+		_rules.non_gm_perk_count(character), 3,
+		"a granted perk does not spend the career limit"
 	)

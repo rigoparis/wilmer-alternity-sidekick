@@ -109,12 +109,65 @@ func _init() -> void:
 	assert_eq.call(rules.starting_skill_budget(weren_hero), 55, "Weren INT 12 Starting SP = 55")
 	assert_eq.call(rules.additional_broad_skill_limit(weren_hero), 6, "Weren INT 12 Additional Broad Allowance = 6")
 
-	# Specialty skill rank cap: Rank 3 at creation (Level 1)
-	assert_eq.call(rules.max_skill_rank_for_character(human_hero), 3, "Level 1 hero specialty skill cap is Rank 3")
-	human_hero["achievement_level"] = 2
-	assert_eq.call(rules.max_skill_rank_for_character(human_hero), 4, "Level 2 hero specialty skill cap is Rank 4")
+	# Specialty rank limits. Two separate things: the ceiling a rank may legally
+	# sit at, and how far a skill may be raised right now.
+	#
+	# These were one flat "level + 2", which only holds for a skill bought at
+	# creation and raised at every level since. Applied to every skill it let a
+	# hero buy a brand-new specialty at 5th level and jump it straight to rank 7.
+	print("Testing Specialty Rank Limits...")
+	human_hero["achievement_level"] = 1
+	assert_eq.call(
+		rules.max_skill_rank_for_character(human_hero), 3,
+		"Creation caps a specialty at rank 3"
+	)
 	human_hero["achievement_level"] = 10
-	assert_eq.call(rules.max_skill_rank_for_character(human_hero), 12, "Level 10 hero specialty skill cap is Rank 12")
+	assert_eq.call(
+		rules.max_skill_rank_for_character(human_hero), 12,
+		"After creation the ceiling is rank 12"
+	)
+
+	# Pick a real specialty to exercise the one-rank-at-a-time rule against.
+	var ranked_specialty := -1
+	for skill_entry in rules.skills:
+		if typeof(skill_entry) == TYPE_DICTIONARY and skill_entry.get("type", "") == "specialty":
+			ranked_specialty = AlternityNum.as_int(skill_entry.get("id", -1), -1)
+			break
+	assert_true.call(ranked_specialty >= 0, "found a specialty skill to test rank limits with")
+
+	var climber: Dictionary = rules.default_character()
+	climber["species_id"] = 0
+	rules.ensure_character_shape(climber)
+
+	# At creation a specialty may be taken straight to rank 3.
+	climber["achievement_level"] = 1
+	assert_eq.call(
+		rules.max_rank_for_skill(climber, ranked_specialty), 3,
+		"At creation a specialty may be bought up to rank 3"
+	)
+
+	# Past creation, a brand-new specialty starts at rank 1 -- it does not
+	# inherit the hero's level. This is the case the old formula got wrong.
+	climber["achievement_level"] = 5
+	assert_eq.call(
+		rules.max_rank_for_skill(climber, ranked_specialty), 1,
+		"A new specialty bought at 5th level may only reach rank 1"
+	)
+
+	# And it climbs one rank at a time from wherever it sits.
+	rules.set_skill_rank(climber, ranked_specialty, 1)
+	assert_eq.call(rules.skill_rank(climber, ranked_specialty), 1, "the specialty is at rank 1")
+	assert_eq.call(
+		rules.max_rank_for_skill(climber, ranked_specialty), 2,
+		"a rank 1 specialty may next reach rank 2"
+	)
+
+	# Asking for a jump is clamped to the single step rather than granted.
+	rules.set_skill_rank(climber, ranked_specialty, 7)
+	assert_eq.call(
+		rules.skill_rank(climber, ranked_specialty), 2,
+		"asking to jump from rank 1 to 7 grants rank 2, not rank 7"
+	)
 
 	# --- 5. Table P6: Last Resort Points & Recovery Costs ---
 	print("Testing Table P6 Last Resort Points & Recovery Costs...")
@@ -852,16 +905,16 @@ func _init() -> void:
 	assert_eq.call(rules.equipment.armor_operation_penalty_reduction(armor_hero, 1), 1, "Broad Armor Operation -> 1 step reduction")
 	rules.set_skill_rank(armor_hero, 1, 1) # Specialty Rank 1
 	assert_eq.call(rules.equipment.armor_operation_penalty_reduction(armor_hero, 1), 2, "Combat Armor Rank 1 -> 2 steps reduction")
-	rules.set_skill_rank(armor_hero, 1, 4) # Specialty Rank 4
+	rules.force_skill_rank(armor_hero, 1, 4) # Specialty Rank 4
 	assert_eq.call(rules.equipment.armor_operation_penalty_reduction(armor_hero, 1), 3, "Combat Armor Rank 4 -> 3 steps reduction")
-	rules.set_skill_rank(armor_hero, 1, 7) # Specialty Rank 7
+	rules.force_skill_rank(armor_hero, 1, 7) # Specialty Rank 7
 	assert_eq.call(rules.equipment.armor_operation_penalty_reduction(armor_hero, 1), 4, "Combat Armor Rank 7 -> 4 steps reduction")
-	rules.set_skill_rank(armor_hero, 1, 10) # Specialty Rank 10
+	rules.force_skill_rank(armor_hero, 1, 10) # Specialty Rank 10
 	assert_eq.call(rules.equipment.armor_operation_penalty_reduction(armor_hero, 1), 5, "Combat Armor Rank 10 -> 5 steps reduction")
 
 	# Shaking Off Stuns (1 pt per 2 ranks, max 6 pts)
 	assert_eq.call(rules.equipment.armor_stun_damage_reduction(armor_hero, 1), 5, "Rank 10 Combat Armor gives 5 pts stun damage reduction")
-	rules.set_skill_rank(armor_hero, 1, 12)
+	rules.force_skill_rank(armor_hero, 1, 12)
 	assert_eq.call(rules.equipment.armor_stun_damage_reduction(armor_hero, 1), 6, "Rank 12 Combat Armor gives 6 pts stun damage reduction (cap)")
 
 	# 4. Unarmed Attack vs Power Martial Arts Damage
@@ -882,25 +935,25 @@ func _init() -> void:
 	assert_eq.call(pma_attacks[0]["damage"], "d6+1s/d6+3s/d4+1w", "PMA rank 1 damage formula with STR bonus")
 
 	# Power Martial Arts Rank 7: d6+2s/d4w/d4+2w + STR(+1) -> d6+3s/d4+1w/d4+3w
-	rules.set_skill_rank(pma_hero, 17, 7)
+	rules.force_skill_rank(pma_hero, 17, 7)
 	var pma_attacks_7 := rules.equipment.attack_forms_for_character(pma_hero)
 	assert_eq.call(pma_attacks_7[0]["damage"], "d6+3s/d4+1w/d4+3w", "PMA rank 7 upgraded damage formula")
 
 	# Power Martial Arts has no printed rank 12 damage increase -- rank 12 grants a
 	# third +1 step to the STR Resistance Modifier instead (asserted below), so the
 	# rank 7 damage line still stands at rank 12.
-	rules.set_skill_rank(pma_hero, 17, 12)
+	rules.force_skill_rank(pma_hero, 17, 12)
 	var pma_attacks_12 := rules.equipment.attack_forms_for_character(pma_hero)
 	assert_eq.call(pma_attacks_12[0]["damage"], "d6+3s/d4+1w/d4+3w", "PMA rank 12 keeps the rank 7 damage line")
 
 	# 5. STR Resistance Modifier bonuses from Melee / PMA Ranks
 	rules.set_skill_rank(pma_hero, 17, 0)
 	var rm_base := rules.character_resistance_modifier(pma_hero, "STR")
-	rules.set_skill_rank(pma_hero, 17, 4)
+	rules.force_skill_rank(pma_hero, 17, 4)
 	assert_eq.call(rules.character_resistance_modifier(pma_hero, "STR"), rm_base + 1, "PMA rank 4 grants +1 to STR Resistance Modifier")
-	rules.set_skill_rank(pma_hero, 17, 8)
+	rules.force_skill_rank(pma_hero, 17, 8)
 	assert_eq.call(rules.character_resistance_modifier(pma_hero, "STR"), rm_base + 2, "PMA rank 8 grants +2 to STR Resistance Modifier")
-	rules.set_skill_rank(pma_hero, 17, 12)
+	rules.force_skill_rank(pma_hero, 17, 12)
 	assert_eq.call(rules.character_resistance_modifier(pma_hero, "STR"), rm_base + 3, "PMA rank 12 grants +3 to STR Resistance Modifier")
 
 	# --- 25b. Trained-only skills and untrained scores (PHB p. 63, Table P19) ---
@@ -928,7 +981,7 @@ func _init() -> void:
 
 	# Once bought it uses the full ability score plus rank.
 	rules.set_skill_rank(untrained_hero, 15, 1) # Unarmed Attack broad
-	rules.set_skill_rank(untrained_hero, 16, 2) # Brawl rank 2
+	rules.force_skill_rank(untrained_hero, 16, 2) # Brawl rank 2
 	var brawl_held: Dictionary = rules.skill_score(untrained_hero, brawl_skill)
 	assert_true.call(bool(brawl_held.usable), "A purchased skill is usable")
 	assert_eq.call(brawl_held.ordinary, 14, "Brawl rank 2 at STR 12 scores 14")
@@ -1201,21 +1254,21 @@ func _init() -> void:
 
 	# Defensive Martial Arts -> STR RM
 	var str_rm_base := rules.character_resistance_modifier(rank_hero, "STR")
-	rules.set_skill_rank(rank_hero, 20, 4)
+	rules.force_skill_rank(rank_hero, 20, 4)
 	assert_eq.call(rules.character_resistance_modifier(rank_hero, "STR"), str_rm_base + 1, "DMA rank 4 grants +1 to close-combat STR RM")
-	rules.set_skill_rank(rank_hero, 20, 8)
+	rules.force_skill_rank(rank_hero, 20, 8)
 	assert_eq.call(rules.character_resistance_modifier(rank_hero, "STR"), str_rm_base + 2, "DMA rank 8 grants +2 to close-combat STR RM")
-	rules.set_skill_rank(rank_hero, 20, 12)
+	rules.force_skill_rank(rank_hero, 20, 12)
 	assert_eq.call(rules.character_resistance_modifier(rank_hero, "STR"), str_rm_base + 3, "DMA rank 12 grants +3 to close-combat STR RM")
 	rules.set_skill_rank(rank_hero, 20, 0)
 
 	# Dodge -> DEX RM
 	var dex_rm_base := rules.character_resistance_modifier(rank_hero, "DEX")
-	rules.set_skill_rank(rank_hero, 21, 4)
+	rules.force_skill_rank(rank_hero, 21, 4)
 	assert_eq.call(rules.character_resistance_modifier(rank_hero, "DEX"), dex_rm_base + 1, "Dodge rank 4 grants +1 to ranged DEX RM")
-	rules.set_skill_rank(rank_hero, 21, 8)
+	rules.force_skill_rank(rank_hero, 21, 8)
 	assert_eq.call(rules.character_resistance_modifier(rank_hero, "DEX"), dex_rm_base + 2, "Dodge rank 8 grants +2 to ranged DEX RM")
-	rules.set_skill_rank(rank_hero, 21, 12)
+	rules.force_skill_rank(rank_hero, 21, 12)
 	assert_eq.call(rules.character_resistance_modifier(rank_hero, "DEX"), dex_rm_base + 3, "Dodge rank 12 grants +3 to ranged DEX RM")
 
 	# --- 27. Constitution (CON) Skills, Specialties & Mechanics ---
@@ -1283,7 +1336,7 @@ func _init() -> void:
 	rules.achievements.set_achievement_points(benefit_hero, 100)
 	rules.ensure_character_shape(benefit_hero)
 	rules.set_skill_rank(benefit_hero, 52, 1) # Stamina
-	rules.set_skill_rank(benefit_hero, 53, 4) # Endurance Rank 4
+	rules.force_skill_rank(benefit_hero, 53, 4) # Endurance Rank 4
 	var rank_groups := rules.skill_rank_benefit_groups(benefit_hero)
 	var found_endurance_benefit := false
 	for g in rank_groups:
@@ -1387,11 +1440,11 @@ func _init() -> void:
 	# 3. Deduce INT Resistance Modifier Rank Benefits
 	rules.set_skill_rank(benefit_hero, 69, 1) # Knowledge
 	var int_rm_base := rules.character_resistance_modifier(benefit_hero, "INT")
-	rules.set_skill_rank(benefit_hero, 71, 4) # Deduce Rank 4
+	rules.force_skill_rank(benefit_hero, 71, 4) # Deduce Rank 4
 	assert_eq.call(rules.character_resistance_modifier(benefit_hero, "INT"), int_rm_base + 1, "Deduce rank 4 grants +1 to INT RM")
-	rules.set_skill_rank(benefit_hero, 71, 8)
+	rules.force_skill_rank(benefit_hero, 71, 8)
 	assert_eq.call(rules.character_resistance_modifier(benefit_hero, "INT"), int_rm_base + 2, "Deduce rank 8 grants +2 to INT RM")
-	rules.set_skill_rank(benefit_hero, 71, 12)
+	rules.force_skill_rank(benefit_hero, 71, 12)
 	assert_eq.call(rules.character_resistance_modifier(benefit_hero, "INT"), int_rm_base + 3, "Deduce rank 12 grants +3 to INT RM")
 
 	# 4. Tech Op Action Check Profession Bonus
@@ -1481,11 +1534,11 @@ func _init() -> void:
 	# 3. Mental Resolve Will Resistance Modifier Rank Benefits
 	rules.set_skill_rank(benefit_hero, 134, 1) # Resolve
 	var wil_rm_base := rules.character_resistance_modifier(benefit_hero, "WIL")
-	rules.set_skill_rank(benefit_hero, 135, 4) # Mental Resolve Rank 4
+	rules.force_skill_rank(benefit_hero, 135, 4) # Mental Resolve Rank 4
 	assert_eq.call(rules.character_resistance_modifier(benefit_hero, "WIL"), wil_rm_base + 1, "Mental Resolve rank 4 grants +1 to WIL RM")
-	rules.set_skill_rank(benefit_hero, 135, 8)
+	rules.force_skill_rank(benefit_hero, 135, 8)
 	assert_eq.call(rules.character_resistance_modifier(benefit_hero, "WIL"), wil_rm_base + 2, "Mental Resolve rank 8 grants +2 to WIL RM")
-	rules.set_skill_rank(benefit_hero, 135, 12)
+	rules.force_skill_rank(benefit_hero, 135, 12)
 	assert_eq.call(rules.character_resistance_modifier(benefit_hero, "WIL"), wil_rm_base + 3, "Mental Resolve rank 12 grants +3 to WIL RM")
 
 	# 4. Actions Per Round Thresholds (Table P7)

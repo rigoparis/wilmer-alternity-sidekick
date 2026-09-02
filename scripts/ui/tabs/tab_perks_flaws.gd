@@ -180,12 +180,15 @@ func _catalog_entries(kind: String) -> Array:
 		# appeared three times, identically, and the list read as though the
 		# dictionary were full of duplicates. Each row now says which grade it is.
 		var graded := options.size() > 1
+		var severities := _severity_names(options)
 		for index in options.size():
 			var value := AlternityNum.as_int(options[index])
 			var display := String(definition.get("name", id))
 			var summary_text := String(definition.get("summary", ""))
 			if graded:
-				display = "%s (%s%d SP)" % [display, "" if is_perk else "+", value]
+				# Named where the manuals name them, priced where they do not.
+				var severity := String(severities[index]) if index < severities.size() else ""
+				display = "%s (%s)" % [display, severity] if not severity.is_empty() 					else "%s (%s%d SP)" % [display, "" if is_perk else "+", value]
 				summary_text = "Grade %d of %d. %s" % [index + 1, options.size(), summary_text]
 			entries.append({
 				"id": "%s%s%d" % [id, TIER_SEPARATOR, value],
@@ -195,6 +198,27 @@ func _catalog_entries(kind: String) -> Array:
 				"taken": taken,
 			})
 	return entries
+
+
+## Severity labels for a graded flaw or perk, or an empty array if the manuals
+## give it none.
+##
+## Table P27 and Table F2 list tiers only by point value, but the descriptive
+## text names them for the 2/4/6 ladder -- Infamy is Minor, Moderate and Severe,
+## and Powerful Enemy runs Minor Enemy up to Truly Powerful. Ladders that do not
+## follow 2/4/6 (Clumsy is 5/6, Vigor 2/3/4) are left priced instead of given
+## names the manuals never use.
+const SEVERITY_LADDER := [2, 4, 6]
+const SEVERITY_NAMES := ["Minor", "Moderate", "Severe"]
+
+
+func _severity_names(options: Array) -> Array:
+	if options.size() != SEVERITY_LADDER.size():
+		return []
+	for index in options.size():
+		if AlternityNum.as_int(options[index]) != SEVERITY_LADDER[index]:
+			return []
+	return SEVERITY_NAMES
 
 
 ## Live header text while choosing. Shows what the selection would cost on top

@@ -1425,11 +1425,44 @@ func skill_rank_total_cost(character: Dictionary, skill: Dictionary) -> int:
 
 ## Specialty skill ranks are capped at Rank 3 at creation (Level 1), and Level + 2 in play (capped at 12).
 ## Source: Player's Handbook p. 34.
+## The highest rank a specialty may legally sit at for this hero.
+##
+## A ceiling, not a purchase limit: rank 3 while the hero is being created, and
+## the system maximum of 12 afterwards. Used to validate and normalise a rank
+## the character already holds. What they may raise a skill *to* right now is
+## max_rank_for_skill, which is a different and tighter question.
+##
+## Sources: Player's Handbook Table P28; Gamemaster Guide Table G4.
 func max_skill_rank_for_character(character: Dictionary) -> int:
 	if character.is_empty():
 		return MAX_SPECIALTY_RANK
-	var level := _as_int(character.get("achievement_level", 1))
-	return clampi(level + 2, 1, MAX_SPECIALTY_RANK)
+	var level := _as_int(character.get("achievement_level", 1), 1)
+	if level <= 1:
+		return CREATION_SPECIALTY_RANK
+	return MAX_SPECIALTY_RANK
+
+
+## The highest rank this particular specialty may be raised to right now.
+##
+## This was a flat level + 2, which is an approximation that only holds for a
+## skill bought at creation and raised at every level since. Applied to every
+## skill it let a hero buy a brand-new specialty at 5th level and take it
+## straight to rank 7.
+##
+## The printed rules are three separate limits: creation caps specialties at
+## rank 3, the system ceiling is rank 12, and after creation a skill may not
+## gain more than one rank at a time -- "you can't improve a specialty skill
+## more than one rank at a time, even if you have enough skill points to buy two
+## ranks at once".
+##
+## Sources: Player's Handbook Table P28 and Chapter 8 p. 125.
+func max_rank_for_skill(character: Dictionary, skill_id: int) -> int:
+	if character.is_empty():
+		return CREATION_SPECIALTY_RANK
+	var level := _as_int(character.get("achievement_level", 1), 1)
+	if level <= 1:
+		return CREATION_SPECIALTY_RANK
+	return clampi(skill_rank(character, skill_id) + 1, 1, MAX_SPECIALTY_RANK)
 
 
 
@@ -1438,7 +1471,7 @@ func next_skill_rank_cost(character: Dictionary, skill: Dictionary) -> int:
 	var rank := skill_rank(character, skill_id)
 	if skill.get("type", "") == "broad":
 		return skill_purchase_cost(character, skill, 1) if rank <= 0 else 0
-	if rank >= max_skill_rank_for_character(character):
+	if rank >= max_rank_for_skill(character, skill_id):
 		return 0
 	return skill_purchase_cost(character, skill, rank + 1)
 
@@ -1459,6 +1492,10 @@ func skill_rank(character: Dictionary, skill_id: int) -> int:
 	var rank := _selected_skill_entry_rank(raw_val)
 	if skill.get("type", "") == "broad":
 		return 1 if rank > 0 or free_rank > 0 else 0
+	# The ceiling, not the purchase cap. This is skill_rank itself, so asking
+	# max_rank_for_skill -- which reads the current rank -- would recurse; and a
+	# rank the character already holds is bounded by what is legal to hold, not
+	# by how far it may be raised in one step.
 	return max(free_rank, clampi(rank, 0, max_skill_rank_for_character(character)))
 
 
@@ -1470,7 +1507,24 @@ func set_skill_selected(character: Dictionary, skill_id: int, selected: bool) ->
 	set_skill_rank(character, skill_id, 1 if selected else 0)
 
 
+## Buy or sell a skill rank, honouring the one-rank-at-a-time purchase limit.
+##
+## This is the player-facing path. To restore an arbitrary legal rank -- loading
+## a character, or a Gamemaster awarding one outright -- use force_skill_rank,
+## which skips the step limit but still respects the rank ceiling.
 func set_skill_rank(character: Dictionary, skill_id: int, rank: int) -> void:
+	_write_skill_rank(character, skill_id, rank, false)
+
+
+## Set a rank outright, ignoring the one-rank-at-a-time limit.
+##
+## For imports and Gamemaster awards, where the rank is a given rather than
+## something being purchased a step at a time. The rank ceiling still applies.
+func force_skill_rank(character: Dictionary, skill_id: int, rank: int) -> void:
+	_write_skill_rank(character, skill_id, rank, true)
+
+
+func _write_skill_rank(character: Dictionary, skill_id: int, rank: int, allow_jump: bool) -> void:
 	var selected_skills: Dictionary = character.get("selected_skills", {})
 	var skill := get_skill_by_id(skill_id)
 	if skill.is_empty():
@@ -1507,7 +1561,11 @@ func set_skill_rank(character: Dictionary, skill_id: int, rank: int) -> void:
 				character["selected_skills"] = selected_skills
 				return
 
-		selected_skills[str(skill_id)] = 1 if is_broad else clampi(rank, 1, max_skill_rank_for_character(character))
+		var rank_cap := (
+			max_skill_rank_for_character(character) if allow_jump
+			else max_rank_for_skill(character, skill_id)
+		)
+		selected_skills[str(skill_id)] = 1 if is_broad else clampi(rank, 1, rank_cap)
 		if skill.get("type", "") == "specialty":
 			var broad_id := _as_int(skill.get("broad_id", -1))
 			if is_normally_free_species_skill(character, broad_id):
@@ -1599,10 +1657,16 @@ func selected_flaw_count(character: Dictionary) -> int:
 	return selected_flaws(character).size()
 
 
+## Perks that count against the three-perk career limit.
+##
+## A perk bought as an achievement benefit is still a purchase and still counts;
+## only one the Gamemaster handed over as a story reward is exempt. This used to
+## exempt every achievement perk, which let a hero buy an unlimited number of
+## them after creation.
 func non_gm_perk_count(character: Dictionary) -> int:
 	var count := 0
 	for perk in selected_perks(character):
-		if not perk.get("granted_by_achievement", false) and not perk.get("gm_given", false):
+		if not perk.get("gm_given", false):
 			count += 1
 	return count
 
@@ -2354,7 +2418,7 @@ func skill_detail(skill: Dictionary, character: Dictionary = {}) -> Dictionary:
 		"ability_name": ABILITY_NAMES.get(ability, ability),
 		"broad_name": String(broad.get("name", "")),
 		"rank": current_rank,
-		"max_rank": max_skill_rank_for_character(character) if skill.get("type", "") == "specialty" else 1,
+		"max_rank": max_rank_for_skill(character, skill_id) if skill.get("type", "") == "specialty" else 1,
 		"base_price": _as_int(skill.get("base_price", 0)),
 		"rank_one_cost": skill_cost(character, skill) if not character.is_empty() else _as_int(skill.get("base_price", 0)),
 		"next_cost": next_skill_rank_cost(character, skill) if not character.is_empty() else _as_int(skill.get("base_price", 0)),
