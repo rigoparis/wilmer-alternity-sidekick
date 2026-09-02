@@ -86,6 +86,7 @@ func _init() -> void:
 	_test_fraal()
 	_test_mindwalker_focus()
 	_test_kinetic_shield()
+	_test_psionics_are_resisted_by_will()
 
 	finish()
 
@@ -173,15 +174,21 @@ func _test_specialties_follow_their_discipline() -> void:
 		)
 
 
-## Price and training for all 29 core powers.
+## Price and training for all 29 core powers, read off Table P52.
 ##
-## These were deliberately left unpinned on the first pass, because the
-## breakdown then available disagreed with the catalog on nearly every one. The
-## replacement breakdown agrees on all 29 -- but it agrees with a list I had
-## quoted in the question, so on its own that is an echo, not a confirmation.
-## What makes them safe to pin is _test_training_flags_match_their_own_prose
-## below, which checks the training column against each skill's own manual text
-## and never consults the breakdown at all.
+## These were left unpinned at first because the breakdown then available
+## disagreed with the catalog on nearly every one, and pinned only cautiously
+## after a second breakdown agreed -- which was weak evidence, since that
+## breakdown was answering a question that had quoted the catalog's own list.
+##
+## Table P52 on p. 229 settles it. Every price below and every training flag is
+## that table's, and all 33 rows matched the catalog exactly. The table groups
+## the disciplines by governing ability, which independently confirms Biokinesis
+## as Constitution, ESP as Intelligence, Telekinesis as Will and Telepathy as
+## Personality. Its note reads: "Skills printed in blue can't be used
+## untrained."
+##
+## Source: Player's Handbook p. 229; Table P52.
 ##
 ## name -> [skill points, untrained use allowed]
 const SPECIALTY_PRICES := {
@@ -1016,6 +1023,24 @@ func _test_mindwalker_focus() -> void:
 		String(_rules.skill_score(psion, _skill(SKILL_CLAIRAUDIENCE)).get("die", "")), "-d4",
 		"and its specialties improve with it, to -d4"
 	)
+
+
+## Table P10 lists "Psionic Skills" as one row against Will. Every discipline,
+## every power, the same resistance -- not Will for mental powers and Dexterity
+## for pyrokinetics, which is what both supplied breakdowns claimed.
+## Source: Player's Handbook p. 51; Table P10.
+func _test_psionics_are_resisted_by_will() -> void:
+	var checked := 0
+	for skill in _psionic_skills():
+		check_eq(
+			_rules.resisted_by(skill), ["WIL"],
+			"%s is resisted with Will" % skill.get("name", "?")
+		)
+		checked += 1
+	check_true(checked >= 33, "every psionic skill was checked")
+
+	var note: String = _rules.resisted_by_note(_skill(SKILL_CLAIRAUDIENCE))
+	check_true(note.contains("Will"), "and the reference text says so")
 
 
 ## Kinetic Shield is worn armour once the specialty is held, and not before.

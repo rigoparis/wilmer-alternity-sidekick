@@ -3134,6 +3134,37 @@ func _skill_summary(skill: Dictionary) -> String:
 	return "Specialized use of %s focused on %s." % [broad.get("name", "the parent broad skill"), name]
 
 
+## Which ability a target resists this skill with, if any.
+##
+## Table P10 keys on the broad skill, so a specialty is resisted the same way as
+## the broad it belongs to -- Melee Weapons - blade is opposed by Strength like
+## every other melee attack. Psionics is one row for all four disciplines.
+## Source: Player's Handbook p. 51; Table P10.
+func resisted_by(skill: Dictionary) -> Array:
+	if skill.is_empty():
+		return []
+	if is_psionic_skill(skill):
+		return PSIONIC_RESISTED_BY.duplicate()
+
+	var name := String(skill.get("name", ""))
+	if String(skill.get("type", "")) != "broad":
+		name = skill_name_for_id(_as_int(skill.get("broad_id", -1)))
+	return RESISTED_BY.get(name, []).duplicate()
+
+
+## The same thing said in words, for the reference sheet.
+func resisted_by_note(skill: Dictionary) -> String:
+	var abilities := resisted_by(skill)
+	if abilities.is_empty():
+		return ""
+	var names := []
+	for ability in abilities:
+		names.append(ABILITY_NAMES.get(String(ability), String(ability)))
+	return "A target resists this with their %s resistance modifier. %s" % [
+		" or ".join(names), "Source: Player's Handbook p. 51; Table P10."
+	]
+
+
 func _skill_roll_notes(skill: Dictionary) -> Array:
 	var notes := []
 	if skill.get("type", "") == "broad":
@@ -3141,6 +3172,9 @@ func _skill_roll_notes(skill: Dictionary) -> Array:
 	else:
 		notes.append("Score is linked ability + current specialty rank. Base situation die is +d0.")
 
+	var resisted := resisted_by_note(skill)
+	if not resisted.is_empty():
+		notes.append(resisted)
 	if not bool(skill.get("untrained", true)):
 		notes.append("This skill is prohibited from untrained use; the broad skill alone is not enough.")
 	elif bool(skill.get("assist_only", false)):

@@ -2067,6 +2067,46 @@ func _init() -> void:
 		assert_eq.call(String(broad.get("category", "")), "Super Hero", "%s is Super Hero" % bname)
 
 	# 2. FX Skill Scores and Dual-Ability Resolution
+	# Table P10: which ability a target resists a skill with. Twelve rows, and
+	# nothing else in the game opposes a skill check -- so a skill that is not
+	# listed has no opposed roll.
+	# Source: Player's Handbook p. 51; Table P10.
+	var resisted := {
+		"Deception": ["INT"],
+		"Entertainment": ["INT", "WIL"],
+		"Heavy Weapons": ["DEX"],
+		"Interaction": ["WIL"],
+		"Leadership": ["WIL"],
+		"Melee Weapons": ["STR"],
+		"Modern Ranged Weapons": ["DEX"],
+		"Primitive Ranged Weapons": ["DEX"],
+		"Stealth": ["WIL"],
+		"Street Smart": ["INT", "WIL"],
+		"Unarmed Attack": ["STR"],
+	}
+	for broad_name in resisted:
+		var broad := {}
+		for candidate in rules.skills:
+			if typeof(candidate) == TYPE_DICTIONARY and String(candidate.get("name", "")) == String(broad_name):
+				broad = candidate
+				break
+		assert_true.call(not broad.is_empty(), "Table P10 skill '%s' is in the catalog" % broad_name)
+		assert_eq.call(rules.resisted_by(broad), resisted[broad_name],
+			"'%s' is resisted with %s" % [broad_name, ", ".join(resisted[broad_name])])
+
+		# A specialty answers to whatever opposes the broad it belongs to.
+		for specialty in rules.specialty_skills_by_broad_id.get(AlternityNum.as_int(broad.get("id", -1)), []):
+			assert_eq.call(rules.resisted_by(specialty), resisted[broad_name],
+				"'%s' is resisted like its broad skill" % specialty.get("name", "?"))
+
+	# Skills the table does not list are not opposed at all.
+	for broad_name in ["Athletics", "Knowledge", "Medical Science", "Awareness", "Culture"]:
+		for candidate in rules.skills:
+			if typeof(candidate) == TYPE_DICTIONARY and String(candidate.get("name", "")) == String(broad_name):
+				assert_eq.call(rules.resisted_by(candidate), [],
+					"'%s' has no opposed roll" % broad_name)
+				break
+
 	var fx_char: Dictionary = rules.default_character()
 	fx_char["abilities"]["INT"] = 12
 	fx_char["abilities"]["WIL"] = 14

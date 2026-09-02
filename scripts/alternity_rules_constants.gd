@@ -276,6 +276,32 @@ const MUTATION_DRAWBACK_TIERS := ["Slight", "Moderate", "Extreme"]
 const MUTATION_ADVANTAGE_LABEL_ORDER := ["Amazing", "Good", "Ordinary"]
 const MUTATION_DRAWBACK_LABEL_ORDER := ["Extreme", "Moderate", "Slight"]
 const CORE_SKILL_ROLL_SOURCE := "Source: Player's Handbook p. 61-63."
+
+## Table P10: which ability a target resists with, by the skill being used
+## against them. Broad skill name -> resisting ability, or two of them where the
+## Gamemaster picks whichever fits the attempt.
+##
+## Nothing else in the game opposes a skill check, so a skill absent from this
+## table has no opposed roll at all.
+## Source: Player's Handbook p. 51; Table P10.
+const RESISTED_BY := {
+	"Deception": ["INT"],
+	"Entertainment": ["INT", "WIL"],
+	"Heavy Weapons": ["DEX"],
+	"Interaction": ["WIL"],
+	"Leadership": ["WIL"],
+	"Melee Weapons": ["STR"],
+	"Modern Ranged Weapons": ["DEX"],
+	"Primitive Ranged Weapons": ["DEX"],
+	"Stealth": ["WIL"],
+	"Street Smart": ["INT", "WIL"],
+	"Unarmed Attack": ["STR"],
+}
+
+## Every psionic skill is resisted the same way, whichever discipline it belongs
+## to: the table lists "Psionic Skills" as a single row.
+## Source: Player's Handbook p. 51; Table P10.
+const PSIONIC_RESISTED_BY := ["WIL"]
 const COMPLEX_CHECK_SOURCE := "Source: Player's Handbook p. 62."
 
 const SPECIES_FREE_SPECIALTY_IDS := {
