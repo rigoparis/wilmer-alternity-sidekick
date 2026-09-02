@@ -2136,7 +2136,11 @@ func _init() -> void:
 		"Monotheism": ["Aura", "Blessing", "Cure", "Demon ward", "Exorcism", "Guidance", "Signs and portents", "Vision"],
 		"Shamanism": ["Animal voice", "Dreamwalking", "Ghost dance", "Guide my hand", "Hunter's stare", "Spirit of the beast", "Trance visions", "Venom spirit"],
 		"Taoism": ["Confidence", "Embryonic breathing", "Energy spiral", "Interior alchemy", "Not doing", "Peace", "Permeation", "Talisman"],
-		"Voodoo": ["Ayza rides", "Ayza's juju", "Erzuli's fetish", "Gris-gris", "Helpful possession", "Legba rides", "Loa of healing", "Negate the spirit"]
+		# Seven, not eight. "Ayza rides" was in the catalog and is nowhere in
+		# Table F6 on p. 37 of Beyond Science; "Legba rides" is the miracle that
+		# does exist. Dropped along with the rest of the corrections read off
+		# that page.
+		"Voodoo": ["Ayza's juju", "Erzuli's fetish", "Gris-gris", "Helpful possession", "Legba rides", "Loa of healing", "Negate the spirit"]
 	}
 	var total_faith_miracles := 0
 	for faith_name in expected_faith_miracles.keys():
@@ -2147,7 +2151,9 @@ func _init() -> void:
 			assert_eq.call(String(spec.get("broad_skill", "")), faith_name, "Miracle '%s' belongs to faith '%s'" % [mname, faith_name])
 			assert_true.call(AlternityNum.as_int(spec.get("cost", 0)) > 0, "Miracle '%s' has valid SP cost" % mname)
 			total_faith_miracles += 1
-	assert_eq.call(total_faith_miracles, 52, "All 52 canonical Faith FX miracles audited")
+	# 51, not 52: Voodoo's "Ayza rides" was in the catalog and is nowhere in
+	# Table F6 (Beyond Science p. 37).
+	assert_eq.call(total_faith_miracles, 51, "All 51 canonical Faith FX miracles audited")
 
 	# 7. Dark*Matter Setting-Gated Faith: Incantation (Sasquatch)
 	var incantation_broad = rules.fx.get_broad_skill("Incantation")

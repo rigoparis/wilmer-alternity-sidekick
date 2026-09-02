@@ -2,17 +2,13 @@ extends "res://tools/test_harness.gd"
 ##
 ## The FX chapter, pinned to the manual.
 ##
-## Unlike the Psionics breakdown, this one agrees with the catalog on the shape
-## of the whole system: 21 broad skills, the same names, the same three pillars,
-## and matching specialty counts under 20 of the 21. Where it and the catalog
-## still disagree -- seven broad skill prices, several governing abilities, and
-## a scatter of specialty prices -- nothing is pinned here; those are open
-## questions, and pinning either side would only freeze a guess.
+## Prices and governing abilities are now read off the book itself: Table F3 on
+## p. 14, Table F6 on p. 37 and Table F7 on p. 57 of Beyond Science, each of
+## which prints every skill's cost and its ability in parentheses. Where the
+## catalog and the page disagreed, the page won -- 41 specialty prices, 37
+## specialty abilities and 7 broad prices moved.
 ##
-## What is pinned is what two sources agree on, plus the arithmetic that has to
-## hold whatever the prices turn out to be.
-##
-## Source: Beyond Science: A Guide to FX.
+## Source: Beyond Science: A Guide to FX, Tables F3, F6 and F7.
 ##
 
 const RulesScript := preload("res://scripts/alternity_rules.gd")
@@ -56,6 +52,8 @@ func _init() -> void:
 	_rules.load_core_data()
 
 	_test_pillars()
+	_test_broad_prices()
+	_test_specialty_prices_and_abilities()
 	_test_untrained_by_pillar()
 	_test_no_broad_is_usable_untrained()
 	_test_powers_need_their_broad()
@@ -110,8 +108,103 @@ func _test_pillars() -> void:
 	check_eq(_rules.fx.get_broad_skills().size(), 21, "and the catalog holds exactly those")
 
 
-## Arcane spells and Super Powers are trained-only. Faith miracles are not,
-## except four Alienism rituals.
+## Broad skill prices, from the three tables.
+## Source: Beyond Science pp. 14, 37, 57.
+const BROAD_PRICES := {
+	"Diabolism": 12, "Hemomancy": 10, "Hermeticism": 9, "Illusion": 8,
+	"Mesmerism": 10, "Necromancy": 10, "Pyromancy": 11,
+	"Alienism": 11, "Druidism": 12, "Hatire": 14, "Monotheism": 14,
+	"Shamanism": 13, "Taoism": 13, "Voodoo": 13,
+	"Body Alteration": 9, "Brick": 9, "Chi": 10, "Energy": 10,
+	"Metaconscious": 8, "Movement": 10,
+}
+
+## A sample of specialties spread across all three pillars, each with the
+## ability the table prints in parentheses and the price beside it. These are
+## the entries that moved, so they are the ones worth holding still.
+## name -> [ability, skill points]
+const SPECIALTY_SAMPLE := {
+	# Arcane -- Table F3, p. 14
+	"Binding": ["PER", 4], "Rend the weave": ["WIL", 2], "Summoning": ["PER", 5],
+	"Blood debt": ["INT", 3], "Reciprocity": ["CON", 4], "Stigmata": ["CON", 3],
+	"Glamour": ["INT", 4], "Ligature": ["INT", 3], "Sleep of Morpheus": ["INT", 4],
+	"Clamor": ["WIL", 4], "Conceal": ["INT", 5], "Programmed response": ["INT", 2],
+	"Befriend": ["PER", 4], "Dominate": ["WIL", 3], "Encourage": ["PER", 5],
+	"Animate dead": ["INT", 5], "Haunt": ["INT", 5], "Speak with dead": ["INT", 2],
+	"Storm of flames": ["WIL", 5], "Immolation": ["WIL", 3],
+	# Faith -- Table F6, p. 37
+	"Bend space": ["INT", 5], "Life endures": ["INT", 3], "Body and soul": ["WIL", 3],
+	"Aura": ["PER", 4], "Guidance": ["PER", 2], "Vision": ["PER", 4],
+	"Animal voice": ["PER", 3], "Spirit of the beast": ["WIL", 2],
+	"Trance visions": ["PER", 2], "Venom spirit": ["WIL", 4],
+	"Energy spiral": ["PER", 5], "Peace": ["PER", 5],
+	"Gris-gris": ["WIL", 2], "Legba rides": ["PER", 2], "Loa of healing": ["WIL", 2],
+	"Negate the spirit": ["WIL", 5], "Helpful possession": ["WIL", 4],
+	# Super Power -- Table F7, p. 57
+	"Invisibility": ["WIL", 5], "Stretching": ["CON", 3], "Body Armor": ["CON", 3],
+	"Super Strength": ["WIL", 4], "Mighty Leap": ["STR", 2], "Power Climb": ["STR", 2],
+	"Energy Resistance": ["CON", 2], "Genius": ["INT", 3],
+	"Super Personality": ["INT", 4], "Teleportation": ["WIL", 3],
+	"Wallcrawling": ["WIL", 2],
+}
+
+
+func _test_broad_prices() -> void:
+	for broad_name in BROAD_PRICES:
+		var broad: Dictionary = _rules.fx.get_broad_skill(String(broad_name))
+		if not check(not broad.is_empty(), "%s is in the catalog" % broad_name):
+			continue
+		check_eq(
+			AlternityNum.as_int(broad.get("cost", -1)),
+			AlternityNum.as_int(BROAD_PRICES[broad_name]),
+			"%s costs %d SP" % [broad_name, AlternityNum.as_int(BROAD_PRICES[broad_name])]
+		)
+
+
+func _test_specialty_prices_and_abilities() -> void:
+	for skill_name in SPECIALTY_SAMPLE:
+		var expected: Array = SPECIALTY_SAMPLE[skill_name]
+		var specialty: Dictionary = _rules.fx.get_specialty_skill(String(skill_name))
+		if not check(not specialty.is_empty(), "%s is in the catalog" % skill_name):
+			continue
+		check_eq(
+			String(specialty.get("ability", "")), String(expected[0]),
+			"%s is governed by %s" % [skill_name, expected[0]]
+		)
+		check_eq(
+			AlternityNum.as_int(specialty.get("cost", -1)),
+			AlternityNum.as_int(expected[1]),
+			"%s costs %d SP" % [skill_name, AlternityNum.as_int(expected[1])]
+		)
+
+	# Voodoo carries seven miracles, not eight. "Ayza rides" was never in the
+	# book; "Legba rides" is the one that is.
+	check_eq(
+		_rules.fx.get_specialty_skills_for_broad("Voodoo").size(), 7,
+		"Voodoo holds seven miracles"
+	)
+	check_true(
+		_rules.fx.get_specialty_skill("Ayza rides").is_empty(),
+		"and Ayza rides is not among them"
+	)
+	check_false(
+		_rules.fx.get_specialty_skill("Reciprocity").is_empty(),
+		"Hemomancy's eighth spell is Reciprocity, spelled as the book spells it"
+	)
+
+
+## Super Powers are trained-only, and most Faith miracles are not.
+##
+## Arcane Magic is deliberately NOT asserted either way. The catalog derives its
+## training flags from each entry's own description text, and that text is not
+## trustworthy for this pillar: Beyond Science prints trained-only skills in a
+## second colour in Table F3, and the entries it leaves in white include several
+## the catalog marks trained-only. Rend the weave is the confirmed case -- its
+## description on p. 17 carries the cost line and goes straight into the body,
+## with no "This skill can't be used untrained." between them, where Command on
+## p. 16 has exactly that line. So at least one flag is wrong, the colour
+## separation is too fine to read reliably off a scan, and pinning the current
+## values would only defend the error.
 func _test_untrained_by_pillar() -> void:
 	var faith_untrained := 0
 	for specialty in _specialties():
@@ -119,9 +212,10 @@ func _test_untrained_by_pillar() -> void:
 		var pillar := String(specialty.get("category", ""))
 		var untrained: bool = bool(specialty.get("untrained", false))
 		match pillar:
-			"Arcane Magic":
-				check_false(untrained, "the spell %s is trained-only" % name)
 			"Super Hero":
+				# "Purchasing a broad skill provides no benefit other than
+				# qualifying a character to buy specialty skills", and every
+				# specialty in Table F7 is printed in colour. (p. 57.)
 				check_false(untrained, "the power %s is trained-only" % name)
 			"Faith":
 				if TRAINED_ONLY_FAITH.has(name):

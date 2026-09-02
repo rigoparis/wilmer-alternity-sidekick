@@ -1,7 +1,7 @@
 {
   "broad_skills": {
     "Alienism": {
-      "ability": "WIL/INT",
+      "ability": "INT/WIL",
       "category": "Faith",
       "cost": 11.0,
       "description": "The Alienism faith is a group of related beliefs that hold that vastly powerful godlike beings live in the far reaches of space. The existence of these beings partially overlaps with neighboring dimensions and other periods of time. These beings are immensely powerful forces of an unimaginable nature, though generally malicious, who have a desire to rule over all living things. Alienism is an enigmatic faith. Unlike most Faith FX broad skills that use rituals to call the attention of benign powers and beseech their aid, Alienism uses rituals to channel the power of old gods without needing their attention or permission. Even those who work against these beings can use these rituals to great effect. Anyone dabbling in these powers risks undergoing psychological changes, and eventually even madness, due to the bizarre and unfathomable nature of the beings from which this power is drawn.",
@@ -11,7 +11,7 @@
       "source": "Beyond Science: A Guide to FX, pgs. 36-37"
     },
     "Body Alteration": {
-      "ability": "CON/WIL",
+      "ability": "WIL/CON",
       "category": "Super Hero",
       "cost": 9.0,
       "description": "The Body Alteration Super Power FX broad skill is a collection of Super Power FX that alter a hero's form or how a hero interacts with other physical matter. Size changes, shape alteration, extra arms, stretching, invisibility, and passing through solid objects are all powers of this type. Depending upon the power, the hero may simply have an unusual body shape, have fine control over the elasticity and form of his tissues, or may be able to alter the consistency of his flesh on an atomic level. Body Alteration powers require either a high Will to initiate and control these changes or a high Constitution to endure the stresses they place upon the body.",
@@ -21,7 +21,7 @@
       "source": "Beyond Science: A Guide to FX, pg. 58"
     },
     "Brick": {
-      "ability": "STR/CON/WIL",
+      "ability": "CON/WIL",
       "category": "Super Hero",
       "cost": 9.0,
       "description": "The Brick Super Power FX broad skill is a collection of abilities that enhance the body's ability to resist and cause damage. Many super villains are nothing more than brutes with incredible strength who can shrug off bullets. However, the Brick powers are the backbone of many comic book heroes as well, whether these powers originate from a high-tech suit of armor, obvious morphological changes such as rocklike skin, or being made of fundamentally denser materials. In some campaigns, Brick powers are so readily available that any people with the right connections—or even just a lot of money—can have themselves made into a superior physical specimen. Brick characters are likely to have a high Strength and Constitution. Most Brick powers are automatic or always active. Those that require activation are often Will-based.",
@@ -31,7 +31,7 @@
       "source": "Beyond Science: A Guide to FX, pg. 61"
     },
     "Chi": {
-      "ability": "STR/WIL",
+      "ability": "WIL/STR",
       "category": "Super Hero",
       "cost": 10.0,
       "description": "The Chi Super Power FX broad skill represents enhancement to the character's body and mind brought about by discipline and training. Most sorts of fantastic martial arts movies and comic book characters that exhibit exceptional but not superpowered abilities can be modeled with Chi FX. Practitioners of Chi are very dedicated individuals. They have devoted their lives to a religion, a cause, or a form of martial art. Chi powers take years to develop, and so most characters are not able to pick them up during the course of a normal campaign. Some are more powerful versions of other abilities available to characters. Non-Chi characters can reproduce some of a Chi master's incredible abilities to a lesser extent through perks and rank benefits. Some Chi Super Power FX specialty skills note that no skill check is required for their use. These include skills that merely augment a hero's other skills, such as mighty leap (Athletics-jump) and power climb (Athletics-climb). The practitioner of Chi relies on the power of her body as well as her mind. Thus, Chi specialty skills are based on Strength or Will.",
@@ -41,7 +41,7 @@
       "source": "Beyond Science: A Guide to FX, pg. 63"
     },
     "Diabolism": {
-      "ability": "INT",
+      "ability": "PER/WIL",
       "category": "Arcane Magic",
       "cost": 12.0,
       "description": "Diabolism is the arcane practice of interacting with, summoning, and controlling entities from other dimensions, typically referred to as demons, fiends, or spirits. Unlike Faith FX, which relies on prayer and divine alignment, Diabolism treats these interactions as precise formulas, binding extra-dimensional entities through occult geometry, true names, and sheer force of will. It is a highly dangerous school of magic; errors in protective circles or formulas can result in the summoner being attacked or possessed by the very entity they sought to control.",
@@ -51,7 +51,7 @@
       "source": "Beyond Science: A Guide to FX, pg. 22"
     },
     "Druidism": {
-      "ability": "WIL",
+      "ability": "INT/WIL",
       "category": "Faith",
       "cost": 12.0,
       "description": "The druidic faith is a belief that the earth is the mother and source of all life. The faith reveres the earth and other natural things, observing and maintaining the circle of life, death, and rebirth. The miracles of Druidism require a combination of understanding how the pathways of natural energy work and sufficient will to manipulate those pathways to result in physical changes.",
@@ -80,9 +80,9 @@
       "source": "Beyond Science: A Guide to FX, pg. 43-44"
     },
     "Hemomancy": {
-      "ability": "INT",
+      "ability": "INT/CON",
       "category": "Arcane Magic",
-      "cost": 12.0,
+      "cost": 10,
       "description": "Hemomancy, or blood magic, is an ancient and taboo school of arcane magic that manipulates the vital life force residing within a creature's blood. Unlike traditional sorcery that shapes ambient dimensional energy, Hemomancy requires a physical sacrifice, forcing the caster to use their own vital essence—or the stolen blood of others—to fuel powerful transformations, generate violent physical frenzies, or inflict direct biological harm. Practitioners often exhibit a cold, detached disposition, and over-reliance on these dark arts can leave a spellcaster permanently drained or physically altered.",
       "meta": "Cost: 12 skill points / Governing Abilities: Intelligence, Constitution",
       "name": "Hemomancy",
@@ -90,9 +90,9 @@
       "source": "Beyond Science: A Guide to FX, pg. 25"
     },
     "Hermeticism": {
-      "ability": "INT",
+      "ability": "INT/WIL",
       "category": "Arcane Magic",
-      "cost": 11.0,
+      "cost": 9,
       "description": "Hermeticism is the traditional school of alchemy, material transmutation, and artificial life construction. Rooted in rigorous scientific formulas and esoteric equations, hermetic wizards view the universe as a complex clockwork mechanism of interacting elements that can be broken down, rewritten, and reassembled. Through precise geometric circles, alchemical reagents, and intense mental focus, a hermetic magus can transmute base materials into precious or weaponized substances, forge absolute mystical bonds between disparate objects, reshape physical anatomy, or breathe rudimentary life into artificial vessels.",
       "meta": "Cost: 11 skill points / Governing Abilities: Intelligence, Will",
       "name": "Hermeticism",
@@ -100,9 +100,9 @@
       "source": "Beyond Science: A Guide to FX, pg. 27"
     },
     "Illusion": {
-      "ability": "INT",
+      "ability": "WIL/INT",
       "category": "Arcane Magic",
-      "cost": 9.0,
+      "cost": 8,
       "description": "The Illusion school of arcane magic specializes in tricking the senses of observers. Unlike physical transformations or energy manipulation, illusions alter light and sound waves, or plant sensory phantasms directly into the minds of targets. While these creations possess no actual physical mass or ability to inflict real structural damage, they are indistinguishable from reality unless closely investigated or exposed by supernatural senses.",
       "meta": "Cost: 9 skill points / Governing Abilities: Intelligence, Personality",
       "name": "Illusion",
@@ -110,7 +110,7 @@
       "source": "Beyond Science: A Guide to FX, pg. 29"
     },
     "Mesmerism": {
-      "ability": "INT",
+      "ability": "WIL/PER",
       "category": "Arcane Magic",
       "cost": 10.0,
       "description": "The Mesmerism school of arcane magic is dedicated to manipulating, controlling, and altering the minds, perceptions, and emotions of living subjects. Unlike illusion magic, which primarily alters external light and sound waves, mesmerism targets the neurological and spiritual pathways of the victim's brain directly. A skilled mesmerist can weave subtle suggestions into a target's thoughts, lull them into vulnerable trance states, command their physical movements, or shatter their mental resilience entirely.",
@@ -120,7 +120,7 @@
       "source": "Beyond Science: A Guide to FX, pg. 31"
     },
     "Metaconscious": {
-      "ability": "WIL/INT",
+      "ability": "INT/WIL",
       "category": "Super Hero",
       "cost": 8.0,
       "description": "While the Super Power FX Body Alteration broad skill deals with changes to a hero's body or physical interactions, the Metaconscious broad skill expands the hero's non-physical attributes and awareness of his or her surroundings. Heightened Intelligence, Will, and Personality, rapid absorption of knowledge, and enhanced senses are all part of this broad skill. These powers are all based on superior will or cognitive ability and rely upon Will or Intelligence to function.",
@@ -130,9 +130,9 @@
       "source": "Beyond Science: A Guide to FX, pg. 66"
     },
     "Monotheism": {
-      "ability": "WIL",
+      "ability": "PER/WIL",
       "category": "Faith",
-      "cost": 10.0,
+      "cost": 14,
       "description": "Stemming from the belief in an all-powerful deity who created the world, monotheistic faiths (including Christianity, Judaism, and Islam) are rich in tales of the supernatural. Their theological histories include stories of angelic visitation, celestial impregnation, spontaneous healing, and all sorts of transformative miracles. In the context of Faith FX, a monotheistic priest acts as a pure vessel or intermediary, funneling divine cosmic architecture to shift the local matrix. Invoking these wonders requires immense focus and character.",
       "meta": "Cost: 10 skill points / Governing Abilities: Will, Personality",
       "name": "Monotheism",
@@ -150,9 +150,9 @@
       "source": "Beyond Science: A Guide to FX, pg. 67-68"
     },
     "Necromancy": {
-      "ability": "INT",
+      "ability": "INT/CON",
       "category": "Arcane Magic",
-      "cost": 12.0,
+      "cost": 10,
       "description": "Necromancy is the dark arcane art of manipulating the forces of death, the spirits of the deceased, and the negative energy that animates corpses. Necromancers are often feared and shunned, as their spells deal directly with the violation of the natural order of life and death. Through these macabre rituals, a necromancer can animate mindless zombies from remains, converse with the departed, summon minor ghosts to haunt enemies, knit flesh back together through negative energy, inflict ancient curses, or even tear the soul from a living host.",
       "meta": "Cost: 12 skill points / Governing Abilities: Intelligence, Will",
       "name": "Necromancy",
@@ -160,7 +160,7 @@
       "source": "Beyond Science: A Guide to FX, pg. 33"
     },
     "Pyromancy": {
-      "ability": "INT",
+      "ability": "WIL/CON",
       "category": "Arcane Magic",
       "cost": 11.0,
       "description": "Pyromancy is the highly destructive arcane art of conjuring, controlling, and extinguishing fire and extreme heat. Pyromancers are often volatile and aggressive, commanding the raw elemental fury of flame to incinerate their enemies, protect themselves with shields of fire, or set explosive arcane traps. As fire is a chaotic and hungry element, it requires immense mental discipline to control once unleashed, preventing it from consuming the caster along with their targets.",
@@ -170,9 +170,9 @@
       "source": "Beyond Science: A Guide to FX, pg. 35"
     },
     "Shamanism": {
-      "ability": "WIL",
+      "ability": "WIL/PER",
       "category": "Faith",
-      "cost": 10.0,
+      "cost": 13,
       "description": "The shaman is a holy man, a guide and adviser to a tribe who is gifted with the ability to send her consciousness into the spirit world at will and interact with the creatures there. This ability to accomplish what most can only do accidentally in dreams gives the shaman strength in the spirit world, allowing her to rouse the spirits of the dead, see the future, and enlist the aid of animal spirits.",
       "meta": "Cost: 10 skill points / Governing Abilities: Will, Intelligence",
       "name": "Shamanism",
@@ -180,7 +180,7 @@
       "source": "Beyond Science: A Guide to FX, pg. 46"
     },
     "Taoism": {
-      "ability": "WIL",
+      "ability": "WIL/PER",
       "category": "Faith",
       "cost": 13.0,
       "description": "Taoism is a belief system focused on living in perfect harmony with the \"Tao\" (the Way), the fundamental flow and life force of the universe. Practitioners emphasize balance, naturalness, and internal alchemy, learning to master their own spiritual energy (Chi) to perform exceptional feats of physical and mental resilience. Through dedication and alignment with natural laws, Taoist priests can manipulate their inner energies to heal wounds, project protective spirals of energy, withstand hostile external conditions, or neutralize harmful forces without active resistance.",
@@ -190,9 +190,9 @@
       "source": "Beyond Science: A Guide to FX, pg. 50"
     },
     "Voodoo": {
-      "ability": "WIL",
+      "ability": "WIL/PER",
       "category": "Faith",
-      "cost": 12.0,
+      "cost": 13,
       "description": "The Voodoo faith is a syncretic religion centered around the veneration of and communication with the Loa—powerful spirit intermediaries that govern various aspects of nature, humanity, and the cosmos. Practitioners, known as houngans (priests) and mambos (priestesses), use ritual music, dance, and sacred symbols (veves) to enter altered states of consciousness, allowing the Loa to temporarily \"ride\" or possess their physical bodies to dispense wisdom, protection, or judgment. Rather than viewing the spirit world as separate from reality, the Voodoo faith treats both realms as continuously overlapping matrices. Through these ritual alignments, practitioners can create powerful protective charms, invoke deep physical restoration, cure toxic ailments, or direct targeted spiritual afflictions against hostile forces.",
       "meta": "Cost: 12 skill points / Governing Abilities: Will, Personality",
       "name": "Voodoo",
@@ -213,7 +213,7 @@
   },
   "specialty_skills": {
     "Animal voice": {
-      "ability": "INT",
+      "ability": "PER",
       "broad_skill": "Shamanism",
       "category": "Faith",
       "cost": 3.0,
@@ -228,10 +228,10 @@
       "fx_cost": 1
     },
     "Animate dead": {
-      "ability": "WIL",
+      "ability": "INT",
       "broad_skill": "Necromancy",
       "category": "Arcane Magic",
-      "cost": 4.0,
+      "cost": 5,
       "description": "Governing Ability: Will (WIL). Player Notes: This spell imbues one or more dead bodies with enough life energy to allow them movement and rudimentary reactions. It can revive a single creature with the approximate brain size of a human or multiple creatures whose combined brain mass doesn't exceed this amount. The animated zombies follow simple verbal commands from the necromancer but have no true intelligence.",
       "meta": "Cost: 4 skill points / This skill can't be used untrained / Transform spell (1 FX energy point)",
       "name": "Animate dead",
@@ -244,10 +244,10 @@
       "fx_cost": 1
     },
     "Aura": {
-      "ability": "WIL",
+      "ability": "PER",
       "broad_skill": "Monotheism",
       "category": "Faith",
-      "cost": 3.0,
+      "cost": 4,
       "description": "Governing Ability: Will (WIL). Player Notes: The +2 resistance modifier dynamically updates the character's base defense profile against active incoming broad skills. Shifted attitudes of observers to Fanatic must be roleplayed accordingly by supporting cast members. Full Text: This miracle surrounds the priest with an invisible aura of divine energy. This aura provides a +2 resistance modifier to all attacks against the priest (melee, ranged, psionic, and FX). Furthermore, all people viewing the priest automatically have their attitude shifted one step toward Fanatic.",
       "meta": "Cost: 3 skill points / Untrained use not specified / Conjure miracle (1 FX energy point)",
       "name": "Aura",
@@ -257,23 +257,6 @@
         "8": "At rank 8, this damage increases to d8 points of wound damage."
       },
       "source": "Beyond Science: A Guide to FX, pg. 45",
-      "untrained": true,
-      "fx_cost": 1
-    },
-    "Ayza rides": {
-      "ability": "WIL",
-      "broad_skill": "Voodoo",
-      "category": "Faith",
-      "cost": 3.0,
-      "description": "Governing Ability: Will (WIL). Player Notes: Ayza is the protector Loa of fields, public spaces, and structural stability. Invoking this miracle grants the priest or a touched ally an exceptional center of gravity and physical resilience. While active, the target receives a -2 step bonus to all Stamina-resist pain checks and physical feat checks meant to resist falling, being knocked prone, or being forcefully moved against their will by external kinetic impacts.",
-      "meta": "Cost: 3 skill points / Untrained use not specified / Transform miracle (1 FX energy point)",
-      "name": "Ayza rides",
-      "rank_benefits": {
-        "12": "At rank 12, the stability step bonus improves to -3.",
-        "4": "At rank 4, the target gains a permanent +1 to their Strength resistance modifier while the miracle is active.",
-        "8": "At rank 8, the maximum duration of the stability effect is extended up to 1 hour per invocation."
-      },
-      "source": "Beyond Science: A Guide to FX, pg. 54",
       "untrained": true,
       "fx_cost": 1
     },
@@ -310,7 +293,7 @@
       "fx_cost": 2
     },
     "Binding": {
-      "ability": "WIL",
+      "ability": "PER",
       "broad_skill": "Diabolism",
       "category": "Arcane Magic",
       "cost": 4.0,
@@ -347,7 +330,7 @@
       "ability": "WIL",
       "broad_skill": "Monotheism",
       "category": "Faith",
-      "cost": 3.0,
+      "cost": 4,
       "description": "Governing Ability: Will (WIL). Player Notes: The -1 step bonus directly acts upon action check thresholds for the scene. Will resistance modifiers apply to mental intrusion defenses. Full Text: This miracle gives indirect aid to the priest and any of her allies within 10 meters. All people affected gain a -1 step bonus to their action checks and a +1 to their Will resistance modifiers for the remainder of the scene.",
       "meta": "Cost: 3 skill points / Untrained use not specified / Transform miracle (1 FX energy point)",
       "name": "Blessing",
@@ -361,10 +344,10 @@
       "fx_cost": 1
     },
     "Blood debt": {
-      "ability": "CON",
+      "ability": "INT",
       "broad_skill": "Hemomancy",
       "category": "Arcane Magic",
-      "cost": 4.0,
+      "cost": 3,
       "description": "Governing Ability: Constitution (CON). Player Notes: The hemomancer binds their life force to a target, transferring incoming physical suffering. When the hemomancer suffers wound or stun damage, they can invoke this spell to pass a portion of that damage directly to a bonded target within 10 meters. The target can resist with a physical resolve check. Full Text: This spell establishes an invisible, parasitic biological link between the caster and a victim, forcing the victim to pay the physical toll for the caster's injuries.",
       "meta": "Cost: 4 skill points / This skill can't be used untrained / Transform spell (1 FX energy point)",
       "name": "Blood debt",
@@ -378,7 +361,7 @@
       "fx_cost": 1
     },
     "Bloodlust": {
-      "ability": "WIL",
+      "ability": "INT",
       "broad_skill": "Hemomancy",
       "category": "Arcane Magic",
       "cost": 3.0,
@@ -477,10 +460,10 @@
       "fx_cost": 1
     },
     "Clamor": {
-      "ability": "INT",
+      "ability": "WIL",
       "broad_skill": "Illusion",
       "category": "Arcane Magic",
-      "cost": 3.0,
+      "cost": 4,
       "description": "Governing Ability: Intelligence (INT). Player Notes: Also known as Cacophony. This spell allows the illusionist to create a localized auditory trick, manufacturing sounds that can range from a hushed whisper right next to a target's ear to the roaring approach of a military transport vehicle. The source of the sound can be placed anywhere within 30 meters and can move about within that radius. A target can make an Awareness-perception check to realize the sound has no physical source.",
       "meta": "Cost: 3 skill points / This skill can't be used untrained / Conjure spell (1 FX energy point)",
       "name": "Clamor",
@@ -511,10 +494,10 @@
       "fx_cost": 2
     },
     "Command": {
-      "ability": "WIL",
+      "ability": "PER",
       "broad_skill": "Diabolism",
       "category": "Arcane Magic",
-      "cost": 3.0,
+      "cost": 4,
       "description": "Governing Ability: Will (WIL). Player Notes: This spell allows the diabolist to issue binding, absolute commands to an extra-dimensional creature. The spell requires a contested roll against the target's mental resolve score. If successful, the creature must execute the command to the best of its ability, provided the command does not directly cause its own immediate destruction.",
       "meta": "Cost: 3 skill points / This skill can't be used untrained / Transform spell (1 FX energy point)",
       "name": "Command",
@@ -528,10 +511,10 @@
       "fx_cost": 1
     },
     "Conceal": {
-      "ability": "PER",
+      "ability": "INT",
       "broad_skill": "Illusion",
       "category": "Arcane Magic",
-      "cost": 4.0,
+      "cost": 5,
       "description": "Governing Ability: Personality (PER). Player Notes: Also known as Concealment. The caster bends light and ambient frequencies around a single non-living object, a minor structure, or a person within 2 meters, rendering it functionally invisible to normal visual scrutiny. Anyone looking directly at the concealed target must pass an Awareness-perception check with a +2 step penalty to notice the subtle visual shimmering.",
       "meta": "Cost: 4 skill points / This skill can't be used untrained / Transform spell (1 FX energy point)",
       "name": "Conceal",
@@ -562,10 +545,10 @@
       "fx_cost": 1
     },
     "Confuse": {
-      "ability": "INT",
+      "ability": "WIL",
       "broad_skill": "Mesmerism",
       "category": "Arcane Magic",
-      "cost": 3.0,
+      "cost": 2,
       "description": "Governing Ability: Intelligence (INT). Player Notes: The mesmerist disrupts the target's cognitive patterns, rendering them momentarily disoriented and unable to process complex information. The target can attempt to resist with a mental resolve check. A successful casting inflicts a +2 step penalty to all intellectual, mechanical, and combat skill checks the victim attempts for the duration of the scene.",
       "meta": "Cost: 3 skill points / This skill can't be used untrained / Transform spell (1 FX energy point)",
       "name": "Confuse",
@@ -679,7 +662,7 @@
       "ability": "WIL",
       "broad_skill": "Mesmerism",
       "category": "Arcane Magic",
-      "cost": 5.0,
+      "cost": 3,
       "description": "Governing Ability: Will (WIL). Player Notes: This powerful spell allows the mesmerist to strip away a victim's free will and seize direct command of their nervous system and motor actions. This spell triggers an immediate contested roll against the target's mental resolve score. If successful, the victim must execute the caster's telepathic or spoken orders explicitly. Commands that directly force self-destruction grant the target an immediate secondary check with a -2 step bonus to break the spell.",
       "meta": "Cost: 5 skill points / This skill can't be used untrained / Transform spell (2 FX energy points)",
       "name": "Dominate",
@@ -693,10 +676,10 @@
       "fx_cost": 2
     },
     "Dreamwalking": {
-      "ability": "INT",
+      "ability": "WIL",
       "broad_skill": "Shamanism",
       "category": "Faith",
-      "cost": 4.0,
+      "cost": 5,
       "description": "Governing Ability: Intelligence (INT). Player Notes: The shaman can change the targeted location as often as every round without needing to invoke the miracle again. Full Text: The dreamwalking miracle gives the shaman the ability to send her consciousness outside her body and perceive distant events, seeing and hearing locations within 1 kilometer.",
       "meta": "Cost: 4 skill points / Untrained use not specified / Transform miracle (2 FX energy points)",
       "name": "Dreamwalking",
@@ -746,7 +729,7 @@
       "ability": "PER",
       "broad_skill": "Mesmerism",
       "category": "Arcane Magic",
-      "cost": 3.0,
+      "cost": 5,
       "description": "Governing Ability: Personality (PER). Player Notes: The mesmerist transmits waves of pure confidence, bravery, and absolute resolve into the mind of an ally within 10 meters. The target immediately sheds any active step penalties derived from non-mortal wounds, intimidation, or fear-inducing effects, and gains a -1 step bonus to all action checks for the remainder of the scene.",
       "meta": "Cost: 3 skill points / This skill can't be used untrained / Transform spell (1 FX energy point)",
       "name": "Encourage",
@@ -848,7 +831,7 @@
       "fx_cost_max": 3
     },
     "Energy drain": {
-      "ability": "WIL",
+      "ability": "CON",
       "broad_skill": "Necromancy",
       "category": "Arcane Magic",
       "cost": 4.0,
@@ -882,7 +865,7 @@
       "fx_cost": 2
     },
     "Erzuli's fetish": {
-      "ability": "PER",
+      "ability": "WIL",
       "broad_skill": "Voodoo",
       "category": "Faith",
       "cost": 4.0,
@@ -899,7 +882,7 @@
       "fx_cost": 1
     },
     "Everyman": {
-      "ability": "PER",
+      "ability": "INT",
       "broad_skill": "Illusion",
       "category": "Arcane Magic",
       "cost": 4.0,
@@ -919,7 +902,7 @@
       "ability": "WIL",
       "broad_skill": "Monotheism",
       "category": "Faith",
-      "cost": 4.0,
+      "cost": 3,
       "description": "Governing Ability: Will (WIL). Player Notes: This is handled as an extended complex check where target entities use their mental resolve to resist. Full Text: This miracle involves a long, complex process that can banish demons and evil spirits from the physical world or otherwise rid a host of a possessing foreign presence.",
       "meta": "Cost: 4 skill points / Untrained use not specified / Transform miracle (2 FX energy points)",
       "name": "Exorcism",
@@ -1041,10 +1024,10 @@
       "fx_cost": 1
     },
     "Forgetfulness": {
-      "ability": "INT",
+      "ability": "WIL",
       "broad_skill": "Mesmerism",
       "category": "Arcane Magic",
-      "cost": 4.0,
+      "cost": 3,
       "description": "Governing Ability: Intelligence (INT). Player Notes: The mesmerist wipes a specific short-term memory or a block of recent time from the target's consciousness. The target must pass a mental resolve check to resist the psychic intrusion. A successful casting erases up to the last 5 minutes of the victim's immediate memory, replacing the gap with a hazy, indistinct blur. The victim will not remember encountering the caster or the events that just transpired.",
       "meta": "Cost: 4 skill points / This skill can't be used untrained / Transform spell (1 FX energy point)",
       "name": "Forgetfulness",
@@ -1110,7 +1093,7 @@
       "fx_cost": 1
     },
     "Ghost dance": {
-      "ability": "WIL",
+      "ability": "PER",
       "broad_skill": "Shamanism",
       "category": "Faith",
       "cost": 4.0,
@@ -1147,10 +1130,10 @@
       "fx_cost": 1
     },
     "Glamour": {
-      "ability": "PER",
+      "ability": "INT",
       "broad_skill": "Hermeticism",
       "category": "Arcane Magic",
-      "cost": 3.0,
+      "cost": 4,
       "description": "Governing Ability: Personality (PER). Player Notes: Through the application of subtle alchemical reagents and mystical geometry, the hermetic magus alters their outward physical appearance, vocal cords, and pheromonal output. Unlike the holographic tricks of the Illusion school, this is a minor physical transmutation of the skin and scent. The caster gains a -2 step bonus to Interaction checks and can mimic the general appearance and voice of a specific humanoid target of the same size. The transformation lasts for 1 hour.",
       "meta": "Cost: 3 skill points / This skill can't be used untrained / Transform spell (1 FX energy point)",
       "name": "Glamour",
@@ -1167,7 +1150,7 @@
       "ability": "WIL",
       "broad_skill": "Voodoo",
       "category": "Faith",
-      "cost": 3.0,
+      "cost": 2,
       "description": "Governing Ability: Will (WIL). Player Notes: A gris-gris is a small, specialized charm bag combining token materials to manifest a targeted intent. It can be deployed in two configurations determined at the time of creation: a protective configurations that shields an ally, or a hostile configuration that serves as a hex against an enemy. If protective, it grants a +1 bonus to all resistance modifiers against incoming hostile FX or psionic manipulation. If configured as a hex, the intended target must pass a mental resolve check or suffer a +1 step penalty to all action checks for the duration of the scene.",
       "meta": "Cost: 3 skill points / Untrained use not specified / Transform miracle (1 FX energy point)",
       "name": "Gris-gris",
@@ -1198,10 +1181,10 @@
       "fx_cost": 1
     },
     "Guidance": {
-      "ability": "WIL",
+      "ability": "PER",
       "broad_skill": "Monotheism",
       "category": "Faith",
-      "cost": 3.0,
+      "cost": 2,
       "description": "Governing Ability: Will (WIL). Player Notes: Delivers conceptual feedback (feelings of right or wrong) to direct party exploration. Full Text: With this miracle, the priest prays for advice on a particular problem or course of action currently facing the heroes. The priest is answered with a feeling or sense of rightness or wrongness about the possible actions.",
       "meta": "Cost: 3 skill points / Untrained use not specified / Augur miracle (1 FX energy point)",
       "name": "Guidance",
@@ -1229,7 +1212,7 @@
       "ability": "INT",
       "broad_skill": "Necromancy",
       "category": "Arcane Magic",
-      "cost": 3.0,
+      "cost": 5,
       "description": "Governing Ability: Intelligence (INT). Player Notes: This spell summons a minor ghost to frighten, harass, and annoy a target if it is bound to a person, or it hounds people within 10 meters of its target if bound to a location or object. The haunting spirit drops ambient temperatures, creates unsettling noises, and forces anyone in the area to make a mental resolve check or suffer a +1 step penalty to all actions due to fear and distraction.",
       "meta": "Cost: 3 skill points / This skill can't be used untrained / Summon spell (2 FX energy points)",
       "name": "Haunt",
@@ -1273,7 +1256,7 @@
       "fx_cost": 1
     },
     "Hellfire": {
-      "ability": "INT",
+      "ability": "WIL",
       "broad_skill": "Diabolism",
       "category": "Arcane Magic",
       "cost": 4.0,
@@ -1293,7 +1276,7 @@
       "ability": "WIL",
       "broad_skill": "Voodoo",
       "category": "Faith",
-      "cost": 5.0,
+      "cost": 4,
       "description": "Governing Ability: Will (WIL). Player Notes: The priest willingly lowers their mental barriers to allow a benign, lesser Loa to inhabit their physical shell. While actively possessed, the priest's mind is locked in a state of unshakeable focus, entirely ignoring any current step penalties derived from stun damage accumulation, dazed states, or superficial wounds. Furthermore, the guiding spirit sharpens physical coordination, granting a flat -1 step bonus to all physical actions and combat maneuvers.",
       "meta": "Cost: 5 skill points / Untrained use not specified / Transform miracle (2 FX energy points)",
       "name": "Helpful possession",
@@ -1324,10 +1307,10 @@
       "fx_cost": 2
     },
     "Hunger": {
-      "ability": "CON",
+      "ability": "INT",
       "broad_skill": "Hemomancy",
       "category": "Arcane Magic",
-      "cost": 4.0,
+      "cost": 3,
       "description": "Governing Ability: Constitution (CON). Player Notes: This spell allows the caster to draw nourishment and energy directly from the freshly spilled blood of a living target within 2 meters. A successful check heals the hemomancer of 2 points of stun or fatigue damage per degree of success, while the victim suffers an equivalent amount of fatigue.",
       "meta": "Cost: 4 skill points / This skill can't be used untrained / Transform spell (1 FX energy point)",
       "name": "Hunger",
@@ -1371,10 +1354,10 @@
       "fx_cost": 1
     },
     "Hypnotize": {
-      "ability": "INT",
+      "ability": "PER",
       "broad_skill": "Mesmerism",
       "category": "Arcane Magic",
-      "cost": 3.0,
+      "cost": 4,
       "description": "Governing Ability: Intelligence (INT). Player Notes: A mesmerist uses this spell to put a single individual within 2 meters into a highly receptive, compliant mood for suggestions or further mental influences. The target must be relatively calm or distracted to initialize the trance. While hypnotized, the target suffers a +3 step penalty to notice their surroundings or resist further Mesmerism interactions.",
       "meta": "Cost: 3 skill points / This skill can't be used untrained / Transform spell (1 FX energy point)",
       "name": "Hypnotize",
@@ -1391,7 +1374,7 @@
       "ability": "WIL",
       "broad_skill": "Pyromancy",
       "category": "Arcane Magic",
-      "cost": 4.0,
+      "cost": 3,
       "description": "Governing Ability: Will (WIL). Player Notes: This spell wreaths the pyromancer's body in a swirling aura of magical fire that does not harm the caster or their equipment. Any creature striking the pyromancer with a bare-handed melee attack or natural weapon suffers d4 points of wound damage (En/O) from the intense heat. Additionally, the caster's own unarmed strikes inflict an additional d4 wound damage (En/O). The aura provides Ordinary toughness protection (d4) against cold or ice-based attacks.",
       "meta": "Cost: 4 skill points / This skill can't be used untrained / Transform spell (1 FX energy point)",
       "name": "Immolation",
@@ -1423,7 +1406,7 @@
       "fx_cost": 2
     },
     "Incendiary seal": {
-      "ability": "INT",
+      "ability": "WIL",
       "broad_skill": "Pyromancy",
       "category": "Arcane Magic",
       "cost": 4.0,
@@ -1460,7 +1443,7 @@
       "ability": "WIL",
       "broad_skill": "Body Alteration",
       "category": "Super Hero",
-      "cost": 4.0,
+      "cost": 5,
       "description": "This power allows the hero to become invisible to all sorts of visual detection including infrared, radar, and other sorts of electromagnetic-based scanning. Anyone attempting to locate the hero using one of these senses or by using an Awareness-perception or investigate check suffers a +4 step penalty to do so. Attacking an invisible character is usually done as a wild swing. The invisible character gains a -3 step bonus to stealth skill checks. The hero's clothing and gear become invisible along with him, provided that they are touching him when he becomes invisible. Items picked up do not become invisible, and things dropped become visible immediately. The power lasts 10 minutes.",
       "meta": "1 FX energy point. This skill can't be used untrained.",
       "name": "Invisibility",
@@ -1507,7 +1490,7 @@
       "fx_cost": 1
     },
     "Knit wounds": {
-      "ability": "WIL",
+      "ability": "INT",
       "broad_skill": "Necromancy",
       "category": "Arcane Magic",
       "cost": 3.0,
@@ -1524,10 +1507,10 @@
       "fx_cost": 1
     },
     "Legba rides": {
-      "ability": "WIL",
+      "ability": "PER",
       "broad_skill": "Voodoo",
       "category": "Faith",
-      "cost": 4.0,
+      "cost": 2,
       "description": "Governing Ability: Will (WIL). Player Notes: Papa Legba acts as the gatekeeper of the spiritual crossroads, paths, and cosmic languages. Aligning with his energy grants the priest the immediate ability to read, speak, and intuitively comprehend any mortal or alien tongue encountered. Additionally, the miracle grants enhanced spatial awareness, mapping out hidden entryways, traps, or structural vulnerabilities within a 10-meter radius.",
       "meta": "Cost: 4 skill points / Untrained use not specified / Augur miracle (1 FX energy point)",
       "name": "Legba rides",
@@ -1594,7 +1577,7 @@
       "ability": "CON",
       "broad_skill": "Hemomancy",
       "category": "Arcane Magic",
-      "cost": 3.0,
+      "cost": 4,
       "description": "Governing Ability: Constitution (CON). Player Notes: The hemomancer safely accelerates their internal healing mechanics, using their own bloodstream to flush out impurities and close wounds. A successful check allows the caster to instantly convert up to 3 points of wound damage into stun damage, which can then be recovered much faster through conventional rest.",
       "meta": "Cost: 3 skill points / This skill can't be used untrained / Transform spell (1 FX energy point)",
       "name": "Lifeblood",
@@ -1608,7 +1591,7 @@
       "fx_cost": 1
     },
     "Ligature": {
-      "ability": "WIL",
+      "ability": "INT",
       "broad_skill": "Hermeticism",
       "category": "Arcane Magic",
       "cost": 3.0,
@@ -1647,7 +1630,7 @@
       "ability": "WIL",
       "broad_skill": "Voodoo",
       "category": "Faith",
-      "cost": 3.0,
+      "cost": 2,
       "description": "Governing Ability: Will (WIL). Player Notes: This specialty acts as the primary therapeutic avenue of the faith, calling upon restorative entities to mend broken flesh. Direct skin-to-skin touch is mandatory to channel the effect. Restoration scales explicitly by success: an Ordinary success heals 2 stun or 1 wound point; a Good success heals 4 stun or 2 wounds; an Amazing success heals 6 stun, 3 wounds, or 1 mortal point.",
       "meta": "Cost: 3 skill points / Untrained use not specified / Transform miracle (1 FX energy point)",
       "name": "Loa of healing",
@@ -1681,7 +1664,7 @@
       "ability": "WIL",
       "broad_skill": "Mesmerism",
       "category": "Arcane Magic",
-      "cost": 4.0,
+      "cost": 5,
       "description": "Governing Ability: Will (WIL). Player Notes: The caster launches a devastating, unstructured wave of pure psychic trauma directly into the target's consciousness within 20 meters. This attack bypasses standard physical armor entirely. A successful strike deals mental damage scaling by success tier: Ordinary deals d4s; Good deals d6s; Amazing deals d4w points of direct damage to the target's durability tracking.",
       "meta": "Cost: 4 skill points / This skill can't be used untrained / Transform spell (1 FX energy point)",
       "name": "Mindshatter",
@@ -1695,10 +1678,10 @@
       "fx_cost": 1
     },
     "Moving pictures": {
-      "ability": "INT",
+      "ability": "WIL",
       "broad_skill": "Illusion",
       "category": "Arcane Magic",
-      "cost": 4.0,
+      "cost": 5,
       "description": "Governing Ability: Intelligence (INT). Player Notes: The illusionist designs a dynamic, moving three-dimensional visual illusion within a 3-meter radius space up to 30 meters away. The image follows a pre-programmed sequence or can be actively directed by the caster spending a phase of concentration. It produces no heat, sound, or physical impact, and passes through solid matter harmlessly.",
       "meta": "Cost: 4 skill points / This skill can't be used untrained / Conjure spell (2 FX energy points)",
       "name": "Moving pictures",
@@ -1712,10 +1695,10 @@
       "fx_cost": 2
     },
     "Mummy's curse": {
-      "ability": "INT",
+      "ability": "CON",
       "broad_skill": "Necromancy",
       "category": "Arcane Magic",
-      "cost": 4.0,
+      "cost": 5,
       "description": "Governing Ability: Intelligence (INT). Player Notes: The necromancer inflicts a terrible, wasting affliction upon a target within touch range. The victim must pass a physical resolve check. On a failure, the curse takes hold, halving their natural healing rate and preventing any FX or psionic healing from affecting them. The curse also inflicts 1 point of fatigue damage every 24 hours that cannot be recovered until the curse is lifted.",
       "meta": "Cost: 4 skill points / This skill can't be used untrained / Transform spell (2 FX energy points)",
       "name": "Mummy's curse",
@@ -1732,7 +1715,7 @@
       "ability": "WIL",
       "broad_skill": "Voodoo",
       "category": "Faith",
-      "cost": 4.0,
+      "cost": 5,
       "description": "Governing Ability: Will (WIL). Player Notes: This defensive miracle disrupts foreign spiritual interference, driving out malevolent possessions, energetic anchors, or active curses. When targeted at an entity actively possessing an ally, it triggers an immediate contested check against that entity's mental resolve score to banish it. If targeted directly at a hostile spellcaster or priest, an Amazing success temporarily jams their spiritual frequency, severing their connection to their FX energy pool for d4 rounds.",
       "meta": "Cost: 4 skill points / Untrained use not specified / Transform miracle (2 FX energy points)",
       "name": "Negate the spirit",
@@ -1797,7 +1780,7 @@
       "ability": "WIL",
       "broad_skill": "Body Alteration",
       "category": "Super Hero",
-      "cost": 5.0,
+      "cost": 3,
       "description": "This FX allows the hero to shift his body's molecules out of phase with those of his environment, allowing him to pass through solid objects. While phased, the character ignores physical attacks, but energy-based attacks affect him normally. The character can only walk while phased and cannot pass through objects with a toughness greater than Poor. It takes one phase to pass through 1 meter of solid material. If the hero solidifies while inside a solid object, he takes d4+1 mortal damage and is pushed to the nearest open space. The duration of this power is 1 minute.",
       "meta": "1 FX energy point. This skill can't be used untrained.",
       "name": "Phasing",
@@ -1850,7 +1833,7 @@
       "ability": "CON",
       "broad_skill": "Movement",
       "category": "Super Hero",
-      "cost": 2.0,
+      "cost": 3,
       "description": "Governing Ability: Constitution (CON). Modifiers: Allows the hero to swim at 150% of his normal swim or easy swim movement rate at no FX energy cost. Breathing water and surviving deep pressure does not translate into protection against incoming physical/energy attacks. Each activation lasts 10 minutes. This skill allows the hero to move faster in water or another liquid. The character can also breathe water and survive water pressure at depths as great as 500 meters.",
       "meta": "Cost: 2 skill points / This skill can't be used untrained / Active or 1 FX energy point (No skill check required)",
       "name": "Power Swimming",
@@ -1869,7 +1852,7 @@
       "ability": "INT",
       "broad_skill": "Illusion",
       "category": "Arcane Magic",
-      "cost": 5.0,
+      "cost": 2,
       "description": "Governing Ability: Intelligence (INT). Player Notes: This advanced illusion establishes a complex, localized holographic scenario within a 5-meter radius that reacts dynamically to specific triggers. The illusionist can script an event—such as an illusory guard demanding a password, or a fake wall crumbling to reveal a trap—that activates when an intruder enters the space. The programmed illusion persists passively for up to 24 hours before naturally dissipating if untriggered.",
       "meta": "Cost: 5 skill points / This skill can't be used untrained / Conjure spell (2 FX energy points)",
       "name": "Programmed response",
@@ -1889,7 +1872,7 @@
       "cost": 4.0,
       "description": "Governing Ability: Constitution (CON). Player Notes: The hemomancer curses a hostile target within 10 meters, creating a violent biological feedback loop between their circulatory systems. The target can attempt to resist with a physical resolve check. If the spell takes hold, for the duration of the scene, any physical wound or mortal damage the hemomancer sustains from an external attack forces the cursed target to immediately suffer a reciprocating physiological shock, taking an equal amount of stun damage.",
       "meta": "Cost: 4 skill points / This skill can't be used untrained / Transform spell (2 FX energy points)",
-      "name": "Reciprocating",
+      "name": "Reciprocity",
       "rank_benefits": {
         "12": "At rank 12, the feedback loop amplifies the trauma; the target suffers the exact amount and type of damage (including mortal damage) that the hemomancer takes.",
         "4": "At rank 4, the reciprocating shock inflicts wound damage instead of stun damage.",
@@ -1900,10 +1883,10 @@
       "fx_cost": 2
     },
     "Rend the weave": {
-      "ability": "INT",
+      "ability": "WIL",
       "broad_skill": "Diabolism",
       "category": "Arcane Magic",
-      "cost": 4.0,
+      "cost": 2,
       "description": "Governing Ability: Intelligence (INT). Player Notes: The diabolist tears at the local dimensional fabric, creating a localized instability that disrupts active FX, psionics, or technological shielding. This spell triggers an immediate area-of-effect disruption within a 5-meter radius, adding a +2 step penalty to any active skill checks or operations involving energetic fields, spatial transitions, or dimensional anchors.",
       "meta": "Cost: 4 skill points / This skill can't be used untrained / Transform spell (2 FX energy points)",
       "name": "Rend the weave",
@@ -1944,10 +1927,10 @@
       "fx_cost": 1
     },
     "Runs cold": {
-      "ability": "WIL",
+      "ability": "INT",
       "broad_skill": "Hemomancy",
       "category": "Arcane Magic",
-      "cost": 3.0,
+      "cost": 2,
       "description": "Governing Ability: Will (WIL). Player Notes: The caster suppresses their metabolic output and slows their heart rate to a near-stasis level, causing their blood to \"run cold.\" While active, the hemomancer becomes entirely invisible to thermal sensors, infrared scanning, and tracking mechanisms that seek body heat. Furthermore, they gain a +2 bonus to resistance modifiers against cold-based environmental hazards or attacks, but take a +1 step penalty to initiative action checks.",
       "meta": "Cost: 3 skill points / This skill can't be used untrained / Transform spell (1 FX energy point)",
       "name": "Runs cold",
@@ -1981,7 +1964,7 @@
       "ability": "WIL",
       "broad_skill": "Body Alteration",
       "category": "Super Hero",
-      "cost": 5.0,
+      "cost": 3,
       "description": "This power allows the hero to alter her size and physical features to appear as another creature within their size range. The hero's clothing and gear do not change shape, so they might not fit the new form. The power grants a -2 step bonus to the Deception-disguise skill. The change is strictly cosmetic—the hero gains no special abilities of the form she takes (e.g., gills, wings). The active form lasts 1 hour.",
       "meta": "Active or 1 FX energy point. This skill can't be used untrained.",
       "name": "Shapeshifting",
@@ -2028,7 +2011,7 @@
       "fx_cost": 2
     },
     "Sleep of Morpheus": {
-      "ability": "WIL",
+      "ability": "INT",
       "broad_skill": "Hermeticism",
       "category": "Arcane Magic",
       "cost": 4.0,
@@ -2048,7 +2031,7 @@
       "ability": "INT",
       "broad_skill": "Necromancy",
       "category": "Arcane Magic",
-      "cost": 3.0,
+      "cost": 2,
       "description": "Governing Ability: Intelligence (INT). Player Notes: This spell allows the necromancer to temporarily call the spirit of a deceased creature back to its remains (or a place of its death) to answer questions. The spirit retains the knowledge it had in life but is often cryptic, resentful, or confused. The caster can ask one question per degree of success. The spell lasts for 5 minutes.",
       "meta": "Cost: 3 skill points / This skill can't be used untrained / Augur spell (1 FX energy point)",
       "name": "Speak with dead",
@@ -2065,7 +2048,7 @@
       "ability": "WIL",
       "broad_skill": "Shamanism",
       "category": "Faith",
-      "cost": 4.0,
+      "cost": 2,
       "description": "Governing Ability: Will (WIL). Player Notes: The shaman actually gains four ranks in a specific specialty skill for 1 full hour. This chosen skill must align with a primal or physical quality of the selected animal spirit (e.g., tracking like a wolf, sneaking like a panther).",
       "meta": "Cost: 4 skill points / Untrained use not specified / Transform miracle (1 FX energy point)",
       "name": "Spirit of the beast",
@@ -2075,7 +2058,7 @@
       "fx_cost": 1
     },
     "Spiritwrack": {
-      "ability": "WIL",
+      "ability": "PER",
       "broad_skill": "Diabolism",
       "category": "Arcane Magic",
       "cost": 4.0,
@@ -2092,10 +2075,10 @@
       "fx_cost": 1
     },
     "Static image": {
-      "ability": "INT",
+      "ability": "WIL",
       "broad_skill": "Illusion",
       "category": "Arcane Magic",
-      "cost": 3.0,
+      "cost": 4,
       "description": "Governing Ability: Intelligence (INT). Player Notes: This simple spell creates a completely stationary, three-dimensional visual illusion of an object, creature, or landscape feature within a 2-meter cube up to 30 meters away. The image remains fixed in place and stands up to casual inspection from a distance, but does not adjust to changing light conditions or physical contact.",
       "meta": "Cost: 3 skill points / This skill can't be used untrained / Conjure spell (1 FX energy point)",
       "name": "Static image",
@@ -2126,10 +2109,10 @@
       "fx_cost": 3
     },
     "Stigmata": {
-      "ability": "INT",
+      "ability": "CON",
       "broad_skill": "Hemomancy",
       "category": "Arcane Magic",
-      "cost": 4.0,
+      "cost": 3,
       "description": "Governing Ability: Intelligence (INT). Player Notes: The hemomancer causes a burst of weaponized blood to spray or weep from their own skin or open wounds, shaping it into a corrosive, toxic mist or a razor-sharp projectile. This attack targets a single opponent within 10 meters, inflicting d4w/d6w/d4m (En/O) damage upon a successful strike. The caster must sacrifice 2 stun points to trigger this invocation.",
       "meta": "Cost: 4 skill points / This skill can't be used untrained / Conjure spell (1 FX energy point)",
       "name": "Stigmata",
@@ -2178,7 +2161,7 @@
       "fx_cost": 1
     },
     "Summoning": {
-      "ability": "INT",
+      "ability": "PER",
       "broad_skill": "Diabolism",
       "category": "Arcane Magic",
       "cost": 5.0,
@@ -2368,7 +2351,7 @@
       "ability": "WIL",
       "broad_skill": "Movement",
       "category": "Super Hero",
-      "cost": 5.0,
+      "cost": 3,
       "description": "Governing Ability: Will (WIL). Modifiers: Base weight capacity limits transportation to the character and about 50 kilograms of material. Arriving at a spot occupied by a solid object displaces the character up to 10 meters and inflicts 1 point of fatigue damage. If no open space exists within 10 meters, the teleportation fails completely, and the hero suffers 1 point of fatigue damage. This power allows the character to move from one point in space to another without crossing the distance between them. The character can travel up to 1 kilometer with each use of this power. The target location must be familiar to the character.",
       "meta": "Cost: 5 skill points / This skill can't be used untrained / 1 FX energy point (No skill check required)",
       "name": "Teleportation",
@@ -2434,10 +2417,10 @@
       "fx_cost": 1
     },
     "Trance visions": {
-      "ability": "INT",
+      "ability": "PER",
       "broad_skill": "Shamanism",
       "category": "Faith",
-      "cost": 3.0,
+      "cost": 2,
       "description": "Governing Ability: Intelligence (INT). Player Notes: This miracle allows the shaman to gain a glimpse of the future, although this vision is altered by the perceptions of the spirits that bring it. The GM delivers these visions in heavily symbolic or enigmatic terms.",
       "meta": "Cost: 3 skill points / Untrained use not specified / Augur miracle (1 FX energy point)",
       "name": "Trance visions",
@@ -2465,7 +2448,7 @@
       "fx_cost_max": 2
     },
     "Venom spirit": {
-      "ability": "INT",
+      "ability": "WIL",
       "broad_skill": "Shamanism",
       "category": "Faith",
       "cost": 4.0,
@@ -2478,7 +2461,7 @@
       "fx_cost": 1
     },
     "Vision": {
-      "ability": "WIL",
+      "ability": "PER",
       "broad_skill": "Monotheism",
       "category": "Faith",
       "cost": 4.0,
