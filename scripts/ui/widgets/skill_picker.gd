@@ -244,12 +244,10 @@ func _build_row(parent: Container, skill: Dictionary, is_broad: bool) -> void:
 	# rank at a time, so the ceiling depends on where this skill already sits.
 	var max_rank: int = 1 if is_broad else rules.max_rank_for_skill(raw, skill_id)
 
-	# On a phone the name, two numbers and two buttons cannot share one line:
-	# whatever is left after the fixed-width controls is not enough to read a
-	# skill name in, so clipping turned "Armor Operation" into "Arm". Compact
-	# gives the name its own line and puts the numbers and buttons beneath it.
-	var compact := not _ctx.is_wide_layout
-
+	# The name always gets its own line. It used to share one with the numbers
+	# and the stepper on a wide screen, but wide lays the cards out in two
+	# columns, so a card is about 470px however large the window is -- and
+	# "Armor Operation - Combat armor" beside a stepper clipped to "Armor Op".
 	var row := HBoxContainer.new()
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_theme_constant_override("separation", Widgets.GAP_ROW)
@@ -260,106 +258,66 @@ func _build_row(parent: Container, skill: Dictionary, is_broad: bool) -> void:
 		indent.custom_minimum_size = Vector2(Widgets.PAD_PANEL, 0)
 		row.add_child(indent)
 
-	var host: Container = row
-	if compact:
-		var stack := VBoxContainer.new()
-		stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		stack.add_theme_constant_override("separation", Widgets.GAP_TIGHT)
-		row.add_child(stack)
-		host = stack
+	var stack := VBoxContainer.new()
+	stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	stack.add_theme_constant_override("separation", Widgets.GAP_TIGHT)
+	row.add_child(stack)
 
 	# The name is a button so reference text is one tap away.
 	var name_button := Button.new()
 	name_button.text = String(rules.skill_label(skill))
+	name_button.tooltip_text = String(rules.skill_label(skill))
 	name_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	name_button.clip_text = true
 	name_button.custom_minimum_size = Vector2(1, 36)
-	name_button.tooltip_text = String(rules.skill_label(skill))
 	if is_broad:
 		name_button.add_theme_color_override("font_color", palette.accent)
 	name_button.pressed.connect(func(): detail_requested.emit(skill))
-	host.add_child(name_button)
+	stack.add_child(name_button)
 
-	# Where the numbers and buttons live: beside the name when wide, on their own
-	# line beneath it when compact.
-	var actions: Container = row
-	if compact:
-		actions = HBoxContainer.new()
-		actions.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		actions.add_theme_constant_override("separation", Widgets.GAP_ROW)
-		host.add_child(actions)
+	var actions := HBoxContainer.new()
+	actions.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	actions.add_theme_constant_override("separation", Widgets.GAP_ROW)
+	stack.add_child(actions)
 
 	var score: Dictionary = rules.skill_score(raw, skill)
 	var ordinary := AlternityNum.as_int(score.get("ordinary", 0))
 	var die := String(score.get("die", ""))
-	var reading := "Ordinary score %d, step die %s, rank %d" % [ordinary, die, rank]
 
-	if compact:
-		# Its own line has room to name what the numbers are, which is the fix
-		# for two bare figures sitting unexplained at the edge of the row.
-		var stats := Label.new()
-		stats.text = "Rank %d   score %d   %s" % [rank, ordinary, die]
-		stats.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		stats.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		stats.clip_text = true
-		stats.custom_minimum_size = Vector2(1, 0)
-		stats.add_theme_color_override("font_color", palette.muted)
-		stats.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
-		stats.tooltip_text = reading
-		actions.add_child(stats)
-	else:
-		# Two unlabelled numbers side by side read as one number split in half.
-		# The score is what you roll against and stays prominent; the step die is
-		# secondary, and the tooltip names both.
-		var score_label := Label.new()
-		score_label.text = "%d" % ordinary
-		score_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		score_label.custom_minimum_size = Vector2(28, 0)
-		score_label.add_theme_color_override("font_color", palette.text)
-		score_label.add_theme_font_size_override("font_size", Widgets.FONT_DETAIL)
-		score_label.tooltip_text = reading
-		actions.add_child(score_label)
-
-		var die_label := Label.new()
-		die_label.text = die
-		die_label.custom_minimum_size = Vector2(34, 0)
-		die_label.add_theme_color_override("font_color", palette.muted)
-		die_label.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
-		die_label.tooltip_text = reading
-		actions.add_child(die_label)
-
-	# A racial broad that was sold back is re-taken for free, not re-bought, so
-	# pricing it here would state a cost set_skill_rank does not charge.
+	# What the next rank costs, said in words rather than left as a bare number
+	# beside the buttons. "+1  2" read as two unrelated figures.
+	var next_cost: int = rules.next_skill_rank_cost(raw, skill)
 	var restorable: bool = is_broad and rules.is_normally_free_species_skill(raw, skill_id)
+	var price := ""
+	if rank >= max_rank:
+		price = "at maximum rank"
+	elif restorable and rank <= 0:
+		price = "free, granted by your species"
+	elif next_cost > 0:
+		price = "next rank %d SP" % next_cost
 
-	var cost: int = rules.skill_cost(raw, skill)
-	var buy: Button
-	if rank <= 0:
-		buy = Widgets.cost_button("Take back", 0) if restorable else Widgets.cost_button("Buy", cost)
-		if restorable:
-			buy.tooltip_text = "Granted by your species. Taking it back costs nothing."
-	elif rank >= max_rank:
-		buy = Widgets.cost_button("Max rank", 0)
-		buy.disabled = true
-	else:
-		buy = Widgets.cost_button("+1", rules.skill_purchase_cost(raw, skill, rank + 1))
-	buy.custom_minimum_size = Vector2(104, 36)
-	buy.pressed.connect(func():
-		doc.apply(CharacterDoc.ALL, func(c): rules.set_skill_rank(c, skill_id, rank + 1))
+	var stats_text := "Rank %d   score %d   %s" % [rank, ordinary, die]
+	if not price.is_empty():
+		stats_text += "   -   %s" % price
+
+	var stats := Label.new()
+	stats.text = stats_text
+	stats.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	stats.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	stats.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	stats.custom_minimum_size = Vector2(1, 0)
+	stats.add_theme_color_override("font_color", palette.muted)
+	stats.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
+	stats.tooltip_text = "Ordinary score %d, step die %s, rank %d" % [ordinary, die, rank]
+	actions.add_child(stats)
+
+	# Minus, rank, plus -- the shape the old UI used, and the one that says at a
+	# glance what the number is and which way it moves. A pair of Buy and Sell
+	# buttons had to spell out both, and still did not show the rank.
+	var stepper := NumberStepper.new()
+	actions.add_child(stepper)
+	stepper.setup(palette, "", rank, 0, max_rank, 1, 0, true)
+	stepper.value_changed.connect(func(value: int):
+		doc.apply(CharacterDoc.ALL, func(c): rules.set_skill_rank(c, skill_id, value))
 		change_requested.emit())
-	actions.add_child(buy)
-
-	if rank > 0:
-		var sell := Button.new()
-		sell.text = "Sell" if restorable else "-1"
-		sell.tooltip_text = (
-			"Give up this species broad skill for +3 skill points"
-			if restorable else "Drop a rank and refund its cost"
-		)
-		sell.custom_minimum_size = Vector2(60 if restorable else 44, 36)
-		sell.clip_text = true
-		sell.pressed.connect(func():
-			doc.apply(CharacterDoc.ALL, func(c): rules.set_skill_rank(c, skill_id, rank - 1))
-			change_requested.emit())
-		actions.add_child(sell)

@@ -14,12 +14,17 @@ extends HBoxContainer
 
 signal value_changed(new_value: int)
 
+## The old UI stepped values with these rather than with "-" and "+" glyphs.
+const ICON_MINUS := preload("res://assets/minus-square.svg")
+const ICON_PLUS := preload("res://assets/add-square.svg")
+
 var _label: Label
 var _value_label: Label
 var _minus: Button
 var _plus: Button
 var _palette: ThemePalette
 
+var _use_icons: bool = false
 var _value: int = 0
 var _minimum: int = 0
 var _maximum: int = 0
@@ -40,7 +45,8 @@ func setup(
 	minimum: int,
 	maximum: int,
 	step: int = 1,
-	label_width: int = 0
+	label_width: int = 0,
+	use_icons: bool = false
 ) -> void:
 	_palette = palette
 	_minimum = minimum
@@ -68,7 +74,8 @@ func setup(
 	_label.add_theme_font_size_override("font_size", Widgets.FONT_DETAIL)
 	add_child(_label)
 
-	_minus = _make_button("-")
+	_use_icons = use_icons
+	_minus = _make_button("-", ICON_MINUS)
 	add_child(_minus)
 
 	_value_label = Label.new()
@@ -80,7 +87,7 @@ func setup(
 	_value_label.add_theme_font_size_override("font_size", Widgets.FONT_SECTION_TITLE)
 	add_child(_value_label)
 
-	_plus = _make_button("+")
+	_plus = _make_button("+", ICON_PLUS)
 	add_child(_plus)
 
 	_minus.pressed.connect(func(): _apply(_value - _step))
@@ -113,12 +120,21 @@ func set_range(minimum: int, maximum: int) -> void:
 	_refresh()
 
 
-func _make_button(text: String) -> Button:
+func _make_button(text: String, icon: Texture2D) -> Button:
 	var button := Button.new()
-	button.text = text
 	# 42px square: a touch target, not a desktop-sized spinner arrow.
 	button.custom_minimum_size = Vector2(42, 42)
-	button.add_theme_font_size_override("font_size", Widgets.FONT_SECTION_TITLE)
+	if _use_icons:
+		button.icon = icon
+		button.expand_icon = true
+		button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		button.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		button.add_theme_color_override("icon_normal_color", _palette.text)
+		button.add_theme_color_override("icon_hover_color", _palette.accent)
+		button.add_theme_color_override("icon_disabled_color", Color(_palette.muted, 0.4))
+	else:
+		button.text = text
+		button.add_theme_font_size_override("font_size", Widgets.FONT_SECTION_TITLE)
 	return button
 
 

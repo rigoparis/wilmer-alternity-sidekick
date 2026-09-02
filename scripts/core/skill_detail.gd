@@ -140,14 +140,80 @@ static func rank_entry(rank: int, entry_title: String, body: String) -> Dictiona
 static func _from_legacy(data: Dictionary) -> Array:
 	var built: Array = []
 
-	for part in _split_labelled_prose(String(data.get("description", ""))):
+	# Two record shapes reach here. An FX power carries its prose as
+	# "description"; a core skill, built by AlternityRules.skill_detail, carries
+	# it as "summary" and adds roll notes, a complex-check note and its sources
+	# as separate fields.
+	#
+	# Only "description" was read, so every core skill opened on nothing but its
+	# rank benefits -- and a skill with no rank benefits, like the Armor
+	# Operation broad, opened on "No description recorded for this skill" while
+	# its description sat in the catalog the whole time.
+	var prose := String(data.get("description", "")).strip_edges()
+	if prose.is_empty():
+		prose = String(data.get("summary", "")).strip_edges()
+	for part in _split_labelled_prose(prose):
 		built.append(part)
+
+	var rolling := _rolling_section(data)
+	if not rolling.is_empty():
+		built.append(rolling)
+
+	var complex := String(data.get("complex_check", "")).strip_edges()
+	if not complex.is_empty():
+		built.append(text_section("Complex Check", complex))
 
 	var ranks := _legacy_rank_entries(data.get("rank_benefits", {}))
 	if not ranks.is_empty():
 		built.append(ranks_section("Rank Benefits", ranks))
 
+	var sources := _sources_line(data)
+	if not sources.is_empty():
+		built.append(text_section("Source", sources))
+
 	return built
+
+
+## How the skill is rolled: its governing ability, and the notes that qualify it.
+##
+## Assembled rather than stored, because these arrive on the record as separate
+## fields and are useless apart -- the ability without the untrained rule does
+## not tell you whether you may attempt the check at all.
+static func _rolling_section(data: Dictionary) -> Dictionary:
+	var lines: Array = []
+
+	var ability := String(data.get("ability_name", "")).strip_edges()
+	var ability_code := String(data.get("ability", "")).strip_edges()
+	if not ability.is_empty():
+		lines.append(
+			"Governing ability: %s (%s)" % [ability, ability_code] if not ability_code.is_empty()
+			else "Governing ability: %s" % ability
+		)
+	elif not ability_code.is_empty():
+		lines.append("Governing ability: %s" % ability_code)
+
+	for note in data.get("roll_notes", []):
+		var text := String(note).strip_edges()
+		if not text.is_empty():
+			lines.append(text)
+
+	if lines.is_empty():
+		return {}
+	return text_section("How it is rolled", "\n".join(lines))
+
+
+static func _sources_line(data: Dictionary) -> String:
+	var raw: Variant = data.get("sources", [])
+	if typeof(raw) == TYPE_STRING:
+		return String(raw).strip_edges()
+	if typeof(raw) != TYPE_ARRAY:
+		return ""
+	var parts: Array = []
+	for entry in raw:
+		var text := String(entry).strip_edges()
+		if not text.is_empty() and not parts.has(text):
+			parts.append(text)
+	return "; ".join(parts)
 
 
 ## Split prose that carries its own inline labels into titled sections.

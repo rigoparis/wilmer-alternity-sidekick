@@ -25,6 +25,7 @@ func _run() -> void:
 	_test_legacy_rank_benefits()
 	_test_every_shipped_fx_power()
 	_test_every_core_skill_is_described()
+	_test_core_skill_detail_reaches_the_view()
 	await _test_view_renders()
 	finish()
 
@@ -260,5 +261,62 @@ func _test_every_core_skill_is_described() -> void:
 		"every core skill has a written summary (%d without: %s)" % [
 			undescribed.size(),
 			", ".join(undescribed.slice(0, 8)) if not undescribed.is_empty() else "",
+		]
+	)
+
+
+## The description must survive the trip from the rules to the sheet.
+##
+## _test_every_core_skill_is_described checks the rules layer has the prose. It
+## passed while every core skill's detail sheet showed nothing but rank
+## benefits, because SkillDetail.from_data read only "description" and
+## AlternityRules.skill_detail supplies it as "summary" -- so the two agreed
+## about the data and disagreed about its name, and no test crossed the seam.
+func _test_core_skill_detail_reaches_the_view() -> void:
+	var rules = RulesScript.new()
+	rules.load_core_data()
+
+	var missing_prose: Array = []
+	var missing_rolling: Array = []
+	var counted := 0
+
+	for skill in rules.skills:
+		if typeof(skill) != TYPE_DICTIONARY:
+			continue
+		counted += 1
+		var record: Dictionary = rules.skill_detail(skill)
+		var detail = Detail.from_data(record)
+		var name := String(record.get("name", "?"))
+
+		if detail.is_empty():
+			missing_prose.append(name)
+			continue
+
+		# The skill's own prose has to appear in some section body.
+		var summary := String(record.get("summary", "")).strip_edges()
+		var found_prose := summary.is_empty()
+		var found_rolling := false
+		for section in detail.sections:
+			var body := String(section.get("body", ""))
+			if not summary.is_empty() and body.contains(summary.substr(0, 24)):
+				found_prose = true
+			if String(section.get("title", "")) == "How it is rolled":
+				found_rolling = true
+		if not found_prose:
+			missing_prose.append(name)
+		if not found_rolling:
+			missing_rolling.append(name)
+
+	check_true(counted > 100, "walked the core catalog (%d skills)" % counted)
+	check_true(
+		missing_prose.is_empty(),
+		"every core skill's description reaches the detail view (%d without: %s)" % [
+			missing_prose.size(), ", ".join(missing_prose.slice(0, 6)),
+		]
+	)
+	check_true(
+		missing_rolling.is_empty(),
+		"every core skill states how it is rolled (%d without: %s)" % [
+			missing_rolling.size(), ", ".join(missing_rolling.slice(0, 6)),
 		]
 	)
