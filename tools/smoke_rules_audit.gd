@@ -1434,7 +1434,9 @@ func _init() -> void:
 
 	# Verify Trained-Only Demarcations
 	assert_true.call(not bool(dma["untrained"]), "Defensive Martial Arts is Trained Only")
-	assert_true.call(not bool(flight["untrained"]), "Flight is Trained Only")
+	# Table P19 prints Flight in white: it is usable untrained. This check
+	# asserted the opposite, following a breakdown rather than p. 64.
+	assert_true.call(bool(flight["untrained"]), "Flight can be used untrained")
 	assert_true.call(not bool(zero_g["untrained"]), "Zero-G Training is Trained Only")
 	assert_true.call(not bool(air_veh["untrained"]), "Air Vehicle is Trained Only")
 	assert_true.call(not bool(space_veh["untrained"]), "Space Vehicle is Trained Only")
@@ -1561,12 +1563,13 @@ func _init() -> void:
 
 	# Verify all CON skills can be used untrained
 	assert_true.call(bool(movement_skill["untrained"]), "Movement can be used untrained")
-	assert_true.call(bool(race_skill["untrained"]), "Race can be used untrained")
-	assert_true.call(bool(swim_skill["untrained"]), "Swim can be used untrained")
+	# Race, Swim and Resist Pain are all printed in blue on p. 64.
+	assert_true.call(not bool(race_skill["untrained"]), "Race is trained-only")
+	assert_true.call(not bool(swim_skill["untrained"]), "Swim is trained-only")
 	assert_true.call(bool(trailblazing["untrained"]), "Trailblazing can be used untrained")
 	assert_true.call(bool(stamina_skill["untrained"]), "Stamina can be used untrained")
 	assert_true.call(bool(endurance_skill["untrained"]), "Endurance can be used untrained")
-	assert_true.call(bool(resist_pain["untrained"]), "Resist Pain can be used untrained")
+	assert_true.call(not bool(resist_pain["untrained"]), "Resist Pain is trained-only")
 	assert_true.call(bool(survival_skill["untrained"]), "Survival can be used untrained")
 	assert_true.call(bool(survival_training["untrained"]), "Survival Training can be used untrained")
 
@@ -1684,14 +1687,16 @@ func _init() -> void:
 
 	# Verify Trained-Only Statuses
 	assert_true.call(not bool(hacking_skill["untrained"]), "Hacking is Trained Only")
-	assert_true.call(not bool(prog_skill["untrained"]), "Programming is Trained Only")
+	# Table P19 p. 65 prints Hacking in blue and Programming in white.
+	assert_true.call(bool(prog_skill["untrained"]), "Programming can be used untrained")
 	assert_true.call(not bool(scratch_skill["untrained"]), "Scratch-built Demolitions is Trained Only")
 	assert_true.call(not bool(lang_skill["untrained"]), "Language is Trained Only")
-	assert_true.call(not bool(genetics_skill["untrained"]), "Genetics is Trained Only")
+	# Genetics is white on p. 65; Xenology, beside it, is the blue one.
+	assert_true.call(bool(genetics_skill["untrained"]), "Genetics can be used untrained")
 	assert_true.call(not bool(surgery_skill["untrained"]), "Surgery is Trained Only")
 	assert_true.call(not bool(xenomed_skill["untrained"]), "Xenomedicine is Trained Only")
 	assert_true.call(not bool(drive_astrog["untrained"]), "Drivespace Astrogation is Trained Only")
-	assert_true.call(not bool(inv_skill["untrained"]), "Invention is Trained Only")
+	assert_true.call(bool(inv_skill["untrained"]), "Invention can be used untrained")
 
 	# 2. Species Free Skills (Table P4)
 	var int_mech_hero: Dictionary = rules.default_character()
@@ -1878,7 +1883,7 @@ func _init() -> void:
 	assert_true.call(not bool(etiquette["untrained"]), "Etiquette is Trained Only")
 	assert_true.call(not bool(music_skill["untrained"]), "Musical instrument is Trained Only")
 	assert_true.call(not bool(inspire_skill["untrained"]), "Inspire is Trained Only")
-	assert_true.call(bool(first_enc["untrained"]), "First encounter can be used untrained")
+	assert_true.call(not bool(first_enc["untrained"]), "First encounter is trained-only")
 
 	# 2. Species Free Skills (Table P4)
 	assert_true.call(rules.is_free_species_skill(human_veh, 155), "Human receives Interaction (155) for free")

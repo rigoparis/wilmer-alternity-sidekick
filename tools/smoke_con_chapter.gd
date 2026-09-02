@@ -16,12 +16,12 @@ const RulesScript := preload("res://scripts/alternity_rules.gd")
 ## Catalog name -> [base cost, untrained allowed]
 const CON_SKILLS := {
 	"Movement": [3, true],
-	"Race": [2, true],
-	"Swim": [1, true],
+	"Race": [2, false],   # Table P19, p. 64-65: printed in blue, so trained-only.
+	"Swim": [1, false],   # Table P19, p. 64-65: printed in blue, so trained-only.
 	"Trailblazing": [3, true],
 	"Stamina": [3, true],
 	"Endurance": [4, true],
-	"Resist Pain": [4, true],
+	"Resist Pain": [4, false],   # Table P19, p. 64-65: printed in blue, so trained-only.
 	"Survival": [5, true],
 	"Survival Training": [3, true],
 }

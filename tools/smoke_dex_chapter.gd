@@ -19,7 +19,7 @@ const DEX_SKILLS := {
 	"Defensive Martial Arts": [5, false],
 	"Dodge": [4, true],
 	"Fall": [3, true],
-	"Flight": [2, false],
+	"Flight": [2, true],   # Table P19, p. 64-65: printed in white, so usable untrained.
 	"Zero-G Training": [2, false],
 	"Manipulation": [6, true],
 	"Lockpick": [4, true],

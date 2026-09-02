@@ -3178,7 +3178,7 @@ func _skill_roll_notes(skill: Dictionary) -> Array:
 	if not bool(skill.get("untrained", true)):
 		notes.append("This skill is prohibited from untrained use; the broad skill alone is not enough.")
 	elif bool(skill.get("assist_only", false)):
-		notes.append("Untrained, this skill can only assist a trained character's check, never resolve one alone. Everyday tasks it covers are handled by Knowledge - computer operation instead.")
+		notes.append("Untrained, this skill can only assist a trained character's check, never resolve one alone. Everyday tasks it covers belong to Knowledge - computer operation, which is itself trained-only. Source: Player's Handbook p. 63; Table P19, p. 65.")
 	elif skill.get("type", "") == "specialty":
 		notes.append("If only the parent broad skill is trained, this specialty can be attempted at the broad skill score with +d4.")
 

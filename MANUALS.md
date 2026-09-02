@@ -43,7 +43,7 @@ distinctive in both books.
 | P16 | Situation Die Modifiers | 62 | |
 | P17 | Complex Skill Checks | 62 | |
 | P18 | Base Situation Dice | 63 | |
-| P19 | Skill List | 64–65 | |
+| P19 | Skill List | 64–65 | **yes** — all costs; 15 training flags corrected |
 | P20 | Accuracy by Range | 67 | |
 | P21 | Heavy Weapons Range Modifiers | 67 | |
 | P22 | Range Modifiers by Weapon Type | 73 | |
@@ -92,6 +92,11 @@ Other Player's Handbook pages already read:
 - **pp. 233, 235, 236** — psionic specialty descriptions. Sensitivity activates
   for 2 points, overriding the flat 1. Mind blast deals **stun** damage
   (d4+1s/d4+2s/d6+2s, rising at ranks 5 and 9), and armour does not protect.
+- **pp. 64–65** — Table P19. Every skill's cost, profession discount and page,
+  with two typographic markers: *italic* means a specialty, **blue means the
+  skill cannot be used untrained**. Costs matched the app 55 for 55 across
+  Strength, Constitution, Dexterity and Personality; the training column did
+  not, and fifteen entries were corrected from it.
 - **pp. 246–248** — the compiled quick-reference tables.
 
 ## Beyond Science: A Guide to FX — 98 pages

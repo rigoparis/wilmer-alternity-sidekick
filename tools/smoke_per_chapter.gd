@@ -18,7 +18,7 @@ const PER_SKILLS := {
 	"Culture": [5, true],
 	"Diplomacy": [3, true],
 	"Etiquette (specific)": [2, false],
-	"First Encounter": [3, true],
+	"First Encounter": [3, false],   # Table P19, p. 64-65: printed in blue, so trained-only.
 	"Deception": [5, true],
 	"Bluff": [3, true],
 	"Bribe": [3, true],

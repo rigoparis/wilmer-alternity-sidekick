@@ -21,15 +21,15 @@ const INT_SKILLS := {
 	"Computer Science": [7, true],
 	"Hacking": [5, false],
 	"Hardware": [4, true],
-	"Programming": [4, false],
+	"Programming": [4, true],   # Table P19, p. 64-65: printed in white, so usable untrained.
 	"Demolitions": [6, true],
 	"Disarm": [4, true],
 	"Scratch-built": [4, false],
 	"Set explosives": [3, true],
 	"Knowledge": [3, true],
-	"Computer Operation": [1, true],
+	"Computer Operation": [1, false],   # Table P19, p. 64-65: printed in blue, so trained-only.
 	"Deduce": [2, true],
-	"First aid": [2, true],
+	"First aid": [2, false],   # Table P19, p. 64-65: printed in blue, so trained-only.
 	"(specific language)": [1, false],
 	"(specific knowledge)": [1, true],
 	"Law": [5, true],
@@ -38,15 +38,15 @@ const INT_SKILLS := {
 	"Life Science": [7, true],
 	"Biology": [3, true],
 	"Botany": [3, true],
-	"Genetics": [3, false],
-	"Xenology": [4, true],
+	"Genetics": [3, true],   # Table P19, p. 64-65: printed in white, so usable untrained.
+	"Xenology": [4, false],   # Table P19, p. 64-65: printed in blue, so trained-only.
 	"Zoology": [3, true],
 	"Medical Science": [7, true],
 	"Forensics": [3, true],
 	"Medical Knowledge": [3, true],
 	"Psychology": [3, true],
 	"Surgery": [5, false],
-	"Treatment": [4, true],
+	"Treatment": [4, false],   # Table P19, p. 64-65: printed in blue, so trained-only.
 	"Xenomedicine": [3, false],
 	"Navigation": [6, true],
 	"Drivespace Astrogation": [4, false],
@@ -71,7 +71,7 @@ const INT_SKILLS := {
 	"Space": [3, true],
 	"Vehicle": [3, true],
 	"Technical Science": [7, true],
-	"Invention": [4, false],
+	"Invention": [4, true],   # Table P19, p. 64-65: printed in white, so usable untrained.
 	"Juryrig": [3, true],
 	"Repair": [3, true],
 	"Technical Knowledge": [3, true],
