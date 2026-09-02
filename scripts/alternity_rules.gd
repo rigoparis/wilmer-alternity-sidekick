@@ -1901,6 +1901,12 @@ func skill_score(character: Dictionary, skill: Dictionary) -> Dictionary:
 	var is_broad: bool = String(skill.get("type", "")) == "broad"
 	var rank := skill_rank(character, skill_id)
 	var trained_only: bool = not bool(skill.get("untrained", true))
+	# A third state between trained-only and freely usable. An untrained hero
+	# may not resolve one of these alone, but may still help someone who is
+	# trained, contributing a step bonus under the assistance rules. Stored as
+	# its own flag because a plain untrained boolean has no way to say it, and
+	# reading it as "untrained: true" would permit an illegal solo check.
+	var assist_only: bool = bool(skill.get("assist_only", false))
 	var held: bool = rank > 0 or (is_broad and is_skill_selected(character, skill_id))
 
 	var rank_bonus := 0 if is_broad else rank
@@ -1914,7 +1920,19 @@ func skill_score(character: Dictionary, skill: Dictionary) -> Dictionary:
 				"die": "+d0",
 				"usable": false,
 				"trained_only": true,
+				"assist_only": false,
 				"reason": "%s cannot be attempted untrained. Source: Player's Handbook p. 63." % skill_label(skill),
+			}
+		if assist_only:
+			return {
+				"ordinary": 0,
+				"good": 0,
+				"amazing": 0,
+				"die": "+d0",
+				"usable": false,
+				"trained_only": false,
+				"assist_only": true,
+				"reason": "%s cannot be resolved untrained on its own. An untrained hero may only assist someone who is trained, adding a step bonus to their check. Source: Player's Handbook p. 63; Table P19." % skill_label(skill),
 			}
 		base_ability = untrained_score(base_ability)
 	var ordinary := base_ability + rank_bonus
@@ -1947,6 +1965,7 @@ func skill_score(character: Dictionary, skill: Dictionary) -> Dictionary:
 		"die": action_step_die(step),
 		"usable": true,
 		"trained_only": trained_only,
+		"assist_only": assist_only,
 	}
 
 
@@ -2526,6 +2545,7 @@ func skill_detail(skill: Dictionary, character: Dictionary = {}) -> Dictionary:
 		"next_cost": next_skill_rank_cost(character, skill) if not character.is_empty() else _as_int(skill.get("base_price", 0)),
 		"profession_codes": String(skill.get("professions", "")),
 		"untrained": bool(skill.get("untrained", true)),
+		"assist_only": bool(skill.get("assist_only", false)),
 		"multi": bool(skill.get("multi", false)),
 		"custom_name": bool(skill.get("custom_name", false)),
 		"summary": summary_text,
@@ -2858,6 +2878,8 @@ func _skill_roll_notes(skill: Dictionary) -> Array:
 
 	if not bool(skill.get("untrained", true)):
 		notes.append("This skill is prohibited from untrained use; the broad skill alone is not enough.")
+	elif bool(skill.get("assist_only", false)):
+		notes.append("Untrained, this skill can only assist a trained character's check, never resolve one alone. Everyday tasks it covers are handled by Knowledge - computer operation instead.")
 	elif skill.get("type", "") == "specialty":
 		notes.append("If only the parent broad skill is trained, this specialty can be attempted at the broad skill score with +d4.")
 

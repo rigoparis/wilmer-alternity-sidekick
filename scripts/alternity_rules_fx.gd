@@ -225,9 +225,37 @@ func primary_broad_group(character: Dictionary) -> String:
 	return stored if is_fx_skill_selected(character, stored) else ""
 
 
+## Name the hero's primary school. Fixed once set.
+##
+## Beyond Science requires every FX user to designate one school when they first
+## take FX abilities, and it defines their tradition rather than being a
+## purchase they can re-optimise. Reassigning it would let a player move the
+## doubled cost onto whichever school they had spent least in.
+##
+## The one reassignment allowed is away from a school the hero does not have,
+## which is stale data rather than a choice -- a real saved character carried
+## exactly that and was being charged double for powers in schools they owned.
 func set_primary_broad_group(character: Dictionary, broad_name: String) -> void:
 	_normalize_fx(character)
+	if not primary_broad_group(character).is_empty():
+		return
 	character["fx"]["primary_broad_group"] = broad_name
+
+
+## Whether the hero still needs to name a primary school.
+##
+## True once they hold an FX broad skill and have not designated one. Their
+## powers are priced at list until they do, which is cheaper than the rules
+## allow, so it is worth saying rather than leaving quietly favourable.
+func needs_primary_broad_group(character: Dictionary) -> bool:
+	if not is_fx_talent(character):
+		return false
+	if not primary_broad_group(character).is_empty():
+		return false
+	for broad in get_broad_skills_for_character(character):
+		if is_fx_skill_selected(character, String(broad.get("name", ""))):
+			return true
+	return false
 
 
 func fx_skill_cost(character: Dictionary, skill_name: String) -> int:

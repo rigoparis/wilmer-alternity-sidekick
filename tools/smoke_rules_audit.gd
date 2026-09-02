@@ -474,11 +474,42 @@ func _init() -> void:
 		"a power outside the primary school costs double"
 	)
 
-	# Clearing it returns everything to list price.
+	# And it is fixed once named: the tradition is not a purchase to re-optimise,
+	# so neither clearing it nor moving it to the other school is allowed.
 	rules.fx.set_primary_broad_group(caster, "")
 	assert_eq.call(
-		rules.fx.fx_skill_cost_for_rank(caster, power, 1), list_price,
-		"with no primary school every power costs list price"
+		rules.fx.primary_broad_group(caster), school_a,
+		"a primary school cannot be cleared once chosen"
+	)
+	rules.fx.set_primary_broad_group(caster, school_b)
+	assert_eq.call(
+		rules.fx.primary_broad_group(caster), school_a,
+		"nor moved to another school"
+	)
+	assert_eq.call(
+		rules.fx.fx_skill_cost_for_rank(caster, power, 1), list_price * 2,
+		"so the surcharge stays where it was"
+	)
+
+	# A hero who holds an FX school and has named none is flagged, because
+	# pricing every power at list is cheaper than the rules allow.
+	var undecided: Dictionary = rules.default_character()
+	undecided["species_id"] = 0
+	rules.ensure_character_shape(undecided)
+	rules.fx.set_fx_talent(undecided, true)
+	assert_true.call(
+		not rules.fx.needs_primary_broad_group(undecided),
+		"a hero with no FX schools is not asked to name a primary one"
+	)
+	rules.fx.add_fx_skill(undecided, school_a)
+	assert_true.call(
+		rules.fx.needs_primary_broad_group(undecided),
+		"taking an FX school asks the hero to name their primary one"
+	)
+	rules.fx.set_primary_broad_group(undecided, school_a)
+	assert_true.call(
+		not rules.fx.needs_primary_broad_group(undecided),
+		"and the prompt goes once they have"
 	)
 
 	# --- 10. Age Modifiers ---

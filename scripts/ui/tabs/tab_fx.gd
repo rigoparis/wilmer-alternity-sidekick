@@ -133,26 +133,40 @@ func _build_primary_group_picker(parent: Container) -> void:
 	parent.add_child(label)
 
 	var current := rules.fx.primary_broad_group(raw)
+
+	# Once named, it is fixed: it is the hero's tradition, not a purchase to
+	# re-optimise. So the control disappears rather than offering a change it
+	# would refuse.
+	if not current.is_empty():
+		Widgets.metric(parent, "Primary school", current, palette)
+		Widgets.muted_text(
+			parent,
+			"Chosen when you took up FX and fixed from then on. Powers from any "
+			+ "other school cost double.",
+			palette, Widgets.FONT_CAPTION
+		)
+		return
+
 	var picker := OptionButton.new()
 	picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	picker.custom_minimum_size = Vector2(0, 42)
-	picker.add_item("None - every school costs list price", 0)
-	var selected := 0
+	picker.add_item("Not chosen yet", 0)
 	for index in owned.size():
 		picker.add_item(String(owned[index]), index + 1)
-		if String(owned[index]) == current:
-			selected = index + 1
-	picker.select(selected)
+	picker.select(0)
 	picker.item_selected.connect(func(index: int):
-		var chosen := "" if index <= 0 else String(owned[index - 1])
-		doc.apply([CharacterDoc.FX], func(c): rules.fx.set_primary_broad_group(c, chosen))
+		if index <= 0:
+			return
+		doc.apply([CharacterDoc.FX], func(c):
+			rules.fx.set_primary_broad_group(c, String(owned[index - 1])))
 		save_requested.emit())
 	parent.add_child(picker)
 
 	Widgets.muted_text(
 		parent,
-		"Powers from any other school cost double." if not current.is_empty()
-			else "With no primary school chosen, every power costs its list price.",
+		"Every FX user names one primary school. Powers from any other school "
+		+ "cost double, and the choice cannot be changed later. Until you "
+		+ "choose, every power is priced at list -- cheaper than the rules allow.",
 		palette, Widgets.FONT_CAPTION
 	)
 

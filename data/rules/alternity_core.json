@@ -1243,7 +1243,8 @@
       "multi": false,
       "custom_name": false,
       "professions": "T",
-      "source": "core"
+      "source": "core",
+      "assist_only": true
     },
     {
       "id": 62,
