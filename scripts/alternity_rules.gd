@@ -1909,6 +1909,23 @@ func skill_score(character: Dictionary, skill: Dictionary) -> Dictionary:
 	var assist_only: bool = bool(skill.get("assist_only", false))
 	var held: bool = rank > 0 or (is_broad and is_skill_selected(character, skill_id))
 
+	# A broad skill covers every specialty beneath it. A hero holding Athletics
+	# but no rank in Climb still rolls climb at the Athletics score with the
+	# broad skill's +d4 die -- not as an untrained stranger at half Strength.
+	#
+	# skill_roll_notes_for_character() has told players this since the app was
+	# written; nothing computed it, so owning the parent broad made a specialty
+	# row read WORSE than rolling the broad directly. The exclusion in that same
+	# sentence still holds: a specialty barred from untrained use stays barred.
+	var parent_broad_id := _as_int(skill.get("broad_id", -1))
+	var covered_by_broad: bool = (
+		not is_broad
+		and parent_broad_id >= 0
+		and parent_broad_id != skill_id
+		and is_skill_selected(character, parent_broad_id)
+	)
+	var using_broad_score: bool = (not held) and covered_by_broad
+
 	var rank_bonus := 0 if is_broad else rank
 	var base_ability := _as_int(abilities.get(ability, 10))
 	if not held:
@@ -1934,10 +1951,30 @@ func skill_score(character: Dictionary, skill: Dictionary) -> Dictionary:
 				"assist_only": true,
 				"reason": "%s cannot be resolved untrained on its own. An untrained hero may only assist someone who is trained, adding a step bonus to their check. Source: Player's Handbook p. 63; Table P19." % skill_label(skill),
 			}
-		base_ability = untrained_score(base_ability)
+		if not using_broad_score:
+			# Psionics is a closed system. Every discipline says so in its own
+			# words -- "This skill can't be used untrained" -- and a specialty
+			# marked untrained means "reachable with the broad skill alone",
+			# not "reachable by a hero with no psionic training whatsoever".
+			# Read the other way, twenty powers were rollable by anyone.
+			if is_psionic_skill(skill):
+				return {
+					"ordinary": 0,
+					"good": 0,
+					"amazing": 0,
+					"die": "+d0",
+					"usable": false,
+					"trained_only": true,
+					"assist_only": false,
+					"via_broad": false,
+					"reason": "%s needs the %s broad skill. Psionic powers cannot be reached without training in their discipline. Source: Player's Handbook Chapter 14: Psionics." % [
+						skill_label(skill), skill_name_for_id(parent_broad_id)
+					],
+				}
+			base_ability = untrained_score(base_ability)
 	var ordinary := base_ability + rank_bonus
 	var good := int(floor(ordinary / 2.0))
-	var step := 1 if skill.get("type", "") == "broad" else 0
+	var step := 1 if is_broad or using_broad_score else 0
 	step += _species_skill_step_bonus(character, skill_id)
 	step += mutations.mutation_skill_step_bonus(character, skill_id)
 	step += dazed_penalty(character)
@@ -1966,6 +2003,7 @@ func skill_score(character: Dictionary, skill: Dictionary) -> Dictionary:
 		"usable": true,
 		"trained_only": trained_only,
 		"assist_only": assist_only,
+		"via_broad": using_broad_score,
 	}
 
 

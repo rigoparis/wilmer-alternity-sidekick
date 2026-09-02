@@ -264,9 +264,17 @@ func _build_row(parent: Container, skill: Dictionary, is_broad: bool) -> void:
 	row.add_child(stack)
 
 	# The name is a button so reference text is one tap away.
+	#
+	# A specialty is only ever drawn inside its own broad skill's card, whose
+	# header already names the discipline, so the row shows the bare specialty.
+	# The full label went in whole -- and on a 390px phone "Extrasensory
+	# Perception (ESP) - Battle Mind" clipped to "...(ESP) - B", spending the
+	# entire row on the one word every row in the card shared. The tooltip and
+	# the detail sheet still carry the qualified name.
+	var full_label := String(rules.skill_label(skill))
 	var name_button := Button.new()
-	name_button.text = String(rules.skill_label(skill))
-	name_button.tooltip_text = String(rules.skill_label(skill))
+	name_button.text = full_label if is_broad else String(skill.get("name", ""))
+	name_button.tooltip_text = full_label
 	name_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	name_button.clip_text = true
@@ -297,7 +305,21 @@ func _build_row(parent: Container, skill: Dictionary, is_broad: bool) -> void:
 	elif next_cost > 0:
 		price = "next rank %d SP" % next_cost
 
-	var stats_text := "Rank %d   score %d   %s" % [rank, ordinary, die]
+	# An unusable skill has no score to show. Printing "score 0  +d0" reads as a
+	# terrible-but-legal roll rather than as a door that is shut, which is what
+	# a psionic power without its discipline actually is.
+	var usable: bool = bool(score.get("usable", true))
+	var via_broad: bool = bool(score.get("via_broad", false))
+	var stats_text := ""
+	if not usable:
+		stats_text = "Rank %d   not available" % rank
+	elif via_broad:
+		# Said on the rank rather than on its own line. Every rank 0 specialty
+		# in a held discipline is in this state, so a full sentence each
+		# repeated four and five times down a single card.
+		stats_text = "Rank %d (broad)   score %d   %s" % [rank, ordinary, die]
+	else:
+		stats_text = "Rank %d   score %d   %s" % [rank, ordinary, die]
 	if not price.is_empty():
 		stats_text += "   -   %s" % price
 
@@ -310,7 +332,19 @@ func _build_row(parent: Container, skill: Dictionary, is_broad: bool) -> void:
 	stats.add_theme_color_override("font_color", palette.muted)
 	stats.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
 	stats.tooltip_text = "Ordinary score %d, step die %s, rank %d" % [ordinary, die, rank]
+	if not usable:
+		stats.tooltip_text = String(score.get("reason", "This skill cannot be attempted."))
+	elif via_broad:
+		# Otherwise a rank 0 row showing a healthy score looks like a bug.
+		stats.tooltip_text = "Rolled through %s, the broad skill, at its score and its die. Buying a rank here would score %d at %s instead." % [
+			rules.skill_name_for_id(AlternityNum.as_int(skill.get("broad_id", -1), -1)),
+			ordinary + 1,
+			"+d0",
+		]
 	actions.add_child(stats)
+
+	if not usable:
+		Widgets.muted_text(stack, String(score.get("reason", "")), palette, Widgets.FONT_CAPTION)
 
 	# Minus, rank, plus -- the shape the old UI used, and the one that says at a
 	# glance what the number is and which way it moves. A pair of Buy and Sell
