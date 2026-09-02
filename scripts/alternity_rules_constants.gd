@@ -645,11 +645,13 @@ const RANK_BENEFIT_NOTES := {
 		12: "Strength resistance modifier improves by another +1 for close-combat defense. Source: Player's Handbook p. 71.",
 	},
 	21: {
+		# Dodge is an active defence and grants no passive resistance at any rank.
+		# Entries at 4, 8 and 12 used to promise a Dexterity resistance
+		# improvement, carrying a citation to this same page -- the martial-arts
+		# template copied onto a skill the manuals never give it to. They are
+		# gone, along with the calculation that honoured them.
 		3: "Can dodge and still take an action in the same phase; the action carries a +2 step penalty. Source: Player's Handbook p. 71.",
-		4: "Dexterity resistance modifier improves by +1 against ranged combat. Source: Player's Handbook p. 71.",
 		7: "Can perform a reaction dodge immediately, but gives up other actions for the round. Source: Player's Handbook p. 71.",
-		8: "Dexterity resistance modifier improves by another +1 against ranged combat. Source: Player's Handbook p. 71.",
-		12: "Dexterity resistance modifier improves by another +1 against ranged combat. Source: Player's Handbook p. 71.",
 	},
 	23: {
 		3: "Glide movement improves by +2 meters. Source: Player's Handbook p. 71.",
