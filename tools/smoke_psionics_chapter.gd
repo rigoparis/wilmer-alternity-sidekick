@@ -2,22 +2,26 @@ extends "res://tools/test_harness.gd"
 ##
 ## The Psionics chapter, pinned to the manual.
 ##
-## Psionics is the first chapter whose supplied breakdown conflicted with the
-## catalog on almost every name, ability and price -- and with an answer the
-## manual had already given (broad disciplines cost 5-6 SP, Telekinesis is the
-## broad with Psychokinetics beneath it). This suite therefore pins only what
-## two independent sources agree on:
+## The first breakdown supplied for this chapter conflicted with the catalog on
+## almost every name, ability and price, and with an answer the manual had
+## already given; it turned out to be another game's psionics. A second one
+## agrees with the catalog throughout. Both are treated the same way: pin what
+## two sources that could not have copied each other agree on.
 ##
-##   * values the manual has already confirmed outright, and
+## Those sources are:
+##
+##   * values the manual confirmed outright before being shown the catalog,
 ##   * rules stated verbatim in the discipline prose the app already carries,
 ##     e.g. "The following psionic broad skill AND ITS SPECIALTY SKILLS are
 ##     connected to a character's Constitution score", and "With just the broad
 ##     skill, a character can attempt to use any of the related specialty
-##     skills except those that can't be used untrained."
+##     skills except those that can't be used untrained", and
+##   * each individual power's own description, which states its training
+##     requirement in its own words.
 ##
-## Per-specialty prices are deliberately NOT pinned here. They are the open
-## question; pinning the catalog's own numbers would only prove that the
-## catalog equals itself.
+## Energy costs per power are still NOT pinned. The one column that could be
+## checked against the catalog's prose disagreed with it twice -- Sensitivity
+## and Precognition -- so the whole column is an open question.
 ##
 
 const RulesScript := preload("res://scripts/alternity_rules.gd")
@@ -56,6 +60,11 @@ func _init() -> void:
 
 	_test_disciplines()
 	_test_specialties_follow_their_discipline()
+	_test_specialty_prices_and_training()
+	_test_training_flags_match_their_own_prose()
+	_test_dark_matter_specialties()
+	_test_spineless()
+	_test_fraal_will_ceiling()
 	_test_energy_pool()
 	_test_pool_needs_training()
 	_test_energy_recovery_table()
@@ -156,6 +165,210 @@ func _test_specialties_follow_their_discipline() -> void:
 			String(skill.get("professions", "")).contains("M"),
 			"%s is a Mindwalker skill" % name
 		)
+
+
+## Price and training for all 29 core powers.
+##
+## These were deliberately left unpinned on the first pass, because the
+## breakdown then available disagreed with the catalog on nearly every one. The
+## replacement breakdown agrees on all 29 -- but it agrees with a list I had
+## quoted in the question, so on its own that is an echo, not a confirmation.
+## What makes them safe to pin is _test_training_flags_match_their_own_prose
+## below, which checks the training column against each skill's own manual text
+## and never consults the breakdown at all.
+##
+## name -> [skill points, untrained use allowed]
+const SPECIALTY_PRICES := {
+	# Biokinesis
+	"Bioweapon": [3, true],
+	"Control Metabolism": [2, true],
+	"Heal": [4, false],
+	"Morph": [4, false],
+	"Rejuvenate": [3, true],
+	"Transfer Damage": [2, true],
+	# Extrasensory Perception
+	"Battle Mind": [4, false],
+	"Clairaudience": [2, true],
+	"Clairvoyance": [2, true],
+	"Empathy": [1, true],
+	"Mind Reading": [3, true],
+	"Navcognition": [3, false],
+	"Postcognition": [3, true],
+	"Precognition": [4, true],
+	"Psychometry": [3, true],
+	"Sensitivity": [2, true],
+	# Telekinesis
+	"Electrokinetics": [3, false],
+	"Kinetic Shield": [2, false],
+	"Levitation": [2, true],
+	"Photokinetics": [1, true],
+	"Psychokinetics": [3, true],
+	"Pyrokinetics": [4, false],
+	# Telepathy
+	"Contact": [3, true],
+	"Datalink": [4, false],
+	"Illusion": [3, true],
+	"Mind Blast": [4, false],
+	"Mind Shield": [2, true],
+	"Suggest": [3, true],
+	"Tire": [3, true],
+}
+
+## The Dark*Matter additions, which a Core campaign never sees.
+## name -> [id, discipline, skill points, untrained use allowed]
+const DARK_MATTER_SPECIALTIES := {
+	"Psycholocation": [90311, 903, 3, true],
+	"Obscure": [90108, 901, 3, true],
+	"Possess": [90109, 901, 4, false],
+}
+
+
+func _test_specialty_prices_and_training() -> void:
+	for skill_name in SPECIALTY_PRICES:
+		var expected: Array = SPECIALTY_PRICES[skill_name]
+		var skill: Dictionary = _named(String(skill_name))
+		if not check(not skill.is_empty(), "%s is in the catalog" % skill_name):
+			continue
+		check_eq(
+			AlternityNum.as_int(skill.get("base_price", -1)),
+			AlternityNum.as_int(expected[0]),
+			"%s costs %d SP" % [skill_name, AlternityNum.as_int(expected[0])]
+		)
+		check_eq(
+			bool(skill.get("untrained", false)), bool(expected[1]),
+			"%s untrained use is %s" % [skill_name, "allowed" if bool(expected[1]) else "prohibited"]
+		)
+
+	# And nothing outside that list, bar the Dark*Matter three.
+	for skill in _psionic_skills():
+		if String(skill.get("type", "")) != "specialty":
+			continue
+		var name := String(skill.get("name", ""))
+		check_true(
+			SPECIALTY_PRICES.has(name) or DARK_MATTER_SPECIALTIES.has(name),
+			"%s is a power the manual describes" % name
+		)
+
+
+## The training column, checked against each skill's own manual text.
+##
+## This is the check that owes the breakdown nothing: every power that cannot be
+## used untrained says so inside its own description, and every power that can
+## says nothing of the kind. If the two ever disagree, one of them was edited
+## without the other.
+func _test_training_flags_match_their_own_prose() -> void:
+	var checked := 0
+	for skill in _psionic_skills():
+		if String(skill.get("type", "")) != "specialty":
+			continue
+		var skill_id := AlternityNum.as_int(skill.get("id", -1))
+		if not AlternityRules.SPECIALTY_SUMMARIES.has(skill_id):
+			continue
+		var prose := String(AlternityRules.SPECIALTY_SUMMARIES[skill_id])
+		var prose_says_trained_only: bool = prose.contains("can't be used untrained")
+		var flag_says_trained_only: bool = not bool(skill.get("untrained", false))
+		check_eq(
+			flag_says_trained_only, prose_says_trained_only,
+			"%s: the training flag and its own description agree" % skill.get("name", "?")
+		)
+		checked += 1
+	check_true(checked >= 29, "every described power was checked against its own text")
+
+
+## Dark*Matter adds three powers. They exist, they sit under the right
+## discipline, and a Core campaign is never offered them.
+func _test_dark_matter_specialties() -> void:
+	for skill_name in DARK_MATTER_SPECIALTIES:
+		var expected: Array = DARK_MATTER_SPECIALTIES[skill_name]
+		var skill: Dictionary = _named(String(skill_name))
+		if not check(not skill.is_empty(), "%s is in the catalog" % skill_name):
+			continue
+		check_eq(
+			AlternityNum.as_int(skill.get("id", -1)),
+			AlternityNum.as_int(expected[0]), "%s has its own id" % skill_name
+		)
+		check_eq(
+			AlternityNum.as_int(skill.get("broad_id", -1)),
+			AlternityNum.as_int(expected[1]), "%s sits under its discipline" % skill_name
+		)
+		check_eq(
+			AlternityNum.as_int(skill.get("base_price", -1)),
+			AlternityNum.as_int(expected[2]),
+			"%s costs %d SP" % [skill_name, AlternityNum.as_int(expected[2])]
+		)
+		check_eq(
+			bool(skill.get("untrained", false)), bool(expected[3]),
+			"%s untrained use is %s" % [skill_name, "allowed" if bool(expected[3]) else "prohibited"]
+		)
+		check_eq(
+			String(skill.get("setting", "")), "Dark*Matter",
+			"%s belongs to Dark*Matter" % skill_name
+		)
+		check_true(
+			_rules.skill_detail(skill).get("description", "") != ""
+				or _rules.skill_detail(skill).get("summary", "") != "",
+			"%s has reference text" % skill_name
+		)
+
+		var core: Dictionary = _character(SPECIES_HUMAN, PROFESSION_MINDWALKER, 12)
+		core["setting"] = "Core"
+		check_false(
+			_rules.is_entry_available(core, skill),
+			"a Core campaign is not offered %s" % skill_name
+		)
+		var dark: Dictionary = _character(SPECIES_HUMAN, PROFESSION_MINDWALKER, 12)
+		dark["setting"] = "Dark*Matter"
+		check_true(
+			_rules.is_entry_available(dark, skill),
+			"a Dark*Matter campaign is offered %s" % skill_name
+		)
+
+
+## The flaw that runs the other way from the Willpower perk.
+func _test_spineless() -> void:
+	var flaw := {}
+	for candidate in AlternityRules.FLAW_DEFINITIONS:
+		if String(candidate.get("id", "")) == "spineless":
+			flaw = candidate
+			break
+	if not check(not flaw.is_empty(), "the Spineless flaw exists"):
+		return
+	check_eq(String(flaw.get("ability", "")), "WIL", "Spineless is a Will flaw")
+	check_eq(flaw.get("bonus_options", []), [2, 4, 6], "it is worth 2, 4 or 6 skill points")
+
+	var steps := {2: 1, 4: 2, 6: 3}
+	for bonus in steps:
+		var plain: Dictionary = _character(SPECIES_HUMAN, PROFESSION_COMBAT_SPEC, 12)
+		var weak: Dictionary = _character(SPECIES_HUMAN, PROFESSION_COMBAT_SPEC, 12)
+		weak["selected_flaws"] = {"spineless": bonus}
+		check_eq(
+			_rules.character_resistance_modifier(weak, "WIL"),
+			_rules.character_resistance_modifier(plain, "WIL") - AlternityNum.as_int(steps[bonus]),
+			"a %d point Spineless costs %d step(s) of Will resistance"
+				% [AlternityNum.as_int(bonus), AlternityNum.as_int(steps[bonus])]
+		)
+
+
+## Fraal Will reaches 16, higher than any other species, which is what makes
+## their pools so large.
+func _test_fraal_will_ceiling() -> void:
+	var fraal := {}
+	for species in _rules.species:
+		if typeof(species) == TYPE_DICTIONARY and String(species.get("name", "")) == "Fraal":
+			fraal = species
+			break
+	if not check(not fraal.is_empty(), "Fraal are in the catalog"):
+		return
+	var limits: Array = fraal.get("ability_limits", {}).get("WIL", [])
+	if not check(limits.size() >= 2, "Fraal have a Will range"):
+		return
+	check_eq(AlternityNum.as_int(limits[1]), 16, "Fraal Will tops out at 16")
+
+	var psion: Dictionary = _character(SPECIES_FRAAL, PROFESSION_MINDWALKER, 16)
+	check_eq(
+		_rules.psionic_energy_points(psion), 24,
+		"so a Fraal Mindwalker can carry a pool of 24"
+	)
 
 
 ## Mindwalker WIL x 1; Fraal Mindwalker WIL x 1.5; talent ceil(WIL x 0.5);
