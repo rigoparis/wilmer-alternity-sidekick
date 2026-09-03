@@ -61,6 +61,19 @@ signal round_updated(round_data: Dictionary)
 ## a player wants to see in the log.
 signal action_check_received(player_id: String, result: Dictionary)
 
+## An attack landed on this device's character.
+##
+## Client side. Already rolled: the GM is the attacker and has decided both
+## whether it hit and for how much. What is left is what this character's own
+## armor and durability make of it.
+signal attack_received(attack: Dictionary)
+
+## The target said what the attack did to them.
+##
+## Host side. Carries what got through, what the armor stopped, and whether they
+## went down -- everything the GM needs without being handed the character.
+signal attack_resolved(player_id: String, attack: Dictionary)
+
 ## A player wants to attempt a skill and is waiting on a step ruling.
 ##
 ## Host side only. The check carries what is being attempted and the score to

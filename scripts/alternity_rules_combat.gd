@@ -28,6 +28,75 @@ func _get_parent():
 	return _parent_ref.get_ref()
 
 
+# --- Weapons ---------------------------------------------------------------
+
+## What kind of weapon this is, for the range table.
+##
+## Range modifiers depend on the weapon, and the weapon tables do not carry that
+## classification directly -- but the skill used to fire it is exactly it. A
+## weapon fired with Modern Ranged Weapons - pistol is a pistol for the purposes
+## of Table P22, and there is nothing else it could be.
+##
+## Returns "" for anything not fired at range, which is a caller's cue to use the
+## melee table instead of asking for a range band.
+const RANGE_CLASS_BY_SKILL := {
+	31: "pistol",
+	32: "rifle",
+	33: "smg",
+	34: "primitive",
+	8: "heavy_direct",
+}
+
+
+func weapon_range_class(skill_id: int) -> String:
+	return String(RANGE_CLASS_BY_SKILL.get(skill_id, ""))
+
+
+func is_ranged_weapon(skill_id: int) -> bool:
+	return not weapon_range_class(skill_id).is_empty()
+
+
+## Split a weapon's damage into its three entries.
+##
+## The tables write damage as "d4+1w/d4+2w/d4m" -- what an Ordinary, Good and
+## Amazing hit each do. The degree of success picks one; it is not a single roll
+## scaled afterwards.
+##
+## Returns {ordinary, good, amazing}. A weapon written with fewer than three
+## entries repeats its last, so a caller always has something to roll rather than
+## an empty string.
+func damage_entries(damage_text: String) -> Dictionary:
+	var parts := damage_text.split("/", false)
+	if parts.is_empty():
+		return {"ordinary": "", "good": "", "amazing": ""}
+	var ordinary := String(parts[0]).strip_edges()
+	var good := String(parts[1]).strip_edges() if parts.size() > 1 else ordinary
+	var amazing := String(parts[2]).strip_edges() if parts.size() > 2 else good
+	return {"ordinary": ordinary, "good": good, "amazing": amazing}
+
+
+## The entry a hit of this quality rolls.
+func damage_entry_for(damage_text: String, degree: String) -> String:
+	var entries := damage_entries(damage_text)
+	return String(entries.get(degree.to_lower(), entries.get("ordinary", "")))
+
+
+## The track a damage entry marks: "s", "w", "m" or "f".
+##
+## Written as a suffix on the notation -- "d4+2w" is wound damage. Stun is the
+## fallback because an entry with no suffix is an unarmed or improvised attack,
+## which is the one that does not kill anybody.
+func damage_track_of(entry: String) -> String:
+	var trimmed := entry.strip_edges().to_lower()
+	if trimmed.is_empty():
+		return "s"
+	var last := trimmed.substr(trimmed.length() - 1, 1)
+	return last if DAMAGE_SUFFIXES.has(last) else "s"
+
+
+const DAMAGE_SUFFIXES := ["s", "w", "m", "f"]
+
+
 # --- Armor -----------------------------------------------------------------
 
 ## Which of a piece of armor's three ratings answers this attack.

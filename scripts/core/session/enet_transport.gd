@@ -63,6 +63,12 @@ const MSG_CHECK_RULING := "check_ruling"
 ## player device answers with its action check when one is owed.
 const MSG_ROUND := "round"
 const MSG_ACTION_CHECK := "action_check"
+
+## An attack, and what the target made of it. Two messages because they travel
+## in opposite directions and mean different things: one is a settled fact about
+## what the attacker did, the other a settled fact about what it cost.
+const MSG_ATTACK := "attack"
+const MSG_ATTACK_RESULT := "attack_result"
 const MSG_WELCOME := "welcome"
 const MSG_DENIED := "denied"
 const MSG_EVENT := "event"
@@ -302,6 +308,26 @@ func send_round(round_data: Dictionary) -> void:
 	_send_to_peer(MultiplayerPeer.TARGET_PEER_BROADCAST, {"kind": MSG_ROUND, "round": round_data})
 
 
+## Send a declared attack to the seat it lands on.
+##
+## Host side. Addressed rather than broadcast: an attack is between the GM and
+## one character, and the rest of the table learns about it from the log.
+func send_attack(attack: Dictionary, to_player_id: String) -> void:
+	if _role != Role.GM:
+		push_error("EnetTransport.send_attack is the host's job")
+		return
+	var target := AlternityNum.as_int(_player_to_peer.get(to_player_id, 0))
+	if target > 0:
+		_send_to_peer(target, {"kind": MSG_ATTACK, "attack": attack})
+
+
+## Report what an attack did to this character.
+func send_attack_result(attack: Dictionary) -> void:
+	if _role == Role.GM:
+		return
+	_send_to_host({"kind": MSG_ATTACK_RESULT, "attack": attack})
+
+
 ## Answer the action check the round is waiting on.
 func send_action_check(result: Dictionary) -> void:
 	if _role == Role.GM:
@@ -423,6 +449,12 @@ func _handle_as_host(from_peer: int, message: Dictionary) -> void:
 			var event := _log_and_broadcast(CampaignSession.EVENT_ROLL, player_id, roll)
 			roll_received.emit(player_id, roll)
 			event_received.emit(event)
+		MSG_ATTACK_RESULT:
+			var player_id := String(_peer_to_player.get(from_peer, ""))
+			if player_id.is_empty():
+				return
+			var resolved: Dictionary = message.get("attack", {}) if typeof(message.get("attack")) == TYPE_DICTIONARY else {}
+			attack_resolved.emit(player_id, resolved)
 		MSG_ACTION_CHECK:
 			var player_id := String(_peer_to_player.get(from_peer, ""))
 			if player_id.is_empty():
@@ -602,6 +634,11 @@ func _handle_as_client(message: Dictionary) -> void:
 				return
 			_note_seq(events[events.size() - 1])
 			events_replayed.emit(events)
+		MSG_ATTACK:
+			var incoming = message.get("attack", {})
+			if typeof(incoming) != TYPE_DICTIONARY:
+				return
+			attack_received.emit(incoming)
 		MSG_ROUND:
 			var round_data = message.get("round", {})
 			if typeof(round_data) != TYPE_DICTIONARY:
