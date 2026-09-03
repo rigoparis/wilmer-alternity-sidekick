@@ -15,6 +15,9 @@ extends Control
 ## A campaign was chosen or created and should be opened.
 signal campaign_opened(session: CampaignSession)
 
+## Join somebody else's table rather than running one.
+signal join_requested
+
 ## Leave the campaign list and go back to the character list.
 signal closed
 
@@ -108,9 +111,14 @@ func _build_banner(parent: Container) -> void:
 
 
 func _build_actions(parent: Container) -> void:
-	var bar: BoxContainer = HBoxContainer.new() if _is_wide() else VBoxContainer.new()
+	# A grid rather than a row or a stack: three buttons across a 390px phone runs
+	# the last one off the screen, and three full-width buttons stacked pushes the
+	# campaign list below the fold.
+	var bar := GridContainer.new()
+	bar.columns = 3 if _is_wide() else 2
 	bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	bar.add_theme_constant_override("separation", Widgets.GAP_SECTION)
+	bar.add_theme_constant_override("h_separation", Widgets.GAP_SECTION)
+	bar.add_theme_constant_override("v_separation", Widgets.GAP_SECTION)
 	parent.add_child(bar)
 
 	var create := Button.new()
@@ -120,6 +128,15 @@ func _build_actions(parent: Container) -> void:
 	create.custom_minimum_size = Vector2(0, 44)
 	create.pressed.connect(_on_create_pressed)
 	bar.add_child(create)
+
+	var join := Button.new()
+	join.name = "JoinTableButton"
+	join.text = "Join a Table"
+	join.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	join.custom_minimum_size = Vector2(0, 44)
+	join.tooltip_text = "Connect to a GM running a campaign on this network"
+	join.pressed.connect(func(): join_requested.emit())
+	bar.add_child(join)
 
 	var back := Button.new()
 	back.name = "BackToHeroesButton"

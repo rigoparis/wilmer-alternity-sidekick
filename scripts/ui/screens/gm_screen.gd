@@ -28,6 +28,10 @@ signal closed
 ## How much of the log the feed shows. The log itself is unbounded; this is not.
 const FEED_LENGTH := 60
 
+## How often the connected-player line is redrawn, in seconds. The transport
+## answers packets as they arrive; this only paces the presence display.
+const PRESENCE_INTERVAL := 1.0
+
 const AP_AWARD_ROUTE := preload("res://scenes/ui/routes/ap_award_route.tscn")
 const CONFIRM_ROUTE := preload("res://scenes/ui/routes/confirm_route.tscn")
 const TEXT_PROMPT_ROUTE := preload("res://scenes/ui/routes/text_prompt_route.tscn")
@@ -38,6 +42,16 @@ var _characters: CharacterStore
 var _rules
 var _router: UiRouter
 var _palette: ThemePalette
+
+## The table, when it is open. Null until the GM starts hosting; the screen is
+## fully usable without it, which is the point of building M1 before M2.
+var _transport: EnetTransport
+var _discovery: LanDiscovery
+var _hosting: bool = false
+var _table_status: Label
+var _table_hint: Label
+var _host_button: Button
+var _presence_clock: float = 0.0
 
 var _title: Label
 var _seat_list: VBoxContainer
@@ -87,6 +101,8 @@ func _build() -> void:
 	var column := Widgets.page_column(root_box, _is_wide())
 	column.add_theme_constant_override("separation", 20)
 
+	_build_table_section(column)
+
 	var seats_section := Widgets.section(column, "Seats", _palette)
 	_seat_empty = Widgets.muted_text(
 		seats_section,
@@ -104,6 +120,37 @@ func _build() -> void:
 	_feed_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_feed_list.add_theme_constant_override("separation", Widgets.GAP_TIGHT)
 	feed_section.add_child(_feed_list)
+
+
+## Hosting: the one control that turns a single-device session into a table.
+##
+## Deliberately a section on this screen rather than a mode the screen is in.
+## Everything else here works whether or not anyone is connected, and a GM whose
+## Wi-Fi drops mid-session should lose the players, not the campaign.
+func _build_table_section(parent: Container) -> void:
+	var section := Widgets.section(parent, "Table", _palette)
+
+	_table_status = Widgets.text(section, "Closed -- nobody can join yet.", _palette, Widgets.FONT_BODY)
+	_table_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_table_status.custom_minimum_size = Vector2(1, 0)
+
+	_table_hint = Widgets.muted_text(
+		section,
+		"Open the table and players on the same Wi-Fi can find this campaign.",
+		_palette,
+		Widgets.FONT_CAPTION
+	)
+	_table_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_table_hint.custom_minimum_size = Vector2(1, 0)
+
+	_host_button = Button.new()
+	_host_button.name = "HostButton"
+	_host_button.text = "Open the table"
+	_host_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_host_button.custom_minimum_size = Vector2(0, 40)
+	_host_button.add_theme_stylebox_override("normal", Widgets.flat_style(_palette.surface_soft, _palette.accent, 6))
+	_host_button.pressed.connect(_on_host_pressed)
+	section.add_child(_host_button)
 
 
 func _build_header(parent: Container) -> void:
@@ -179,8 +226,49 @@ func refresh() -> void:
 		return
 	_character_cache.clear()
 	_title.text = _session.display_name
+	_render_table()
 	_render_seats()
 	_render_feed()
+
+
+func _render_table() -> void:
+	if _table_status == null:
+		return
+	if not _hosting or _transport == null:
+		_table_status.text = "Closed -- nobody can join yet."
+		_table_status.add_theme_color_override("font_color", _palette.muted)
+		_table_hint.text = "Open the table and players on the same Wi-Fi can find this campaign."
+		_host_button.text = "Open the table"
+		return
+
+	var names: Array = []
+	for player_id in _transport.connected_players():
+		names.append(String(_session.seat_for(String(player_id)).get("player_name", "someone")))
+
+	_table_status.text = "Open on port %d -- %s" % [
+		EnetTransport.DEFAULT_PORT,
+		"nobody connected yet" if names.is_empty() else ", ".join(names) + " connected",
+	]
+	_table_status.add_theme_color_override("font_color", _palette.accent)
+	# The addresses are worth showing even when discovery works: reading one out
+	# is the only thing left when a guest network blocks broadcast.
+	_table_hint.text = "Players can search for this table, or type: %s" % _local_addresses()
+	_host_button.text = "Close the table"
+
+
+## Every address this device can be reached at, for the read-it-out fallback.
+##
+## Loopback is filtered out: 127.0.0.1 is the one address guaranteed not to work
+## from another device, and offering it is worse than offering nothing. IPv6 is
+## dropped too -- reading one aloud is not a thing anyone will do successfully.
+func _local_addresses() -> String:
+	var usable: Array = []
+	for address in IP.get_local_addresses():
+		var text := String(address)
+		if text.begins_with("127.") or text.contains(":"):
+			continue
+		usable.append(text)
+	return "this device's IP address" if usable.is_empty() else ", ".join(usable)
 
 
 func _render_seats() -> void:
@@ -597,6 +685,117 @@ func _on_remove_seat_pressed(player_id: String, player_name: String) -> void:
 		refresh()
 
 
+func _on_host_pressed() -> void:
+	if _hosting:
+		_stop_hosting()
+		refresh()
+		return
+
+	# A campaign made from the campaign list has no seats at all, and a table with
+	# no GM seat has nowhere to put a private line -- the host resolves "to the
+	# GM" against this seat, and without it a whispered message would be
+	# broadcast to everyone. Hosting is what makes this device the GM, so this is
+	# the moment to say so.
+	if _session.gm_seat().is_empty():
+		_session.set_gm(_session.add_seat("Game Master"))
+		_store.save(_session)
+
+	if _transport == null:
+		_transport = EnetTransport.new()
+		_transport.player_connected.connect(_on_player_connected)
+		_transport.player_disconnected.connect(_on_player_disconnected)
+		_transport.event_received.connect(_on_networked_event)
+		_transport.transport_error.connect(_on_transport_error)
+
+	if _transport.host(_session, EnetTransport.DEFAULT_PORT) != OK:
+		# The reason is already on screen, put there by _on_transport_error.
+		refresh()
+		return
+
+	_hosting = true
+	# Discovery is allowed to fail on its own: a table that cannot be searched for
+	# can still be joined by address.
+	_discovery = LanDiscovery.new()
+	_discovery.advertise(_session, EnetTransport.DEFAULT_PORT)
+	set_process(true)
+	refresh()
+
+
+func _stop_hosting() -> void:
+	_hosting = false
+	if _transport != null:
+		_transport.leave()
+	if _discovery != null:
+		_discovery.stop()
+		_discovery = null
+	set_process(false)
+
+
+## Whether the table is open, for the shell and for tests.
+func is_hosting() -> bool:
+	return _hosting
+
+
+func transport() -> EnetTransport:
+	return _transport
+
+
+## Poll the table.
+##
+## Both sockets take their packets here rather than off a frame signal, so
+## tearing this screen down stops the network with it and cannot leave a socket
+## pumping into a freed screen.
+func _process(delta: float) -> void:
+	if not _hosting:
+		return
+	if _transport != null:
+		_transport.poll()
+	if _discovery != null:
+		_discovery.poll()
+
+	_presence_clock += delta
+	if _presence_clock >= PRESENCE_INTERVAL:
+		_presence_clock = 0.0
+		_render_table()
+
+
+func _on_player_connected(_player_id: String, is_reconnect: bool) -> void:
+	# A first-time join was seated by the handshake, so the campaign changed on
+	# disk. A reconnect only touched last_seen, which is still worth keeping.
+	_store.save(_session)
+	if not is_reconnect:
+		_character_cache.clear()
+	refresh()
+
+
+func _on_player_disconnected(_player_id: String) -> void:
+	refresh()
+
+
+## An event arrived from a player device.
+##
+## Flushed rather than saved: no seat changed, and the log is the one part of a
+## campaign that must not wait for an explicit save.
+func _on_networked_event(_event: Dictionary) -> void:
+	_store.flush_events(_session)
+	_render_feed()
+	_render_table()
+
+
+func _on_transport_error(message: String) -> void:
+	if _table_status == null:
+		return
+	_table_status.text = message
+	_table_status.add_theme_color_override("font_color", _palette.warning)
+
+
+func _exit_tree() -> void:
+	# Leaving the screen closes the table. A socket outliving the screen that owns
+	# it would keep answering for a campaign nobody is looking at.
+	_stop_hosting()
+
+
 func _on_close_pressed() -> void:
+	_stop_hosting()
 	_store.save(_session)
 	closed.emit()

@@ -203,8 +203,54 @@ func _capture(width: int, height: int, label: String) -> void:
 		var slug := "busy" if session.seats.size() > 0 else "empty"
 		_save(shell, "%s_gm_%s" % [label, slug])
 
+	# The player's half of the multiplayer feature. Joining is photographed with
+	# nothing found, which is the state a player actually opens it in and the one
+	# where an empty section is easiest to get wrong.
+	shell._show_table_join()
+	for _i in 12:
+		await process_frame
+	_save(shell, "%s_join" % label)
+
+	# And the screen a player spends the evening on. Built directly with a
+	# transport that never connected: what is being photographed is the layout,
+	# and standing up a loopback host inside a screenshot pass would make this
+	# tool depend on the network working.
+	shell._clear_screens()
+	var table = load("res://scenes/ui/screens/player_table.tscn").instantiate()
+	table.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	shell._screens.add_child(table)
+	table.setup(EnetTransport.new(), shell.identity, shell.store, shell.rules, shell._palette, "The Verge")
+	_seed_table_feed(table)
+	for _i in 12:
+		await process_frame
+	_save(shell, "%s_player_table" % label)
+
 	shell.queue_free()
 	await process_frame
+
+
+## A table mid-session: chat, a roll, and an award waiting to be claimed. The
+## empty states are already covered by the GM screen shots.
+func _seed_table_feed(table) -> void:
+	var seq := 0
+	for spec in [
+		[CampaignSession.EVENT_JOIN, {}],
+		[CampaignSession.EVENT_CHAT, {"text": "We break for the airlock.", "to": ""}],
+		[CampaignSession.EVENT_ROLL, {"notation": "d20+d4", "total": 14, "label": "Action check"}],
+		[CampaignSession.EVENT_CHAT, {"text": "The seal is rusted through.", "to": "gm"}],
+		[CampaignSession.EVENT_AP_AWARD, {"amount": 3, "reason": CampaignSession.AP_REASON_HEROISM}],
+	]:
+		seq += 1
+		table._events.append({
+			"seq": seq,
+			"kind": String(spec[0]),
+			"player_id": "",
+			"at": int(Time.get_unix_time_from_system()),
+			"payload": spec[1],
+		})
+	# The award is addressed to this device, so it lands as claimable.
+	table._unclaimed = 3
+	table._render()
 
 
 func _save(_shell, name: String) -> void:

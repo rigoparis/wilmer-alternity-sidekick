@@ -21,10 +21,13 @@ const SELECT_SCREEN := preload("res://scenes/ui/screens/character_select.tscn")
 const SHEET_SCREEN := preload("res://scenes/ui/screens/character_sheet.tscn")
 const CAMPAIGN_SELECT_SCREEN := preload("res://scenes/ui/screens/campaign_select.tscn")
 const GM_SCREEN := preload("res://scenes/ui/screens/gm_screen.tscn")
+const TABLE_JOIN_SCREEN := preload("res://scenes/ui/screens/table_join.tscn")
+const PLAYER_TABLE_SCREEN := preload("res://scenes/ui/screens/player_table.tscn")
 
 var rules
 var store: CharacterStore
 var campaigns: CampaignStore
+var identity: PlayerIdentity
 var router: UiRouter
 
 var _background: ColorRect
@@ -34,6 +37,8 @@ var _select: CharacterSelectScreen
 var _sheet: CharacterSheetScreen
 var _campaign_select: CampaignSelectScreen
 var _gm: GmScreen
+var _table_join: TableJoinScreen
+var _player_table: PlayerTableScreen
 var _palette: ThemePalette
 
 var _is_wide: bool = false
@@ -56,6 +61,9 @@ func _ready() -> void:
 	rules.load_core_data()
 	store = CharacterStore.new(rules) if store_directory.is_empty() else CharacterStore.new(rules, store_directory)
 	campaigns = CampaignStore.new() if campaign_directory.is_empty() else CampaignStore.new(campaign_directory)
+	# Who this device is at other people's tables. Kept beside the characters
+	# rather than with the campaigns: it describes the person, not the table.
+	identity = PlayerIdentity.new() if store_directory.is_empty() else PlayerIdentity.new(store_directory)
 
 	_palette = _resolve_palette()
 	_connect_theme()
@@ -155,6 +163,7 @@ func _show_campaigns() -> void:
 	_screens.add_child(_campaign_select)
 	_campaign_select.setup(campaigns, router, _palette)
 	_campaign_select.campaign_opened.connect(_open_campaign)
+	_campaign_select.join_requested.connect(_show_table_join)
 	_campaign_select.closed.connect(_on_campaigns_closed)
 
 
@@ -165,6 +174,34 @@ func _open_campaign(session: CampaignSession) -> void:
 	_screens.add_child(_gm)
 	_gm.setup(session, campaigns, store, rules, router, _palette)
 	_gm.closed.connect(_on_gm_closed)
+
+
+## The player's side of the same feature, and a sibling of the campaign list.
+##
+## Reached from there rather than from its own top-level entry because "run a
+## table" and "join a table" are the same question asked from two ends, and a
+## person who is a GM one week and a player the next should find both in one
+## place.
+func _show_table_join() -> void:
+	_clear_screens()
+	_table_join = TABLE_JOIN_SCREEN.instantiate()
+	_table_join.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_screens.add_child(_table_join)
+	_table_join.setup(identity, _palette)
+	_table_join.table_joined.connect(_open_player_table)
+	_table_join.closed.connect(_show_campaigns)
+
+
+func _open_player_table(transport: EnetTransport, campaign_name: String) -> void:
+	# The join screen hands the live connection over rather than closing and
+	# reopening it: the handshake has already happened, and reconnecting would
+	# make the GM see a player leave and arrive for no reason.
+	_clear_screens()
+	_player_table = PLAYER_TABLE_SCREEN.instantiate()
+	_player_table.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_screens.add_child(_player_table)
+	_player_table.setup(transport, identity, store, rules, _palette, campaign_name)
+	_player_table.closed.connect(_show_campaigns)
 
 
 func _on_campaigns_closed() -> void:
@@ -182,6 +219,8 @@ func _clear_screens() -> void:
 	_sheet = null
 	_campaign_select = null
 	_gm = null
+	_table_join = null
+	_player_table = null
 	for child in _screens.get_children():
 		_screens.remove_child(child)
 		child.queue_free()
@@ -201,7 +240,18 @@ func _rebuild_active_screen() -> void:
 			return
 	# Colours are baked in at build time, so a theme change rebuilds whatever
 	# screen is showing -- not always the character list.
+	#
+	# The two networked screens are the exception: rebuilding one would close the
+	# connection it owns, so changing the theme mid-session would drop the player
+	# from the table. They keep the old colours until the table is left, which is
+	# the lesser of the two surprises.
+	if _player_table != null and is_instance_valid(_player_table):
+		return
+	if _table_join != null and is_instance_valid(_table_join):
+		return
 	if _gm != null and is_instance_valid(_gm):
+		if _gm.is_hosting():
+			return
 		_open_campaign(_gm.session())
 		return
 	if _campaign_select != null and is_instance_valid(_campaign_select):
@@ -238,6 +288,14 @@ func _handle_back() -> void:
 	if _gm != null and is_instance_valid(_gm):
 		_on_gm_closed()
 		return
+	# Both of these leave the network on the way out: their _exit_tree closes the
+	# connection, so backing out of a table cannot leave a socket behind.
+	if _player_table != null and is_instance_valid(_player_table):
+		_show_campaigns()
+		return
+	if _table_join != null and is_instance_valid(_table_join):
+		_show_campaigns()
+		return
 	if _campaign_select != null and is_instance_valid(_campaign_select):
 		_on_campaigns_closed()
 		return
@@ -267,6 +325,14 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if _gm != null and is_instance_valid(_gm):
 		_on_gm_closed()
+		get_viewport().set_input_as_handled()
+		return
+	if _player_table != null and is_instance_valid(_player_table):
+		_show_campaigns()
+		get_viewport().set_input_as_handled()
+		return
+	if _table_join != null and is_instance_valid(_table_join):
+		_show_campaigns()
 		get_viewport().set_input_as_handled()
 		return
 	if _campaign_select != null and is_instance_valid(_campaign_select):

@@ -31,6 +31,18 @@ signal player_disconnected(player_id: String)
 ## A completed roll arrived. `roll` is a serialized RollResult.
 signal roll_received(player_id: String, roll: Dictionary)
 
+## A log event arrived, already carrying its host-assigned sequence number.
+##
+## The general form of the two signals below, and the one a client applies to
+## its own copy of the campaign. Rolls and chat also raise their specific signal,
+## because most listeners care about one kind; anything that has to keep a log in
+## step -- AP awards included -- listens here instead.
+signal event_received(event: Dictionary)
+
+## Everything the host had that this peer did not, sent in one piece after a
+## reconnect. Ordered oldest first.
+signal events_replayed(events: Array)
+
 ## A chat message arrived. `to_player_id` is empty for table-wide messages and
 ## set for a private line with the GM.
 signal chat_received(player_id: String, text: String, to_player_id: String)
@@ -52,7 +64,7 @@ enum Role {
 ## Implementations must check the underlying create_server() result rather than
 ## assuming success: a port already in use returns ERR_CANT_CREATE and otherwise
 ## looks exactly like a silent hang.
-func host(_session: CampaignSession, _port: int) -> Error:
+func host(_session: CampaignSession, _port: int = 0) -> Error:
 	return _not_implemented("host")
 
 
@@ -60,7 +72,17 @@ func host(_session: CampaignSession, _port: int) -> Error:
 ##
 ## `player_id` should be the id this device was given previously, so the GM can
 ## match it to an existing seat. Pass "" only for a genuinely new player.
-func join(_address: String, _port: int, _player_id: String) -> Error:
+##
+## `since_seq` is how far this device's copy of the log already got, so the host
+## replays what was missed rather than a year of history. Zero asks for whatever
+## tail the host still holds.
+func join(
+	_address: String,
+	_port: int = 0,
+	_player_id: String = "",
+	_player_name: String = "",
+	_since_seq: int = 0
+) -> Error:
 	return _not_implemented("join")
 
 
