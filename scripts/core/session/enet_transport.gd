@@ -58,6 +58,11 @@ const MSG_CHARACTER := "character"
 ## request in front of it, which is exactly what a ruling already is.
 const MSG_CHECK_REQUEST := "check_request"
 const MSG_CHECK_RULING := "check_ruling"
+
+## The fight. The host owns the round and sends it whole on every change; a
+## player device answers with its action check when one is owed.
+const MSG_ROUND := "round"
+const MSG_ACTION_CHECK := "action_check"
 const MSG_WELCOME := "welcome"
 const MSG_DENIED := "denied"
 const MSG_EVENT := "event"
@@ -287,6 +292,23 @@ func send_roll(roll: Dictionary) -> void:
 	_send_to_host({"kind": MSG_ROLL, "roll": roll})
 
 
+## Push the state of the fight to everyone.
+##
+## Host side. Sent whole rather than diffed -- see round_updated.
+func send_round(round_data: Dictionary) -> void:
+	if _role != Role.GM:
+		push_error("EnetTransport.send_round is the host's job")
+		return
+	_send_to_peer(MultiplayerPeer.TARGET_PEER_BROADCAST, {"kind": MSG_ROUND, "round": round_data})
+
+
+## Answer the action check the round is waiting on.
+func send_action_check(result: Dictionary) -> void:
+	if _role == Role.GM:
+		return
+	_send_to_host({"kind": MSG_ACTION_CHECK, "result": result})
+
+
 ## Ask the GM to set the difficulty of a check.
 ##
 ## The reply comes back as `check_ruled`. With no table open there is nobody to
@@ -401,6 +423,14 @@ func _handle_as_host(from_peer: int, message: Dictionary) -> void:
 			var event := _log_and_broadcast(CampaignSession.EVENT_ROLL, player_id, roll)
 			roll_received.emit(player_id, roll)
 			event_received.emit(event)
+		MSG_ACTION_CHECK:
+			var player_id := String(_peer_to_player.get(from_peer, ""))
+			if player_id.is_empty():
+				return
+			var result: Dictionary = message.get("result", {}) if typeof(message.get("result")) == TYPE_DICTIONARY else {}
+			# Whose check it is comes from the socket, not the message: a device
+			# must not be able to roll initiative on somebody else's behalf.
+			action_check_received.emit(player_id, result)
 		MSG_CHECK_REQUEST:
 			var player_id := String(_peer_to_player.get(from_peer, ""))
 			if player_id.is_empty():
@@ -572,6 +602,11 @@ func _handle_as_client(message: Dictionary) -> void:
 				return
 			_note_seq(events[events.size() - 1])
 			events_replayed.emit(events)
+		MSG_ROUND:
+			var round_data = message.get("round", {})
+			if typeof(round_data) != TYPE_DICTIONARY:
+				return
+			round_updated.emit(round_data)
 		MSG_CHECK_RULING:
 			var check = message.get("check", {})
 			if typeof(check) != TYPE_DICTIONARY:

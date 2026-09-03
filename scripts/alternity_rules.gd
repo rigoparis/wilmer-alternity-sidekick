@@ -1096,6 +1096,11 @@ func action_check(character: Dictionary) -> Dictionary:
 		"ordinary": ordinary,
 		"good": good,
 		"amazing": amazing,
+		# The raw step as well as the die it produces, for the same reason
+		# skill_score reports one: the notation cannot be turned back into a
+		# number, and an action check rolled at the table needs the step to build
+		# its situation die from.
+		"step": action_step + penalty,
 		"die": action_step_die(action_step + penalty),
 		"actions": actions_per_round(character),
 	}

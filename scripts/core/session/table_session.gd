@@ -30,6 +30,13 @@ signal ap_applied(amount: int, reason: String)
 ## The GM asked for a check, or answered one.
 signal check_arrived(check: SkillCheck)
 
+## The fight changed. The whole round arrives each time, so there is nothing to
+## reconcile -- this device simply holds the newest copy the GM sent.
+signal round_changed
+
+## The round is waiting on this device's action check.
+signal action_check_wanted
+
 ## Something went wrong that a player should see.
 signal trouble(message: String)
 
@@ -57,6 +64,20 @@ var campaign_name: String = ""
 ## Events this device has been sent, oldest first. Display only.
 var events: Array = []
 
+## The fight in progress, as the GM last sent it, or null when there is none.
+##
+## Named active_round rather than round because a class member called `round`
+## shadows the global round() function, which parses and then confuses whoever
+## next writes arithmetic in this file.
+##
+## Read-only here. The GM's device owns the round and assigns every phase; this
+## is a copy to look at, exactly like the event log.
+var active_round: ActionRound
+
+## The round this device has already rolled an action check for, so a resend of
+## the same round does not ask twice.
+var _checked_round: String = ""
+
 
 func _init(
 	p_transport: EnetTransport,
@@ -74,6 +95,7 @@ func _init(
 	transport.event_received.connect(_on_event)
 	transport.events_replayed.connect(_on_replay)
 	transport.check_ruled.connect(_on_check_ruled)
+	transport.round_updated.connect(_on_round_updated)
 	transport.transport_error.connect(func(message: String): trouble.emit(message))
 
 
@@ -175,6 +197,65 @@ func _on_replay(replayed: Array) -> void:
 
 func _on_check_ruled(data: Dictionary) -> void:
 	check_arrived.emit(SkillCheck.from_dict(data))
+
+
+func _on_round_updated(data: Dictionary) -> void:
+	if data.is_empty():
+		# The fight is over.
+		active_round = null
+		_checked_round = ""
+		round_changed.emit()
+		return
+
+	active_round = ActionRound.from_dict(data)
+	round_changed.emit()
+
+	# Ask for an action check only when this round is actually waiting on ours,
+	# and only once per round -- the GM resends the whole round on every change,
+	# so a naive check would prompt again after every phase.
+	if _checked_round == active_round.round_id:
+		return
+	if not owes_action_check():
+		return
+	_checked_round = active_round.round_id
+	action_check_wanted.emit()
+
+
+## Whether the round is waiting on this device's action check.
+func owes_action_check() -> bool:
+	if active_round == null or transport == null:
+		return false
+	return active_round.awaiting_checks().has(transport.local_player_id())
+
+
+## Where this device stands in the fight, or {} when it is not in one.
+func my_combatant() -> Dictionary:
+	if active_round == null or transport == null:
+		return {}
+	return active_round.combatant(transport.local_player_id())
+
+
+## Whether it is this device's turn in the phase now running.
+func acting_now() -> bool:
+	if active_round == null or transport == null:
+		return false
+	for entry in active_round.acting_now():
+		if String(entry.get("id", "")) == transport.local_player_id():
+			return true
+	return false
+
+
+## Send the action check this device just rolled.
+func send_action_check(check: SkillCheck) -> void:
+	if transport == null or check == null:
+		return
+	transport.send_action_check({
+		"round_id": active_round.round_id if active_round != null else "",
+		"degree": check.degree(),
+		"check_score": check.ordinary,
+		"roll": AlternityNum.as_int(check.result.get("total", 0)),
+		"critical": bool(check.result.get("is_critical_failure", false)),
+	})
 
 
 func _remember(event: Dictionary) -> void:

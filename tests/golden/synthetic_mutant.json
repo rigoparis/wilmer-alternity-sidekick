@@ -121,7 +121,8 @@
 			"die": "+d4",
 			"good": 6,
 			"marginal": 13,
-			"ordinary": 12
+			"ordinary": 12,
+			"step": 1
 		},
 		"additional_broad_skill_limit": 4,
 		"additional_broad_skills_remaining": 4,

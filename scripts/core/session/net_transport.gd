@@ -47,6 +47,20 @@ signal events_replayed(events: Array)
 ## set for a private line with the GM.
 signal chat_received(player_id: String, text: String, to_player_id: String)
 
+## The fight changed: a round started, a check landed, a phase closed.
+##
+## Client side. The whole round arrives each time rather than a diff -- it is a
+## small dictionary that changes a few times a round, and sending it whole means
+## a player joining mid-fight needs no catch-up path at all.
+signal round_updated(round_data: Dictionary)
+
+## A player rolled their action check for the round.
+##
+## Host side. Carries the degree, the character's own action check score and what
+## the dice showed, because the score is what orders a phase and the roll is what
+## a player wants to see in the log.
+signal action_check_received(player_id: String, result: Dictionary)
+
 ## A player wants to attempt a skill and is waiting on a step ruling.
 ##
 ## Host side only. The check carries what is being attempted and the score to

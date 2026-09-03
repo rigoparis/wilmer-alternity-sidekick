@@ -63,6 +63,14 @@ var events: Array = []
 ## Campaign-level optional rules set by the GM and synced to all players at the table.
 var optional_rules: Dictionary = {}
 
+## The fight in progress, as a serialised ActionRound, or {} when there is none.
+##
+## Kept on the campaign rather than on the GM's screen because it is table state,
+## not screen state: a theme change, a reconnect or reopening the campaign should
+## not lose track of whose turn it is. It is also what gets sent to the players,
+## so there is one copy and the GM's is it.
+var active_round: Dictionary = {}
+
 ## skill_id -> how many times the GM has called for or ruled on that skill.
 ##
 ## A table checks the same handful of things over and over -- Awareness, Stamina,
@@ -202,6 +210,27 @@ func set_gm(player_id: String) -> bool:
 		other["is_gm"] = false
 	seat["is_gm"] = true
 	return true
+
+
+# --- The fight -------------------------------------------------------------
+
+## Start or update the round in progress.
+func set_round(round_data: Dictionary) -> void:
+	active_round = round_data.duplicate(true)
+
+
+func current_round() -> Dictionary:
+	return active_round.duplicate(true)
+
+
+func has_round() -> bool:
+	return not active_round.is_empty()
+
+
+## End the fight. Nothing about it is kept: the log has what happened, and a
+## finished round is a screenful of stale names.
+func clear_round() -> void:
+	active_round = {}
 
 
 # --- What this table checks ------------------------------------------------
@@ -456,6 +485,7 @@ func to_dict() -> Dictionary:
 		"events": events.duplicate(true),
 		"optional_rules": optional_rules.duplicate(true),
 		"check_counts": check_counts.duplicate(true),
+		"active_round": active_round.duplicate(true),
 	}
 
 
@@ -477,4 +507,7 @@ static func from_dict(data: Dictionary) -> CampaignSession:
 
 	var counts = data.get("check_counts", {})
 	session.check_counts = counts.duplicate(true) if typeof(counts) == TYPE_DICTIONARY else {}
+
+	var fight = data.get("active_round", {})
+	session.active_round = fight.duplicate(true) if typeof(fight) == TYPE_DICTIONARY else {}
 	return session

@@ -38,6 +38,7 @@ func _run() -> void:
 	await _test_gm_events_reach_the_player()
 	await _test_check_round_trip()
 	await _test_gm_calls_for_a_check()
+	await _test_the_round_travels()
 	await _test_reconnect_replays_the_gap()
 	await _test_unknown_player_can_be_refused()
 	await _test_peer_ids_never_escape()
@@ -354,6 +355,87 @@ func _test_gm_calls_for_a_check() -> void:
 	_host.send_ruling(Check.call_for("Awareness", 0).to_dict())
 	arrived = await _pump_until(func(): return called.size() > broadcast_count)
 	check_true(arrived, "a check called to the whole table reaches a player")
+
+
+# --- The fight -------------------------------------------------------------
+
+## The round goes out whole, and the action checks come back.
+##
+## Sent whole rather than diffed on purpose: it is a small dictionary that
+## changes a few times a round, and sending it entire means a player joining
+## mid-fight needs no catch-up path at all -- which this test checks by having
+## the client read a round it never saw the start of.
+func _test_the_round_travels() -> void:
+	var Round = preload("res://scripts/core/session/action_round.gd")
+	var player_id := String(_host.connected_players()[0])
+
+	var seen := []
+	_client.round_updated.connect(func(data: Dictionary): seen.append(data))
+
+	var fight = Round.new()
+	fight.add_combatant(player_id, "Alice", 3)
+	fight.add_combatant("gm-thug", "Thug", 1, Round.KIND_NPC)
+	_host.send_round(fight.to_dict())
+
+	var arrived := await _pump_until(func(): return seen.size() > 0)
+	check_true(arrived, "the round reaches the player")
+	if not arrived:
+		return
+
+	var received = Round.from_dict(seen[0])
+	check_eq(received.round_id, fight.round_id, "as the same round")
+	check_eq(received.combatants.size(), 2, "with everyone in it")
+	check_true(received.awaiting_checks().has(player_id), "and knows it is waiting on this player")
+
+	# The answer comes back, and the host is told whose it is by the socket
+	# rather than by the message -- a device must not roll initiative for
+	# somebody else.
+	var answered := []
+	_host.action_check_received.connect(func(from: String, result: Dictionary): answered.append([from, result]))
+	_client.send_action_check({
+		"round_id": fight.round_id,
+		"degree": "Good",
+		"check_score": 13,
+		"roll": 6,
+		"critical": false,
+	})
+	arrived = await _pump_until(func(): return answered.size() > 0)
+	check_true(arrived, "the action check reaches the GM")
+	if not arrived:
+		return
+
+	check_eq(String(answered[0][0]), player_id, "attributed to the player who rolled it")
+	var result: Dictionary = answered[0][1]
+	check_eq(String(result.get("degree", "")), "Good", "carrying the degree that sets their phase")
+	check_eq(AlternityNum.as_int(result.get("check_score", 0)), 13, "and the score that orders it")
+	check_eq(AlternityNum.as_int(result.get("roll", 0)), 6, "and what the dice showed")
+
+	# The GM records it and pushes the round again; the client should now see
+	# itself scheduled rather than owed.
+	fight.record_check(player_id, "Good", 13, 6)
+	fight.record_check("gm-thug", "Ordinary", 9, 12)
+	fight.start()
+	_host.send_round(fight.to_dict())
+	arrived = await _pump_until(func(): return seen.size() > 1)
+	check_true(arrived, "the started round reaches the player")
+	if not arrived:
+		return
+
+	var running = Round.from_dict(seen[seen.size() - 1])
+	check_eq(running.phase(), "amazing", "which opens at the Amazing phase")
+	check_false(running.awaiting_checks().has(player_id), "and owes nothing further")
+	var acting: Array = []
+	for entry in running.acting_in("good"):
+		acting.append(String(entry["id"]))
+	check_true(acting.has(player_id), "the player acts in the phase they earned")
+
+	# Ending the fight is an empty round, which is how a client knows to put the
+	# board away rather than leaving a stale one on screen.
+	_host.send_round({})
+	arrived = await _pump_until(func(): return seen.size() > 3 or (seen.size() > 2 and (seen[seen.size() - 1] as Dictionary).is_empty()))
+	check_true(arrived, "ending the fight reaches the player")
+	if arrived:
+		check_true((seen[seen.size() - 1] as Dictionary).is_empty(), "as an empty round")
 
 
 # --- Reconnect -------------------------------------------------------------

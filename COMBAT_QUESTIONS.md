@@ -1,149 +1,135 @@
-# Questions for the manuals: Alternity combat, round 2
+# Questions for the manuals: round 3
 
-Round 1 (action round order, surprise, range bands, armor, firepower, actions,
-knockout recovery, firing modes, defence costs, cover, movement) has been
-answered and implemented. Thank you — three of those answers caught real bugs.
+Rounds 1 and 2 are answered and implemented — thank you. Between them they
+caught four real bugs, including one where the firepower rule was gated exactly
+backwards.
 
-Same request as before: **cite book and page**, say which option is correct
-rather than describing all of them, and if something is genuinely GM judgement
-rather than a written rule, say so plainly.
+Same request: **cite book and page**, say which option is correct rather than
+describing all of them, and if something is genuinely GM judgement rather than a
+written rule, say so plainly.
 
-**Priority: sections E and F.** E settles a contradiction with what the app
-already does, and F is needed before any attack can be resolved end to end. G
-and H can wait if budget is tight.
-
----
-
-## E. Is Firepower vs Toughness core or optional?
-
-The app currently ships Firepower/Toughness as an **optional rule**, off by
-default, described as "When an Ordinary weapon hits Good armor or toughness, its
-damage degrades one step... Source: Gamemaster Guide Chapter 3 p. 48."
-
-Round 1 said it is **core**, citing Gamemaster Guide p. 52.
-
-This matters because turning it on changes damage results for every character
-already saved, so we want to be certain before flipping it.
-
-### E1.
-Is Firepower vs Toughness a core rule that always applies, or is it presented as
-optional anywhere in the books?
-
-- If it is core: is there any explicitly labelled *optional* variant of it, or an
-  "if you prefer a simpler game, ignore this" note?
-- What is actually on **Gamemaster Guide p. 48**, and how does it relate to
-  p. 52? We may have conflated two different rules.
-
-### E2.
-Does the **upgrade** half (firepower above toughness promoting hit quality) come
-from the same rule and the same page as the **degradation** half, or are they
-separate rules that could be adopted independently?
-
-### E3.
-Alternity labels some rules explicitly as optional — "Optional Rule: Dazed", for
-instance. Please list the combat-related rules the books explicitly label
-optional, so we can be sure our optional-rule toggles match the books rather
-than an earlier guess.
+**Priority: J1 first.** It blocks the player-side damage resolution outright —
+nothing can work out how much armor absorbs until it is answered. K and L shape
+the combat UI. M is an audit that touches saved characters, so it can wait.
 
 ---
 
-## F. The exact attack resolution pipeline
+## J. Armor — blocking
 
-We need the canonical order of operations. Our engine currently does damage as:
-firepower degradation → subtract armor from primary → assess primary → derive
-secondary from what got through → overflow stun into wound and wound into mortal.
+### J1. Does armor stack?
+A character can have armor from several sources at once:
 
-### F1. The full sequence
-Please give the step-by-step order for resolving **one attack**, from declaring
-it to marking the damage, including exactly where each of these happens:
+- **natural** armor from their species (a T'sa's scaled hide, `d4+1` LI /
+  `d4` HI / `d4-1` En)
+- **worn** armor from equipment
+- **cybertech** plating
+- armor from **mutations** or **psionic** effects
 
-- netting the situation modifiers into a step total
-- the target's resistance modifier
-- rolling control die + situation die
-- determining the degree of success
-- a called shot's promotion of the degree
-- the firepower **upgrade** of hit quality
-- choosing which of the weapon's three damage entries to roll
-- rolling damage
-- the firepower **degradation** of the damage type
-- rolling armor and subtracting it
-- secondary damage
-- overflow between tracks
-- the Amazing-damage knockout check
+When a character has more than one of these, how is the absorption worked out?
 
-If two of those can happen in either order without changing the result, say so —
-that is useful too.
+- do the dice **add together** (roll each and sum)?
+- does the **single best** source apply and the others are ignored?
+- does worn armor **replace** natural armor specifically, while other sources
+  stack?
+- something else?
 
-### F2. The target's resistance modifier
-Round 1 said ranged attacks are penalised by the target's Dexterity resistance
-modifier and melee by Strength.
+If the answer differs between sources — say, natural and worn stack but two worn
+suits cannot both be used — please spell out which combinations do what.
 
-- Is that modifier **added to the attacker's step total** like any other
-  situation modifier, before the situation die is chosen?
-- Is it the value from Table P2 (ability score → steps)?
-- Does it apply to *every* attack, or only when the target is aware and able to
-  move?
+### J2. Wearing more than one suit
+Can a character wear two pieces of manufactured armor at once (a vest under a
+jacket, say)? If so, how do they combine?
 
-### F3. Rolling damage
-- Is the damage die rolled **once per attack**, regardless of degree?
-- The Strength damage bonus: which attacks does it apply to (melee only, thrown,
-  unarmed?), and is it added to the damage roll or to the weapon's listed damage?
-- Does a burst or autofire hit roll damage once per target, or once per round
-  that connects?
-
-### F4. Critical failure on an attack
-What happens on a natural 20 attacking? Round 1 mentioned a weapon jam on burst
-fire specifically — is there a general critical-failure result for attacks, or is
-it left to the GM?
+### J3. Armor and the action penalty
+Armor carries a step penalty for wearing it. If armor does stack, do the
+penalties stack too?
 
 ---
 
-## G. Defence in detail
+## K. The action economy
 
-Round 1 gave the action costs for dodge and parry. We still need what they
-actually *do* mechanically.
+Round 1 established one action per phase, and that a character with three actions
+who rolls Amazing acts in Amazing, Good and Ordinary.
 
-### G1. Dodge
-When a character spends an action to dodge:
-- Is it an opposed check, a flat step penalty applied to the attacker, or
-  something else?
-- If it is a check, what is rolled against what, and what does each degree of
-  success do?
-- Does one dodge cover every attack against that character for the round, or only
-  one attack?
+### K1. Which action does a dodge cost?
+Round 1 said a dodge "costs the defender their first action of the round" and
+must be declared "during the first phase in which an action is available".
 
-### G2. Parry
-Same three questions for parry.
+For a character with 3 actions who rolled Amazing: if they dodge, do they act in
+Good and Ordinary (having spent the Amazing-phase action), or do they lose the
+*last* of their three phases instead? In other words, does the dodge come off the
+front of their schedule or the back?
 
-### G3. Awareness
-- Can a character dodge or parry an attack they did not see coming (attacker
-  hidden, attack from the rear, surprise phase)?
+### K2. Attacking repeatedly
+A character with three actions can attack in three phases. Is there any
+escalating penalty for the second and third attack in a round, or is each one
+resolved at full skill?
 
----
+### K3. Two Actions at Once
+Round 1 gave +2 steps to the first activity and +4 to the second. To confirm:
+does that let a character do two things using **one** action, or does it still
+consume two actions and simply allow them in the same phase?
 
-## H. After the hit
-
-### H1. Running out of Mortal
-What happens when the last Mortal box is filled? Please give the exact rule —
-immediate death, dying and stabilisable, a check to survive?
-
-### H2. Recovery rates
-Our campaigns run for months, so recovering between sessions matters. For each
-of Stun, Wound, Mortal and Fatigue: how much is recovered, how often, and does
-it require rest, treatment or a skill check?
-
-### H3. Last resort points in combat
-- At what exact moment must a last resort point be declared, relative to rolling
-  the dice and applying results?
-- It shifts the degree of success by one grade — can it shift a Failure to an
-  Ordinary success, or only improve an existing success?
-- Can it be spent to reduce or negate damage after a hit lands?
+### K4. Do damage penalties affect the action check itself?
+A wounded character carries step penalties. Does that penalty apply to the
+**action check** at the top of the round — making a hurt character act later —
+or only to the actions they then take? (Our engine currently applies it to the
+action check's situation die but not to the score.)
 
 ---
 
-## I. Area effects — only if budget allows
+## L. Awareness and unconsciousness
 
-### I1.
-How do grenades and explosions work? Specifically: is there a blast radius with
-different damage grades by distance (the "Amazing radius" phrasing suggests so),
-who rolls what, and can a target dodge to reduce it?
+### L1. When is a target "unaware" mid-fight?
+Losing the resistance modifier and the ability to dodge is a big swing, so we
+want to apply it exactly when the books do.
+
+Outside the surprise phase, what makes a target unaware? Specifically:
+- an attacker the target cannot see (hidden, behind them, in darkness)?
+- a rear attack — is that automatically unaware, or just the −2 step bonus?
+- a target who has already acted in an earlier phase?
+- a target who is prone, held, or pinned?
+
+### L2. Unconscious from stun, and end-of-scene recovery
+Round 2 said stun recovers **completely at the end of the scene**, and separately
+that a character knocked out by stun stays out for the round it happened and the
+next, then makes Resolve–physical checks once per round to wake.
+
+These seem to point different ways for a fight that ends while someone is down.
+When the scene ends with a character unconscious from stun:
+- do they simply wake up, their stun having recovered?
+- or do they keep making Resolve checks?
+
+### L3. Does being unconscious end their participation in the round?
+We have combatants dropping out of later phases when knocked out. Is there any
+case where an unconscious character still does something in a later phase of the
+same round?
+
+---
+
+## M. Optional rules audit — lower priority
+
+Round 2 listed the rules the books explicitly label optional. Our app ships a
+different set, and we would rather match the books than an earlier guess. For
+**each** of the toggles below, please say whether it is a real labelled optional
+rule and where, or whether it is a house rule that should not be presented as
+official:
+
+1. **"Alternate starting skill points"** — a different number of skill points at
+   character creation.
+2. **"Alternate broad skill limit"** — a different cap on how many broad skills
+   a starting hero may take.
+3. **"Flat specialty advancement cost"** — specialties cost a flat rate to
+   improve rather than a scaling one.
+4. **"Psionic Talents"** — non-Mindwalker heroes may buy Psionics skills.
+5. **"Uncapped monetary awards"** — monetary awards continue past 24th level.
+6. **"Age categories"** — a hero's age adjusts their ability scores.
+
+Round 2 also named three we do **not** have. For each, please confirm what
+turning it on and off actually changes, so we can implement them:
+
+7. **Weapon Accuracy** (Gamemaster Guide p. 43) — we currently apply each
+   weapon's accuracy modifier unconditionally. With the rule *off*, is a
+   weapon's listed accuracy simply ignored?
+8. **FX Achievement Points** (Beyond Science p. 3).
+9. **Psionic Vulnerability** (Beyond Science p. 11).

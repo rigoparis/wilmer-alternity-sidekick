@@ -112,6 +112,34 @@ func run_called(check: SkillCheck, doc: CharacterDoc, skill: Dictionary):
 # --- The three paths -------------------------------------------------------
 
 ## Ask the GM, and wait. Returns false if the person gave up waiting.
+## Roll this character's action check for a round of combat.
+##
+## An action check is an ordinary check with two differences: it is rolled
+## against the character's own action check score rather than a skill, and there
+## is nothing to ask the GM -- the difficulty of acting is whatever the character
+## carries. So it skips the ruling round trip and goes straight to the tray.
+##
+## Returns the settled SkillCheck, or null if the throw was abandoned. The caller
+## reads `degree()` for the phase and `ordinary` for the score that orders it.
+func run_action_check(doc: CharacterDoc):
+	if doc == null or _rules == null:
+		return null
+	var score: Dictionary = _rules.action_check(doc.raw())
+
+	var check := SkillCheck.new(_local_player_id(), SkillCheck.ORIGIN_GM)
+	check.skill_label = "Action check"
+	check.ordinary = AlternityNum.as_int(score.get("ordinary", 0))
+	check.good = AlternityNum.as_int(score.get("good", 0))
+	check.amazing = AlternityNum.as_int(score.get("amazing", 0))
+	# Everything the character brings to acting quickly -- species, cybertech,
+	# armor, and how hurt they are -- is already netted into this by the rules.
+	check.player_step = AlternityNum.as_int(score.get("step", 0))
+
+	if not check.is_rollable():
+		return null
+	return await _throw(check, doc)
+
+
 func _await_ruling(check: SkillCheck) -> bool:
 	_transport.request_check(check.to_dict())
 
