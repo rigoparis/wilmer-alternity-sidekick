@@ -265,6 +265,53 @@ const OPTIONAL_RULES := [
 
 const FIREPOWER_GRADES := ["O", "G", "A"] # Ordinary, Good, Amazing
 
+## Stamina - Endurance, the check an Amazing hit forces to stay conscious.
+##
+## Named rather than written as a bare 53 at the call site: a skill id in the
+## middle of a combat function is unreadable and unsearchable.
+const SKILL_ENDURANCE := 53
+
+## How a judged situation becomes a step modifier.
+##
+## Table: Situation Die Modifiers, Player's Handbook p. 246, which is the
+## compiled form of the categories described under "Types of Situations" on
+## p. 59 -- circumstances are Slight, Moderate or Extreme; light and sound are
+## Ordinary, Good or Amazing.
+##
+## This is the whole of "eyeballing it" as the book defines it: the GM decides
+## which category the situation falls into, and the step follows. The worked
+## examples people quote are instances of it rather than a separate table --
+## light cover and moonlight are Slight (+1), heavy cover and total darkness are
+## Extreme (+3).
+const SITUATION_MODIFIERS := [
+	{"id": "extreme", "name": "Extreme", "step": 3},
+	{"id": "moderate", "name": "Moderate", "step": 2},
+	{"id": "slight", "name": "Slight", "step": 1},
+	{"id": "marginal", "name": "Marginal", "step": 0},
+	{"id": "ordinary", "name": "Ordinary", "step": -1},
+	{"id": "good", "name": "Good", "step": -2},
+	{"id": "amazing", "name": "Amazing", "step": -3},
+]
+
+## Common combat situations, as instances of the categories above.
+##
+## Offered so a GM can tap "heavy cover" instead of deciding that heavy cover is
+## Extreme and that Extreme is +3. Each one names the category it comes from, so
+## nothing here is a second rule -- it is the same table with familiar labels.
+##
+## Range steps come from the band the shot falls in, which every weapon already
+## carries in its own data as short/medium/long.
+const COMBAT_SITUATIONS := [
+	{"id": "range_short", "group": "Range", "name": "Short range", "step": -1, "from": "ordinary"},
+	{"id": "range_medium", "group": "Range", "name": "Medium range", "step": 0, "from": "marginal"},
+	{"id": "range_long", "group": "Range", "name": "Long range", "step": 1, "from": "slight"},
+	{"id": "cover_light", "group": "Cover", "name": "Light cover", "step": 1, "from": "slight"},
+	{"id": "cover_heavy", "group": "Cover", "name": "Heavy cover", "step": 3, "from": "extreme"},
+	{"id": "light_dim", "group": "Visibility", "name": "Moonlight", "step": 1, "from": "slight"},
+	{"id": "light_none", "group": "Visibility", "name": "Total darkness", "step": 3, "from": "extreme"},
+	{"id": "zero_g", "group": "Environment", "name": "Zero gravity, untrained", "step": 3, "from": "extreme"},
+]
+
 const COMPLEX_CHECK_RULES := {
 	"summary": "Complex skill checks are used for tasks that take more than one roll or where the GM wants tension over time.",
 	"successes": "Ordinary success counts as 1 success, Good as 2, and Amazing as 3.",

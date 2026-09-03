@@ -2855,6 +2855,110 @@ func character_degraded_damage_grade(character: Dictionary, damage_type: String,
 	return degrade_damage_grade(damage_type, weapon_grade, target_toughness)
 
 
+## The step a judged situation is worth. See SITUATION_MODIFIERS.
+##
+## Unknown categories are worth nothing rather than guessed at: a GM who taps
+## something this build does not know should get an unmodified check, not a
+## silently invented penalty.
+func situation_step_for(category_id: String) -> int:
+	for row in SITUATION_MODIFIERS:
+		if String(row.get("id", "")) == category_id:
+			return _as_int(row.get("step", 0))
+	for row in COMBAT_SITUATIONS:
+		if String(row.get("id", "")) == category_id:
+			return _as_int(row.get("step", 0))
+	return 0
+
+
+## Net several situations into one step total.
+##
+## What "figuring the odds" actually is: the modifiers add. The GM can still
+## overrule the total, which is why this returns a number rather than applying it.
+func net_situation_steps(category_ids: Array) -> int:
+	var total := 0
+	for id in category_ids:
+		total += situation_step_for(String(id))
+	return total
+
+
+## Raise a hit's quality when firepower outclasses toughness.
+##
+## The other half of the firepower rule. degrade_damage_grade() handles the case
+## where a weapon is too weak and the damage *track* drops; this handles the case
+## where it is too strong and the *hit quality* rises, which is a different axis:
+## degradation changes mortal to wound, upgrading changes which of the weapon's
+## three damage entries gets rolled.
+##
+##   firepower one grade above toughness   ordinary -> good, good -> amazing
+##   two or more grades above              anything -> amazing
+##
+## Amazing is the ceiling; there is nothing above it to be promoted to.
+func upgrade_damage_degree(degree: String, weapon_grade: String, target_toughness: String) -> String:
+	var order := ["ordinary", "good", "amazing"]
+	var current := order.find(degree.to_lower())
+	if current == -1:
+		return degree
+
+	var w_idx := FIREPOWER_GRADES.find(weapon_grade.to_upper())
+	var t_idx := FIREPOWER_GRADES.find(target_toughness.to_upper())
+	if w_idx == -1 or t_idx == -1 or w_idx <= t_idx:
+		return degree
+
+	var steps: int = w_idx - t_idx
+	return String(order[mini(order.size() - 1, current + (1 if steps == 1 else 2))])
+
+
+## upgrade_damage_degree, gated on the campaign's optional rules.
+##
+## Same gate as the degradation half: a table that has not turned Firepower
+## Scaling on should see neither effect, or a weapon would be upgraded against a
+## toughness rating nobody is tracking.
+func character_upgraded_damage_degree(character: Dictionary, degree: String, weapon_grade: String, target_toughness: String) -> String:
+	if weapon_grade.is_empty() or target_toughness.is_empty():
+		return degree
+	if not optional_rule_enabled(character, "firepower_scaling"):
+		return degree
+	return upgrade_damage_degree(degree, weapon_grade, target_toughness)
+
+
+## Whether an Amazing hit forces a Stamina-endurance check to stay conscious.
+##
+## "Any character suffering an Amazing hit must pass a Stamina-endurance check or
+## be knocked unconscious for the rest of the round and all of the next."
+##
+## Two exemptions, and one of them cannot be worked out from the data. Armor in
+## this game's catalogue has no powered or body-tank subtype, so whether the
+## target is in heavy armor is something the GM knows and this function is told;
+## inventing a lookup would be worse than asking. The other exemption -- that the
+## damage was already degraded by the firepower rule -- is knowable, and is what
+## `was_degraded` reports.
+##
+## Returns {required, skill_id, score, reason}. The score is the character's own
+## Stamina-endurance, so the check runs through the same path as any other.
+func amazing_damage_knockout(character: Dictionary, hit_degree: String, was_degraded: bool = false, in_heavy_armor: bool = false) -> Dictionary:
+	var endurance := get_skill_by_id(SKILL_ENDURANCE)
+	var out := {
+		"required": false,
+		"skill_id": SKILL_ENDURANCE,
+		"score": skill_score(character, endurance) if not endurance.is_empty() else {},
+		"reason": "",
+	}
+
+	if hit_degree.to_lower() != "amazing":
+		out["reason"] = "Only an Amazing hit forces the check."
+		return out
+	if in_heavy_armor:
+		out["reason"] = "Heavy armor: a body tank or powered armor is immune."
+		return out
+	if was_degraded:
+		out["reason"] = "The damage was degraded before it landed, so no check is required."
+		return out
+
+	out["required"] = true
+	out["reason"] = "An Amazing hit: pass Stamina-endurance or fall unconscious for the rest of this round and all of the next."
+	return out
+
+
 func degrade_damage_grade(damage_type: String, weapon_grade: String, target_toughness: String) -> String:
 	var w_idx := FIREPOWER_GRADES.find(weapon_grade.to_upper())
 	var t_idx := FIREPOWER_GRADES.find(target_toughness.to_upper())
