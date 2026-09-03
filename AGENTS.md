@@ -191,11 +191,31 @@ Randomness lives on the *input* side -- the launch impulse is randomised, and
 the outcome emerges from the simulation.
 
 `3d/physics_engine="Jolt Physics"` and the `Die` / `TrayWall` / `TrayFloor`
-physics layers are reserved for this; they are unused by the current UI-only app
-and should not be removed as dead configuration.
+physics layers are all in use by `core/dice/dice_tray.gd`.
 
-The three hard parts, none of which is the physics itself: reading which face is
-up (d4 is a special case -- it has no up-face), detecting settle with a hard
-timeout so a die spinning in a corner cannot hang a GM waiting on the result,
-and deciding the cocked-die policy before building, since it determines whether
-`RollResult` needs to record re-roll attempts.
+The three hard parts are settled, and each is worth knowing before touching this
+code:
+
+- **Reading which face is up.** `DieShape` frames it as "which declared
+  direction points most upward", so the d4 -- which has no up-face -- is read by
+  its apex through the same code path as every other die. Meshes are generated,
+  so the normals used to read a die are the numbers that built it.
+- **The settle.** A hard per-attempt timeout freezes the simulation and forces a
+  result, because a die spinning in a corner must never leave a GM waiting.
+- **Cocked dice.** One voids the whole throw and every die goes again, capped,
+  recorded in `RollResult.rerolls`.
+
+Two things that will bite anyone editing the tray:
+
+- **Build it at unit scale, not life size.** An 11mm die in a 32cm tray falls
+  through the floor: it crosses a centimetre of geometry in well under a physics
+  step. How big a die looks is a camera question.
+- **Godot winds front faces clockwise seen from outside.** Getting it backwards
+  does not draw an inside-out die -- every triangle is culled and you look
+  through the die at its unlit interior, which reads as a dark blob rather than
+  as a winding bug. `smoke_die_shape` checks the convention against `BoxMesh`
+  rather than hardcoding it.
+
+**A result was produced and the dice settled are different claims.** The first
+version of the tray satisfied the first while failing the second, and the whole
+suite passed. `DiceTray.was_forced()` exists so tests can tell them apart.

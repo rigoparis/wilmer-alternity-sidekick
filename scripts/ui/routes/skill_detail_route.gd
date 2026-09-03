@@ -16,10 +16,21 @@ const DetailView := preload("res://scripts/ui/skill_detail_view.gd")
 var _palette: ThemePalette
 var _title: String = ""
 
+## The skill this describes, when the caller supplied one. Present only for a
+## skill that can actually be attempted -- FX reference text opens here too and
+## has nothing to roll.
+var _skill: Dictionary = {}
+var _can_roll: bool = false
+
 
 ## props: palette, and either `detail` (a SkillDetail) or `data` (a raw record).
+##   skill     the catalog record, when this is a rollable skill
+##   can_roll  whether the sheet that opened this can roll a check
 func configure(props: Dictionary) -> void:
 	_palette = props.get("palette", ThemePalette.new())
+	var skill = props.get("skill", {})
+	_skill = skill if typeof(skill) == TYPE_DICTIONARY else {}
+	_can_roll = bool(props.get("can_roll", false)) and not _skill.is_empty()
 
 	var detail = props.get("detail", null)
 	if detail == null:
@@ -52,6 +63,19 @@ func _build(detail) -> void:
 	box.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	box.add_theme_constant_override("separation", Widgets.GAP_ROW)
 	margin.add_child(box)
+
+	# Rolling is offered from here because this is where a skill has already been
+	# chosen and its score is on screen -- which is exactly the moment a player
+	# decides to attempt something.
+	if _can_roll:
+		var roll := Button.new()
+		roll.name = "RollCheckButton"
+		roll.text = "Roll this check"
+		roll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		roll.custom_minimum_size = Vector2(0, 44)
+		roll.add_theme_stylebox_override("normal", Widgets.flat_style(_palette.surface_soft, _palette.accent, 6))
+		roll.pressed.connect(func(): close({"roll": true, "skill": _skill}))
+		box.add_child(roll)
 
 	var heading := Label.new()
 	heading.text = _title

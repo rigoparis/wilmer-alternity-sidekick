@@ -30,6 +30,13 @@ var campaigns: CampaignStore
 var identity: PlayerIdentity
 var router: UiRouter
 
+## How an action check gets rolled, wherever it is started from.
+##
+## Owned here because a check crosses a screen, a network round trip and a
+## physics simulation, and the shell is the only thing that already holds all
+## three. Screens hand it work; none of them holds the flow.
+var checks: CheckRunner
+
 var _background: ColorRect
 var _modal_host: ModalHost
 var _screens: Control
@@ -71,6 +78,7 @@ func _ready() -> void:
 	_modal_host = ModalHost.new()
 	add_child(_modal_host)
 	router = UiRouter.new(_modal_host)
+	checks = CheckRunner.new(rules, router, _palette)
 
 	# The window's own clear colour is not the theme's, so without this the app
 	# sits on a grey that no palette chose.
@@ -143,6 +151,8 @@ func _open_sheet(doc: CharacterDoc) -> void:
 	_screens.add_child(_sheet)
 
 	var ctx := SheetContext.new(doc, rules, router, _palette, _is_wide)
+	# The sheet is where a player picks a skill, so it is where a check starts.
+	ctx.checks = checks
 	_sheet.setup(ctx, store)
 	_sheet.closed.connect(_on_sheet_closed)
 
@@ -157,6 +167,7 @@ func _on_sheet_closed() -> void:
 ## A destination, not an overlay: opening a campaign leads to a full screen of
 ## its own, and the router's stack is for things you come back from.
 func _show_campaigns() -> void:
+	checks.use_transport(null)
 	_clear_screens()
 	_campaign_select = CAMPAIGN_SELECT_SCREEN.instantiate()
 	_campaign_select.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -202,10 +213,14 @@ func _open_player_table(transport: EnetTransport, campaign_name: String) -> void
 	_screens.add_child(_player_table)
 	_player_table.setup(transport, identity, store, rules, _palette, campaign_name)
 	_player_table.closed.connect(_show_campaigns)
+	# From here a check asks the GM for a step. Leaving the table puts the runner
+	# back on the solo path rather than leaving it holding a dead connection.
+	checks.use_transport(transport)
 
 
 func _on_campaigns_closed() -> void:
 	campaigns.clear_last_opened()
+	checks.use_transport(null)
 	_show_select()
 
 

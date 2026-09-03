@@ -33,6 +33,7 @@ const FEED_LENGTH := 60
 const PRESENCE_INTERVAL := 1.0
 
 const AP_AWARD_ROUTE := preload("res://scenes/ui/routes/ap_award_route.tscn")
+const CHECK_STEP_ROUTE := preload("res://scenes/ui/routes/check_step_route.tscn")
 const CONFIRM_ROUTE := preload("res://scenes/ui/routes/confirm_route.tscn")
 const TEXT_PROMPT_ROUTE := preload("res://scenes/ui/routes/text_prompt_route.tscn")
 
@@ -53,6 +54,14 @@ var _table_hint: Label
 var _host_button: Button
 var _chat_field: LineEdit
 var _chat_target: OptionButton
+
+## Checks players are waiting on a ruling for, oldest first.
+##
+## A queue rather than a single pending check: at a table, two players ask at
+## once and the second must not silently replace the first.
+var _pending_checks: Array = []
+var _checks_section: VBoxContainer
+var _checks_note: Label
 var _presence_clock: float = 0.0
 
 var _title: Label
@@ -104,6 +113,7 @@ func _build() -> void:
 	column.add_theme_constant_override("separation", 20)
 
 	_build_table_section(column)
+	_build_checks_section(column)
 
 	var seats_section := Widgets.section(column, "Seats", _palette)
 	_seat_empty = Widgets.muted_text(
@@ -255,6 +265,181 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 
+## Checks waiting on the GM, and the button that starts one.
+##
+## Placed above the seats because mid-session this is the thing with somebody
+## actually waiting on it -- a player is holding dice until the GM answers.
+func _build_checks_section(parent: Container) -> void:
+	var section := Widgets.section(parent, "Checks", _palette)
+
+	_checks_note = Widgets.muted_text(section, "Nobody is waiting on a ruling.", _palette, Widgets.FONT_CAPTION)
+	_checks_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_checks_note.custom_minimum_size = Vector2(1, 0)
+
+	_checks_section = VBoxContainer.new()
+	_checks_section.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_checks_section.add_theme_constant_override("separation", Widgets.GAP_ROW)
+	section.add_child(_checks_section)
+
+	var call_button := Button.new()
+	call_button.name = "CallCheckButton"
+	call_button.text = "Call for a check"
+	call_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	call_button.custom_minimum_size = Vector2(0, 40)
+	call_button.tooltip_text = "Ask a player, or the whole table, to roll something"
+	call_button.pressed.connect(_on_call_check_pressed)
+	section.add_child(call_button)
+
+
+func _render_checks() -> void:
+	if _checks_section == null:
+		return
+	for child in _checks_section.get_children():
+		_checks_section.remove_child(child)
+		child.queue_free()
+
+	_checks_note.visible = _pending_checks.is_empty()
+	for check in _pending_checks:
+		_build_pending_check(check)
+
+
+func _build_pending_check(check: SkillCheck) -> void:
+	var panel := PanelContainer.new()
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel.add_theme_stylebox_override("panel", Widgets.flat_style(_palette.surface_soft, _palette.accent, 6))
+	_checks_section.add_child(panel)
+
+	var margin := MarginContainer.new()
+	for side in ["left", "right", "top", "bottom"]:
+		margin.add_theme_constant_override("margin_" + side, Widgets.GAP_ROW)
+	panel.add_child(margin)
+
+	var box := VBoxContainer.new()
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	box.add_theme_constant_override("separation", Widgets.GAP_TIGHT)
+	margin.add_child(box)
+
+	var who := String(_session.seat_for(check.player_id).get("player_name", "Someone"))
+	var heading := Widgets.text(box, "%s wants to roll %s" % [who, check.skill_label], _palette, Widgets.FONT_BODY)
+	heading.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	heading.custom_minimum_size = Vector2(1, 0)
+
+	# The score, which is what a GM rules against. Read-only: the GM sets
+	# difficulty, never the character.
+	Widgets.muted_text(
+		box,
+		"Score %d / %d / %d   -   their own modifiers %+d" % [
+			check.ordinary, check.good, check.amazing, check.player_step
+		],
+		_palette,
+		Widgets.FONT_CAPTION
+	)
+
+	var actions := GridContainer.new()
+	actions.columns = 3 if _is_wide() else 2
+	actions.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	actions.add_theme_constant_override("h_separation", Widgets.GAP_ROW)
+	actions.add_theme_constant_override("v_separation", Widgets.GAP_ROW)
+	box.add_child(actions)
+
+	# The common answer is "just roll it", so it is one tap and not a dialog.
+	var straight := _seat_button("Ordinary", _on_rule_pressed.bind(check, 0))
+	straight.add_theme_stylebox_override("normal", Widgets.flat_style(_palette.surface, _palette.accent, 6))
+	actions.add_child(straight)
+	actions.add_child(_seat_button("Set steps...", _on_rule_with_steps_pressed.bind(check)))
+	var refuse := _seat_button("Refuse", _on_refuse_check_pressed.bind(check))
+	refuse.add_theme_color_override("font_color", _palette.warning)
+	actions.add_child(refuse)
+
+
+# --- Ruling ----------------------------------------------------------------
+
+func _on_check_requested(_player_id: String, data: Dictionary) -> void:
+	var check := SkillCheck.from_dict(data)
+	_pending_checks.append(check)
+	_render_checks()
+
+
+func _drop_pending(check: SkillCheck) -> void:
+	for i in _pending_checks.size():
+		if (_pending_checks[i] as SkillCheck).check_id == check.check_id:
+			_pending_checks.remove_at(i)
+			return
+
+
+func _on_rule_pressed(check: SkillCheck, step: int, reason: String = "") -> void:
+	check.rule(step, reason)
+	_drop_pending(check)
+	if _transport != null:
+		_transport.send_ruling(check.to_dict(), check.player_id)
+	_render_checks()
+
+
+func _on_rule_with_steps_pressed(check: SkillCheck) -> void:
+	if _router == null:
+		return
+	var chosen = await _router.push(CHECK_STEP_ROUTE, {
+		"palette": _palette,
+		"rules": _rules,
+		"check": check.to_dict(),
+		"title": "How hard is it?",
+		"confirm_text": "Send",
+	})
+	if not is_instance_valid(self) or typeof(chosen) != TYPE_DICTIONARY:
+		return
+	_on_rule_pressed(check, AlternityNum.as_int(chosen.get("step", 0)), String(chosen.get("reason", "")))
+
+
+func _on_refuse_check_pressed(check: SkillCheck) -> void:
+	check.cancel("The GM says no.")
+	_drop_pending(check)
+	if _transport != null:
+		_transport.send_ruling(check.to_dict(), check.player_id)
+	_render_checks()
+
+
+## Ask a player, or the table, to roll something.
+##
+## The step is set here rather than after the fact, because a called check has
+## nothing to wait for -- the GM already knows how hard it is.
+func _on_call_check_pressed() -> void:
+	if _router == null:
+		return
+	var named = await _router.push(TEXT_PROMPT_ROUTE, {
+		"palette": _palette,
+		"title": "Call for a check",
+		"message": "What should they roll?",
+		"placeholder": "Awareness - Perception",
+		"confirm_text": "Next",
+	})
+	if not is_instance_valid(self) or named == null:
+		return
+
+	var call := SkillCheck.call_for(String(named), 0)
+	var chosen = await _router.push(CHECK_STEP_ROUTE, {
+		"palette": _palette,
+		"rules": _rules,
+		"check": call.to_dict(),
+		"title": "How hard is it?",
+		"confirm_text": "Ask the table",
+	})
+	if not is_instance_valid(self) or typeof(chosen) != TYPE_DICTIONARY:
+		return
+
+	call.gm_step = clampi(AlternityNum.as_int(chosen.get("step", 0)), SkillCheck.MIN_STEP, SkillCheck.MAX_STEP)
+	call.reason = String(chosen.get("reason", ""))
+	if _transport != null and _hosting:
+		# Empty recipient means the whole table.
+		_transport.send_ruling(call.to_dict())
+
+	# Logged because it is something the GM did, and it stands whether or not
+	# anybody answers it. A player's own request is not logged: if they roll, the
+	# roll carries the check, and if they change their mind nothing happened.
+	_session.append_event(CampaignSession.EVENT_CHECK, "", call.to_dict())
+	_store.flush_events(_session)
+	_render_feed()
+
+
 func _build_header(parent: Container) -> void:
 	var margin := MarginContainer.new()
 	for side in ["left", "right", "top"]:
@@ -330,6 +515,7 @@ func refresh() -> void:
 	_title.text = _session.display_name
 	_render_table()
 	_render_chat_targets()
+	_render_checks()
 	_render_seats()
 	_render_feed()
 
@@ -642,6 +828,14 @@ func _describe_event(event: Dictionary) -> String:
 			var label := String(payload.get("label", ""))
 			var notation := String(payload.get("notation", ""))
 			var what := label if not label.is_empty() else notation
+			# A check roll says what it was against. A bare total is unreadable a
+			# week later, and the degree is the part a table actually remembers.
+			var check_data = payload.get("check", {})
+			if typeof(check_data) == TYPE_DICTIONARY and not check_data.is_empty():
+				var check := SkillCheck.from_dict(check_data)
+				var degree := check.degree()
+				if not degree.is_empty():
+					return "%s  %s rolled %s: %s" % [stamp, who, check.describe(), degree]
 			return "%s  %s rolled %s: %d" % [
 				stamp, who, what, AlternityNum.as_int(payload.get("total", 0))
 			]
@@ -666,6 +860,8 @@ func _describe_event(event: Dictionary) -> String:
 				AlternityNum.as_int(payload.get("new_ap", 0)),
 				AlternityNum.as_int(payload.get("previous_ap", 0)),
 			]
+		CampaignSession.EVENT_CHECK:
+			return "%s  the GM called for %s" % [stamp, SkillCheck.from_dict(payload).describe()]
 		CampaignSession.EVENT_JOIN:
 			return "%s  %s joined" % [stamp, who]
 		CampaignSession.EVENT_NOTE:
@@ -839,6 +1035,7 @@ func _on_host_pressed() -> void:
 		_transport.player_disconnected.connect(_on_player_disconnected)
 		_transport.event_received.connect(_on_networked_event)
 		_transport.character_received.connect(_on_character_received)
+		_transport.check_requested.connect(_on_check_requested)
 		_transport.transport_error.connect(_on_transport_error)
 
 	if _transport.host(_session, EnetTransport.DEFAULT_PORT) != OK:
@@ -857,6 +1054,9 @@ func _on_host_pressed() -> void:
 
 func _stop_hosting() -> void:
 	_hosting = false
+	# Nobody is waiting on a ruling any more, and a queue left standing would
+	# offer to answer players who are no longer connected.
+	_pending_checks.clear()
 	if _transport != null:
 		_transport.leave()
 	if _discovery != null:

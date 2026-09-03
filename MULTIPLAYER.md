@@ -45,6 +45,25 @@ development machine.
   (guest-network client isolation, an unanswered firewall prompt, a phone on
   mobile data) and none of those should stop a GM reading out an address.
 
+### Action checks and the tray
+
+- **`core/session/skill_check.gd`** — one check on its way from "I want to try
+  this" to a settled result. The character's own step modifiers and the GM's
+  difficulty are kept apart the whole way, so the log can say which of them made
+  it hard.
+- **`core/dice/die_shape.gd`** — generated dice geometry, and the orientation to
+  number mapping. The d4 is read by its apex through the same rule as every
+  other die.
+- **`core/dice/dice_tray.gd`** — the physics. A cocked die voids the throw; a
+  hard timeout forces a result.
+- **`core/dice/physical_dice_source.gd`** — a `RandomSource`, so the same call
+  site serves the tray and the seeded `RngSource`.
+- **`ui/check_runner.gd`** — joins them. A check crosses a screen, a network
+  round trip and a simulation; none of those three knows about the other two.
+
+Three paths, one ending: at a table the GM sets the step; a GM-called check
+arrives with it already set; with no table the player sets it themselves.
+
 ### The screens
 
 - **Campaign select** — create, open, rename, delete, and "Join a Table".
@@ -165,7 +184,8 @@ These are the things a development machine cannot settle.
    `DEFAULT_EVENT_TAIL` of 5000 for a long time, so this is a decision to make
    before it matters rather than a bug.
 
-5. **Rolls from the player screen.** The player table view sends chat, and the
-   transport sends rolls, but there is no dice UI on that screen yet — it is
-   waiting on the 3D dice tray (see AGENTS.md section 9). `send_roll` is wired
-   and tested; what is missing is something to press.
+5. **Rolls from the player table view.** Checks are rolled from the character
+   sheet, where a skill has already been chosen. The player table view still has
+   no roll button of its own, and a GM-called check arriving there is raised as
+   a signal but not yet shown to the player — `CheckRunner.check_arrived` has no
+   listener on that screen.

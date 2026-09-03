@@ -37,6 +37,14 @@ var palette: ThemePalette
 ## Tabs should treat this as a hint, not a platform check.
 var is_wide_layout: bool = false
 
+## How an action check gets rolled from this sheet, when there is one.
+##
+## Optional on purpose. A tab must work without it -- the sheet is usable with no
+## tray and no table -- so every use is guarded. It is not part of _init() for the
+## same reason: a context built for a preview or a test should not have to supply
+## one.
+var checks: CheckRunner
+
 
 func _init(
 	p_doc: CharacterDoc = null,
@@ -57,7 +65,14 @@ func _init(
 ## This is how a GM view will open several sheets without duplicating the rules
 ## engine or the router.
 func for_document(other_doc: CharacterDoc) -> SheetContext:
-	return SheetContext.new(other_doc, rules, router, palette, is_wide_layout)
+	var copy := SheetContext.new(other_doc, rules, router, palette, is_wide_layout)
+	copy.checks = checks
+	return copy
+
+
+## Whether this sheet can roll a check at all.
+func can_roll() -> bool:
+	return checks != null
 
 
 func is_valid() -> bool:

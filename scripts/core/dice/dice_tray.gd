@@ -43,8 +43,10 @@ const LAYER_FLOOR := 3
 ## bodies around a unit across are what the engine is tuned for, so the tray is
 ## built there and the camera is simply placed further back. How big a die looks
 ## is a camera question, not a physics one.
-const TRAY_HALF := 7.0
-const WALL_HEIGHT := 6.0
+## A tray about nine dice across. Wider than that and a d20 is a speck on a
+## phone; narrower and two dice have nowhere to tumble.
+const TRAY_HALF := 4.5
+const WALL_HEIGHT := 5.0
 const WALL_THICKNESS := 0.5
 const DIE_RADIUS := 0.5
 
@@ -300,7 +302,7 @@ func _add_numbers(body: RigidBody3D, shape: DieShape) -> void:
 		label.text = str(AlternityNum.as_int(placement["number"]))
 		label.font_size = 96
 		label.pixel_size = DIE_RADIUS / 260.0
-		label.modulate = _palette.text if _palette != null else Color.WHITE
+		label.modulate = _number_colour()
 		label.billboard = BaseMaterial3D.BILLBOARD_DISABLED
 		label.no_depth_test = false
 		label.double_sided = false
@@ -334,12 +336,24 @@ func _die_material() -> PhysicsMaterial:
 	return material
 
 
+## Pale dice, dark numbers.
+##
+## The first version took the die colour from the surface palette and the numbers
+## from the text palette, which is the right instinct for a panel and wrong for
+## an object: on this app's dark theme it produced a near-black die on a
+## near-black tray, and the only thing visible was the digits floating in space.
+## A die is a physical thing in a lit scene, not a surface in the UI.
 func _die_face_material() -> StandardMaterial3D:
 	var material := StandardMaterial3D.new()
-	material.albedo_color = _palette.surface_soft if _palette != null else Color(0.2, 0.22, 0.28)
-	material.metallic = 0.1
-	material.roughness = 0.45
+	material.albedo_color = _palette.text if _palette != null else Color(0.9, 0.92, 0.95)
+	material.metallic = 0.0
+	material.roughness = 0.55
 	return material
+
+
+## The colour the numbers are drawn in: dark, to read against a pale die.
+func _number_colour() -> Color:
+	return _palette.background if _palette != null else Color(0.05, 0.07, 0.10)
 
 
 func _build_tray() -> void:
@@ -378,7 +392,12 @@ func _build_tray() -> void:
 		[Vector3(0, WALL_HEIGHT * 0.5, -TRAY_HALF), Vector3(span, WALL_HEIGHT, WALL_THICKNESS)],
 		[Vector3(0, WALL_HEIGHT, 0), Vector3(span, WALL_THICKNESS, span)],
 	]
-	for spec in walls:
+	var rim := StandardMaterial3D.new()
+	rim.albedo_color = _palette.surface_soft if _palette != null else Color(0.15, 0.18, 0.22)
+	rim.roughness = 0.9
+
+	for i in walls.size():
+		var spec = walls[i]
 		var wall := StaticBody3D.new()
 		wall.collision_layer = 1 << (LAYER_WALL - 1)
 		wall.collision_mask = 1 << (LAYER_DIE - 1)
@@ -390,6 +409,19 @@ func _build_tray() -> void:
 		wall.position = spec[0]
 		wall.add_child(shape_node)
 		add_child(wall)
+
+		# The last entry is the lid, which the camera looks down through. Giving
+		# it a mesh would hide the dice; the four sides get one so the tray has
+		# edges rather than being a slab floating in the dark.
+		if i == walls.size() - 1:
+			continue
+		var wall_mesh := MeshInstance3D.new()
+		var wall_box := BoxMesh.new()
+		wall_box.size = spec[1]
+		wall_mesh.mesh = wall_box
+		wall_mesh.position = spec[0]
+		wall_mesh.material_override = rim
+		add_child(wall_mesh)
 
 
 ## Read the dice where they lie, without waiting.

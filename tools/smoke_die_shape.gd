@@ -188,6 +188,45 @@ func _test_meshes() -> void:
 
 		check_eq(shape.hull_points().size(), shape.vertices.size(), "a d%d hands its corners to physics" % sides)
 
+		# Winding, checked against the engine's own convention rather than against
+		# a remembered rule. Godot draws clockwise-from-outside as the front face,
+		# so a correctly wound triangle has its right-hand normal pointing inward
+		# -- which is what BoxMesh does. Get this backwards and nothing looks
+		# inside out: every face is culled and the die renders as a dark blob.
+		check_eq(
+			_winding_of(mesh), _winding_of(_reference_mesh()),
+			"a d%d is wound the same way the engine winds its own meshes" % sides
+		)
+
+
+## "outward" or "inward": which way (b-a) x (c-a) points relative to the centre.
+func _winding_of(mesh: Mesh) -> String:
+	var faces := mesh.get_faces()
+	var outward := 0
+	var inward := 0
+	for i in range(0, faces.size(), 3):
+		var a: Vector3 = faces[i]
+		var b: Vector3 = faces[i + 1]
+		var c: Vector3 = faces[i + 2]
+		var centre := (a + b + c) / 3.0
+		if centre.length() < 0.0001:
+			continue
+		if ((b - a).cross(c - a)).normalized().dot(centre.normalized()) > 0.0:
+			outward += 1
+		else:
+			inward += 1
+	if outward > 0 and inward > 0:
+		return "mixed"
+	return "outward" if outward > 0 else "inward"
+
+
+## A mesh the engine built itself, to read the convention off rather than
+## hardcode it.
+func _reference_mesh() -> Mesh:
+	var box := BoxMesh.new()
+	box.size = Vector3(2, 2, 2)
+	return box
+
 
 func _test_label_placements() -> void:
 	# A face-read die gets one number per face, at its centre.

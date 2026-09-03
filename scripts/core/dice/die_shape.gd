@@ -152,8 +152,15 @@ func build_mesh() -> ArrayMesh:
 			continue
 		# Fan from the first corner. Every face here is convex and planar, which
 		# is what makes a fan safe.
+		#
+		# The ring is ordered counter-clockwise seen from outside, and Godot wants
+		# clockwise for a front face -- its own BoxMesh is wound that way -- so the
+		# fan emits each triangle reversed. Getting this backwards does not draw an
+		# inside-out die: every triangle is culled, and the camera looks straight
+		# through the front of the die at the unlit inside of its far side, which
+		# reads as a dark blob rather than as a winding bug.
 		for i in range(1, ring.size() - 1):
-			for v in [ring[0], ring[i], ring[i + 1]]:
+			for v in [ring[0], ring[i + 1], ring[i]]:
 				st.set_normal(normal)
 				st.add_vertex(v)
 

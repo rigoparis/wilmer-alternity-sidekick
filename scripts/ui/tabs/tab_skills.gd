@@ -93,8 +93,17 @@ func _open_detail(skill: Dictionary) -> void:
 	# skill_detail resolves rank, cost and rule notes for this character, which
 	# is richer than the bare catalog record.
 	var detail: Dictionary = rules.skill_detail(skill, ctx.doc.raw())
-	await ctx.router.push(DETAIL_ROUTE, {
+	var answer = await ctx.router.push(DETAIL_ROUTE, {
 		"palette": ctx.palette,
 		"data": detail,
 		"title": String(detail.get("name", rules.skill_label(skill))),
+		"skill": skill,
+		"can_roll": ctx.can_roll(),
 	})
+	if not is_instance_valid(self):
+		return
+	# The detail view closes asking to roll rather than rolling itself: it is a
+	# reference page, and a page that reached for the tray would need the runner,
+	# the transport and the character it deliberately does not have.
+	if typeof(answer) == TYPE_DICTIONARY and bool(answer.get("roll", false)):
+		await ctx.checks.run(ctx.doc, answer.get("skill", skill))
