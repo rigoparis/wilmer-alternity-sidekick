@@ -50,6 +50,7 @@ func _run() -> void:
 	await _test_roll_reaches_the_gm_feed()
 	await _test_private_line()
 	await _test_ap_lands_on_the_committed_hero()
+	await _test_a_round_of_combat()
 	await _test_reconnect_loses_nothing()
 	await _test_leaving_closes_the_table()
 
@@ -388,6 +389,83 @@ func _test_ap_lands_on_the_committed_hero() -> void:
 	# character. Both counting the same points is correct.
 	check_eq(_gm_screen().session().get_seat_ap(_joined_player_id), 3, "the GM's ledger still records the award")
 	check_eq(_gm_shell.store.list().size(), 0, "and the GM device never gained a character file")
+
+
+# --- Combat ----------------------------------------------------------------
+
+## A whole round, driven from the GM's screen and read on the player's.
+##
+## The point is that both sides agree about a structure neither of them owns
+## alone: the GM assigns the phases, the player supplies the check that decides
+## theirs, and what each screen shows is derived from the same round.
+func _test_a_round_of_combat() -> void:
+	var gm = _gm_screen()
+	var table = _table()
+	if not check(gm != null and table != null, "the GM and a player are at the table"):
+		return
+
+	gm._on_start_combat_pressed()
+	var started := await _wait_for(func(): return table.active_round != null)
+	check_true(started, "starting combat reaches the player")
+	if not started:
+		return
+
+	# Only the player is in it: the GM runs the game rather than playing in it.
+	check_eq(table.active_round.combatants.size(), 1, "the player is the only combatant")
+	check_eq(gm._fight.combatants.size(), 1, "and the GM agrees")
+	check_true(table.owes_action_check(), "the round is waiting on their action check")
+	check_false(gm._fight.has_all_checks(), "which the GM can see is outstanding")
+
+	# The round is on the campaign, not just on the screen, so reopening it later
+	# does not lose whose turn it is.
+	check_true(gm.session().has_round(), "the fight is stored on the campaign")
+	var stored = _gm_shell.campaigns.load_session(gm.session().campaign_id)
+	check_true(stored.has_round(), "and persisted, so it survives a reopen")
+
+	# The player answers. Sent through the session rather than the tray, because
+	# what is being tested is the round, not the physics.
+	var answer := SkillCheck.new(table.transport.local_player_id(), SkillCheck.ORIGIN_GM)
+	answer.ordinary = 13
+	answer.resolve({"degree": "Good", "total": 6, "is_critical_failure": false})
+	table.send_action_check(answer)
+
+	var recorded := await _wait_for(func(): return _gm_screen()._fight.has_all_checks())
+	check_true(recorded, "the check reaches the GM")
+	if not recorded:
+		return
+	gm = _gm_screen()
+	check_eq(
+		String(gm._fight.combatant(_joined_player_id).get("degree", "")), "good",
+		"and sets the phase they earned"
+	)
+	check_eq(
+		AlternityNum.as_int(gm._fight.combatant(_joined_player_id).get("check_score", 0)), 13,
+		"with the score that orders the phase"
+	)
+
+	# The GM starts the round; the player sees the board.
+	gm._on_start_round_pressed()
+	var running := await _wait_for(func(): return table.active_round != null and table.active_round.state == ActionRound.STATE_ACTIVE)
+	check_true(running, "starting the round reaches the player")
+	if not running:
+		return
+	check_eq(table.active_round.phase(), "amazing", "which opens at the Amazing phase")
+	check_false(table.acting_now(), "where a Good roller does not act")
+	check_false(table.owes_action_check(), "and owes nothing further")
+
+	# Advancing to their phase.
+	_gm_screen()._on_advance_phase_pressed()
+	var theirs := await _wait_for(func(): return table.active_round != null and table.active_round.phase() == "good")
+	check_true(theirs, "the phase change reaches the player")
+	if not theirs:
+		return
+	check_true(table.acting_now(), "and now it is their turn")
+
+	# Ending the fight puts the board away rather than leaving a stale one up.
+	_gm_screen()._on_end_combat_pressed()
+	var over := await _wait_for(func(): return table.active_round == null)
+	check_true(over, "ending combat reaches the player")
+	check_false(gm.session().has_round(), "and the campaign forgets the fight")
 
 
 # --- Reconnect -------------------------------------------------------------

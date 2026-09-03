@@ -48,6 +48,7 @@ const SHORTCUT_COUNT := 6
 const AP_AWARD_ROUTE := preload("res://scenes/ui/routes/ap_award_route.tscn")
 const CHECK_STEP_ROUTE := preload("res://scenes/ui/routes/check_step_route.tscn")
 const CHARACTER_VIEW_ROUTE := preload("res://scenes/ui/routes/character_view_route.tscn")
+const DICE_TRAY_ROUTE := preload("res://scenes/ui/routes/dice_tray_route.tscn")
 const SKILL_PICK_ROUTE := preload("res://scenes/ui/routes/skill_pick_route.tscn")
 const TABLE_SETTINGS_ROUTE := preload("res://scenes/ui/routes/table_settings_route.tscn")
 
@@ -70,6 +71,11 @@ var _presence_clock: float = 0.0
 ## A queue rather than a single pending check: at a table two players ask at
 ## once, and the second must not silently replace the first.
 var _pending_checks: Array = []
+
+## The fight in progress, or null. Held here for convenience; the campaign is
+## where it actually lives, so a screen rebuild picks it back up.
+var _fight: ActionRound
+var _combat_body: VBoxContainer
 
 var _title: Label
 var _status: Label
@@ -102,6 +108,9 @@ func setup(
 	_rules = rules
 	_router = router
 	_palette = palette
+	# The fight lives on the campaign, so a screen rebuilt for a theme change or
+	# reopened next week picks it back up rather than losing whose turn it is.
+	_adopt_stored_round()
 	_build()
 	refresh()
 
@@ -123,6 +132,7 @@ func _build() -> void:
 	var column := Widgets.page_column(root_box, _is_wide())
 	column.add_theme_constant_override("separation", 20)
 
+	_build_combat(column)
 	_build_checks(column)
 	_build_roster(column)
 	_build_chat(column)
@@ -179,6 +189,272 @@ func _build_header(parent: Container) -> void:
 	_allow_narrow(settings)
 	settings.pressed.connect(_on_settings_pressed)
 	row.add_child(settings)
+
+
+## The fight, when there is one.
+##
+## Above Checks because during a fight this is the thing with people waiting on
+## it -- a player is holding dice until the phase moves.
+func _build_combat(parent: Container) -> void:
+	var section := Widgets.section(parent, "Combat", _palette)
+	_combat_body = VBoxContainer.new()
+	_combat_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_combat_body.add_theme_constant_override("separation", Widgets.GAP_ROW)
+	section.add_child(_combat_body)
+
+
+func _render_combat() -> void:
+	if _combat_body == null:
+		return
+	for child in _combat_body.get_children():
+		_combat_body.remove_child(child)
+		child.queue_free()
+
+	if _fight == null:
+		var note := Widgets.muted_text(
+			_combat_body,
+			"No fight running. Starting one asks every player for an action check.",
+			_palette,
+			Widgets.FONT_CAPTION
+		)
+		note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		note.custom_minimum_size = Vector2(1, 0)
+		var start := _small_button("Start combat", _on_start_combat_pressed)
+		start.add_theme_stylebox_override("normal", Widgets.flat_style(_palette.surface_soft, _palette.accent, 6))
+		_combat_body.add_child(start)
+		return
+
+	var heading := Widgets.text(_combat_body, _fight.describe(), _palette, Widgets.FONT_SUBHEADING, _palette.accent)
+	heading.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	heading.custom_minimum_size = Vector2(1, 0)
+
+	if _fight.state == ActionRound.STATE_ROLLING:
+		_render_waiting_for_checks()
+	else:
+		_render_acting_order()
+
+	var actions := GridContainer.new()
+	actions.columns = 2
+	actions.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	actions.add_theme_constant_override("h_separation", Widgets.GAP_ROW)
+	actions.add_theme_constant_override("v_separation", Widgets.GAP_ROW)
+	_combat_body.add_child(actions)
+
+	if _fight.state == ActionRound.STATE_ROLLING:
+		var begin := _small_button("Start the round", _on_start_round_pressed)
+		begin.disabled = not _fight.has_all_checks()
+		if not begin.disabled:
+			begin.add_theme_stylebox_override("normal", Widgets.flat_style(_palette.surface_soft, _palette.accent, 6))
+		actions.add_child(begin)
+	elif _fight.is_finished():
+		var again := _small_button("Next round", _on_next_round_pressed)
+		again.add_theme_stylebox_override("normal", Widgets.flat_style(_palette.surface_soft, _palette.accent, 6))
+		actions.add_child(again)
+	else:
+		var advance := _small_button("End %s phase" % _fight.phase_name(), _on_advance_phase_pressed)
+		advance.add_theme_stylebox_override("normal", Widgets.flat_style(_palette.surface_soft, _palette.accent, 6))
+		actions.add_child(advance)
+
+	var stop := _small_button("End combat", _on_end_combat_pressed)
+	stop.add_theme_color_override("font_color", _palette.warning)
+	actions.add_child(stop)
+
+
+func _render_waiting_for_checks() -> void:
+	var owed: Array = _fight.awaiting_checks()
+	if owed.is_empty():
+		Widgets.muted_text(_combat_body, "Everyone has rolled.", _palette, Widgets.FONT_CAPTION)
+		return
+
+	for player_id in owed:
+		var row := HBoxContainer.new()
+		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_theme_constant_override("separation", Widgets.GAP_ROW)
+		_combat_body.add_child(row)
+
+		var name_label := Label.new()
+		name_label.text = "%s has not rolled" % String(_fight.combatant(String(player_id)).get("name", "Someone"))
+		name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		name_label.custom_minimum_size = Vector2(1, 0)
+		name_label.add_theme_color_override("font_color", _palette.muted)
+		name_label.add_theme_font_size_override("font_size", Widgets.FONT_DETAIL)
+		row.add_child(name_label)
+
+		# An escape hatch for a player who has gone to make tea, rather than the
+		# whole table waiting on one device.
+		var roll_for = _small_button("Roll for them", _on_roll_for_pressed.bind(String(player_id)))
+		roll_for.custom_minimum_size = Vector2(112, 32)
+		roll_for.size_flags_horizontal = Control.SIZE_SHRINK_END
+		row.add_child(roll_for)
+
+
+## Who acts in this phase, in the order they act.
+func _render_acting_order() -> void:
+	var acting: Array = _fight.acting_now()
+	if acting.is_empty():
+		Widgets.muted_text(
+			_combat_body,
+			"Nobody rolled well enough to act in this phase.",
+			_palette,
+			Widgets.FONT_CAPTION
+		)
+	var position := 0
+	for entry in acting:
+		position += 1
+		var line := "%d. %s   (score %d)" % [
+			position,
+			String(entry.get("name", "Someone")),
+			AlternityNum.as_int(entry.get("check_score", 0)),
+		]
+		# Somebody dropped this phase is still finishing what they declared, and
+		# saying so is the difference between a bug and the rule.
+		if bool(entry.get("pending_out", false)):
+			line += "   -- going down"
+		var row := Widgets.text(_combat_body, line, _palette, Widgets.FONT_DETAIL)
+		row.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		row.custom_minimum_size = Vector2(1, 0)
+
+	var sidelined: Array = []
+	for entry in _fight.combatants:
+		if bool(entry.get("out", false)):
+			sidelined.append("%s (%s)" % [
+				String(entry.get("name", "someone")),
+				String(entry.get("out_reason", "out")),
+			])
+	if not sidelined.is_empty():
+		var note := Widgets.muted_text(
+			_combat_body, "Out: " + ", ".join(sidelined), _palette, Widgets.FONT_CAPTION
+		)
+		note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		note.custom_minimum_size = Vector2(1, 0)
+
+
+# --- Running the fight -----------------------------------------------------
+
+## Everyone at the table who is playing a character, as combatants.
+##
+## The GM's own seat is not in it, and neither is anyone who has not committed a
+## character -- there is nothing to roll an action check with.
+func _on_start_combat_pressed() -> void:
+	var fight := ActionRound.new(1)
+	for seat in _session.seats:
+		if bool(seat.get("is_gm", false)):
+			continue
+		var player_id := String(seat.get("player_id", ""))
+		var snapshot := _session.committed_character(player_id)
+		if not CharacterSnapshot.is_usable(snapshot):
+			continue
+		var summary := _summary_of(snapshot)
+		fight.add_combatant(
+			player_id,
+			String(seat.get("player_name", "Someone")),
+			AlternityNum.as_int(summary.get("action_check", {}).get("actions", 1), 1)
+		)
+
+	if fight.combatants.is_empty():
+		_status.text = "Nobody has committed a character to fight with."
+		_status.add_theme_color_override("font_color", _palette.warning)
+		return
+
+	_fight = fight
+	_publish_round()
+
+
+func _on_start_round_pressed() -> void:
+	if _fight == null or not _fight.start():
+		return
+	_publish_round()
+
+
+func _on_advance_phase_pressed() -> void:
+	if _fight == null:
+		return
+	_fight.advance_phase()
+	_publish_round()
+
+
+func _on_next_round_pressed() -> void:
+	if _fight == null:
+		return
+	_fight = _fight.next_round()
+	_publish_round()
+
+
+func _on_end_combat_pressed() -> void:
+	_fight = null
+	_session.clear_round()
+	_store.save(_session)
+	if _hosting and _transport != null:
+		_transport.send_round({})
+	refresh()
+
+
+## An action check the GM rolled on somebody's behalf.
+##
+## Uses their own character, so a player who stepped away is not penalised for
+## it -- the GM is standing in, not substituting a different hero.
+func _on_roll_for_pressed(player_id: String) -> void:
+	if _fight == null or _router == null:
+		return
+	var snapshot := _session.committed_character(player_id)
+	var summary := _summary_of(snapshot)
+	if summary.is_empty():
+		return
+	var score: Dictionary = summary.get("action_check", {})
+
+	var stand_in := SkillCheck.new(player_id, SkillCheck.ORIGIN_GM)
+	stand_in.skill_label = "Action check"
+	stand_in.ordinary = AlternityNum.as_int(score.get("ordinary", 0))
+	stand_in.good = AlternityNum.as_int(score.get("good", 0))
+	stand_in.amazing = AlternityNum.as_int(score.get("amazing", 0))
+	stand_in.player_step = AlternityNum.as_int(score.get("step", 0))
+
+	var outcome = await _router.push(DICE_TRAY_ROUTE, {
+		"palette": _palette,
+		"rules": _rules,
+		"check": stand_in.to_dict(),
+	})
+	if not is_instance_valid(self) or typeof(outcome) != TYPE_DICTIONARY or not outcome.has("check"):
+		return
+	var rolled := SkillCheck.from_dict(outcome["check"])
+	_record_action_check(player_id, {
+		"degree": rolled.degree(),
+		"check_score": rolled.ordinary,
+		"roll": AlternityNum.as_int(rolled.result.get("total", 0)),
+		"critical": bool(rolled.result.get("is_critical_failure", false)),
+	})
+
+
+func _on_action_check_received(player_id: String, result: Dictionary) -> void:
+	_record_action_check(player_id, result)
+
+
+func _record_action_check(player_id: String, result: Dictionary) -> void:
+	if _fight == null:
+		return
+	_fight.record_check(
+		player_id,
+		String(result.get("degree", "Failure")),
+		AlternityNum.as_int(result.get("check_score", 0)),
+		AlternityNum.as_int(result.get("roll", 0)),
+		bool(result.get("critical", false))
+	)
+	_publish_round()
+
+
+## Save the round and push it to the table.
+##
+## One place, because the campaign's copy and the players' copies must never
+## disagree about whose turn it is.
+func _publish_round() -> void:
+	if _fight == null:
+		return
+	_session.set_round(_fight.to_dict())
+	_store.save(_session)
+	if _hosting and _transport != null:
+		_transport.send_round(_fight.to_dict())
+	refresh()
 
 
 ## Checks waiting on the GM, the call button, and the shortcuts.
@@ -283,9 +559,16 @@ func refresh() -> void:
 	_render_status()
 	_render_checks()
 	_render_shortcuts()
+	_render_combat()
 	_render_roster()
 	_render_chat_targets()
 	_render_feed()
+
+
+## Put the campaign's copy of the fight back after a rebuild.
+func _adopt_stored_round() -> void:
+	if _session != null and _session.has_round():
+		_fight = ActionRound.from_dict(_session.current_round())
 
 
 func _render_status() -> void:
@@ -1004,6 +1287,7 @@ func _toggle_hosting() -> void:
 		_transport.event_received.connect(_on_networked_event)
 		_transport.character_received.connect(_on_character_received)
 		_transport.check_requested.connect(_on_check_requested)
+		_transport.action_check_received.connect(_on_action_check_received)
 		_transport.transport_error.connect(_on_transport_error)
 
 	if _transport.host(_session, EnetTransport.DEFAULT_PORT) != OK:
@@ -1012,6 +1296,10 @@ func _toggle_hosting() -> void:
 		return
 
 	_hosting = true
+	# A fight already in progress goes out as soon as there is anybody to send it
+	# to, so a player joining mid-session sees the board rather than nothing.
+	if _fight != null:
+		_transport.send_round(_fight.to_dict())
 	# Discovery is allowed to fail on its own: a table that cannot be searched for
 	# can still be joined by address.
 	_discovery = LanDiscovery.new()
@@ -1065,6 +1353,10 @@ func _on_player_connected(_player_id: String, is_reconnect: bool) -> void:
 	# A first-time join was seated by the handshake, so the campaign changed on
 	# disk. A reconnect only touched last_seen, which is still worth keeping.
 	_store.save(_session)
+	# Somebody arriving mid-fight gets the board straight away. The round is sent
+	# whole, so there is nothing else they need to catch up.
+	if _fight != null and _transport != null:
+		_transport.send_round(_fight.to_dict())
 	if not is_reconnect:
 		_summary_cache.clear()
 	refresh()

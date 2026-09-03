@@ -20,6 +20,7 @@ extends SheetTab
 const CAMPAIGN_SECTION := &"meta"
 
 var _status: Label
+var _combat_body: VBoxContainer
 var _chat_field: LineEdit
 var _private_toggle: CheckButton
 var _feed_list: VBoxContainer
@@ -51,8 +52,11 @@ func build(container: Container) -> void:
 		table.changed.connect(_on_table_changed)
 		table.ap_applied.connect(_on_ap_applied)
 		table.trouble.connect(_on_trouble)
+		table.round_changed.connect(_on_round_changed)
+		table.action_check_wanted.connect(_on_action_check_wanted)
 
 	_build_status(container, table)
+	_build_combat(container, table)
 	_build_chat(container, table)
 	_build_feed(container, table)
 	_build_leaving(container)
@@ -89,6 +93,142 @@ func _status_text(table: TableSession) -> String:
 	if table.is_connected_to_table():
 		return "At the table."
 	return "Not connected. Your character is still yours to edit; nothing reaches the GM until you rejoin."
+
+
+## The fight, from this player's side.
+##
+## Read-only: the GM's device owns the round. What this adds beyond mirroring the
+## board is the one thing only this player cares about -- which phases their roll
+## bought them, and whether it is their turn now.
+func _build_combat(container: Container, table: TableSession) -> void:
+	var section := Widgets.section(container, "Combat", ctx.palette)
+	_combat_body = VBoxContainer.new()
+	_combat_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_combat_body.add_theme_constant_override("separation", Widgets.GAP_ROW)
+	section.add_child(_combat_body)
+	_render_combat(table)
+
+
+func _render_combat(table: TableSession) -> void:
+	if _combat_body == null or not is_instance_valid(_combat_body):
+		return
+	for child in _combat_body.get_children():
+		_combat_body.remove_child(child)
+		child.queue_free()
+
+	var fight: ActionRound = table.active_round
+	if fight == null:
+		Widgets.muted_text(_combat_body, "No fight running.", ctx.palette, Widgets.FONT_CAPTION)
+		return
+
+	var heading := Widgets.text(_combat_body, fight.describe(), ctx.palette, Widgets.FONT_SUBHEADING, ctx.palette.accent)
+	heading.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	heading.custom_minimum_size = Vector2(1, 0)
+
+	var mine: Dictionary = table.my_combatant()
+	if mine.is_empty():
+		Widgets.muted_text(_combat_body, "You are not in this fight.", ctx.palette, Widgets.FONT_CAPTION)
+		return
+
+	if bool(mine.get("out", false)):
+		var down := Widgets.text(
+			_combat_body,
+			"You are out of the fight: %s" % String(mine.get("out_reason", "down")),
+			ctx.palette,
+			Widgets.FONT_DETAIL,
+			ctx.palette.warning
+		)
+		down.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		down.custom_minimum_size = Vector2(1, 0)
+		return
+
+	if table.owes_action_check():
+		var prompt := Widgets.text(
+			_combat_body,
+			"The GM called for initiative. Roll your action check.",
+			ctx.palette,
+			Widgets.FONT_BODY
+		)
+		prompt.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		prompt.custom_minimum_size = Vector2(1, 0)
+
+		var roll := Button.new()
+		roll.name = "RollActionCheckButton"
+		roll.text = "Roll action check"
+		roll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		roll.custom_minimum_size = Vector2(0, 40)
+		roll.clip_text = true
+		roll.add_theme_stylebox_override("normal", Widgets.flat_style(ctx.palette.surface_soft, ctx.palette.accent, 6))
+		roll.pressed.connect(_on_roll_action_check_pressed)
+		_combat_body.add_child(roll)
+		return
+
+	# What the roll actually bought them. A player who cannot see which phases
+	# they reached cannot tell a good action check from a bad one.
+	_render_my_phases(fight, mine)
+
+	if table.acting_now():
+		var turn := Widgets.text(_combat_body, "It is your turn now.", ctx.palette, Widgets.FONT_BODY, ctx.palette.accent)
+		turn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		turn.custom_minimum_size = Vector2(1, 0)
+
+	var order: Array = []
+	for entry in fight.acting_now():
+		order.append(String(entry.get("name", "someone")))
+	if not order.is_empty():
+		var line := Widgets.muted_text(
+			_combat_body, "This phase: " + " . ".join(order), ctx.palette, Widgets.FONT_CAPTION
+		)
+		line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		line.custom_minimum_size = Vector2(1, 0)
+
+
+## Which phases this player acts in.
+##
+## Their earned phase and every one after it, limited by how many actions they
+## have -- the same rule the round enforces, said out loud so the number on the
+## sheet means something.
+func _render_my_phases(fight: ActionRound, mine: Dictionary) -> void:
+	var earned := String(mine.get("degree", ""))
+	if earned.is_empty():
+		return
+	var reached: Array = []
+	for phase_id in ActionRound.PHASES:
+		for entry in fight.acting_in(String(phase_id)):
+			if String(entry.get("id", "")) == String(mine.get("id", "")):
+				reached.append(String(ActionRound.PHASE_NAMES.get(phase_id, phase_id)))
+				break
+
+	var text := "You rolled %s, so you act in: %s" % [
+		String(ActionRound.PHASE_NAMES.get(earned, earned)),
+		", ".join(reached) if not reached.is_empty() else "nothing this round",
+	]
+	var line := Widgets.text(_combat_body, text, ctx.palette, Widgets.FONT_DETAIL)
+	line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	line.custom_minimum_size = Vector2(1, 0)
+
+
+func _on_round_changed() -> void:
+	if ctx != null and ctx.table != null:
+		_render_combat(ctx.table)
+
+
+## The GM started a round and this device owes a check.
+##
+## Rolled from a button rather than thrown at the player: a tray opening by
+## itself while they are reading their sheet is an ambush, not a prompt.
+func _on_action_check_wanted() -> void:
+	_on_round_changed()
+
+
+func _on_roll_action_check_pressed() -> void:
+	if ctx == null or ctx.table == null or ctx.checks == null:
+		return
+	var rolled = await ctx.checks.run_action_check(ctx.doc)
+	if not is_instance_valid(self) or rolled == null:
+		return
+	ctx.table.send_action_check(rolled)
+	_on_round_changed()
 
 
 func _build_chat(container: Container, table: TableSession) -> void:

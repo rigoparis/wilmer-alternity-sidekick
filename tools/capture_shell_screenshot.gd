@@ -135,6 +135,17 @@ func _seed_campaigns() -> void:
 		for _i in skill_id % 4 + 1:
 			session.note_check(skill_id)
 
+	# A fight mid-round, so the combat section is photographed doing its job
+	# rather than showing a single Start button.
+	var fight := ActionRound.new(3)
+	fight.add_combatant(alice, "Alice", 3)
+	fight.add_combatant(bob, "Bob", 2)
+	fight.record_check(alice, "Amazing", 14, 4)
+	fight.record_check(bob, "Good", 11, 8)
+	fight.start()
+	fight.advance_phase()
+	session.set_round(fight.to_dict())
+
 	session.append_event(CampaignSession.EVENT_JOIN, alice, {"player_name": "Alice"})
 	session.append_chat(alice, "We break for the airlock.")
 	session.append_roll(alice, {"notation": "d20", "total": 14, "label": "Action check"})
@@ -238,7 +249,18 @@ func _capture(width: int, height: int, label: String) -> void:
 	if not player_listing.is_empty():
 		var player_doc = shell.store.load_doc(String(player_listing[0]["file_name"]))
 		shell.table.doc = player_doc
+		shell.table.transport._local_player_id = "me"
 		_seed_table_feed(shell.table)
+		# A round in progress, seen from the player's side: their phase, their
+		# turn, and what the roll bought them.
+		var player_fight := ActionRound.new(3)
+		player_fight.add_combatant("me", "You", 3)
+		player_fight.add_combatant("ally", "Alice", 2)
+		player_fight.record_check("me", "Good", 12, 7)
+		player_fight.record_check("ally", "Amazing", 14, 3)
+		player_fight.start()
+		player_fight.advance_phase()
+		shell.table.active_round = player_fight
 		shell._open_sheet(player_doc)
 		for _i in 12:
 			await process_frame
@@ -254,7 +276,11 @@ func _capture(width: int, height: int, label: String) -> void:
 	await process_frame
 
 
-## A table mid-session: chat, a roll, and an award that has already landed. The
+## A table mid-session: chat, a roll, and an award that has already landed.
+##
+## The transport here never connected, so it has no player id of its own; the
+## caller gives it one first, which is what makes the feed and the combat board
+## show this player's own rows rather than a stranger's. The
 ## empty states are already covered by the GM screen shots.
 func _seed_table_feed(table) -> void:
 	var seq := 0
@@ -269,7 +295,9 @@ func _seed_table_feed(table) -> void:
 		table.events.append({
 			"seq": seq,
 			"kind": String(spec[0]),
-			"player_id": "",
+			# Attributed to this device, so the feed reads "You" the way it does
+			# in use rather than "Someone".
+			"player_id": "me",
 			"at": int(Time.get_unix_time_from_system()),
 			"payload": spec[1],
 		})
