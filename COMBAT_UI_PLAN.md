@@ -178,44 +178,67 @@ changes a few times a round, and a player joining mid-fight then needs no catch
 
 ---
 
-## Gaps to close first
+## Gaps
 
-These are needed before the player side can resolve anything, and none of them
-exists yet.
+1. ~~**Equipped armor absorption.**~~ Closed. `combat.armor_layers(character,
+   impact_type)` returns every layer that could answer an attack — worn armor, a
+   T'sa's hide, cybertech plating, mutation and psionic shields — and
+   `best_absorption(rolls)` keeps the highest of them. Layers do not add up; the
+   penalties do. The two shapes armor is written in are both read: the catalogue
+   and everything derived from it write `combat.li/hi/en`, and species armor
+   writes a flat `armor_li`. A search that knew only one shape found a hide and
+   missed every suit in the book.
 
-1. **Equipped armor absorption.** Armor rows carry `armor_li`, `armor_hi` and
-   `armor_en` as dice notation, but nothing returns the absorption for a given
-   impact type from what a character is actually wearing. Needs
-   `equipped_armor_absorption(character, impact_type)`, and a decision about
-   whether natural armor (a T'sa's hide), worn armor and cybertech stack or the
-   best one wins — **a rules question I do not have an answer for.**
+2. ~~**Weapon type for range.**~~ Closed. `combat.weapon_range_class(skill_id)`
+   derives it from the skill the weapon is fired with: 31 pistol, 32 rifle, 33
+   SMG, 34 primitive, 8 heavy. Melee skills return "", which is a caller's cue to
+   use the melee modifier table instead of asking for a band.
 
-2. **Weapon type for range.** `range_step_for` wants "pistol", "rifle", "smg",
-   "primitive" or heavy. The catalogue records a weapon's skill and category but
-   not that classification directly; it probably has to be derived from the
-   combat skill the weapon uses.
-
-3. **Awareness.** The attack route needs an "they did not see it coming" toggle,
-   because that zeroes the target's resistance modifier and forbids a dodge.
-   Nothing tracks awareness today, and the GM is the only one who knows.
+3. ~~**Awareness.**~~ Closed. Three toggles on the attack route, because the
+   books do not treat awareness as one flag: cannot see the attacker (no
+   resistance, no defence), from behind (resists, cannot turn to meet it), pinned
+   (nothing at all). `combat.target_defence()` answers all three.
 
 4. **Actions spent.** `ActionRound` knows how many actions a combatant has and
    which phases that reaches, but nothing decrements as they act. Dodging costs
-   the first action; that has to come off the same pool.
+   the first action; that has to come off the same pool. **Still open** — it is
+   what stage 3 needs.
+
+5. **Toughness.** `combat.toughness_of(character)` reads it off the best armor
+   worn, defaulting to Ordinary. That is the other half of the firepower
+   comparison and it was not there before.
 
 ---
 
 ## Staging
 
-1. **Round over the wire.** Start a round, players roll, phase board on both
-   sides, advance and end. No attacks yet — this alone is usable, and it is the
-   part with the most moving pieces.
-2. **Attacks.** The declaration route, the modifier panel, and the damage round
-   trip. Closes gaps 1–3 above.
+1. ~~**Round over the wire.**~~ Done. Start a round, players roll, phase board on
+   both sides, advance and end.
+2. ~~**Attacks.**~~ Done. `combat_attack_route` declares one — attacker, weapon
+   from the catalogue, the modifier tables and the awareness toggles — the GM
+   rolls to hit and rolls the damage, and the target's device rolls its own
+   armor, applies it to its own sheet, makes any endurance check and reports
+   back. `combat_modifiers_route` was not needed: the panel is part of the attack
+   route, which is where a GM wants it.
 3. **Defence.** Dodge and parry, which needs gap 4.
 4. **The rest.** Weapon failures on a natural 20, blasts, and the recovery
    prompts between sessions — all have rules and tests already; they need
    somewhere to be shown.
 
-Suggested: do 1 and stop for a look, since it changes both screens and is the
-foundation everything else sits on.
+### What stage 2 actually built
+
+| Piece | Where |
+|---|---|
+| The attack as a travelling document | `scripts/core/session/combat_attack.gd` |
+| Declaring one | `scripts/ui/routes/combat_attack_route.gd` |
+| The GM's half — declare, roll to hit, roll damage, send | `gm_screen._on_attack_pressed` |
+| The player's half — armor, damage, endurance check, report | `tab_table._on_resolve_attack_pressed` |
+| Applying it to a sheet, which only the owner does | `table_session.apply_attack` / `report_attack` |
+| A plain notation throw on the tray | `check_runner.roll_notation` |
+
+Two things settled in the building of it. A called shot that lands and a weapon
+that outclasses the target's toughness both promote the hit, and both are settled
+before the damage dice, because the degree picks which of the weapon's three
+damage entries gets rolled. And the endurance check an Amazing hit forces is
+rolled *after* the damage lands: being hurt is part of what makes it hard to stay
+conscious.

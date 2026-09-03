@@ -231,6 +231,29 @@ func _capture(width: int, height: int, label: String) -> void:
 		var slug := "busy" if session.seats.size() > 0 else "empty"
 		_save(shell, "%s_gm_%s" % [label, slug])
 
+		# The attack declaration, which is the densest route in the app: a
+		# stepper, a searchable catalogue and two tables of toggles. A grid that
+		# collapses to one letter per line is invisible in every assertion and
+		# obvious here.
+		if session.seats.size() > 0:
+			shell.router.push(
+				load("res://scenes/ui/routes/combat_attack_route.tscn"),
+				{
+					"palette": shell._palette,
+					"rules": shell.rules,
+					"target_id": "someone",
+					"target_name": "Alice",
+				}
+			)
+			for _i in 12:
+				await process_frame
+			_save(shell, "%s_attack_route" % label)
+			var route = shell.router._host.top_route()
+			if route != null:
+				route.close(null)
+			for _i in 6:
+				await process_frame
+
 	# The player's half of the multiplayer feature. Joining is photographed with
 	# nothing found, which is the state a player actually opens it in and the one
 	# where an empty section is easiest to get wrong.
@@ -261,6 +284,11 @@ func _capture(width: int, height: int, label: String) -> void:
 		player_fight.start()
 		player_fight.advance_phase()
 		shell.table.active_round = player_fight
+		# An attack waiting to be resolved, which is the card the player actually
+		# reacts to and the one that is easiest to get wrong when it is empty.
+		shell.table.incoming_attacks.append(CombatAttack.declare(
+			"me", "A thug", "Charge pistol", "Good", 7, "w", "hi", "O"
+		))
 		shell._open_sheet(player_doc)
 		for _i in 12:
 			await process_frame

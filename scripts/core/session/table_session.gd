@@ -37,6 +37,13 @@ signal round_changed
 ## The round is waiting on this device's action check.
 signal action_check_wanted
 
+## An attack has landed on this device and is waiting to be resolved.
+##
+## Raised rather than resolved here: rolling the armor is a trip to the dice
+## tray, which is a screen's business. This object only holds the attack until
+## somebody deals with it.
+signal attack_arrived(attack: CombatAttack)
+
 ## Something went wrong that a player should see.
 signal trouble(message: String)
 
@@ -78,6 +85,12 @@ var active_round: ActionRound
 ## the same round does not ask twice.
 var _checked_round: String = ""
 
+## Attacks sent here that nobody has resolved yet, oldest first.
+##
+## A queue rather than one attack: two enemies can fire in the same phase, and
+## the second must not quietly replace the first.
+var incoming_attacks: Array = []
+
 
 func _init(
 	p_transport: EnetTransport,
@@ -96,6 +109,7 @@ func _init(
 	transport.events_replayed.connect(_on_replay)
 	transport.check_ruled.connect(_on_check_ruled)
 	transport.round_updated.connect(_on_round_updated)
+	transport.attack_received.connect(_on_attack_received)
 	transport.transport_error.connect(func(message: String): trouble.emit(message))
 
 
@@ -219,6 +233,97 @@ func _on_round_updated(data: Dictionary) -> void:
 		return
 	_checked_round = active_round.round_id
 	action_check_wanted.emit()
+
+
+# --- Attacks ---------------------------------------------------------------
+
+func _on_attack_received(data: Dictionary) -> void:
+	var attack := CombatAttack.from_dict(data)
+	incoming_attacks.append(attack)
+	attack_arrived.emit(attack)
+	changed.emit()
+
+
+## The attack waiting at the front of the queue, or null.
+func next_attack() -> CombatAttack:
+	return incoming_attacks[0] if not incoming_attacks.is_empty() else null
+
+
+## Apply an attack to the committed hero.
+##
+## This device's half of the round trip, and the half that writes to a character
+## file. The GM rolled the hit and the damage; everything from here is the
+## character's own -- their armor, already rolled by the caller, their toughness,
+## and their damage tracks.
+##
+## `absorbed` is the best armor layer's roll, not the sum of them, because layers
+## do not add up.
+##
+## Returns what apply_damage returned. Applying and reporting are separate calls
+## because an Amazing hit puts an endurance check between them, and that check is
+## rolled against the character as the hit left them.
+func apply_attack(attack: CombatAttack, absorbed: int) -> Dictionary:
+	incoming_attacks.erase(attack)
+	if doc == null or rules == null or not attack.hits():
+		return {}
+
+	# Through apply() rather than around it: a lambda captures a local by value,
+	# so an outcome assigned inside one would be lost on the way out, and the
+	# damage would land on the sheet while the report said nothing happened.
+	var toughness: String = rules.combat.toughness_of(doc.raw())
+	var outcome: Dictionary = doc.apply([CharacterDoc.DAMAGE], func(character):
+		return rules.apply_damage(
+			character,
+			attack.damage,
+			attack.track_name(),
+			absorbed,
+			attack.firepower,
+			toughness
+		))
+	if store != null:
+		store.save(doc)
+	# The GM's roster reads the character they hold, so it has to follow the
+	# damage or the badge will say Unhurt at somebody who is bleeding.
+	push_character()
+	changed.emit()
+	return outcome
+
+
+## Tell the GM what the attack cost, and close it.
+##
+## What goes back is an outcome, never the character: the GM needs to know they
+## put somebody down, not what is on their sheet.
+func report_attack(attack: CombatAttack, absorbed: int, outcome: Dictionary, knocked_out: bool = false) -> void:
+	var down := knocked_out
+	if doc != null and rules != null:
+		down = down or rules.combat.is_knocked_out(doc.raw())
+	attack.resolve({
+		"primary_damage": AlternityNum.as_int(outcome.get("primary_damage", 0)),
+		"secondary_stun": AlternityNum.as_int(outcome.get("secondary_stun", 0)),
+		"secondary_wound": AlternityNum.as_int(outcome.get("secondary_wound", 0)),
+		"absorbed": absorbed,
+		"negated": bool(outcome.get("negated", false)),
+		"damage_type": String(outcome.get("damage_type", attack.track_name())),
+		"knocked_out": down,
+		"condition": rules.combat.condition_of(doc.raw()) if doc != null and rules != null else "",
+	})
+	if transport != null:
+		transport.send_attack_result(attack.to_dict())
+	changed.emit()
+
+
+## Whether an Amazing hit forces this character to check for consciousness.
+##
+## Asked before the damage is applied, because whether the firepower rule
+## degraded it is one of the two exemptions and that has to be read off the
+## attack rather than off what it did.
+func knockout_check_for(attack: CombatAttack) -> Dictionary:
+	if doc == null or rules == null or not attack.hits():
+		return {"required": false}
+	var degraded: bool = rules.character_degraded_damage_grade(
+		doc.raw(), attack.track_name(), attack.firepower, rules.combat.toughness_of(doc.raw())
+	) != attack.track_name()
+	return rules.amazing_damage_knockout(doc.raw(), attack.degree, degraded)
 
 
 ## Whether the round is waiting on this device's action check.

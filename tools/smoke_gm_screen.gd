@@ -42,6 +42,7 @@ func _run() -> void:
 	await _test_table_award()
 	await _test_set_ap()
 	await _test_feed()
+	await _test_attack_targets()
 	await _test_remove_seat()
 	await _test_back_unwinds()
 	await _test_rename_and_delete()
@@ -399,6 +400,90 @@ func _test_feed() -> void:
 	await process_frame
 	check_eq(gm._feed_list.get_child_count(), gm.FEED_LENGTH, "the feed shows at most FEED_LENGTH lines")
 	check_true(gm.session().events.size() > gm.FEED_LENGTH, "while the log itself keeps everything")
+
+
+# --- Attacks ---------------------------------------------------------------
+
+## Who the GM can attack, and where the button to do it is.
+##
+## An attack is aimed at whoever the attacker chose, not at whoever rolled well,
+## so everybody still on their feet carries one -- the acting order is an order
+## of play, not a list of targets.
+func _test_attack_targets() -> void:
+	var gm = _gm_screen()
+	if not check(gm != null, "the GM screen is showing"):
+		return
+
+	# Bob commits too, so there are two people to shoot at.
+	var bob_doc = CharacterDoc.new(_shell.rules)
+	bob_doc.set_hero_name("Mira Sostrand")
+	var bob := _seat_id(gm, "Bob")
+	gm.session().commit_character(bob, CharacterSnapshot.of_doc(bob_doc))
+	_shell.campaigns.save(gm.session())
+
+	gm._on_start_combat_pressed()
+	await process_frame
+	check_eq(gm._fight.combatants.size(), 2, "both committed players are in the fight")
+
+	# While the round is waiting on action checks there is nobody to attack yet:
+	# the phase board is a list of who has not rolled.
+	check_eq(_attack_buttons(gm).size(), 0, "nobody is a target until the round starts")
+
+	var alice := _seat_id(gm, "Alice")
+	gm._record_action_check(alice, {"degree": "Amazing", "check_score": 14, "roll": 3})
+	gm._record_action_check(bob, {"degree": "Marginal", "check_score": 9, "roll": 17})
+	gm._on_start_round_pressed()
+	await process_frame
+
+	check_eq(gm._fight.phase(), "amazing", "the round opens at the Amazing phase")
+	var targets: Dictionary = _attack_buttons(gm)
+	check_eq(targets.size(), 2, "both are targets, whether or not they are acting")
+	check_true(targets.has(alice), "the one acting this phase")
+	check_true(targets.has(bob), "and the one standing there waiting for theirs")
+	check_false(bool(targets[bob].disabled), "who can still be shot at")
+
+	# Somebody out of the fight is not a target. Shooting the unconscious is a
+	# thing that happens at tables, and it is not an action round action.
+	gm._fight.knock_out(bob, "unconscious")
+	gm._fight.advance_phase()
+	gm._publish_round()
+	await process_frame
+	var after: Dictionary = _attack_buttons(gm)
+	check_false(after.has(bob), "somebody out of the fight is no longer a target")
+	check_true(after.has(alice), "and everybody else still is")
+
+	# The button needs a character to aim at: the armor, the toughness and the
+	# resistance all come off the target sheet, and the GM has none for a seat
+	# that never committed one.
+	var before: String = gm._status.text
+	await gm._on_attack_pressed("nobody-at-all")
+	check_true(
+		gm._status.text.contains("committed"),
+		"attacking a seat with no character says why it cannot"
+	)
+	check_false(gm._status.text == before, "rather than silently doing nothing")
+
+	gm._on_end_combat_pressed()
+	await process_frame
+
+
+## The Attack buttons on the combat section, keyed by the seat each aims at.
+func _attack_buttons(gm) -> Dictionary:
+	var out: Dictionary = {}
+	for row in gm._combat_body.get_children():
+		if not (row is HBoxContainer):
+			continue
+		for child in row.get_children():
+			if child is Button and String(child.text) == "Attack":
+				# The row label carries the name; the seat comes off the callable
+				# the button was built with, which is what actually gets used.
+				var connections: Array = child.pressed.get_connections()
+				if connections.is_empty():
+					continue
+				var bound: Array = (connections[0]["callable"] as Callable).get_bound_arguments()
+				if not bound.is_empty():
+					out[String(bound[0])] = child
+	return out
 
 
 # --- Removal and navigation ------------------------------------------------

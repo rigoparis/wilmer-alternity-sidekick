@@ -51,6 +51,7 @@ func _run() -> void:
 	await _test_private_line()
 	await _test_ap_lands_on_the_committed_hero()
 	await _test_a_round_of_combat()
+	await _test_an_attack_lands()
 	await _test_reconnect_loses_nothing()
 	await _test_leaving_closes_the_table()
 
@@ -466,6 +467,129 @@ func _test_a_round_of_combat() -> void:
 	var over := await _wait_for(func(): return table.active_round == null)
 	check_true(over, "ending combat reaches the player")
 	check_false(gm.session().has_round(), "and the campaign forgets the fight")
+
+
+# --- An attack, both halves ------------------------------------------------
+
+## The round trip the ownership rule is really about.
+##
+## The GM declares and rolls; the damage is applied on the device that owns the
+## character, by that device, and what comes back is an outcome rather than a
+## sheet. Nothing here goes through the dice tray: what is being tested is who
+## does what, not the physics.
+func _test_an_attack_lands() -> void:
+	var gm = _gm_screen()
+	var table = _table()
+	if not check(gm != null and table != null and table.doc != null, "a player is at the table with a hero"):
+		return
+
+	var before := AlternityNum.as_int(table.doc.raw().get("damage", {}).get("wound", 0))
+
+	var attack := CombatAttack.declare(
+		_joined_player_id, "A thug", "Charge pistol", "Good", 6, "w", "hi", "O"
+	)
+	gm.transport().send_attack(attack.to_dict(), _joined_player_id)
+
+	var arrived := await _wait_for(func(): return not _table().incoming_attacks.is_empty())
+	check_true(arrived, "the attack reaches the seat it was addressed to")
+	if not arrived:
+		return
+
+	table = _table()
+	var landed: CombatAttack = table.next_attack()
+	check_eq(landed.attacker_name, "A thug", "carrying who swung")
+	check_eq(landed.damage, 6, "and what was rolled")
+	check_false(landed.is_resolved(), "and nothing has been applied yet")
+	check_eq(
+		AlternityNum.as_int(table.doc.raw().get("damage", {}).get("wound", 0)), before,
+		"the character is untouched until this device does it"
+	)
+
+	# And the player has something to press. The card is on the sheet they are
+	# already looking at, not on a screen they have to go and find.
+	var sheet = _player_sheet()
+	if sheet != null:
+		sheet._select_tab("table")
+		await process_frame
+		await process_frame
+		var button := _find_named(sheet, "ResolveAttackButton")
+		check(button != null, "the Table tab offers a way to resolve it")
+
+	# The knockout check is asked for before the damage, and a Good hit does not
+	# force one.
+	check_false(
+		bool(table.knockout_check_for(landed).get("required", false)),
+		"a Good hit forces no endurance check"
+	)
+
+	# Two points of armor, as though a layer had been rolled here.
+	var outcome: Dictionary = table.apply_attack(landed, 2)
+	check_eq(AlternityNum.as_int(outcome.get("primary_damage", 0)), 4, "the armor comes off the damage")
+	check_eq(
+		AlternityNum.as_int(table.doc.raw().get("damage", {}).get("wound", 0)), before + 4,
+		"and the rest lands on this device's own hero"
+	)
+	check_true(table.incoming_attacks.is_empty(), "and the attack is no longer waiting")
+
+	table.report_attack(landed, 2, outcome)
+	var logged := await _wait_for(func():
+		for event in _gm_screen().session().events:
+			if String(event.get("kind", "")) == CampaignSession.EVENT_ATTACK:
+				return true
+		return false)
+	check_true(logged, "and the outcome reaches the GM")
+	if not logged:
+		return
+
+	gm = _gm_screen()
+	var recorded: Dictionary = {}
+	for event in gm.session().events:
+		if String(event.get("kind", "")) == CampaignSession.EVENT_ATTACK:
+			recorded = event
+	var resolved := CombatAttack.from_dict(recorded.get("payload", {}))
+	check_eq(String(recorded.get("player_id", "")), _joined_player_id, "against the seat it landed on")
+	check_true(resolved.is_resolved(), "resolved")
+	check_eq(AlternityNum.as_int(resolved.result.get("absorbed", 0)), 2, "saying what the armor stopped")
+	check_eq(AlternityNum.as_int(resolved.result.get("primary_damage", 0)), 4, "and what got through")
+	check_false(bool(resolved.result.get("knocked_out", false)), "and that they are still standing")
+	check_false(resolved.result.has("damage"), "and nothing about their sheet")
+
+	# The GM's copy of the character has to follow the damage, or the roster will
+	# say Unhurt at somebody who is bleeding.
+	var followed := await _wait_for(func():
+		var held = CharacterSnapshot.character_of(_gm_screen().session().committed_character(_joined_player_id))
+		return AlternityNum.as_int(held.get("damage", {}).get("wound", 0)) == before + 4)
+	check_true(followed, "and the GM's copy of the character follows it")
+
+	# A miss travels too, and clearing it away costs the character nothing.
+	var missed := CombatAttack.declare(_joined_player_id, "A thug", "Charge pistol", "Failure", 0, "w", "hi", "O")
+	_gm_screen().transport().send_attack(missed.to_dict(), _joined_player_id)
+	var missed_arrived := await _wait_for(func(): return not _table().incoming_attacks.is_empty())
+	check_true(missed_arrived, "a miss reaches them as well")
+	if not missed_arrived:
+		return
+	var shrugged: CombatAttack = _table().next_attack()
+	check_false(shrugged.hits(), "and says plainly that it missed")
+	_table().apply_attack(shrugged, 0)
+	check_eq(
+		AlternityNum.as_int(_table().doc.raw().get("damage", {}).get("wound", 0)), before + 4,
+		"applying a miss marks nothing"
+	)
+	check_true(_table().incoming_attacks.is_empty(), "and it stops waiting")
+
+	_gm_screen()._on_end_combat_pressed()
+	await _wait_for(func(): return _table().active_round == null)
+
+
+## Depth-first search for a named node, for asserting a screen built a control.
+func _find_named(node: Node, wanted: String) -> Node:
+	if node.name == wanted:
+		return node
+	for child in node.get_children():
+		var found := _find_named(child, wanted)
+		if found != null:
+			return found
+	return null
 
 
 # --- Reconnect -------------------------------------------------------------

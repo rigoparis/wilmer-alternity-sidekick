@@ -140,6 +140,31 @@ func run_action_check(doc: CharacterDoc):
 	return await _throw(check, doc)
 
 
+## Throw a piece of dice notation on the tray and hand back the total.
+##
+## Not a check: armor and damage are numbers, with no score to beat and no degree
+## to read, so there is nothing to ask the GM and nothing to broadcast.
+##
+## Returns -1 when the throw was abandoned, which a caller must not read as a
+## zero -- rolling no armor at all and walking away from the tray are different
+## answers.
+func roll_notation(notation: String, label: String) -> int:
+	if _router == null:
+		return -1
+	var term := DiceNotation.parse(notation)
+	if not bool(term.get("ok", false)):
+		return -1
+	var outcome = await _router.push(TRAY_ROUTE, {
+		"palette": _palette,
+		"rules": _rules,
+		"terms": [term],
+		"label": label,
+	})
+	if typeof(outcome) != TYPE_DICTIONARY or not outcome.has("total"):
+		return -1
+	return AlternityNum.as_int(outcome.get("total", 0))
+
+
 func _await_ruling(check: SkillCheck) -> bool:
 	_transport.request_check(check.to_dict())
 

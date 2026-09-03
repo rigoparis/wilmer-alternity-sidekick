@@ -24,6 +24,7 @@ func _init() -> void:
 	_combat = _rules.combat
 
 	_test_weapon_classification()
+	_test_reading_a_catalogue_weapon()
 	_test_damage_entries()
 	_test_declaring()
 	_test_round_trip()
@@ -66,6 +67,68 @@ func _test_weapon_classification() -> void:
 		_rules.range_step_for(_combat.weapon_range_class(32), "long"), 1,
 		"and a rifle at the same band is +1"
 	)
+
+
+# --- Reading a weapon off the catalogue -------------------------------------
+
+## The catalogue writes two different facts in one string, and they answer
+## different questions. Reading it as one is how a weapon ends up compared
+## against the wrong armor.
+func _test_reading_a_catalogue_weapon() -> void:
+	var pistol: Dictionary = _combat.split_weapon_type("HI/O")
+	check_eq(String(pistol["impact"]), "hi", "HI/O is a high-impact attack")
+	check_eq(String(pistol["firepower"]), "O", "of Ordinary firepower")
+
+	check_eq(String(_combat.split_weapon_type("LI/G")["impact"]), "li", "LI is low impact")
+	check_eq(String(_combat.split_weapon_type("En/A")["firepower"]), "A", "and the grade is read regardless of case")
+	check_eq(String(_combat.split_weapon_type("en/a")["impact"]), "en", "as is the impact type")
+	check_eq(String(_combat.split_weapon_type(" HI / G ")["firepower"]), "G", "spacing does not matter")
+
+	# A weapon written badly still has to be shootable. High impact and Ordinary
+	# are the two that are true of most weapons, so they are what a bad string
+	# falls back to rather than an error nobody sees until combat.
+	check_eq(String(_combat.split_weapon_type("")["impact"]), "hi", "an empty type is high impact")
+	check_eq(String(_combat.split_weapon_type("")["firepower"]), "O", "and Ordinary firepower")
+	check_eq(String(_combat.split_weapon_type("HI")["firepower"]), "O", "a missing grade is Ordinary")
+	check_eq(String(_combat.split_weapon_type("plasma/Z")["impact"]), "hi", "and nonsense falls back rather than sticking")
+	check_eq(String(_combat.split_weapon_type("plasma/Z")["firepower"]), "O", "on both halves")
+
+	# What comes out has to be usable by the two things that consume it.
+	var split: Dictionary = _combat.split_weapon_type("LI/A")
+	check_eq(
+		_combat.armor_layers(_hero(10), String(split["impact"])).size(),
+		_combat.armor_layers(_hero(10), "li").size(),
+		"the impact half picks an armor rating"
+	)
+	check_true(
+		AlternityRulesConstants.FIREPOWER_GRADES.has(String(split["firepower"])),
+		"and the firepower half is a grade apply_damage understands"
+	)
+
+	# The range bands are metres, and they are what the range modifier reads.
+	var bands: Dictionary = _combat.range_bands("8/16/60")
+	check_eq(int(AlternityNum.as_float(bands["short"])), 8, "the first number is short range")
+	check_eq(int(AlternityNum.as_float(bands["medium"])), 16, "the second medium")
+	check_eq(int(AlternityNum.as_float(bands["long"])), 60, "and the third long")
+	check_eq(AlternityNum.as_float(_combat.range_bands("").get("short", -1.0)), 0.0, "a melee weapon has no bands")
+	check_eq(AlternityNum.as_float(_combat.range_bands("2/-/-").get("medium", -1.0)), 0.0, "and a dash is no band either")
+
+	# Against the real catalogue, because the strings above are only useful if
+	# they are the strings the data actually uses.
+	for item in _rules.equipment.filtered_equipment({"category": "Weapons"}):
+		var combat: Dictionary = item.get("combat", {})
+		var type_text := String(combat.get("damage_type", combat.get("type", "")))
+		if type_text.is_empty():
+			continue
+		var read: Dictionary = _combat.split_weapon_type(type_text)
+		check_true(
+			IMPACT_TYPES.has(String(read["impact"])),
+			"%s reads as an impact type" % String(item.get("name", "a weapon"))
+		)
+		break
+
+
+const IMPACT_TYPES := ["li", "hi", "en"]
 
 
 # --- The damage triple -----------------------------------------------------

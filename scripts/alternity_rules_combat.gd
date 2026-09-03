@@ -56,6 +56,27 @@ func is_ranged_weapon(skill_id: int) -> bool:
 	return not weapon_range_class(skill_id).is_empty()
 
 
+## Split a weapon's type into the two things it means.
+##
+## The tables write it as one field -- "HI/O", "En/G" -- and it is two facts
+## bolted together: which of the target's three armor ratings answers the attack,
+## and the weapon's firepower grade for the degradation comparison. Reading it as
+## one string is how a weapon ends up compared against the wrong armor.
+##
+## Returns {impact, firepower} with impact lowercased for IMPACT_KEYS and
+## firepower uppercased for FIREPOWER_GRADES.
+func split_weapon_type(type_text: String) -> Dictionary:
+	var parts := type_text.split("/", false)
+	var impact := String(parts[0]).strip_edges().to_lower() if parts.size() > 0 else "hi"
+	var firepower := String(parts[1]).strip_edges().to_upper() if parts.size() > 1 else "O"
+	if not IMPACT_KEYS.has(impact):
+		impact = "hi"
+	# The constants live on the rules class rather than on this submodule.
+	if not AlternityRulesConstants.FIREPOWER_GRADES.has(firepower):
+		firepower = "O"
+	return {"impact": impact, "firepower": firepower}
+
+
 ## Split a weapon's damage into its three entries.
 ##
 ## The tables write damage as "d4+1w/d4+2w/d4m" -- what an Ordinary, Good and
@@ -81,6 +102,20 @@ func damage_entry_for(damage_text: String, degree: String) -> String:
 	return String(entries.get(degree.to_lower(), entries.get("ordinary", "")))
 
 
+## A weapon's three range bands in metres, from its "8/16/60" stat.
+##
+## Returns {short, medium, long}. A weapon with no range at all -- a sword --
+## comes back as zeroes, which range_band_for reads as out of range for any
+## distance, and that is correct: you cannot shoot with it.
+func range_bands(range_text: String) -> Dictionary:
+	var parts := range_text.split("/", false)
+	return {
+		"short": AlternityNum.as_float(parts[0]) if parts.size() > 0 else 0.0,
+		"medium": AlternityNum.as_float(parts[1]) if parts.size() > 1 else 0.0,
+		"long": AlternityNum.as_float(parts[2]) if parts.size() > 2 else 0.0,
+	}
+
+
 ## The track a damage entry marks: "s", "w", "m" or "f".
 ##
 ## Written as a suffix on the notation -- "d4+2w" is wound damage. Stun is the
@@ -103,7 +138,21 @@ const DAMAGE_SUFFIXES := ["s", "w", "m", "f"]
 ##
 ## Decided by the attack, not by the armor: an attack is low impact, high impact
 ## or energy, and the matching rating is the only one that rolls.
+##
+## The value is the key inside an item's `combat` block, which is where the
+## catalogue, cybertech, mutation and psionic armor all write their ratings.
 const IMPACT_KEYS := {
+	"li": "li",
+	"hi": "hi",
+	"en": "en",
+}
+
+## The same three ratings as a species' natural armor writes them.
+##
+## species_armor_rows builds its item flat rather than with a `combat` block, so
+## a layer search that knew only one shape would find a T'sa's hide and miss
+## every suit of armor in the book -- or the other way round.
+const LEGACY_IMPACT_KEYS := {
 	"li": "armor_li",
 	"hi": "armor_hi",
 	"en": "armor_en",
@@ -117,9 +166,11 @@ const IMPACT_KEYS := {
 ## best_absorption. Handing back the list rather than a number is what lets a
 ## caller roll each one, which is what the rule asks for.
 func armor_layers(character: Dictionary, impact_type: String) -> Array:
-	var key := String(IMPACT_KEYS.get(impact_type.to_lower(), ""))
+	var impact := impact_type.to_lower()
+	var key := String(IMPACT_KEYS.get(impact, ""))
 	if key.is_empty():
 		return []
+	var legacy_key := String(LEGACY_IMPACT_KEYS.get(impact, ""))
 
 	var rows: Array = []
 	var summary: Dictionary = _get_parent().equipment.equipment_summary(character)
@@ -135,7 +186,8 @@ func armor_layers(character: Dictionary, impact_type: String) -> Array:
 		if typeof(row) != TYPE_DICTIONARY:
 			continue
 		var item: Dictionary = row.get("item", {})
-		var notation := String(item.get(key, "")).strip_edges()
+		var combat: Dictionary = item.get("combat", {})
+		var notation := String(combat.get(key, item.get(legacy_key, ""))).strip_edges()
 		if notation.is_empty() or notation == "-":
 			continue
 		layers.append({
@@ -143,6 +195,34 @@ func armor_layers(character: Dictionary, impact_type: String) -> Array:
 			"notation": notation,
 		})
 	return layers
+
+
+## The toughness grade an attack is compared against: "O", "G" or "A".
+##
+## Toughness is a property of what the target is wearing, and it is the other
+## half of the firepower comparison -- a weapon below it has its damage track
+## degraded, a weapon above it may have its hit quality raised. An unarmored
+## person is Ordinary toughness, which is also the floor: armor cannot make
+## somebody easier to hurt than being in a shirt.
+##
+## Where layers disagree, the best one answers, for the same reason the best
+## absorption does.
+func toughness_of(character: Dictionary) -> String:
+	var best := 0
+	var rows: Array = []
+	var summary: Dictionary = _get_parent().equipment.equipment_summary(character)
+	var equipped = summary.get("equipped_armor", [])
+	if typeof(equipped) == TYPE_ARRAY:
+		rows.append_array(equipped)
+	rows.append_array(_get_parent().cybertech.cybertech_armor_rows(character))
+
+	for row in rows:
+		if typeof(row) != TYPE_DICTIONARY:
+			continue
+		var combat: Dictionary = row.get("item", {}).get("combat", {})
+		var grade := String(combat.get("toughness", "")).strip_edges().to_upper()
+		best = maxi(best, AlternityRulesConstants.FIREPOWER_GRADES.find(grade))
+	return String(AlternityRulesConstants.FIREPOWER_GRADES[maxi(0, best)])
 
 
 ## The absorption from a set of layer rolls: the best one, and only the best.

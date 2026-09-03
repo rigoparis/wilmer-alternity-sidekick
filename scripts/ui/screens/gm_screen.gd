@@ -48,6 +48,7 @@ const SHORTCUT_COUNT := 6
 const AP_AWARD_ROUTE := preload("res://scenes/ui/routes/ap_award_route.tscn")
 const CHECK_STEP_ROUTE := preload("res://scenes/ui/routes/check_step_route.tscn")
 const CHARACTER_VIEW_ROUTE := preload("res://scenes/ui/routes/character_view_route.tscn")
+const COMBAT_ATTACK_ROUTE := preload("res://scenes/ui/routes/combat_attack_route.tscn")
 const DICE_TRAY_ROUTE := preload("res://scenes/ui/routes/dice_tray_route.tscn")
 const SKILL_PICK_ROUTE := preload("res://scenes/ui/routes/skill_pick_route.tscn")
 const TABLE_SETTINGS_ROUTE := preload("res://scenes/ui/routes/table_settings_route.tscn")
@@ -299,9 +300,11 @@ func _render_acting_order() -> void:
 			_palette,
 			Widgets.FONT_CAPTION
 		)
+	var acting_ids: Dictionary = {}
 	var position := 0
 	for entry in acting:
 		position += 1
+		acting_ids[String(entry.get("id", ""))] = true
 		var line := "%d. %s   (score %d)" % [
 			position,
 			String(entry.get("name", "Someone")),
@@ -311,9 +314,24 @@ func _render_acting_order() -> void:
 		# saying so is the difference between a bug and the rule.
 		if bool(entry.get("pending_out", false)):
 			line += "   -- going down"
-		var row := Widgets.text(_combat_body, line, _palette, Widgets.FONT_DETAIL)
-		row.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		row.custom_minimum_size = Vector2(1, 0)
+		_combat_row(line, String(entry.get("id", "")))
+
+	# Everyone else still on their feet. They are not acting this phase, and they
+	# are still standing there to be shot at -- an attack is aimed at whoever the
+	# attacker chose, not at whoever rolled well.
+	var bystanders: Array = []
+	for entry in _fight.combatants:
+		var player_id := String(entry.get("id", ""))
+		if bool(entry.get("out", false)) or acting_ids.has(player_id):
+			continue
+		bystanders.append(entry)
+	if not bystanders.is_empty():
+		Widgets.muted_text(_combat_body, "Also on the field", _palette, Widgets.FONT_CAPTION)
+		for entry in bystanders:
+			_combat_row(
+				"   %s" % String(entry.get("name", "Someone")),
+				String(entry.get("id", ""))
+			)
 
 	var sidelined: Array = []
 	for entry in _fight.combatants:
@@ -328,6 +346,31 @@ func _render_acting_order() -> void:
 		)
 		note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		note.custom_minimum_size = Vector2(1, 0)
+
+
+## One combatant: what they are doing, and the button that shoots at them.
+func _combat_row(line: String, player_id: String) -> void:
+	var row := HBoxContainer.new()
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_theme_constant_override("separation", Widgets.GAP_ROW)
+	_combat_body.add_child(row)
+
+	var label := Label.new()
+	label.text = line
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	label.custom_minimum_size = Vector2(1, 0)
+	label.add_theme_color_override("font_color", _palette.text)
+	label.add_theme_font_size_override("font_size", Widgets.FONT_DETAIL)
+	row.add_child(label)
+
+	var attack := _small_button("Attack", _on_attack_pressed.bind(player_id))
+	attack.custom_minimum_size = Vector2(84, 32)
+	attack.size_flags_horizontal = Control.SIZE_SHRINK_END
+	# Nothing to attack with until the target's device has sent a character: the
+	# armor, the toughness and the resistance all come off their sheet.
+	attack.disabled = not CharacterSnapshot.is_usable(_session.committed_character(player_id))
+	row.add_child(attack)
 
 
 # --- Running the fight -----------------------------------------------------
@@ -424,6 +467,161 @@ func _on_roll_for_pressed(player_id: String) -> void:
 		"roll": AlternityNum.as_int(rolled.result.get("total", 0)),
 		"critical": bool(rolled.result.get("is_critical_failure", false)),
 	})
+
+
+# --- Attacks ---------------------------------------------------------------
+
+## Declare an attack against one seat, roll it, and send it to them.
+##
+## Everything the attacker does happens here: the declaration, the to-hit roll
+## and the damage roll. Nothing about the target's sheet is touched -- that half
+## happens on their device and comes back through _on_attack_resolved.
+##
+## The target's own body is in the to-hit roll all the same, because resisting is
+## something a body does whether or not its owner is paying attention, and the
+## GM holds their committed character.
+func _on_attack_pressed(player_id: String) -> void:
+	if _router == null:
+		return
+	var snapshot := _session.committed_character(player_id)
+	if not CharacterSnapshot.is_usable(snapshot):
+		_status.text = "%s has not committed a character yet." % _player_name(player_id)
+		_status.add_theme_color_override("font_color", _palette.warning)
+		return
+	var target: Dictionary = CharacterSnapshot.character_of(snapshot)
+
+	var declaration = await _router.push(COMBAT_ATTACK_ROUTE, {
+		"palette": _palette,
+		"rules": _rules,
+		"target_id": player_id,
+		"target_name": _player_name(player_id),
+	})
+	if not is_instance_valid(self) or typeof(declaration) != TYPE_DICTIONARY:
+		return
+
+	var defence: Dictionary = _rules.combat.target_defence(
+		target,
+		bool(declaration.get("is_melee", false)),
+		bool(declaration.get("sees_attacker", true)),
+		bool(declaration.get("from_rear", false)),
+		bool(declaration.get("pinned", false))
+	)
+	var steps: int = (
+		AlternityNum.as_int(declaration.get("steps", 0))
+		+ AlternityNum.as_int(defence.get("resistance_step", 0))
+	)
+
+	var degree := await _roll_to_hit(declaration, steps)
+	if not is_instance_valid(self) or degree.is_empty():
+		return
+
+	var split: Dictionary = _rules.combat.split_weapon_type("%s/%s" % [
+		String(declaration.get("impact_type", "hi")),
+		String(declaration.get("firepower", "O")),
+	])
+	var attack := CombatAttack.declare(
+		player_id,
+		String(declaration.get("attacker_name", "Someone")),
+		String(declaration.get("weapon_name", "an attack")),
+		degree,
+		0,
+		"s",
+		String(split.get("impact", "hi")),
+		String(split.get("firepower", "O"))
+	)
+	attack.is_melee = bool(declaration.get("is_melee", false))
+	attack.sees_attacker = bool(declaration.get("sees_attacker", true))
+	attack.from_rear = bool(declaration.get("from_rear", false))
+	attack.pinned = bool(declaration.get("pinned", false))
+
+	if attack.hits():
+		# A called shot that lands is promoted, and so is a weapon that outclasses
+		# what the target is wearing. Both change which of the weapon's three
+		# damage entries gets rolled, so both are settled before the dice.
+		var effective := degree
+		if bool(declaration.get("called_shot", false)):
+			effective = _rules.promote_degree(effective)
+		effective = _rules.character_upgraded_damage_degree(
+			target, effective, attack.firepower, _rules.combat.toughness_of(target)
+		)
+		attack.degree = effective.capitalize()
+
+		var entry: String = _rules.combat.damage_entry_for(String(declaration.get("damage_text", "")), effective)
+		attack.damage_type = _rules.combat.damage_track_of(entry)
+		attack.damage = await _roll_damage(entry, attack)
+		if not is_instance_valid(self):
+			return
+
+	_send_attack(attack)
+
+
+## The attack roll itself. Returns the degree, or "" if the GM walked away.
+##
+## The attacker has no character sheet, so their Good and Amazing come off the
+## one score the GM gave, the same halving and quartering a sheet does.
+func _roll_to_hit(declaration: Dictionary, steps: int) -> String:
+	var score: int = AlternityNum.as_int(declaration.get("attack_score", 0))
+	var to_hit := SkillCheck.new(String(declaration.get("target_id", "")), SkillCheck.ORIGIN_GM)
+	to_hit.skill_label = "%s attacks with %s" % [
+		String(declaration.get("attacker_name", "Someone")),
+		String(declaration.get("weapon_name", "an attack")),
+	]
+	to_hit.ordinary = score
+	to_hit.good = int(floor(score / 2.0))
+	to_hit.amazing = int(floor(score / 4.0))
+	to_hit.player_step = steps
+
+	var outcome = await _router.push(DICE_TRAY_ROUTE, {
+		"palette": _palette,
+		"rules": _rules,
+		"check": to_hit.to_dict(),
+	})
+	if not is_instance_valid(self) or typeof(outcome) != TYPE_DICTIONARY or not outcome.has("check"):
+		return ""
+	return SkillCheck.from_dict(outcome["check"]).degree()
+
+
+## Roll one damage entry on the tray. Nothing is subtracted here: the armor is
+## the target's to roll.
+func _roll_damage(entry: String, attack: CombatAttack) -> int:
+	var term := DiceNotation.parse(entry)
+	if not bool(term.get("ok", false)):
+		# "As Load" and "Special" are prose rather than notation; the GM says what
+		# it did rather than the app inventing a number.
+		return 0
+	var rolled = await _router.push(DICE_TRAY_ROUTE, {
+		"palette": _palette,
+		"rules": _rules,
+		"terms": [term],
+		"label": "%s damage (%s)" % [attack.weapon_name, entry],
+	})
+	if not is_instance_valid(self) or typeof(rolled) != TYPE_DICTIONARY:
+		return 0
+	return maxi(0, AlternityNum.as_int(rolled.get("total", 0)))
+
+
+## Off to the target, whose device works out what it cost them.
+##
+## A miss travels too. The log gets its line when the answer comes back, so it
+## can say both halves at once -- except for a miss, which has no second half.
+func _send_attack(attack: CombatAttack) -> void:
+	if _hosting and _transport != null:
+		_transport.send_attack(attack.to_dict(), attack.target_player_id)
+	if not attack.hits() or not _hosting or _transport == null:
+		_session.append_attack(attack.target_player_id, attack.to_dict())
+		_store.save(_session)
+	refresh()
+
+
+## What the target's device made of it.
+func _on_attack_resolved(player_id: String, data: Dictionary) -> void:
+	var attack := CombatAttack.from_dict(data)
+	# The seat the answer came from wins over the one written on the attack: a
+	# device can only answer for itself.
+	attack.target_player_id = player_id
+	_session.append_attack(player_id, attack.to_dict())
+	_store.save(_session)
+	refresh()
 
 
 func _on_action_check_received(player_id: String, result: Dictionary) -> void:
@@ -927,6 +1125,8 @@ func _describe_event(event: Dictionary) -> String:
 				AlternityNum.as_int(payload.get("new_ap", 0)),
 				AlternityNum.as_int(payload.get("previous_ap", 0)),
 			]
+		CampaignSession.EVENT_ATTACK:
+			return "%s  %s" % [stamp, CombatAttack.from_dict(payload).describe()]
 		CampaignSession.EVENT_CHECK:
 			return "%s  the GM called for %s" % [stamp, SkillCheck.from_dict(payload).describe()]
 		CampaignSession.EVENT_JOIN:
@@ -1288,6 +1488,7 @@ func _toggle_hosting() -> void:
 		_transport.character_received.connect(_on_character_received)
 		_transport.check_requested.connect(_on_check_requested)
 		_transport.action_check_received.connect(_on_action_check_received)
+		_transport.attack_resolved.connect(_on_attack_resolved)
 		_transport.transport_error.connect(_on_transport_error)
 
 	if _transport.host(_session, EnetTransport.DEFAULT_PORT) != OK:

@@ -26,6 +26,7 @@ func _init() -> void:
 	_combat = _rules.combat
 
 	_test_armor_layers()
+	_test_toughness()
 	_test_resistance()
 	_test_awareness()
 	_test_dodge()
@@ -82,6 +83,52 @@ func _test_armor_layers() -> void:
 		check_true(typeof(layers) == TYPE_ARRAY, "an unarmored hero has a layer list for %s" % impact)
 	check_eq(_combat.armor_layers(bare, "plasma").size(), 0, "an unknown impact type matches no rating")
 	check_eq(_combat.armor_layers(bare, "").size(), 0, "and neither does none at all")
+	check_eq(_combat.armor_layers(bare, "hi").size(), 0, "and a hero in a shirt has nothing to roll")
+
+	# Worn armor, which is where most absorption comes from and which writes its
+	# ratings in a different place from a natural hide.
+	var suited := _hero(10)
+	var line: String = _rules.equipment.add_equipment_to_character(suited, "armor_core_002")
+	check_false(line.is_empty(), "battle armor is in the catalogue")
+	var carried_only: Array = _combat.armor_layers(suited, "hi")
+	check_eq(carried_only.size(), 0, "armor in a backpack absorbs nothing")
+
+	_rules.equipment.update_carried_equipment(suited, line, 1, true, "Body", "")
+	var worn: Array = _combat.armor_layers(suited, "hi")
+	check_eq(worn.size(), 1, "wearing it makes it a layer")
+	if worn.size() > 0:
+		check_eq(String(worn[0]["notation"]), "d6+1", "with the rating the attack asked for")
+		check_eq(String(worn[0]["name"]), "Attack armor", "and the name of what stopped it")
+	var energy: Array = _combat.armor_layers(suited, "en")
+	check_eq(String(energy[0]["notation"]) if energy.size() > 0 else "", "d6-1", "a different attack reads a different rating")
+
+
+## What a weapon is compared against, which is a property of what they wear.
+func _test_toughness() -> void:
+	check_eq(_combat.toughness_of(_hero(10)), "O", "an unarmored person is Ordinary toughness")
+
+	var suited := _hero(10)
+	var line: String = _rules.equipment.add_equipment_to_character(suited, "armor_core_001")
+	_rules.equipment.update_carried_equipment(suited, line, 1, true, "Body", "")
+	check_eq(_combat.toughness_of(suited), "G", "powered attack armor is Good toughness")
+
+	# Which is the whole point of it: an Ordinary weapon can no longer wound.
+	check_eq(
+		_rules.degrade_damage_grade("wound", "O", _combat.toughness_of(suited)), "stun",
+		"so an Ordinary weapon only stuns them"
+	)
+	check_eq(
+		_rules.degrade_damage_grade("wound", "G", _combat.toughness_of(suited)), "wound",
+		"and a Good one wounds as normal"
+	)
+
+	# The best layer answers, the same way the best absorption does.
+	var layered := _hero(10)
+	var soft: String = _rules.equipment.add_equipment_to_character(layered, "armor_core_002")
+	var hard: String = _rules.equipment.add_equipment_to_character(layered, "armor_core_001")
+	_rules.equipment.update_carried_equipment(layered, soft, 1, true, "Body", "")
+	_rules.equipment.update_carried_equipment(layered, hard, 1, true, "Over", "")
+	check_eq(_combat.toughness_of(layered), "G", "the best toughness worn is the one that answers")
 
 
 # --- Defence ---------------------------------------------------------------

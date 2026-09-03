@@ -54,6 +54,7 @@ func build(container: Container) -> void:
 		table.trouble.connect(_on_trouble)
 		table.round_changed.connect(_on_round_changed)
 		table.action_check_wanted.connect(_on_action_check_wanted)
+		table.attack_arrived.connect(_on_attack_arrived)
 
 	_build_status(container, table)
 	_build_combat(container, table)
@@ -116,9 +117,14 @@ func _render_combat(table: TableSession) -> void:
 		_combat_body.remove_child(child)
 		child.queue_free()
 
+	# First, because somebody is waiting on it and because an attack can arrive
+	# when there is no round running at all -- an ambush is not a phase.
+	_render_incoming(table)
+
 	var fight: ActionRound = table.active_round
 	if fight == null:
-		Widgets.muted_text(_combat_body, "No fight running.", ctx.palette, Widgets.FONT_CAPTION)
+		if table.incoming_attacks.is_empty():
+			Widgets.muted_text(_combat_body, "No fight running.", ctx.palette, Widgets.FONT_CAPTION)
 		return
 
 	var heading := Widgets.text(_combat_body, fight.describe(), ctx.palette, Widgets.FONT_SUBHEADING, ctx.palette.accent)
@@ -181,6 +187,140 @@ func _render_combat(table: TableSession) -> void:
 		)
 		line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		line.custom_minimum_size = Vector2(1, 0)
+
+
+## Attacks waiting on this device, and the button that resolves one.
+##
+## The card says everything the GM already decided -- who, with what, how well it
+## landed -- and nothing about what it will cost, because that is not known until
+## this device rolls its own armor.
+func _render_incoming(table: TableSession) -> void:
+	for attack in table.incoming_attacks:
+		var card := VBoxContainer.new()
+		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		card.add_theme_constant_override("separation", Widgets.GAP_TIGHT)
+		_combat_body.add_child(card)
+
+		var line := Widgets.text(
+			card, (attack as CombatAttack).describe(), ctx.palette, Widgets.FONT_BODY,
+			ctx.palette.warning if (attack as CombatAttack).hits() else ctx.palette.muted
+		)
+		line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		line.custom_minimum_size = Vector2(1, 0)
+
+		if not (attack as CombatAttack).hits():
+			var shrug := _small_button("Dismiss", _on_dismiss_attack_pressed.bind(attack))
+			card.add_child(shrug)
+			continue
+
+		# What they will be rolling, said before they roll it. Armor that absorbs
+		# nothing is worth knowing about in advance.
+		var layers: Array = ctx.rules.combat.armor_layers(ctx.doc.raw(), (attack as CombatAttack).impact_type)
+		var names: Array = []
+		for layer in layers:
+			names.append("%s %s" % [String(layer.get("name", "Armor")), String(layer.get("notation", ""))])
+		var armor := Widgets.muted_text(
+			card,
+			("Your armor: " + ", ".join(names)) if not names.is_empty() else "You have nothing to soak it with.",
+			ctx.palette,
+			Widgets.FONT_CAPTION
+		)
+		armor.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		armor.custom_minimum_size = Vector2(1, 0)
+
+		var resolve := Button.new()
+		resolve.name = "ResolveAttackButton"
+		resolve.text = "Resolve it"
+		resolve.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		resolve.custom_minimum_size = Vector2(0, 40)
+		resolve.clip_text = true
+		resolve.add_theme_stylebox_override("normal", Widgets.flat_style(ctx.palette.surface_soft, ctx.palette.accent, 6))
+		resolve.pressed.connect(_on_resolve_attack_pressed.bind(attack))
+		card.add_child(resolve)
+
+
+func _small_button(label: String, handler: Callable) -> Button:
+	var button := Button.new()
+	button.text = label
+	button.custom_minimum_size = Vector2(0, 34)
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button.clip_text = true
+	button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	button.pressed.connect(handler)
+	return button
+
+
+## An attack arrived while the player was looking at something else.
+func _on_attack_arrived(_attack: CombatAttack) -> void:
+	_on_round_changed()
+
+
+## A miss still travelled here, so it still has to be cleared away.
+func _on_dismiss_attack_pressed(attack: CombatAttack) -> void:
+	if ctx == null or ctx.table == null:
+		return
+	ctx.table.apply_attack(attack, 0)
+	ctx.table.report_attack(attack, 0, {})
+	_on_round_changed()
+
+
+## Resolve one attack, in the order the rules put it.
+##
+## Armor first, because absorption comes off the damage before anything else.
+## Then the damage lands on this device's own sheet. Then, if it was an Amazing
+## hit, the endurance check to stay standing -- rolled after the damage, because
+## being hurt is part of what makes it hard to stay conscious.
+func _on_resolve_attack_pressed(attack: CombatAttack) -> void:
+	if ctx == null or ctx.table == null or ctx.checks == null or ctx.doc == null:
+		return
+
+	var absorbed := 0
+	for layer in ctx.rules.combat.armor_layers(ctx.doc.raw(), attack.impact_type):
+		var rolled: int = await ctx.checks.roll_notation(
+			String(layer.get("notation", "")),
+			"%s absorbs" % String(layer.get("name", "Armor"))
+		)
+		if not is_instance_valid(self):
+			return
+		# Walking away from the tray is not an answer, and the attack stays in the
+		# queue until it gets one.
+		if rolled < 0:
+			return
+		# Layers do not add up: every one is rolled, and the best of them answers.
+		absorbed = maxi(absorbed, rolled)
+
+	var knockout: Dictionary = ctx.table.knockout_check_for(attack)
+	var outcome: Dictionary = ctx.table.apply_attack(attack, absorbed)
+
+	var down := false
+	if bool(knockout.get("required", false)) and not bool(outcome.get("negated", false)):
+		down = not await _survives_the_hit(knockout)
+		if not is_instance_valid(self):
+			return
+
+	ctx.table.report_attack(attack, absorbed, outcome, down)
+	_on_round_changed()
+	save_requested.emit()
+
+
+## The Stamina-endurance check an Amazing hit forces.
+##
+## Returns true when they stay standing, which is also what an abandoned roll
+## returns -- refusing to throw the dice must not be a way to be knocked out.
+func _survives_the_hit(knockout: Dictionary) -> bool:
+	var skill: Dictionary = ctx.rules.get_skill_by_id(AlternityNum.as_int(knockout.get("skill_id", -1), -1))
+	if skill.is_empty():
+		return true
+	var check := SkillCheck.call_for(
+		ctx.rules.skill_label(skill),
+		0,
+		String(knockout.get("reason", "")),
+		AlternityNum.as_int(knockout.get("skill_id", -1), -1)
+	)
+	var rolled = await ctx.checks.run_called(check, ctx.doc, skill)
+	if rolled == null:
+		return true
+	return (rolled as SkillCheck).is_success()
 
 
 ## Which phases this player acts in.

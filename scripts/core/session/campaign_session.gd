@@ -34,6 +34,12 @@ const EVENT_AP_SET := "ap_set"
 ## whole check, and if they change their mind nothing happened.
 const EVENT_CHECK := "check"
 
+## An attack was declared against a seat, and what it did.
+##
+## Logged once, when the target's device has reported back, so the line says both
+## halves of it. A declaration that is still in flight is not history yet.
+const EVENT_ATTACK := "attack"
+
 ## AP Award reasons based on core Alternity GM guidelines
 const AP_REASON_COMPLETION := "Adventure Completion"
 const AP_REASON_ROLEPLAYING := "Roleplaying Bonus"
@@ -292,6 +298,11 @@ func append_event(kind: String, player_id: String, payload: Dictionary) -> Dicti
 ## arrives from a player device once their dice have settled.
 func append_roll(player_id: String, roll: Dictionary) -> Dictionary:
 	return append_event(EVENT_ROLL, player_id, roll)
+
+
+## Record a resolved attack against a seat. Takes the serialized CombatAttack.
+func append_attack(player_id: String, attack: Dictionary) -> Dictionary:
+	return append_event(EVENT_ATTACK, player_id, attack)
 
 
 ## Record a chat message. `to_player_id` empty means the whole table; set it for
