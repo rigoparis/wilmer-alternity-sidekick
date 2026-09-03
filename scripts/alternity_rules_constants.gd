@@ -256,10 +256,10 @@ const OPTIONAL_RULES := [
 		"description": "A hero's age category adjusts their ability scores: an adolescent takes -1 STR, -1 INT and -1 WIL but gains +1 DEX, while an old hero loses STR, CON and DEX and gains WIL and PER. With this rule off, every hero in the campaign is treated as a Young Adult for all rules purposes and no age modifier applies -- players may still record an age for their character, it simply does not change their scores. Source: Gamemaster Guide Table G1 p. 21.",
 	},
 	{
-		"id": "firepower_scaling",
-		"name": "Optional Rule: Firepower Scaling",
-		"summary": "Firepower vs Toughness damage degradation",
-		"description": "When an Ordinary weapon hits Good armor or toughness, its damage degrades one step (Mortal to Wound, Wound to Stun). When hitting Amazing toughness, it degrades two steps. Source: Gamemaster Guide Chapter 3 p. 48.",
+		"id": "damage_upgrading",
+		"name": "Optional Rule: Upgrading Damage",
+		"summary": "A weapon that outclasses its target hits harder",
+		"description": "When a weapon's firepower exceeds the target's toughness, the quality of a hit is promoted -- one grade above and an Ordinary hit becomes Good and a Good hit becomes Amazing; two or more grades above and any hit is Amazing. The Gamemaster Guide is explicit that no standard rule exists for this and offers it as a guideline, which is why it is a toggle. Its counterpart, damage degradation when a weapon is too weak for its target, is core and always applies. Source: Gamemaster Guide p. 52, sidebar \"Upgrading Damage?\".",
 	},
 ]
 

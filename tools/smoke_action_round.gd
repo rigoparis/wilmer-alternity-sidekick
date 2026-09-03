@@ -449,18 +449,24 @@ func _test_firepower_upgrade() -> void:
 	check_eq(_rules.upgrade_damage_degree("ordinary", "O", "A"), "ordinary", "and weaker firepower promotes nothing")
 	check_eq(_rules.upgrade_damage_degree("nonsense", "A", "O"), "nonsense", "an unknown degree is left alone")
 
-	# Gated on the same optional rule as degradation: a table not tracking
-	# toughness should see neither effect.
+	# Gated where degradation is not, which looks inconsistent and is not: the
+	# Gamemaster Guide gives degradation as a standard rule and then says on the
+	# same page that "no standard rule exists" for upgrading, offering one as a
+	# guideline. One is the game; the other is a suggestion a table opts into.
 	var plain := {}
 	_rules.ensure_character_shape(plain)
 	check_eq(
 		_rules.character_upgraded_damage_degree(plain, "ordinary", "A", "O"), "ordinary",
-		"with Firepower Scaling off, nothing is promoted"
+		"with Upgrading Damage off, nothing is promoted"
 	)
-	_rules.set_optional_rule(plain, "firepower_scaling", true)
+	check_eq(
+		_rules.character_degraded_damage_grade(plain, "mortal", "O", "A"), "stun",
+		"while degradation applies with no toggle at all"
+	)
+	_rules.set_optional_rule(plain, "damage_upgrading", true)
 	check_eq(
 		_rules.character_upgraded_damage_degree(plain, "ordinary", "A", "O"), "amazing",
-		"and with it on, it is"
+		"and with the guideline turned on, a hit is promoted"
 	)
 	check_eq(
 		_rules.character_upgraded_damage_degree(plain, "ordinary", "", ""), "ordinary",

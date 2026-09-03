@@ -71,8 +71,8 @@
 			"2b": true,
 			"2c": true,
 			"age_effects": false,
+			"damage_upgrading": false,
 			"dazed": true,
-			"firepower_scaling": false,
 			"monetary_awards_uncapped": false,
 			"psionic_talents": false
 		},

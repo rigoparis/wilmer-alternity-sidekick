@@ -1027,14 +1027,15 @@ func _init() -> void:
 	assert_eq.call(rules.degrade_damage_grade("wound", "O", "A"), "none", "O vs A -> Wound degrades to None (2 steps)")
 	assert_eq.call(rules.degrade_damage_grade("mortal", "A", "G"), "mortal", "A vs G -> higher firepower, no degradation")
 
-	# The toggle has to actually gate it: degradation only applies when the
-	# Firepower Scaling optional rule is on and both grades are supplied.
+	# Degradation is core and needs no toggle. It used to be gated behind an
+	# optional rule citing Gamemaster Guide p. 48, which is about supporting cast
+	# action checks; the rule is on p. 52 and is standard. The weapon tables
+	# assume it -- a type written HI/O exists so this comparison can be made.
 	var fp_char: Dictionary = rules.default_character()
 	fp_char["abilities"]["CON"] = 12
 	rules.ensure_character_shape(fp_char)
-	assert_eq.call(rules.character_degraded_damage_grade(fp_char, "mortal", "O", "A"), "mortal", "Firepower rule off -> no degradation")
-	rules.set_optional_rule(fp_char, "firepower_scaling", true)
-	assert_eq.call(rules.character_degraded_damage_grade(fp_char, "mortal", "O", "A"), "stun", "Firepower rule on -> Mortal vs Amazing degrades to Stun")
+	assert_eq.call(rules.character_degraded_damage_grade(fp_char, "mortal", "O", "A"), "stun", "Mortal vs Amazing toughness degrades to Stun, with no toggle")
+	assert_eq.call(rules.character_degraded_damage_grade(fp_char, "mortal", "O", "G"), "wound", "and one grade down degrades one step")
 	assert_eq.call(rules.character_degraded_damage_grade(fp_char, "mortal", "", ""), "mortal", "Unspecified grades -> no degradation")
 
 	# A negated hit marks no boxes at all.

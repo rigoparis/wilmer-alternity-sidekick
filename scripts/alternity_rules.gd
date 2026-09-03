@@ -2596,7 +2596,7 @@ func resolve_check(control_die: int, situation_roll: int, target_score: int, sit
 ## Heavy Stun overflow: 2 excess stun -> 1 wound.
 ## Heavy Wound overflow: 2 excess wound -> 1 mortal.
 ## Applies one incoming hit, in the printed order (Player's Handbook p. 52):
-##   1. firepower degradation, when the Firepower Scaling optional rule is on
+##   1. firepower degradation, which is core and always applies
 ##   2. subtract armor absorption from the primary damage
 ##   3. assess the remaining primary damage to its track
 ##   4. derive secondary damage from what actually got through, not the raw roll
@@ -2847,10 +2847,22 @@ func roll_method_3_dice(rng: RandomNumberGenerator = null) -> Array:
 ## 2 steps difference: Mortal -> Stun, Wound -> None, Stun -> None.
 ## degrade_damage_grade() gated on the Firepower Scaling optional rule. Returns
 ## `damage_type` unchanged when the rule is off or either grade is unspecified.
-func character_degraded_damage_grade(character: Dictionary, damage_type: String, weapon_grade: String, target_toughness: String) -> String:
+## Degradation, which is core and always applies.
+##
+## This used to be gated behind an optional rule called "Firepower Scaling",
+## citing Gamemaster Guide p. 48. That citation was wrong -- p. 48 is about
+## supporting cast action checks -- and so was the gating. Firepower versus
+## toughness is a standard rule on p. 52, woven into the equipment tables
+## themselves: a weapon's type is written HI/O or En/G precisely so this
+## comparison can be made, and armor carries a toughness rating for the same
+## reason. A table cannot opt out of it without the weapon stats meaning
+## something else.
+##
+## `character` is still taken, because the parameter is what every caller passes
+## and because the upgrade half genuinely is optional -- see
+## character_upgraded_damage_degree.
+func character_degraded_damage_grade(_character: Dictionary, damage_type: String, weapon_grade: String, target_toughness: String) -> String:
 	if weapon_grade.is_empty() or target_toughness.is_empty():
-		return damage_type
-	if not optional_rule_enabled(character, "firepower_scaling"):
 		return damage_type
 	return degrade_damage_grade(damage_type, weapon_grade, target_toughness)
 
@@ -2970,13 +2982,16 @@ func upgrade_damage_degree(degree: String, weapon_grade: String, target_toughnes
 
 ## upgrade_damage_degree, gated on the campaign's optional rules.
 ##
-## Same gate as the degradation half: a table that has not turned Firepower
-## Scaling on should see neither effect, or a weapon would be upgraded against a
-## toughness rating nobody is tracking.
+## Gated where degradation is not, which looks inconsistent and is not. The
+## Gamemaster Guide gives degradation as a standard rule and then says, in a
+## sidebar on the same page, that "no standard rule exists to consider upgrading
+## damage when a weapon's firepower exceeds the toughness of its target" before
+## offering one as a guideline. So one is the game and the other is a suggestion,
+## and a table gets to decide about the suggestion.
 func character_upgraded_damage_degree(character: Dictionary, degree: String, weapon_grade: String, target_toughness: String) -> String:
 	if weapon_grade.is_empty() or target_toughness.is_empty():
 		return degree
-	if not optional_rule_enabled(character, "firepower_scaling"):
+	if not optional_rule_enabled(character, "damage_upgrading"):
 		return degree
 	return upgrade_damage_degree(degree, weapon_grade, target_toughness)
 

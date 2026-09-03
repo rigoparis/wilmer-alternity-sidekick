@@ -1,193 +1,149 @@
-# Questions for the manuals: Alternity tactical combat
+# Questions for the manuals: Alternity combat, round 2
 
-Context for whoever answers: we are implementing Alternity's action round and
-combat resolution in an app. The rules engine already implements degrees of
-success (including natural 1 and natural 20), action check scores, the step→die
-chain, the damage pipeline (armor on primary damage only, secondary stun from
-wound, secondary wound+stun from mortal, both 2-for-1 overflows), and the
-cumulative penalty table including Dazed.
+Round 1 (action round order, surprise, range bands, armor, firepower, actions,
+knockout recovery, firing modes, defence costs, cover, movement) has been
+answered and implemented. Thank you — three of those answers caught real bugs.
 
-**Please cite book and page for each answer** (e.g. "Player's Handbook p. 57").
-Answers get quoted in source comments, and a rule we cannot attribute is a rule
-we will eventually mistrust. If a rule genuinely is not in the books and is GM
-judgement, say so plainly — that is a useful answer.
+Same request as before: **cite book and page**, say which option is correct
+rather than describing all of them, and if something is genuinely GM judgement
+rather than a written rule, say so plainly.
 
-Where a question offers options, please say which is correct rather than
-describing all of them.
+**Priority: sections E and F.** E settles a contradiction with what the app
+already does, and F is needed before any attack can be resolved end to end. G
+and H can wait if budget is tight.
 
 ---
 
-## A. Blocking — we have already implemented these and may have them wrong
+## E. Is Firepower vs Toughness core or optional?
 
-### A1. Order of actions inside a phase
+The app currently ships Firepower/Toughness as an **optional rule**, off by
+default, described as "When an Ordinary weapon hits Good armor or toughness, its
+damage degrades one step... Source: Gamemaster Guide Chapter 3 p. 48."
 
-Within a single phase, when several characters act, what decides who goes first?
+Round 1 said it is **core**, citing Gamemaster Guide p. 52.
 
-This matters because Alternity is roll-under: a *lower* d20 result is a better
-check. We currently sort by **highest action check roll total first**, which we
-suspect is backwards.
+This matters because turning it on changes damage results for every character
+already saved, so we want to be certain before flipping it.
 
-Which is it?
-- highest **roll total** first
-- lowest **roll total** first
-- highest **Action Check score** (the character's own target number) first
-- something else (please describe)
+### E1.
+Is Firepower vs Toughness a core rule that always applies, or is it presented as
+optional anywhere in the books?
 
-And does the order affect anything mechanically, given that results apply
-simultaneously at the end of the phase — or is it purely about who declares
-first?
+- If it is core: is there any explicitly labelled *optional* variant of it, or an
+  "if you prefer a simpler game, ignore this" note?
+- What is actually on **Gamemaster Guide p. 48**, and how does it relate to
+  p. 52? We may have conflated two different rules.
 
-### A2. How often is the action check rolled?
+### E2.
+Does the **upgrade** half (firepower above toughness promoting hit quality) come
+from the same rule and the same page as the **degradation** half, or are they
+separate rules that could be adopted independently?
 
-Does every combatant roll a new action check at the start of **every** round, or
-is it rolled once when combat begins and kept for the whole fight?
-
-### A3. The surprise phase
-
-Player's Handbook p. 59 mentions a special *surprise phase* where unsurprised
-characters may act, after which "normal action rounds start."
-
-- Is the surprise phase a fifth phase inside the first normal round, or a
-  separate pre-round that happens before round 1?
-- Do characters roll an action check to act in it, or does everyone unsurprised
-  simply act?
-- How many actions does a character get in the surprise phase?
-
-### A4. Is the p. 246 "Situation Die Modifiers" table the right one for combat?
-
-We are using the compiled **Situation Die Modifiers** table (Extreme +3,
-Moderate +2, Slight +1, Marginal none, Ordinary −1, Good −2, Amazing −3) as the
-general step scale, treating "light cover", "moonlight" etc. as instances of
-those categories.
-
-Is there a **separate, specific combat modifiers table** (range, cover,
-visibility, movement, called shots, aiming...) that we should be using instead
-or in addition? If so, please transcribe it in full with its page.
+### E3.
+Alternity labels some rules explicitly as optional — "Optional Rule: Dazed", for
+instance. Please list the combat-related rules the books explicitly label
+optional, so we can be sure our optional-rule toggles match the books rather
+than an earlier guess.
 
 ---
 
-## B. Blocking — needed for the next piece of work
+## F. The exact attack resolution pipeline
 
-### B1. Which armor rating applies to which attack?
+We need the canonical order of operations. Our engine currently does damage as:
+firepower degradation → subtract armor from primary → assess primary → derive
+secondary from what got through → overflow stun into wound and wound into mortal.
 
-Armor has three ratings: LI (low impact), HI (high impact), En (energy).
+### F1. The full sequence
+Please give the step-by-step order for resolving **one attack**, from declaring
+it to marking the damage, including exactly where each of these happens:
 
-- What decides which of the three applies to a given attack? Is it a property of
-  the weapon, of the damage type (s/w/m), of the ammunition, or something else?
-- Where is that property recorded on a weapon's stat line?
+- netting the situation modifiers into a step total
+- the target's resistance modifier
+- rolling control die + situation die
+- determining the degree of success
+- a called shot's promotion of the degree
+- the firepower **upgrade** of hit quality
+- choosing which of the weapon's three damage entries to roll
+- rolling damage
+- the firepower **degradation** of the damage type
+- rolling armor and subtracting it
+- secondary damage
+- overflow between tracks
+- the Amazing-damage knockout check
 
-### B2. How is armor absorption rolled and applied?
+If two of those can happen in either order without changing the result, say so —
+that is useful too.
 
-- The armor rating is written like `d6−3`. Is that rolled fresh **per hit**?
-- Is it subtracted from primary damage only? (Our engine assumes yes.)
-- If the roll comes out negative, is it treated as 0?
-- Does armor apply against every damage type it is rated for, including Stun?
+### F2. The target's resistance modifier
+Round 1 said ranged attacks are penalised by the target's Dexterity resistance
+modifier and melee by Strength.
 
-### B3. Where do Firepower and Toughness grades come from?
+- Is that modifier **added to the attacker's step total** like any other
+  situation modifier, before the situation die is chosen?
+- Is it the value from Table P2 (ability score → steps)?
+- Does it apply to *every* attack, or only when the target is aware and able to
+  move?
 
-The Firepower/Toughness rule compares a weapon's firepower grade (Ordinary,
-Good, Amazing) against a target's toughness grade.
+### F3. Rolling damage
+- Is the damage die rolled **once per attack**, regardless of degree?
+- The Strength damage bonus: which attacks does it apply to (melee only, thrown,
+  unarmed?), and is it added to the damage roll or to the weapon's listed damage?
+- Does a burst or autofire hit roll damage once per target, or once per round
+  that connects?
 
-- Where is a **weapon's** firepower grade recorded? Is it on the weapon's stat
-  line, derived from its damage, or assigned by the GM?
-- Where is a **character's or vehicle's** toughness grade recorded? Is an
-  ordinary human always Ordinary toughness?
-- Is Firepower/Toughness an optional rule, or core? (Our app currently treats it
-  as optional and gates it behind a setting.)
-
-### B4. Range bands and their modifiers
-
-Weapons carry a range like `10/20/40`.
-
-- Are those the maximum distances in metres for short / medium / long?
-- What step modifier does each band impose? We currently use short −1,
-  medium 0, long +1 — is that right?
-- Is there a band beyond long (extreme), and can a weapon fire past its longest
-  listed range at all?
-
-### B5. What is an "action", and how do actions relate to phases?
-
-A character gets 1–4 actions per round based on CON + WIL.
-
-- Is it **one action per phase** (so a character with 3 actions who rolled
-  Amazing acts in Amazing, Good and Ordinary but not Marginal), or may a
-  character spend several actions in the same phase?
-- Which activities cost a full action? Specifically: attacking, moving,
-  reloading, drawing a weapon, standing up, using a skill.
-- Are there free actions, and if so what qualifies?
-
-### B6. Knockout recovery
-
-An Amazing hit forces a Stamina–endurance check or the character is knocked
-unconscious "for the rest of the round and all of the next."
-
-- After those two rounds, PHB p. 94 mentions **Resolve–physical resolve** checks
-  to regain consciousness, one per round. Please confirm this is the right skill
-  and cadence.
-- On waking, how much stun damage is recovered? (p. 94 suggests it depends on the
-  degree of success — please give the exact numbers.)
-- Does the knocked-out character lose their remaining actions in the current
-  round entirely?
+### F4. Critical failure on an attack
+What happens on a natural 20 attacking? Round 1 mentioned a weapon jam on burst
+fire specifically — is there a general critical-failure result for attacks, or is
+it left to the GM?
 
 ---
 
-## C. Useful — will shape the attack UI
+## G. Defence in detail
 
-### C1. Firing modes
+Round 1 gave the action costs for dodge and parry. We still need what they
+actually *do* mechanically.
 
-- What firing modes exist (single, burst, full auto) and what does each do
-  mechanically — extra attacks, a step modifier, extra damage?
-- How is a weapon's available mode recorded on its stat line?
+### G1. Dodge
+When a character spends an action to dodge:
+- Is it an opposed check, a flat step penalty applied to the attacker, or
+  something else?
+- If it is a check, what is rolled against what, and what does each degree of
+  success do?
+- Does one dodge cover every attack against that character for the round, or only
+  one attack?
 
-### C2. Does the target do anything?
+### G2. Parry
+Same three questions for parry.
 
-- Is an attack purely attacker-rolls-against-their-own-skill-score, or does the
-  target contribute a defence, dodge or resistance modifier?
-- If the target can react, does reacting cost them an action from their own
-  allotment?
-
-### C3. Called shots and aiming
-
-- Is there a called-shot rule (targeting a specific location), and what step
-  penalty does it carry?
-- Is there an aim action that grants a step bonus, and what does it cost?
-
-### C4. Cover
-
-- Is cover purely a step penalty on the attacker's check, or does it also reduce
-  damage / block line of fire entirely?
-- How many grades of cover are there, and what is each worth?
-
-### C5. Multiple opponents and flanking
-
-- Are there modifiers for attacking a target who is engaged with someone else, or
-  for being outnumbered?
-
-### C6. Movement in combat
-
-- The Combat Movement Rates table (PHB p. 246) gives Sprint / Run / Walk / Easy
-  Swim / Swim / Glide / Fly in metres.
-- Does moving cost an action? Does moving impose a step penalty on attacks made
-  in the same round, and if so how much?
+### G3. Awareness
+- Can a character dodge or parry an attack they did not see coming (attacker
+  hidden, attack from the rear, surprise phase)?
 
 ---
 
-## D. Lower priority — for later
+## H. After the hit
 
-### D1. NPC stat blocks
+### H1. Running out of Mortal
+What happens when the last Mortal box is filled? Please give the exact rule —
+immediate death, dying and stabilisable, a check to survive?
 
-What is the minimum stat block the books use for an NPC or creature in combat?
-We want to know exactly which fields a GM must fill in: action check score,
-durability, armor, attacks, firepower/toughness, actions per round, anything
-else.
+### H2. Recovery rates
+Our campaigns run for months, so recovering between sessions matters. For each
+of Stun, Wound, Mortal and Fatigue: how much is recovered, how often, and does
+it require rest, treatment or a skill check?
 
-### D2. Vehicles and scale
+### H3. Last resort points in combat
+- At what exact moment must a last resort point be declared, relative to rolling
+  the dice and applying results?
+- It shifts the degree of success by one grade — can it shift a Failure to an
+  Ordinary success, or only improve an existing success?
+- Can it be spent to reduce or negate damage after a hit lands?
 
-Does the same action round structure govern vehicle and starship combat, or is
-there a separate initiative/phase system for those?
+---
 
-### D3. Ongoing conditions
+## I. Area effects — only if budget allows
 
-Besides Dazed, Fatigue and Mortal-damage penalties, are there other ongoing
-combat conditions that impose step penalties and would need tracking (stunned,
-prone, blinded, grappled, on fire)?
+### I1.
+How do grenades and explosions work? Specifically: is there a blast radius with
+different damage grades by distance (the "Amazing radius" phrasing suggests so),
+who rolls what, and can a target dodge to reduce it?
