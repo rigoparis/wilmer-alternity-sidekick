@@ -96,6 +96,7 @@ var _local_player_name: String = ""
 ## address has no idea which campaign it is until this arrives.
 var _campaign_id: String = ""
 var _campaign_name: String = ""
+var _campaign_optional_rules: Dictionary = {}
 var _since_seq: int = 0
 var _handshaken: bool = false
 
@@ -215,6 +216,18 @@ func campaign_id() -> String:
 
 func campaign_name() -> String:
 	return _session.display_name if _session != null else _campaign_name
+
+
+## The optional rules this table plays with.
+##
+## Set by the welcome on a client. A player's character has to be brought into
+## line with these before it is committed: several change ability limits and the
+## starting skill budget, so a hero built under different ones has wrong numbers
+## rather than different preferences.
+func campaign_optional_rules() -> Dictionary:
+	if _session != null:
+		return _session.get_campaign_optional_rules()
+	return _campaign_optional_rules.duplicate(true)
 
 
 ## Player ids currently connected. Host side; the GM's own seat is not among
@@ -472,6 +485,12 @@ func _handle_hello(from_peer: int, message: Dictionary) -> void:
 		"campaign_id": _session.campaign_id,
 		"campaign_name": _session.display_name,
 		"last_seq": _session.last_seq(),
+		# The campaign's optional rules travel with the welcome so a player
+		# joining with a character made under different ones can be brought into
+		# line before they roll anything. Several of these change ability limits
+		# and the starting skill budget, so a hero built without them is not
+		# merely differently configured -- their numbers are wrong for this table.
+		"optional_rules": _session.get_campaign_optional_rules(),
 	})
 
 	# Replay what they missed. A first-time joiner asks from 0 and gets the tail
@@ -540,6 +559,8 @@ func _handle_as_client(message: Dictionary) -> void:
 			_local_player_name = String(message.get("player_name", _local_player_name))
 			_campaign_id = String(message.get("campaign_id", ""))
 			_campaign_name = String(message.get("campaign_name", ""))
+			var table_rules = message.get("optional_rules", {})
+			_campaign_optional_rules = table_rules.duplicate(true) if typeof(table_rules) == TYPE_DICTIONARY else {}
 			_handshaken = true
 			player_connected.emit(_local_player_id, bool(message.get("is_reconnect", false)))
 		MSG_DENIED:

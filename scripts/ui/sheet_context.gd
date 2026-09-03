@@ -37,6 +37,13 @@ var palette: ThemePalette
 ## Tabs should treat this as a hint, not a platform check.
 var is_wide_layout: bool = false
 
+## The table this device is at, when it is at one.
+##
+## Optional, like `checks`. The sheet is the whole app for a player who is not
+## connected to anything, and every use here is guarded -- the Table tab simply
+## excludes itself when this is null.
+var table: TableSession
+
 ## How an action check gets rolled from this sheet, when there is one.
 ##
 ## Optional on purpose. A tab must work without it -- the sheet is usable with no
@@ -67,6 +74,7 @@ func _init(
 func for_document(other_doc: CharacterDoc) -> SheetContext:
 	var copy := SheetContext.new(other_doc, rules, router, palette, is_wide_layout)
 	copy.checks = checks
+	copy.table = table
 	return copy
 
 

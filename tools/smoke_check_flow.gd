@@ -205,10 +205,19 @@ func _test_open_the_table() -> void:
 	if not check(join != null, "the player reaches the join screen"):
 		return
 	join._name_field.text = "Alice"
+	# Joining now asks which hero is being played, and lands the player on that
+	# hero's own sheet with a Table tab -- not on a table screen of its own.
+	var commit := func() -> void:
+		var route = await _await_route(_player_shell, "commit_character_route")
+		if route != null:
+			route.close({"create": true})
+	commit.call_deferred()
+
 	join._join("127.0.0.1", Transport.DEFAULT_PORT, "", "")
 
-	var at_table := await _wait_for(func(): return _screen(_player_shell, "player_table") != null)
-	check_true(at_table, "and joins the table")
+	var at_table := await _wait_for(func(): return _screen(_player_shell, "character_sheet") != null)
+	check_true(at_table, "and joins the table, landing on their own sheet")
+	check_true(_player_shell.table != null, "with a live table on the shell")
 	check_true(_player_shell.checks.has_table(), "so a check now has a GM to ask")
 
 

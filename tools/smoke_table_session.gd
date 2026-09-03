@@ -49,8 +49,7 @@ func _run() -> void:
 	await _test_player_joins()
 	await _test_roll_reaches_the_gm_feed()
 	await _test_private_line()
-	await _test_ap_award_reaches_the_player()
-	await _test_player_applies_ap_to_their_own_hero()
+	await _test_ap_lands_on_the_committed_hero()
 	await _test_reconnect_loses_nothing()
 	await _test_leaving_closes_the_table()
 
@@ -105,8 +104,34 @@ func _wait_for(condition: Callable, max_frames: int = 300) -> bool:
 	return condition.call()
 
 
-func _player_table():
-	return _screen(_player_shell, "player_table")
+## The player's screen at a table is their own sheet.
+func _player_sheet():
+	return _screen(_player_shell, "character_sheet")
+
+
+## The live table the shell holds, which is where the state that used to live on
+## a table screen now sits.
+func _table():
+	return _player_shell.table
+
+
+## Answer the "which hero are you playing" prompt the way a person would.
+func _commit_hero(file_name: String = "") -> void:
+	var responder := func() -> void:
+		var route = await _await_player_route("commit_character_route")
+		if route == null:
+			return
+		route.close({"create": true} if file_name.is_empty() else {"file_name": file_name})
+	responder.call_deferred()
+
+
+func _await_player_route(fragment: String, max_frames: int = 240):
+	for _i in max_frames:
+		var route = _player_shell.router._host.top_route()
+		if route != null and String(route.get_script().resource_path).contains(fragment):
+			return route
+		await process_frame
+	return null
 
 
 ## Answer whatever route the GM shell has open, the way a person would.
@@ -196,11 +221,21 @@ func _test_player_joins() -> void:
 	check_eq(_player_shell.identity.player_name(), "", "this device has no name yet")
 
 	join._name_field.text = "Alice"
+	_commit_hero()
 	join._join("127.0.0.1", Transport.DEFAULT_PORT, "", "")
-	var at_table := await _wait_for(func(): return _player_table() != null)
-	check_true(at_table, "joining reaches the player's table view")
+	var at_table := await _wait_for(func(): return _table() != null and _table().doc != null)
+	check_true(at_table, "joining commits a hero and reaches the table")
 	if not at_table:
 		return
+
+	# The player's main screen is their own sheet, with the table as a tab on it.
+	# It used to be a screen of its own, which meant a player in a months-long
+	# campaign could look at the table or at their character, never both.
+	check(_player_sheet() != null, "and the screen showing is their character sheet")
+	var tab_ids: Array = []
+	for definition in CharacterSheetScreen.TABS:
+		tab_ids.append(String(definition["id"]))
+	check_true(tab_ids.has("table"), "which has a Table tab among its tabs")
 
 	check_eq(_player_shell.identity.player_name(), "Alice", "the device remembers the name given")
 	check_eq(_gm_screen().session().seats.size(), 2, "the GM seated them alongside their own seat")
@@ -230,12 +265,12 @@ func _test_player_joins() -> void:
 # --- Play ------------------------------------------------------------------
 
 func _test_roll_reaches_the_gm_feed() -> void:
-	var table = _player_table()
+	var table = _table()
 	if not check(table != null, "the player is at the table"):
 		return
 
 	var before: int = _gm_screen().session().events.size()
-	table._transport.send_roll({
+	table.transport.send_roll({
 		"notation": "d20+d4",
 		"dice": [17, 3],
 		"total": 20,
@@ -271,12 +306,10 @@ func _test_roll_reaches_the_gm_feed() -> void:
 
 
 func _test_private_line() -> void:
-	var table = _player_table()
+	var table = _table()
 	var before: int = _gm_screen().session().events.size()
 
-	table._chat_field.text = "can I check for traps quietly?"
-	table._private_toggle.button_pressed = true
-	table._send_chat()
+	table.send_chat("can I check for traps quietly?", true)
 
 	var landed := await _wait_for(func(): return _gm_screen().session().events.size() > before)
 	check_true(landed, "a private line reaches the GM")
@@ -291,7 +324,6 @@ func _test_private_line() -> void:
 	check_eq(String(logged.get("payload", {}).get("to", "")), gm_seat_id,
 		"addressed to the GM's actual seat, not to the sentinel the client sent")
 	check_ne(String(logged.get("payload", {}).get("to", "")), Transport.TO_GM, "the sentinel does not reach the log")
-	check_eq(_chat_field_text(table), "", "the message box is cleared after sending")
 
 	var lines: Array = []
 	for child in _gm_screen()._feed_list.get_children():
@@ -299,65 +331,61 @@ func _test_private_line() -> void:
 	check_true(String(lines[0]).contains("private"), "the GM's feed marks it as private")
 
 
-func _chat_field_text(table) -> String:
-	return table._chat_field.text
+## The conflict rule, made concrete.
+##
+## The GM awards the points; the player's device is what writes them into a
+## character file. The GM never touches a hero they cannot see.
+##
+## There is no picker asking which hero receives them. A player at a table is
+## playing the one they committed, so that was a question with a single possible
+## answer -- and a button somebody had to remember to press before their sheet
+## was right.
+func _test_ap_lands_on_the_committed_hero() -> void:
+	var table = _table()
+	if not check(table.doc != null, "a hero is committed to this table"):
+		return
 
-
-func _test_ap_award_reaches_the_player() -> void:
-	var table = _player_table()
-	check_eq(table.unclaimed_ap(), 0, "the player has no awards yet")
+	var before: int = AlternityNum.as_int(table.doc.raw().get("achievement_points", 0))
+	var applied := []
+	table.ap_applied.connect(func(amount: int, reason: String): applied.append([amount, reason]))
 
 	# Exactly what the GM screen does when the award dialog is confirmed.
 	var awarded: Dictionary = _gm_screen().session().award_ap(_joined_player_id, 3, Session.AP_REASON_HEROISM)
 	_gm_screen().transport()._deliver(awarded)
 	_gm_shell.campaigns.save(_gm_screen().session())
 
-	var arrived := await _wait_for(func(): return table.unclaimed_ap() > 0)
+	var arrived := await _wait_for(func(): return not applied.is_empty())
 	check_true(arrived, "the award reaches the player device")
 	if not arrived:
 		return
-	check_eq(table.unclaimed_ap(), 3, "with the right amount")
+	check_eq(AlternityNum.as_int(applied[0][0]), 3, "with the right amount")
+	check_eq(String(applied[0][1]), Session.AP_REASON_HEROISM, "and the reason")
 
+	check_eq(
+		AlternityNum.as_int(table.doc.raw().get("achievement_points", 0)), before + 3,
+		"and lands on the committed hero without being asked about"
+	)
+
+	# On disk, not just in memory: the player closing the app should not lose it.
+	var reloaded = _player_shell.store.load_doc(table.doc.source_file)
+	check(reloaded != null, "the hero was saved")
+	if reloaded != null:
+		check_eq(
+			AlternityNum.as_int(reloaded.raw().get("achievement_points", 0)), before + 3,
+			"with the points written into the character file"
+		)
+
+	# It shows in the feed, said to them rather than about an id.
 	var lines: Array = []
-	for child in table._feed_list.get_children():
-		lines.append(child.text)
-	check_true(String(lines[0]).contains("3 AP"), "the player's feed shows the award")
+	for event in table.recent():
+		lines.append(table.describe(event))
+	check_true(lines.size() > 0, "the player's feed has something in it")
+	check_true(String(lines[0]).contains("3 AP"), "and shows the award")
 	check_true(String(lines[0]).contains(Session.AP_REASON_HEROISM), "and what it was for")
 	check_true(String(lines[0]).begins_with("You"), "addressed to them rather than to an id")
 
-
-## The conflict rule, made concrete.
-##
-## The GM awarded the points; the player's device is what writes them into a
-## character file. The GM never touches a hero they cannot see.
-func _test_player_applies_ap_to_their_own_hero() -> void:
-	var table = _player_table()
-
-	var doc = CharacterDoc.new(_player_shell.rules)
-	doc.set_hero_name("Vance Kellar")
-	_player_shell.store.save(doc)
-	var before: int = AlternityNum.as_int(doc.raw().get("achievement_points", 0))
-
-	table._render_ap()
-	await process_frame
-	check_false(table._claim_button.disabled, "the claim button is live once there is something to claim")
-
-	table._on_claim_pressed()
-	await process_frame
-
-	var reloaded = _player_shell.store.load_doc("Vance_Kellar.json")
-	check(reloaded != null, "the hero is still there")
-	if reloaded == null:
-		return
-	check_eq(
-		AlternityNum.as_int(reloaded.raw().get("achievement_points", 0)), before + 3,
-		"the awarded points landed on the player's own character file"
-	)
-	check_eq(table.unclaimed_ap(), 0, "and are no longer waiting")
-	check_true(table._claim_button.disabled, "so the button goes quiet")
-
-	# The GM's copy is unchanged: the seat ledger is the GM's record of what was
-	# given, not a second copy of the character.
+	# The GM's copy is a ledger of what was given, not a second copy of the
+	# character. Both counting the same points is correct.
 	check_eq(_gm_screen().session().get_seat_ap(_joined_player_id), 3, "the GM's ledger still records the award")
 	check_eq(_gm_shell.store.list().size(), 0, "and the GM device never gained a character file")
 
@@ -366,7 +394,7 @@ func _test_player_applies_ap_to_their_own_hero() -> void:
 
 ## Phase M2's checkpoint: a mid-session reconnect that loses nothing.
 func _test_reconnect_loses_nothing() -> void:
-	var table = _player_table()
+	var table = _table()
 	var campaign_id: String = _gm_screen().session().campaign_id
 	var seq_before: int = AlternityNum.as_int(
 		_player_shell.identity.for_campaign(campaign_id).get("last_seq", 0)
@@ -375,7 +403,7 @@ func _test_reconnect_loses_nothing() -> void:
 
 	# The player walks out of the room. Back to the campaign list, which tears
 	# the table view down and with it the connection.
-	table.closed.emit()
+	_player_shell._leave_table()
 	var gone := await _wait_for(func(): return _gm_screen().transport().connected_players().is_empty())
 	check_true(gone, "the GM sees them drop")
 	check_true(_gm_screen().session().has_seat(_joined_player_id), "their seat survives")
@@ -397,8 +425,9 @@ func _test_reconnect_loses_nothing() -> void:
 
 	# The same device, a brand new peer id. Only the stored player_id survived,
 	# and it is what the host matches on.
+	_commit_hero()
 	join._join("127.0.0.1", Transport.DEFAULT_PORT, campaign_id, "The Verge")
-	var back := await _wait_for(func(): return _player_table() != null)
+	var back := await _wait_for(func(): return _table() != null and _table().doc != null)
 	check_true(back, "the player rejoins")
 	if not back:
 		return
@@ -409,15 +438,15 @@ func _test_reconnect_loses_nothing() -> void:
 		"they came back to the same seat"
 	)
 
-	var rejoined = _player_table()
-	var caught_up := await _wait_for(func(): return rejoined.events().size() >= missed)
+	var rejoined = _table()
+	var caught_up := await _wait_for(func(): return rejoined.events.size() >= missed)
 	check_true(caught_up, "and is sent what they missed")
 	if not caught_up:
 		return
-	check_eq(rejoined.events().size(), missed, "exactly what they missed, not the whole campaign")
+	check_eq(rejoined.events.size(), missed, "exactly what they missed, not the whole campaign")
 
 	var texts: Array = []
-	for event in rejoined.events():
+	for event in rejoined.events:
 		texts.append(String(event.get("payload", {}).get("text", "")))
 	check_true(texts.has("the door gives way"), "including the first thing they missed")
 	check_true(texts.has("something moves inside"), "and the last")

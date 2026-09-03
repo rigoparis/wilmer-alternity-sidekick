@@ -228,25 +228,33 @@ func _capture(width: int, height: int, label: String) -> void:
 		await process_frame
 	_save(shell, "%s_join" % label)
 
-	# And the screen a player spends the evening on. Built directly with a
-	# transport that never connected: what is being photographed is the layout,
-	# and standing up a loopback host inside a screenshot pass would make this
-	# tool depend on the network working.
+	# And the screen a player spends the evening on, which is their own sheet with
+	# a Table tab on it. Built with a transport that never connected: what is
+	# being photographed is the layout, and standing up a loopback host inside a
+	# screenshot pass would make this tool depend on the network working.
 	shell._clear_screens()
-	var table = load("res://scenes/ui/screens/player_table.tscn").instantiate()
-	table.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	shell._screens.add_child(table)
-	table.setup(EnetTransport.new(), shell.identity, shell.store, shell.rules, shell._palette, "The Verge")
-	_seed_table_feed(table)
-	for _i in 12:
-		await process_frame
-	_save(shell, "%s_player_table" % label)
+	shell.table = TableSession.new(EnetTransport.new(), shell.identity, shell.store, shell.rules, "The Verge")
+	var player_listing: Array = shell.store.list()
+	if not player_listing.is_empty():
+		var player_doc = shell.store.load_doc(String(player_listing[0]["file_name"]))
+		shell.table.doc = player_doc
+		_seed_table_feed(shell.table)
+		shell._open_sheet(player_doc)
+		for _i in 12:
+			await process_frame
+		# The tab bar is on Basics by default; the point of the shot is the Table.
+		var player_sheet = shell._screens.get_child(0)
+		player_sheet._select_tab("table")
+		for _i in 12:
+			await process_frame
+		_save(shell, "%s_player_table" % label)
+	shell.table = null
 
 	shell.queue_free()
 	await process_frame
 
 
-## A table mid-session: chat, a roll, and an award waiting to be claimed. The
+## A table mid-session: chat, a roll, and an award that has already landed. The
 ## empty states are already covered by the GM screen shots.
 func _seed_table_feed(table) -> void:
 	var seq := 0
@@ -258,16 +266,13 @@ func _seed_table_feed(table) -> void:
 		[CampaignSession.EVENT_AP_AWARD, {"amount": 3, "reason": CampaignSession.AP_REASON_HEROISM}],
 	]:
 		seq += 1
-		table._events.append({
+		table.events.append({
 			"seq": seq,
 			"kind": String(spec[0]),
 			"player_id": "",
 			"at": int(Time.get_unix_time_from_system()),
 			"payload": spec[1],
 		})
-	# The award is addressed to this device, so it lands as claimable.
-	table._unclaimed = 3
-	table._render()
 
 
 func _save(_shell, name: String) -> void:

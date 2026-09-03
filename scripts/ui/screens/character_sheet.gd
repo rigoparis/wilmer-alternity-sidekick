@@ -34,6 +34,7 @@ const TAB_FX := preload("res://scenes/ui/tabs/tab_fx.tscn")
 const TAB_SKILLS := preload("res://scenes/ui/tabs/tab_skills.tscn")
 const TAB_PSIONICS := preload("res://scenes/ui/tabs/tab_psionics.tscn")
 const TAB_SUMMARY := preload("res://scenes/ui/tabs/tab_summary.tscn")
+const TAB_TABLE := preload("res://scenes/ui/tabs/tab_table.tscn")
 
 const OPTIONAL_RULES_ROUTE := preload("res://scenes/ui/routes/optional_rules_route.tscn")
 const THEME_ROUTE := preload("res://scenes/ui/routes/theme_route.tscn")
@@ -53,6 +54,10 @@ const TABS := [
 	{"id": "fx", "label": "FX", "scene": TAB_FX},
 	{"id": "mutations", "label": "Mutations", "scene": TAB_MUTATIONS},
 	{"id": "summary", "label": "Summary", "scene": TAB_SUMMARY},
+	# Last, and only present while this device is at somebody's table. A player
+	# in a campaign is still playing their character, so the table sits beside
+	# the sheet rather than replacing it.
+	{"id": "table", "label": "Table", "scene": TAB_TABLE},
 ]
 
 var _ctx: SheetContext

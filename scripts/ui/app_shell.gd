@@ -22,7 +22,7 @@ const SHEET_SCREEN := preload("res://scenes/ui/screens/character_sheet.tscn")
 const CAMPAIGN_SELECT_SCREEN := preload("res://scenes/ui/screens/campaign_select.tscn")
 const GM_SCREEN := preload("res://scenes/ui/screens/gm_screen.tscn")
 const TABLE_JOIN_SCREEN := preload("res://scenes/ui/screens/table_join.tscn")
-const PLAYER_TABLE_SCREEN := preload("res://scenes/ui/screens/player_table.tscn")
+const COMMIT_CHARACTER_ROUTE := preload("res://scenes/ui/routes/commit_character_route.tscn")
 
 var rules
 var store: CharacterStore
@@ -45,7 +45,12 @@ var _sheet: CharacterSheetScreen
 var _campaign_select: CampaignSelectScreen
 var _gm: GmScreen
 var _table_join: TableJoinScreen
-var _player_table: PlayerTableScreen
+## The table this device is at, when it is at one.
+##
+## Owned by the shell rather than by a screen, because a player at a table is
+## still using the whole app -- the connection has to outlive whichever tab or
+## route happens to be showing.
+var table: TableSession
 var _palette: ThemePalette
 
 var _is_wide: bool = false
@@ -153,6 +158,10 @@ func _open_sheet(doc: CharacterDoc) -> void:
 	var ctx := SheetContext.new(doc, rules, router, _palette, _is_wide)
 	# The sheet is where a player picks a skill, so it is where a check starts.
 	ctx.checks = checks
+	# And where the table lives, when there is one: a player in a campaign is
+	# still playing their character, so the Table tab sits beside Skills rather
+	# than replacing the whole sheet.
+	ctx.table = table
 	_sheet.setup(ctx, store)
 	_sheet.closed.connect(_on_sheet_closed)
 
@@ -199,23 +208,75 @@ func _show_table_join() -> void:
 	_table_join.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_screens.add_child(_table_join)
 	_table_join.setup(identity, _palette)
-	_table_join.table_joined.connect(_open_player_table)
+	_table_join.table_joined.connect(_on_table_joined)
 	_table_join.closed.connect(_show_campaigns)
 
 
-func _open_player_table(transport: EnetTransport, campaign_name: String) -> void:
-	# The join screen hands the live connection over rather than closing and
-	# reopening it: the handshake has already happened, and reconnecting would
-	# make the GM see a player leave and arrive for no reason.
-	_clear_screens()
-	_player_table = PLAYER_TABLE_SCREEN.instantiate()
-	_player_table.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_screens.add_child(_player_table)
-	_player_table.setup(transport, identity, store, rules, _palette, campaign_name)
-	_player_table.closed.connect(_show_campaigns)
-	# From here a check asks the GM for a step. Leaving the table puts the runner
-	# back on the solo path rather than leaving it holding a dead connection.
+## Joined a table: ask which hero, then open that hero's sheet.
+##
+## The player's main screen at a table is their own character sheet, with a Table
+## tab on it. It used to be a separate screen, which meant a player could look at
+## the table or at their character but never both -- for a campaign that runs for
+## months.
+func _on_table_joined(transport: EnetTransport, campaign_name: String) -> void:
+	table = TableSession.new(transport, identity, store, rules, campaign_name)
+	table.leave_requested.connect(_leave_table)
 	checks.use_transport(transport)
+	set_process(true)
+
+	var doc := await _choose_committed_hero(campaign_name)
+	if not is_instance_valid(self):
+		return
+	if doc != null:
+		table.commit(doc)
+		store.set_last_opened(doc.source_file)
+	_open_sheet(doc if doc != null else CharacterDoc.new(rules))
+
+
+## Which hero is being played here, and make one if there is none.
+##
+## Returns null only when the player backed out, in which case they are still
+## connected -- the Table tab says so plainly rather than pretending otherwise.
+func _choose_committed_hero(campaign_name: String) -> CharacterDoc:
+	var answer = await router.push(COMMIT_CHARACTER_ROUTE, {
+		"palette": _palette,
+		"rules": rules,
+		"store": store,
+		"campaign_name": campaign_name,
+		"optional_rules": table.transport.campaign_optional_rules() if table.transport != null else {},
+	})
+	if not is_instance_valid(self) or typeof(answer) != TYPE_DICTIONARY:
+		return null
+
+	var file_name := String(answer.get("file_name", ""))
+	if not file_name.is_empty():
+		return store.load_doc(file_name)
+
+	if bool(answer.get("create", false)):
+		# Saved immediately so the hero exists on disk before it is committed to
+		# a campaign that is about to hold a copy of it.
+		var fresh := CharacterDoc.new(rules)
+		store.save(fresh)
+		return fresh
+	return null
+
+
+func _leave_table() -> void:
+	if table != null:
+		table.leave()
+		table = null
+	checks.use_transport(null)
+	set_process(false)
+	_show_campaigns()
+
+
+## Pump the table.
+##
+## Here rather than on a screen so the connection survives the player moving
+## between the sheet, a catalog and the dice tray.
+func _process(_delta: float) -> void:
+	if table != null:
+		table.poll()
 
 
 func _on_campaigns_closed() -> void:
@@ -235,7 +296,6 @@ func _clear_screens() -> void:
 	_campaign_select = null
 	_gm = null
 	_table_join = null
-	_player_table = null
 	for child in _screens.get_children():
 		_screens.remove_child(child)
 		child.queue_free()
@@ -256,12 +316,13 @@ func _rebuild_active_screen() -> void:
 	# Colours are baked in at build time, so a theme change rebuilds whatever
 	# screen is showing -- not always the character list.
 	#
-	# The two networked screens are the exception: rebuilding one would close the
-	# connection it owns, so changing the theme mid-session would drop the player
-	# from the table. They keep the old colours until the table is left, which is
-	# the lesser of the two surprises.
-	if _player_table != null and is_instance_valid(_player_table):
-		return
+	# The join screen is the exception: it owns a discovery socket and a
+	# half-finished handshake, and rebuilding it mid-join would drop both. It
+	# keeps the old colours until the player is through it.
+	#
+	# The sheet is not an exception any more. A player at a table is on their own
+	# sheet, and the connection lives on the shell rather than on the screen, so a
+	# theme change rebuilds the sheet and the table carries on.
 	if _table_join != null and is_instance_valid(_table_join):
 		return
 	if _gm != null and is_instance_valid(_gm):
@@ -303,10 +364,10 @@ func _handle_back() -> void:
 	if _gm != null and is_instance_valid(_gm):
 		_on_gm_closed()
 		return
-	# Both of these leave the network on the way out: their _exit_tree closes the
-	# connection, so backing out of a table cannot leave a socket behind.
-	if _player_table != null and is_instance_valid(_player_table):
-		_show_campaigns()
+	# Backing out while at a table has to close the connection, not just change
+	# screens -- the shell owns it now, so nothing else will.
+	if table != null:
+		_leave_table()
 		return
 	if _table_join != null and is_instance_valid(_table_join):
 		_show_campaigns()
@@ -342,8 +403,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		_on_gm_closed()
 		get_viewport().set_input_as_handled()
 		return
-	if _player_table != null and is_instance_valid(_player_table):
-		_show_campaigns()
+	if table != null:
+		_leave_table()
 		get_viewport().set_input_as_handled()
 		return
 	if _table_join != null and is_instance_valid(_table_join):
