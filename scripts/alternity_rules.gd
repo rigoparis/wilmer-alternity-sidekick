@@ -5,6 +5,7 @@ extends "res://scripts/alternity_rules_constants.gd"
 var mutations = preload('res://scripts/alternity_rules_mutations.gd').new(self)
 var cybertech = preload('res://scripts/alternity_rules_cybertech.gd').new(self)
 var equipment = preload('res://scripts/alternity_rules_equipment.gd').new(self)
+var combat = preload('res://scripts/alternity_rules_combat.gd').new(self)
 var achievements = preload('res://scripts/alternity_rules_achievements.gd').new(self)
 var fx = preload('res://scripts/alternity_rules_fx.gd').new(self)
 
