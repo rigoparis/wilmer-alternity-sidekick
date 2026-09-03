@@ -404,11 +404,14 @@ func _handle_as_host(from_peer: int, message: Dictionary) -> void:
 				return
 			var snapshot: Dictionary = message.get("snapshot", {}) if typeof(message.get("snapshot")) == TYPE_DICTIONARY else {}
 			# Stored on the seat rather than logged. It is current state, and
-			# putting a full snapshot in an append-only log on every character
-			# edit is how a year of play stops fitting on a phone.
-			var seat := _session.seat_for(player_id)
-			if not seat.is_empty():
-				seat["character_snapshot"] = snapshot
+			# putting a whole character in an append-only log on every edit is
+			# how a year of play stops fitting on a phone.
+			#
+			# Through commit_character() rather than written straight onto the
+			# seat, so a snapshot this build cannot read is refused here instead
+			# of surfacing later as a seat with an unopenable sheet.
+			if not _session.commit_character(player_id, snapshot):
+				return
 			character_received.emit(player_id, snapshot)
 		MSG_CHAT:
 			var player_id := String(_peer_to_player.get(from_peer, ""))

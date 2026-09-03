@@ -43,7 +43,7 @@ func _run() -> void:
 	_rules = RulesScript.new()
 	_rules.load_core_data()
 
-	_test_snapshot_is_read_only()
+	_test_snapshot_carries_the_whole_character()
 	_test_snapshot_is_validated()
 	await _test_snapshot_reaches_the_gm()
 	await _test_snapshot_survives_a_reopen()
@@ -87,37 +87,52 @@ func _new_hero(hero_name: String) -> CharacterDoc:
 
 # --- What a snapshot is ----------------------------------------------------
 
-## A snapshot carries what a GM asks for out loud, and nothing they could edit.
+## A snapshot carries the whole character, and the GM can read all of it.
 ##
-## The exclusions are the point. Sending skills or equipment would invite a GM to
-## change them, and the moment two devices can write one character the rule that
-## keeps them consistent is gone.
-func _test_snapshot_is_read_only() -> void:
+## This used to carry only derived numbers, on the theory that sending less was
+## safer. It was the wrong trade: a GM who cannot see a player's skills cannot
+## rule on a check involving them, and a roster of bare digits has no character
+## behind it. Ownership was never about what crossed the wire -- it is about who
+## writes, and the answer to that is still only the player's device.
+func _test_snapshot_carries_the_whole_character() -> void:
 	var doc := _new_hero("Vance Kellar")
 	var snapshot := Snapshot.of_doc(doc)
 
 	check_true(Snapshot.is_usable(snapshot), "a snapshot of a real hero is usable")
-	check_eq(String(snapshot.get("hero_name", "")), "Vance Kellar", "it names the hero")
-	for key in ["durability", "action_check", "last_resorts", "damage"]:
-		check_true(snapshot.has(key), "it carries %s, which a GM asks for" % key)
-	for key in ["skills", "equipment", "perks", "flaws", "achievements", "abilities"]:
-		check_false(snapshot.has(key), "it does not carry %s, which a GM would want to edit" % key)
+	check_eq(Snapshot.hero_name_of(snapshot), "Vance Kellar", "it names the hero")
 
-	# The numbers must be the character's own, not a second calculation of them.
-	var summary := doc.summary()
+	var carried := Snapshot.character_of(snapshot)
+	check_false(carried.is_empty(), "and carries the character itself")
+	check_eq(String(carried.get("hero_name", "")), "Vance Kellar", "which is the right one")
+	# Everything a sheet needs. The GM opens the same Summary tab the player
+	# looks at, from the same document, so the two cannot drift apart.
+	for key in ["selected_skills", "skill_ranks_at_level", "abilities", "equipment", "damage"]:
+		check_true(carried.has(key), "including %s, which the sheet renders" % key)
+
+	# Read-only is enforced by what the GM ends up holding, not by hiding
+	# controls: a document with no source_file has nothing to save over.
+	var opened := Snapshot.doc_of(snapshot, _rules)
+	check(opened != null, "it opens as a document the sheet can render")
+	if opened != null:
+		check_eq(opened.get_hero_name(), "Vance Kellar", "as the right hero")
+		check_eq(opened.source_file, "", "with no file behind it")
+		check_eq(
+			AlternityNum.as_int(opened.summary().get("durability", {}).get("stun", -1)),
+			AlternityNum.as_int(doc.summary().get("durability", {}).get("stun", -2)),
+			"and the GM derives the same durability the player sees"
+		)
+
+	# Handing out the stored dictionary would make read-only depend on every
+	# caller remembering it, so a copy comes out instead.
+	carried["hero_name"] = "Tampered"
 	check_eq(
-		AlternityNum.as_int(snapshot.get("durability", {}).get("stun", -1)),
-		AlternityNum.as_int(summary.get("durability", {}).get("stun", -2)),
-		"durability comes from the character's own summary"
-	)
-	check_eq(
-		AlternityNum.as_int(snapshot.get("action_check", {}).get("ordinary", -1)),
-		AlternityNum.as_int(summary.get("action_check", {}).get("ordinary", -2)),
-		"and so does the action check"
+		Snapshot.hero_name_of(snapshot), "Vance Kellar",
+		"editing what came out does not reach back into the snapshot"
 	)
 
 	check_true(Snapshot.age_seconds(snapshot) >= 0, "a snapshot knows when it was taken")
 	check_true(Snapshot.age_seconds(snapshot) < 5, "and a fresh one is fresh")
+	check_eq(Snapshot.freshness(snapshot), "just now", "and says so in words")
 	check_true(Snapshot.of_doc(null).is_empty(), "there is no snapshot of no character")
 
 
@@ -130,13 +145,21 @@ func _test_snapshot_is_validated() -> void:
 	check_false(Snapshot.is_usable({}), "an empty snapshot is not usable")
 	check_false(Snapshot.is_usable({"hero_name": "Nobody"}), "a snapshot with no version is not usable")
 	check_false(
-		Snapshot.is_usable({"format_version": Snapshot.FORMAT_VERSION + 1, "durability": {}}),
+		Snapshot.is_usable({"format_version": Snapshot.FORMAT_VERSION + 1, "character": {}}),
 		"a snapshot from a version this build does not know is refused"
 	)
+	# Version 1 held only derived numbers and cannot be opened as a sheet at all,
+	# so it is refused rather than shown as a hero with an empty character.
 	check_false(
-		Snapshot.is_usable({"format_version": Snapshot.FORMAT_VERSION, "durability": "not a dictionary"}),
+		Snapshot.is_usable({"format_version": 1, "durability": {"stun": 10}}),
+		"and so is the older shape that carried numbers instead of a character"
+	)
+	check_false(
+		Snapshot.is_usable({"format_version": Snapshot.FORMAT_VERSION, "character": "not a dictionary"}),
 		"a malformed snapshot is refused rather than half-read"
 	)
+	check_true(Snapshot.character_of({}).is_empty(), "an unusable snapshot yields no character")
+	check(Snapshot.doc_of({}, _rules) == null, "and no document")
 	check_eq(Snapshot.age_seconds({}), -1, "an ageless snapshot reports -1 rather than guessing")
 
 

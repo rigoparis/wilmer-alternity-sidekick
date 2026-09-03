@@ -115,8 +115,25 @@ func _seed_campaigns() -> void:
 	var session := CampaignSession.new("The Verge")
 	var gm := session.add_seat("Rodri")
 	session.set_gm(gm)
-	var alice := session.add_seat("Alice", "Vance_Kellar.json")
-	var bob := session.add_seat("Bob", "Mira_Sostrand.json")
+	var alice := session.add_seat("Alice")
+	var bob := session.add_seat("Bob")
+
+	# What a player's device sends when it commits a character. Seats have no
+	# hero until somebody joins and chooses one, so without this the roster is a
+	# row of "no character yet" and the screenshot shows nothing worth seeing.
+	var seed_rules = load("res://scripts/alternity_rules.gd").new()
+	seed_rules.load_core_data()
+	var character_store = CharacterStore.new(seed_rules, STORE_DIR)
+	for pair in [[alice, "Vance_Kellar.json"], [bob, "Mira_Sostrand.json"]]:
+		var doc = character_store.load_doc(String(pair[1]))
+		if doc != null:
+			session.commit_character(String(pair[0]), CharacterSnapshot.of_doc(doc))
+
+	# A table that has checked a few things, so the shortcut row has something in
+	# it -- an empty one hides how the main screen actually looks in use.
+	for skill_id in [1, 18, 42]:
+		for _i in skill_id % 4 + 1:
+			session.note_check(skill_id)
 
 	session.append_event(CampaignSession.EVENT_JOIN, alice, {"player_name": "Alice"})
 	session.append_chat(alice, "We break for the airlock.")

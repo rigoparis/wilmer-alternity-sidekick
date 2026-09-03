@@ -55,10 +55,39 @@ func _test_seats() -> void:
 	check_eq(String(session.seat_for(bob).get("character_file", "")), "Bob_Hero.json", "seat keeps its character binding")
 	check_eq(String(session.seat_for(alice).get("character_file", "")), "", "a seat may start without a character")
 
-	# A player can make their character later.
-	check_true(session.bind_character(alice, "Alice_Hero.json"), "binding a character succeeds")
-	check_eq(String(session.seat_for(alice).get("character_file", "")), "Alice_Hero.json", "binding takes effect")
-	check_false(session.bind_character("not-a-real-id", "x.json"), "binding an unknown player fails")
+	# A player commits their own character, and only their own device can. The GM
+	# used to be able to change it from a dropdown on the seat, which is the
+	# ownership rule inverted: the GM runs the game, the player owns the hero.
+	check_false(session.has_committed_character(alice), "a fresh seat has no committed character")
+	var committed := {
+		"format_version": CharacterSnapshot.FORMAT_VERSION,
+		"hero_name": "Vance Kellar",
+		"character": {"hero_name": "Vance Kellar"},
+		"source_file": "Alice_Hero.json",
+	}
+	check_true(session.commit_character(alice, committed), "committing a character succeeds")
+	check_true(session.has_committed_character(alice), "and the seat now has one")
+	check_eq(
+		CharacterSnapshot.hero_name_of(session.committed_character(alice)), "Vance Kellar",
+		"the GM can see who they are playing"
+	)
+	check_eq(
+		String(session.seat_for(alice).get("character_file", "")), "Alice_Hero.json",
+		"and which file it came from on their device"
+	)
+	check_false(session.commit_character("not-a-real-id", committed), "committing for an unknown player fails")
+
+	# A snapshot this build cannot read is refused at the door rather than
+	# surfacing later as a seat with an unopenable sheet.
+	check_false(
+		session.commit_character(alice, {"format_version": 999, "character": {}}),
+		"a snapshot from an unknown version is refused"
+	)
+	check_false(session.commit_character(alice, {}), "and so is an empty one")
+	check_eq(
+		CharacterSnapshot.hero_name_of(session.committed_character(alice)), "Vance Kellar",
+		"a refused commit leaves the previous character standing"
+	)
 
 	check_true(session.remove_seat(bob), "removing a seat succeeds")
 	check_false(session.has_seat(bob), "removed seat is gone")
@@ -177,11 +206,26 @@ func _test_ap_awards() -> void:
 	check_eq(session.get_seat_ap(bob), 3, "Bob has 3 AP after award")
 	check_eq(session.get_pending_ap_awards(bob).size(), 1, "Bob has 1 pending award")
 
-	# 2. Table-wide AP Award (e.g. roleplaying bonus for everyone)
-	session.award_table_ap(1, Session.AP_REASON_ROLEPLAYING)
+	# 2. Table-wide AP Award, for something the whole party did.
+	session.award_table_ap(1, Session.AP_REASON_COMPLETION)
 	check_eq(session.get_seat_ap(bob), 4, "Bob now has 4 AP (3 + 1)")
 	check_eq(session.get_seat_ap(carol), 1, "Carol has 1 AP from table award")
 	check_eq(session.get_seat_ap(gm), 0, "GM does not receive player AP awards")
+
+	# Roleplaying and heroism are things one person did. Awarding them to
+	# everybody says the opposite of what they mean, so the model refuses rather
+	# than leaving it to whichever screen happens to offer the choice.
+	#
+	# The engine warning printed here is the refusal being provoked on purpose.
+	var refused: Array = session.award_table_ap(1, Session.AP_REASON_ROLEPLAYING)
+	check_eq(refused.size(), 0, "a table-wide roleplaying bonus is refused")
+	check_eq(session.get_seat_ap(bob), 4, "and awards nobody anything")
+	check_eq(session.award_table_ap(1, Session.AP_REASON_HEROISM).size(), 0, "so is a table-wide heroism bonus")
+	check_eq(session.get_seat_ap(carol), 1, "and that awards nobody either")
+
+	# They are still perfectly good reasons for one player.
+	session.award_ap(carol, 2, Session.AP_REASON_HEROISM)
+	check_eq(session.get_seat_ap(carol), 3, "heroism awarded to one player lands")
 
 	# 3. Disconnected Player persistence: awards survive disconnection & serialization
 	var serialized := session.to_dict()

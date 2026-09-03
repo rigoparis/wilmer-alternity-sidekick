@@ -191,7 +191,7 @@ func _test_open_the_table() -> void:
 	var gm = _gm_screen()
 	if not check(gm != null, "and opens the campaign"):
 		return
-	gm._on_host_pressed()
+	gm._toggle_hosting()
 	await process_frame
 	check_true(gm.is_hosting(), "the table is open")
 
@@ -309,11 +309,18 @@ func _test_gm_calls_for_a_check() -> void:
 	var called := []
 	_player_shell.checks.check_arrived.connect(func(check: SkillCheck): called.append(check))
 
+	# A real skill out of the catalogue, not a typed string. That is the whole
+	# change: an id crosses the wire, so the player's device can look the skill up
+	# and work out what their own hero brings to it.
+	var skill: Dictionary = _gm_shell.rules.broad_skills[0]
+	var skill_label: String = _gm_shell.rules.skill_label(skill)
+	var skill_id := AlternityNum.as_int(skill.get("id", -1), -1)
+
 	var driver := func() -> void:
-		var prompt = await _await_route(_gm_shell, "text_prompt_route")
-		if prompt == null:
+		var picker = await _await_route(_gm_shell, "skill_pick_route")
+		if picker == null:
 			return
-		prompt.close("Awareness - Perception")
+		picker.close(skill)
 		var dial = await _await_route(_gm_shell, "check_step_route")
 		if dial == null:
 			return
@@ -328,7 +335,12 @@ func _test_gm_calls_for_a_check() -> void:
 
 	var incoming: SkillCheck = called[0]
 	check_eq(incoming.origin, Check.ORIGIN_GM, "marked as the GM asking")
-	check_eq(incoming.skill_label, "Awareness - Perception", "naming what to roll")
+	check_eq(incoming.skill_label, skill_label, "naming what to roll")
+	# The id is the part that matters. A typed name cannot be looked up, so every
+	# modifier the character carried -- broad-skill bonus, species, mutations,
+	# encumbrance, being dazed -- was silently dropped when this was a text box.
+	check_eq(incoming.skill_id, skill_id, "and carrying the skill id, not just its name")
+	check_true(incoming.skill_id >= 0, "which the player's device can look up")
 	check_eq(incoming.gm_step, 1, "with the step already set")
 	check_eq(incoming.reason, "the corridor is dark", "and the reason")
 	# The GM's device has no copy of the character, so it cannot supply a score.
@@ -342,3 +354,18 @@ func _test_gm_calls_for_a_check() -> void:
 		if String(event.get("kind", "")) == Session.EVENT_CHECK:
 			logged = true
 	check_true(logged, "and the call is logged")
+
+	# Calling a check is the GM saying this skill matters right now, which is
+	# what the shortcut row on the main screen is trying to predict.
+	check_eq(gm.session().check_count(skill_id), 1, "the call is counted against that skill")
+
+	# Ruling on the player's request earlier in this suite counted a skill too,
+	# so this is not the only entry -- both are things the GM decided mattered.
+	var top: Array = gm.session().most_checked(6)
+	var listed := false
+	for entry in top:
+		if AlternityNum.as_int(entry["skill_id"]) == skill_id:
+			listed = true
+			check_eq(AlternityNum.as_int(entry["count"]), 1, "with the right count")
+	check_true(listed, "so it appears among the most-checked skills")
+	check_true(top.size() >= 2, "alongside the skill the GM ruled on earlier")

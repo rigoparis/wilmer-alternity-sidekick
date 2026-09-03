@@ -18,6 +18,10 @@ const MODE_SET := "set"
 
 ## The four reasons CampaignSession records. Custom is last because it is the
 ## one that needs typing.
+##
+## A caller may narrow this. Awarding the whole party a "Heroism Bonus" says the
+## opposite of what a heroism bonus means, so the table-wide award passes the two
+## reasons that are collective and this route simply offers what it is given.
 const REASONS := [
 	CampaignSession.AP_REASON_COMPLETION,
 	CampaignSession.AP_REASON_ROLEPLAYING,
@@ -33,6 +37,7 @@ var _initial: int = 1
 var _maximum: int = 99
 
 var _stepper: NumberStepper
+var _reasons: Array = REASONS
 var _reason: String = CampaignSession.AP_REASON_COMPLETION
 var _custom_field: LineEdit
 var _reason_buttons: Dictionary = {}
@@ -45,6 +50,10 @@ func configure(props: Dictionary) -> void:
 	_maximum = AlternityNum.as_int(props.get("maximum", 99), 99)
 	_title = String(props.get("title", "Award achievement points" if _mode == MODE_AWARD else "Set achievement points"))
 	_message = String(props.get("message", ""))
+	var offered = props.get("reasons", REASONS)
+	if typeof(offered) == TYPE_ARRAY and not offered.is_empty():
+		_reasons = offered
+	_reason = String(_reasons[0])
 	if _mode == MODE_SET:
 		_reason = "GM Adjustment"
 	_build()
@@ -123,7 +132,7 @@ func _build_reasons(parent: Container) -> void:
 	grid.add_theme_constant_override("separation", Widgets.GAP_TIGHT)
 	parent.add_child(grid)
 
-	for reason in REASONS:
+	for reason in _reasons:
 		var button := Button.new()
 		button.text = String(reason)
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL

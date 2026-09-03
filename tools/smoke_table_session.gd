@@ -109,6 +109,16 @@ func _player_table():
 	return _screen(_player_shell, "player_table")
 
 
+## Answer whatever route the GM shell has open, the way a person would.
+func _answer_gm_route(result: Variant) -> void:
+	var responder := func() -> void:
+		await process_frame
+		var route = _gm_shell.router._host.top_route()
+		if route != null:
+			route.close(result)
+	responder.call_deferred()
+
+
 ## Re-found rather than cached.
 ##
 ## The shell owns screen lifetime and rebuilds on a resize, so a reference held
@@ -153,7 +163,7 @@ func _test_gm_opens_the_table() -> void:
 		return
 	check_false(_gm.is_hosting(), "a campaign starts closed, usable on one device")
 
-	_gm._on_host_pressed()
+	_gm._toggle_hosting()
 	await process_frame
 	check_true(_gm.is_hosting(), "the GM can open the table")
 	check_true(_gm_screen().transport() != null, "which brings up a transport")
@@ -428,7 +438,10 @@ func _test_leaving_closes_the_table() -> void:
 	# Held across the close: the screen itself is freed by the shell, so it is
 	# the transport that has to be asked whether the socket went with it.
 	var transport = gm.transport()
-	gm._on_close_pressed()
+	# Leaving is a settings action now, not a header button -- closing a table
+	# four people are at should not be one mis-tap away.
+	_answer_gm_route({"action": "leave"})
+	await gm._on_settings_pressed()
 	await process_frame
 	check_true(_gm_screen() == null, "closing the campaign leaves the GM screen")
 	check_false(transport.is_connected_to_table(), "and closes the table with it")

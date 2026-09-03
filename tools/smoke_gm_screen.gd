@@ -36,8 +36,8 @@ func _run() -> void:
 
 	await _test_reaches_the_campaign_list()
 	await _test_create_campaign()
-	await _test_add_seats()
-	await _test_bind_character()
+	await _test_seats_come_from_joining()
+	await _test_players_commit_their_own_character()
 	await _test_award_ap()
 	await _test_table_award()
 	await _test_set_ap()
@@ -142,47 +142,52 @@ func _test_create_campaign() -> void:
 
 # --- Seats -----------------------------------------------------------------
 
-func _test_add_seats() -> void:
+## Seats come from joining, not from the GM adding them.
+##
+## The GM screen used to have an "Add seat" button, which was a way to describe
+## a player rather than to have one -- a seat with a name and nothing behind it,
+## that no device would ever connect to. A seat now means somebody joined.
+func _test_seats_come_from_joining() -> void:
 	var gm = _gm_screen()
 	if not check(gm != null, "the GM screen is showing"):
 		return
 
-	_answer(null)
-	await gm._on_add_seat_pressed()
-	check_eq(gm.session().seats.size(), 0, "cancelling the prompt seats nobody")
+	check_false(
+		gm.has_method("_on_add_seat_pressed"),
+		"the GM cannot add a seat by hand -- joining is what makes one"
+	)
+	check_false(
+		gm.has_method("_on_make_gm_pressed"),
+		"and cannot hand the GM role to somebody else"
+	)
+	check_eq(gm.session().seats.size(), 0, "a new campaign has nobody at it")
 
-	_answer("Rodri")
-	await gm._on_add_seat_pressed()
+	# What the handshake does when a player joins. Driving the model directly
+	# rather than standing up a second shell: this suite is about the screen, and
+	# smoke_table_session already runs the real join end to end.
+	gm.session().set_gm(gm.session().add_seat("Rodri"))
+	for name in ["Alice", "Bob"]:
+		var joined: String = gm.session().add_seat(name)
+		gm.session().append_event(Session.EVENT_JOIN, joined, {"player_name": name})
+	_shell.campaigns.save(gm.session())
+	gm.refresh()
 	await process_frame
-	check_eq(gm.session().seats.size(), 1, "the first seat is added")
-	# The person setting up a campaign on their own device is the GM; making that
-	# automatic keeps the "exactly one GM" invariant true from the first seat.
+
+	check_eq(gm.session().seats.size(), 3, "the GM and two players are seated")
 	check_eq(
 		String(gm.session().gm_seat().get("player_name", "")), "Rodri",
-		"the first seat is made GM automatically"
+		"the hosting device is the GM"
 	)
 
-	_answer("Alice")
-	await gm._on_add_seat_pressed()
-	_answer("Bob")
-	await gm._on_add_seat_pressed()
-	await process_frame
-	check_eq(gm.session().seats.size(), 3, "further seats are added")
-	check_eq(
-		String(gm.session().gm_seat().get("player_name", "")), "Rodri",
-		"later seats do not take over as GM"
-	)
-
-	# Seating is persisted immediately, not on some later save.
 	var stored = _shell.campaigns.load_session(gm.session().campaign_id)
-	check_eq(stored.seats.size(), 3, "seats are written to disk as they are added")
+	check_eq(stored.seats.size(), 3, "seats are written to disk")
 
 	# Every join is in the log, so a GM can see who arrived when.
 	var joins := 0
 	for event in gm.session().events:
 		if String(event.get("kind", "")) == Session.EVENT_JOIN:
 			joins += 1
-	check_eq(joins, 3, "each seating is logged as a join event")
+	check_eq(joins, 2, "each arrival is logged as a join event")
 
 
 func _seat_id(gm, player_name: String) -> String:
@@ -192,48 +197,74 @@ func _seat_id(gm, player_name: String) -> String:
 	return ""
 
 
-func _test_bind_character() -> void:
+## A player commits their own character; the GM reads it and cannot change it.
+##
+## The GM screen used to carry a dropdown on every seat listing the heroes on the
+## GM's device, which let a GM put a player on a character the player had never
+## seen -- and could only ever offer characters the GM happened to have.
+func _test_players_commit_their_own_character() -> void:
 	var gm = _gm_screen()
 	if not check(gm != null, "the GM screen is showing"):
 		return
 
-	# A hero to bind to. Saved through the shell's own character store so the
-	# GM screen reads it exactly as it would in use.
+	check_false(
+		gm.has_method("_on_character_chosen"),
+		"the GM cannot choose which hero a player uses"
+	)
+
+	# What the player's device sends when they commit. Built here from a real
+	# document so the snapshot has a real character inside it.
 	var doc = CharacterDoc.new(_shell.rules)
 	doc.set_hero_name("Vance Kellar")
-	_shell.store.save(doc)
-
 	var alice := _seat_id(gm, "Alice")
-	gm._on_character_chosen(alice, "Vance_Kellar.json")
+	check_true(
+		gm.session().commit_character(alice, CharacterSnapshot.of_doc(doc)),
+		"the player commits their character"
+	)
+	_shell.campaigns.save(gm.session())
+	gm.refresh()
 	await process_frame
 
+	check_true(gm.session().has_committed_character(alice), "the seat holds it")
 	check_eq(
-		String(gm.session().seat_for(alice).get("character_file", "")), "Vance_Kellar.json",
-		"the seat is bound to the character file"
-	)
-	var stored = _shell.campaigns.load_session(gm.session().campaign_id)
-	check_eq(
-		String(stored.seat_for(alice).get("character_file", "")), "Vance_Kellar.json",
-		"the binding is persisted"
+		CharacterSnapshot.hero_name_of(gm.session().committed_character(alice)), "Vance Kellar",
+		"and the GM can see who they are playing"
 	)
 
-	# The key numbers must come from the character's own summary rather than be
-	# recomputed here, or the GM screen and the sheet would drift apart.
-	var summary: Dictionary = gm._summary_for("Vance_Kellar.json")
-	check_false(summary.is_empty(), "the bound character's summary is available")
-	check_true(summary.has("durability"), "durability is read from the summary")
-	check_true(summary.has("action_check"), "the action check is read from the summary")
-	check_true(summary.has("last_resorts"), "last resorts are read from the summary")
+	var stored = _shell.campaigns.load_session(gm.session().campaign_id)
+	check_true(
+		stored.has_committed_character(alice),
+		"the committed character is persisted, so it survives reopening the campaign"
+	)
+
+	# The numbers the roster shows come from the committed character through the
+	# rules engine, so this screen and the player's own sheet cannot disagree.
+	var summary: Dictionary = gm._summary_of(gm.session().committed_character(alice))
+	check_false(summary.is_empty(), "the committed character summarises")
 	check_eq(
 		AlternityNum.as_int(summary.get("durability", {}).get("stun", 0)),
 		AlternityNum.as_int(doc.summary().get("durability", {}).get("stun", -1)),
 		"the GM sees the same durability the sheet does"
 	)
 
-	# A binding whose file has since been deleted must not read as unbound.
-	check_true(gm._summary_for("gone.json").is_empty(), "a missing character yields no numbers")
-	check_eq(String(gm.session().seat_for(alice).get("character_file", "")), "Vance_Kellar.json",
-		"and does not clear the binding")
+	# The whole sheet crossed the wire, which is what lets the GM open it. The
+	# ownership rule is about who writes, not about what is sent.
+	var committed := CharacterSnapshot.character_of(gm.session().committed_character(alice))
+	check_false(committed.is_empty(), "the whole character is there to open")
+	check_eq(String(committed.get("hero_name", "")), "Vance Kellar", "and it is the right one")
+	var opened = CharacterSnapshot.doc_of(gm.session().committed_character(alice), _shell.rules)
+	check(opened != null, "it opens as a document the sheet can render")
+	if opened != null:
+		check_eq(
+			opened.source_file, "",
+			"with no file behind it, so the GM's copy has nothing to save over"
+		)
+
+	# A seat nobody has committed to yet reads as empty rather than as a hero
+	# with no numbers.
+	var bob := _seat_id(gm, "Bob")
+	check_false(gm.session().has_committed_character(bob), "an uncommitted seat has no character")
+	check_true(gm._summary_of(gm.session().committed_character(bob)).is_empty(), "and no numbers")
 
 
 # --- Achievement points ----------------------------------------------------
@@ -279,6 +310,8 @@ func _test_table_award() -> void:
 	var bob := _seat_id(gm, "Bob")
 	var rodri := _seat_id(gm, "Rodri")
 
+	# Only reasons that mean something collectively are offered here; roleplaying
+	# and heroism go to one player.
 	_answer({"amount": 2, "reason": Session.AP_REASON_COMPLETION})
 	await gm._on_table_award_pressed()
 	await process_frame
@@ -370,18 +403,28 @@ func _test_feed() -> void:
 
 # --- Removal and navigation ------------------------------------------------
 
+## Removing a seat now lives behind the settings route, with the rest of the
+## disruptive things. The main screen offers no way to do it by mistake.
 func _test_remove_seat() -> void:
 	var gm = _gm_screen()
 	var bob := _seat_id(gm, "Bob")
 
-	_answer(null)
-	await gm._on_remove_seat_pressed(bob, "Bob")
-	check_eq(gm.session().seats.size(), 3, "cancelling keeps the seat")
+	check_false(
+		gm.has_method("_on_remove_seat_pressed"),
+		"the main screen cannot remove a seat"
+	)
 
-	_answer(true)
-	await gm._on_remove_seat_pressed(bob, "Bob")
+	# Cancelling out of settings changes nothing.
+	_answer(null)
+	await gm._on_settings_pressed()
+	check_eq(gm.session().seats.size(), 3, "backing out of settings keeps every seat")
+
+	# What the settings route closes with when the GM confirms a removal. The
+	# route asks; the screen acts -- so this is the screen's half.
+	_answer({"action": "remove_seat", "player_id": bob})
+	await gm._on_settings_pressed()
 	await process_frame
-	check_eq(gm.session().seats.size(), 2, "confirming removes the seat")
+	check_eq(gm.session().seats.size(), 2, "confirming in settings removes the seat")
 	check_false(gm.session().has_seat(bob), "the seat is gone")
 
 	# Their history stays, and must still render without a seat to name them.

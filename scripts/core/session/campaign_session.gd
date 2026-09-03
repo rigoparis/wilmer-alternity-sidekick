@@ -40,6 +40,14 @@ const AP_REASON_ROLEPLAYING := "Roleplaying Bonus"
 const AP_REASON_HEROISM := "Heroism Bonus"
 const AP_REASON_CUSTOM := "Custom Award"
 
+## The reasons that can sensibly be given to everyone at once.
+##
+## Completing the adventure is something the whole party did. Roleplaying and
+## heroism are things one person did, and awarding them table-wide says the
+## opposite of what they mean -- so award_table_ap refuses them rather than
+## leaving it to whichever screen happens to be offering the choice.
+const AP_TABLE_REASONS := [AP_REASON_COMPLETION, AP_REASON_CUSTOM]
+
 var campaign_id: String = ""
 var display_name: String = "New Campaign"
 var created_at: int = 0
@@ -54,6 +62,15 @@ var events: Array = []
 
 ## Campaign-level optional rules set by the GM and synced to all players at the table.
 var optional_rules: Dictionary = {}
+
+## skill_id -> how many times the GM has called for or ruled on that skill.
+##
+## A table checks the same handful of things over and over -- Awareness, Stamina,
+## whatever the current adventure turns on -- and making the GM walk the whole
+## catalogue each time is the difference between a tool and a chore. Kept on the
+## campaign rather than on the device: it describes this table's habits, and a GM
+## who reinstalls should not lose them.
+var check_counts: Dictionary = {}
 
 ## Highest sequence number issued so far.
 ##
@@ -84,14 +101,17 @@ static func new_id() -> String:
 
 ## Add a player and return their permanent id.
 ##
-## `character_file` binds the seat to a saved character; it can be set later via
-## bind_character() when the player has not made one yet.
+## `character_file` is informational -- the name of the file on the player's own
+## device. What the GM actually reads is the committed snapshot, which the player
+## sends via commit_character() once they have chosen a hero.
 func add_seat(player_name: String, character_file: String = "") -> String:
 	var player_id := new_id()
 	seats.append({
 		"player_id": player_id,
 		"player_name": player_name,
+		# What the player committed. The GM never sets this -- see commit_character.
 		"character_file": character_file,
+		"character_snapshot": {},
 		"is_gm": false,
 		"achievement_points": 0,
 		"pending_ap_awards": [],
@@ -112,12 +132,37 @@ func has_seat(player_id: String) -> bool:
 	return not seat_for(player_id).is_empty()
 
 
-func bind_character(player_id: String, character_file: String) -> bool:
+## Record the character a player has committed to this campaign.
+##
+## The player's device calls this, never the GM's. A GM choosing which hero
+## somebody plays is the one thing the ownership rule exists to prevent, and it
+## used to be possible: the GM screen had a dropdown on every seat.
+##
+## Returns false for an unknown player, and for a snapshot this build cannot
+## read -- a seat showing a half-understood character is worse than one showing
+## none.
+func commit_character(player_id: String, snapshot: Dictionary) -> bool:
 	var seat := seat_for(player_id)
 	if seat.is_empty():
 		return false
-	seat["character_file"] = character_file
+	if not CharacterSnapshot.is_usable(snapshot):
+		return false
+	seat["character_snapshot"] = snapshot.duplicate(true)
+	seat["character_file"] = String(snapshot.get("source_file", ""))
 	return true
+
+
+## The character a player has committed, or {} if they have not yet.
+func committed_character(player_id: String) -> Dictionary:
+	var seat := seat_for(player_id)
+	if seat.is_empty():
+		return {}
+	var snapshot = seat.get("character_snapshot", {})
+	return snapshot if typeof(snapshot) == TYPE_DICTIONARY else {}
+
+
+func has_committed_character(player_id: String) -> bool:
+	return CharacterSnapshot.is_usable(committed_character(player_id))
 
 
 func remove_seat(player_id: String) -> bool:
@@ -157,6 +202,44 @@ func set_gm(player_id: String) -> bool:
 		other["is_gm"] = false
 	seat["is_gm"] = true
 	return true
+
+
+# --- What this table checks ------------------------------------------------
+
+## Count one more check on a skill, and return the new total.
+##
+## Called when the GM rules on a request or calls for a check -- both are the GM
+## deciding that this skill matters right now, which is what the shortcuts are
+## trying to predict.
+func note_check(skill_id: int) -> int:
+	if skill_id < 0:
+		return 0
+	var key := str(skill_id)
+	var count := AlternityNum.as_int(check_counts.get(key, 0)) + 1
+	check_counts[key] = count
+	return count
+
+
+func check_count(skill_id: int) -> int:
+	return AlternityNum.as_int(check_counts.get(str(skill_id), 0))
+
+
+## The skills this table checks most, commonest first.
+##
+## Returns [{skill_id, count}], at most `limit` of them. Ties break by skill id
+## so the shortcut row does not reshuffle itself between renders for no reason.
+func most_checked(limit: int = 6) -> Array:
+	var rows: Array = []
+	for key in check_counts:
+		rows.append({
+			"skill_id": AlternityNum.as_int(key, -1),
+			"count": AlternityNum.as_int(check_counts[key]),
+		})
+	rows.sort_custom(func(a, b):
+		if AlternityNum.as_int(a["count"]) == AlternityNum.as_int(b["count"]):
+			return AlternityNum.as_int(a["skill_id"]) < AlternityNum.as_int(b["skill_id"])
+		return AlternityNum.as_int(a["count"]) > AlternityNum.as_int(b["count"]))
+	return rows.slice(0, maxi(0, limit))
 
 
 # --- Event log -------------------------------------------------------------
@@ -302,8 +385,15 @@ func award_ap(player_id: String, amount: int, reason: String = AP_REASON_COMPLET
 
 
 ## Award achievement points to all seats (e.g. all heroes completing an adventure).
+##
+## Refuses a reason that only makes sense for one person: a "Heroism Bonus" for
+## everybody is not a heroism bonus. Returns an empty array in that case, so a
+## caller that ignores the result awards nothing rather than the wrong thing.
 func award_table_ap(amount: int, reason: String = AP_REASON_COMPLETION) -> Array:
 	var events_out: Array = []
+	if not AP_TABLE_REASONS.has(reason):
+		push_warning("CampaignSession: %s is awarded to one player, not the table" % reason)
+		return events_out
 	for seat in seats:
 		var pid := String(seat.get("player_id", ""))
 		if not pid.is_empty() and not bool(seat.get("is_gm", false)):
@@ -365,6 +455,7 @@ func to_dict() -> Dictionary:
 		"seats": seats.duplicate(true),
 		"events": events.duplicate(true),
 		"optional_rules": optional_rules.duplicate(true),
+		"check_counts": check_counts.duplicate(true),
 	}
 
 
@@ -383,4 +474,7 @@ static func from_dict(data: Dictionary) -> CampaignSession:
 
 	var rules_data = data.get("optional_rules", {})
 	session.optional_rules = rules_data.duplicate(true) if typeof(rules_data) == TYPE_DICTIONARY else {}
+
+	var counts = data.get("check_counts", {})
+	session.check_counts = counts.duplicate(true) if typeof(counts) == TYPE_DICTIONARY else {}
 	return session
