@@ -1,110 +1,171 @@
-# Multiplayer plan
+# Multiplayer
 
 The goal, from the original roadmap: **a GM view that players connect to over
 the local network, with dice rolls and events broadcast to the GM, plus private
 player↔GM chat, in campaigns that run for months and survive reconnection.**
 
-## What already exists
-
-Do not rebuild these.
-
-- **`scripts/core/session/campaign_session.gd`** — the campaign document. Seats
-  with a stable `player_id`, character binding, GM designation, an append-only
-  event log (`roll`, `chat`, `note`, `join`, `ap_award`, `ap_set`), AP award
-  reasons, optional-rule storage, and `FORMAT_VERSION`. Covered by
-  `smoke_campaign_session` (66 checks). **It is wired to nothing** — no store,
-  no UI, no transport.
-- **`scripts/core/session/net_transport.gd`** — abstract. Signals only:
-  `player_connected(player_id, is_reconnect)`, `player_disconnected`,
-  `roll_received(player_id, roll)`, chat with an optional `to_player_id` for
-  private lines. No implementation.
-- **`scripts/core/dice/`** — `RandomSource`, seeded `RngSource`, `RollResult`
-  (serialisable, carries `player_id` and a `source` field). `smoke_dice`, 163
-  checks.
-- **`UiRouter` + `AppShell`** — screen routing exists, so a GM view is a
-  destination rather than a rewrite.
-- **`CharacterStore`** — load/save/list against `user://`, no UI coupling.
-- **Android `permissions/internet`** is already set in `export_presets.cfg`.
-
-## Two decisions that are already made — do not relitigate
-
-1. **Identity is the CampaignSession `player_id`, never an ENet peer id.** Peer
-   ids are random per connection; a player returning next week gets a new one.
-   Transports map peer → player_id on connect and expose only the stable id.
-   Reconnect is "match returning peer to existing seat", not "add a player".
-2. **Dice are client-authoritative and results travel as facts.** A roll is
-   resolved on the roller's device and only the settled `RollResult` is sent.
-   Nothing re-simulates or re-rolls on receipt. Physical dice at a real table
-   work the same way; do not build anti-cheat around this.
+All three phases are built. What follows is what exists, the decisions that were
+made along the way, and the things that still cannot be verified from a
+development machine.
 
 ---
 
-## Phase M1 — Campaign persistence and a local GM view (no networking)
+## What exists
 
-The whole feature is usable single-device first, which also makes every later
-phase testable without two machines.
+### The documents
 
-1. **`core/session/campaign_store.gd`** — mirror `CharacterStore`. Save/load/
-   list campaigns under `user://campaigns/`, honouring `FORMAT_VERSION`. The
-   event log is append-only, so write it as a sidecar (`<id>.events.jsonl`)
-   rather than rewriting one growing JSON blob on every roll.
-2. **Campaign select screen**, alongside character select: create, open, delete,
-   rename. Reuse the existing router.
-3. **GM screen** as a top-level destination: the seat list, each seat's bound
-   character and key numbers (durability, action check, last resorts), and a
-   live event feed.
-4. **AP awards from the GM screen**, writing `ap_award` / `ap_set` events. The
-   award reasons are already constants.
+- **`core/session/campaign_session.gd`** — the campaign. Seats with a stable
+  `player_id`, character binding, GM designation, an append-only event log
+  (`roll`, `chat`, `note`, `join`, `ap_award`, `ap_set`), AP award reasons and
+  optional-rule storage. Sequence numbers are tracked explicitly rather than
+  derived from `events.size()`; see "Sequence numbers" below.
+- **`core/session/campaign_store.gd`** — save/load/list/rename/delete under
+  `user://campaigns/`. Each campaign is a small header (`<id>.json`) plus an
+  append-only log sidecar (`<id>.events.jsonl`), so a roll appends one line
+  rather than rewriting a year of history. `compact()` trims the sidecar.
+- **`core/session/player_identity.gd`** — what a *player's* device remembers:
+  their name, and per campaign the `player_id` the GM issued plus how far their
+  copy of the log got. Separate from the campaign because it describes the
+  person, not the table.
+- **`core/session/character_snapshot.gd`** — the read-only view of a hero a
+  player's device sends the GM.
 
-**Checkpoint:** a GM can run a session on one device, award AP, and reopen the
-campaign a week later with the log intact.
+### The wire
 
-## Phase M2 — ENet transport on a LAN
+- **`core/session/net_transport.gd`** — the interface. Signals for connection,
+  rolls, chat, individual events and reconnect replay.
+- **`core/session/enet_transport.gd`** — ENet over a LAN. The GM hosts; players
+  join by discovery or by address. Built on `ENetMultiplayerPeer`'s packet
+  interface rather than `MultiplayerAPI` and `@rpc` — there is no scene to
+  replicate, and a scoped `MultiplayerAPI` per peer would need two node subtrees
+  to talk to each other in one `SceneTree`, which is what makes the two-peer
+  test possible at all.
+- **`core/session/lan_discovery.gd`** — UDP broadcast question, unicast answer,
+  so nobody types an IP. Deliberately separate: it fails for boring reasons
+  (guest-network client isolation, an unanswered firewall prompt, a phone on
+  mobile data) and none of those should stop a GM reading out an address.
 
-5. **`core/session/enet_transport.gd`** implementing `NetTransport` over
-   `ENetMultiplayerPeer`. The GM device hosts; players join by IP.
-6. **Peer → player_id handshake.** On connect the client sends its `player_id`;
-   the host matches it to a seat and answers `is_reconnect`. An unknown id
-   creates a new seat only if the GM allows it.
-7. **Discovery**, so nobody types an IP: UDP broadcast on the LAN, host
-   answering with campaign name and port. Fall back to manual IP entry.
-8. **Broadcast rolls and chat.** One reliable RPC per event. Private lines set
-   `to_player_id` and are delivered only to that seat and the GM.
-9. **Reconnect and buffering.** A client that drops keeps its local state; on
-   rejoin the host replays events since the client's last known sequence number.
-   This is why the log is append-only with a sequence.
+### The screens
 
-**Checkpoint:** two devices on one Wi-Fi, a roll on the player device appearing
-on the GM's feed, and a mid-session reconnect that loses nothing.
-
-## Phase M3 — The seams that get expensive later
-
-10. **Input map.** `project.godot` still has no `[input]` section at all. Any
-    keyboard shortcut or dice gesture needs one created from scratch.
-11. **Character sync policy.** Decide explicitly whether the GM sees a live
-    character or a snapshot pushed on change. Snapshot-on-change is simpler and
-    enough; live sync means every `CharacterDoc` signal becomes a network event.
-12. **Conflict rule.** The player's device owns their character; the GM's
-    changes (AP awards) are events the player's device applies. One owner per
-    document, always.
+- **Campaign select** — create, open, rename, delete, and "Join a Table".
+- **GM screen** — the seat list with each seat's hero and key numbers, AP awards
+  with reasons, a live event feed, table hosting, and GM chat with a recipient
+  picker.
+- **Table join** — search for tables, or type the GM's address. Both, always.
+- **Player table** — the feed, a chat box with a private toggle, and banked AP
+  the player applies to their own hero.
 
 ---
 
-## Risks worth naming up front
+## Decisions, and why
 
-- **The event log grows without bound** across a year-long campaign. Decide
-  early whether to compact it, and never make correctness depend on replaying
-  the whole log — seats carry current state.
-- **Android's INTERNET permission is set, but debug exports get it implicitly.**
-  Test networking from a **release** APK at least once, or a permission problem
-  will only appear on the friends' devices.
-- **Hosting on the GM's phone** means the session dies if that app is
-  backgrounded. Decide whether the host must be a desktop.
-- **`smoke_campaign_session` covers the model, not the wire.** Add a transport
-  test with two in-process peers before trusting reconnect.
+### Identity is a `player_id`, never a peer id
 
-## Suggested first session
+ENet assigns peer ids randomly per connection, so a player returning next week
+gets a different one. The transport maps peer → `player_id` on handshake and
+exposes only the stable id upward. Reconnect is "match a returning peer to an
+existing seat", not "add a player". `PlayerIdentity` is what makes that survive
+a restart on the player's device.
 
-Phase M1 items 1 and 2 only — `campaign_store.gd` plus the campaign select
-screen. That is self-contained, needs no second device, and makes everything
-after it demonstrable.
+### Dice are client-authoritative, and results travel as facts
+
+A roll is resolved on the roller's device and only the settled `RollResult` is
+sent. Nothing re-simulates or re-rolls on receipt. Physical dice at a real table
+work the same way; there is no anti-cheat here and there should not be.
+
+### One owner per document
+
+The GM's device owns the campaign and assigns **every** sequence number, so one
+history exists. The player's device owns the character file and is its only
+writer: an AP award is an event the player applies to their own hero, and the GM
+never writes to a character they cannot see.
+
+### Character sync: snapshot on change (M3 item 11)
+
+Chosen over live sync, and not for bandwidth. A live view would mean the GM's
+screen holds a second copy of a document the player is editing, and every
+`CharacterDoc` signal becomes a network event. A snapshot is a fact about the
+past, which nobody can be confused about who owns.
+
+A snapshot carries what a GM asks for out loud — name, durability, action check,
+last resorts, damage marked — and deliberately excludes anything a GM would want
+to *edit* (skills, equipment, perks). Sending those would invite a second writer.
+The GM screen shows a bound local character first, a pushed snapshot second, and
+labels the snapshot with how old it is.
+
+### Sequence numbers
+
+`append_event` uses a tracked high-water mark, never `events.size() + 1`. The log
+can be compacted or loaded as a tail, and deriving the next number from the array
+length would reissue numbers already spent — which would make reconnect replay
+("everything after seq N") silently resend or skip. The campaign header stores
+the mark too, so a campaign whose log is lost still continues the sequence rather
+than restarting it.
+
+### Private lines are addressed to a sentinel
+
+A player device is never told the seat list, so it cannot name the GM's
+`player_id`. It addresses `EnetTransport.TO_GM` and the host resolves that to the
+real seat before logging, so a GM handover later does not leave a trail of
+messages addressed to a sentinel.
+
+### Opening a table seats a GM
+
+A campaign created from the campaign list has no seats. A table with no GM seat
+has nowhere to deliver a private line — it would be broadcast to everyone — so
+hosting seats a "Game Master" if the campaign has not already said who that is.
+
+### Input map (M3 item 10)
+
+`project.godot` has an `[input]` section: `dice_roll`, `dice_nudge`, and
+`table_chat` (T), which focuses the message box on both the GM and player
+screens. Shortcuts go through the Input Map rather than raw keycodes so they stay
+rebindable.
+
+---
+
+## Tests
+
+| Suite | Checks | Covers |
+|---|---|---|
+| `smoke_campaign_session` | 82 | the document, reconnect flow, the replay window |
+| `smoke_campaign_store` | 76 | the sidecar log, compaction, a lost log, rename |
+| `smoke_gm_screen` | 87 | M1's checkpoint, driven through the real shell |
+| `smoke_enet_transport` | 71 | two peers over the loopback, handshake, reconnect |
+| `smoke_lan_discovery` | 26 | a busy port, foreign traffic, a departed host |
+| `smoke_table_session` | 68 | M2's checkpoint: two whole shells against each other |
+| `smoke_character_sync` | 43 | the snapshot policy and the conflict rule |
+
+Every one of these was checked by breaking the thing it claims to test and
+confirming it fails.
+
+---
+
+## Still open
+
+These are the things a development machine cannot settle.
+
+1. **Two real devices on one Wi-Fi.** The suites use the loopback, which proves
+   the protocol and not the network. Specifically untested: UDP broadcast
+   discovery (a packet to `255.255.255.255` does not come back to another socket
+   on the same host under Windows, so the suite asks `127.0.0.1` instead), and
+   anything a router does to peer-to-peer traffic.
+
+2. **A release APK.** `permissions/internet` is set, but debug exports get
+   INTERNET implicitly for the remote debugger — so networking will appear to
+   work in testing and could fail only on the friends' devices. Export a release
+   APK and join a table from it at least once.
+
+3. **Whether the host must be a desktop.** Hosting on the GM's phone means the
+   session dies when the app is backgrounded. Nothing in the code assumes either
+   way; the decision is about what to tell the group.
+
+4. **When to compact.** `CampaignStore.compact()` exists and is tested, but
+   nothing calls it automatically. A weekly campaign will not trouble the
+   `DEFAULT_EVENT_TAIL` of 5000 for a long time, so this is a decision to make
+   before it matters rather than a bug.
+
+5. **Rolls from the player screen.** The player table view sends chat, and the
+   transport sends rolls, but there is no dice UI on that screen yet — it is
+   waiting on the 3D dice tray (see AGENTS.md section 9). `send_roll` is wired
+   and tested; what is missing is something to press.

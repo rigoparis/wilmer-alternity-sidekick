@@ -47,6 +47,14 @@ signal events_replayed(events: Array)
 ## set for a private line with the GM.
 signal chat_received(player_id: String, text: String, to_player_id: String)
 
+## A player pushed their character's current numbers.
+##
+## A snapshot, taken when the character changes -- not a live view. The player's
+## device owns the character file and is its only writer; what crosses the wire
+## is a read-only summary for the GM to look at, so the two devices can never be
+## editing the same document.
+signal character_received(player_id: String, snapshot: Dictionary)
+
 ## Transport-level failure worth surfacing (host unreachable, port in use).
 signal transport_error(message: String)
 

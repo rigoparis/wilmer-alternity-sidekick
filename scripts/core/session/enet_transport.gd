@@ -40,6 +40,15 @@ const MAX_CLIENTS := 16
 const MSG_HELLO := "hello"
 const MSG_ROLL := "roll"
 const MSG_CHAT := "chat"
+
+## A player device telling the GM what their hero's numbers are now.
+##
+## Snapshot on change, not live sync. MULTIPLAYER.md leaves the choice open and
+## this is the cheaper half: a snapshot is one message when something actually
+## changes, where live sync would make every CharacterDoc signal a network
+## event -- and the GM only ever reads these numbers, so there is nothing a live
+## connection would buy.
+const MSG_CHARACTER := "character"
 const MSG_WELCOME := "welcome"
 const MSG_DENIED := "denied"
 const MSG_EVENT := "event"
@@ -256,6 +265,18 @@ func send_roll(roll: Dictionary) -> void:
 	_send_to_host({"kind": MSG_ROLL, "roll": roll})
 
 
+## Push this device's character numbers to the GM.
+##
+## `snapshot` is a summary, not a character: enough for the GM to read out a
+## durability track, and nothing they could edit. The player's device stays the
+## only writer of the character file, which is the conflict rule this exists
+## under.
+func send_character(snapshot: Dictionary) -> void:
+	if _role == Role.GM:
+		return
+	_send_to_host({"kind": MSG_CHARACTER, "snapshot": snapshot})
+
+
 ## Send a chat message. Empty `to_player_id` means the whole table.
 func send_chat(text: String, to_player_id: String = "") -> void:
 	if _role == Role.GM:
@@ -329,6 +350,18 @@ func _handle_as_host(from_peer: int, message: Dictionary) -> void:
 			var event := _log_and_broadcast(CampaignSession.EVENT_ROLL, player_id, roll)
 			roll_received.emit(player_id, roll)
 			event_received.emit(event)
+		MSG_CHARACTER:
+			var player_id := String(_peer_to_player.get(from_peer, ""))
+			if player_id.is_empty():
+				return
+			var snapshot: Dictionary = message.get("snapshot", {}) if typeof(message.get("snapshot")) == TYPE_DICTIONARY else {}
+			# Stored on the seat rather than logged. It is current state, and
+			# putting a full snapshot in an append-only log on every character
+			# edit is how a year of play stops fitting on a phone.
+			var seat := _session.seat_for(player_id)
+			if not seat.is_empty():
+				seat["character_snapshot"] = snapshot
+			character_received.emit(player_id, snapshot)
 		MSG_CHAT:
 			var player_id := String(_peer_to_player.get(from_peer, ""))
 			if player_id.is_empty():

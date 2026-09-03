@@ -17,7 +17,8 @@ scripts/core/      model and services, all headless-testable
   theme_service.gd   autoload; owns the active theme
   theme_palette.gd   the eight semantic colours
   dice/              notation, seeded RNG, RollResult
-  session/           campaign document and transport interface
+  session/           the table: campaign document and store, ENet transport,
+                     LAN discovery, player identity, character snapshot
 
 scripts/ui/        presentation
   app_shell.gd       root scene; routes between screens, handles back
@@ -27,9 +28,11 @@ scripts/ui/        presentation
   sheet_context.gd   what a tab is handed
   widgets.gd         stateless builders, palette-aware
   widgets/           controls with behaviour (SearchField, NumberStepper, SkillPicker)
-  screens/           character select, character sheet
+  screens/           character select, character sheet, campaign select,
+                     GM screen, table join, player table
   tabs/              the ten sheet tabs
-  routes/            catalog, confirm, import, optional rules, theme, skill detail
+  routes/            catalog, confirm, import, optional rules, theme,
+                     skill detail, text prompt, AP award
 
 scripts/alternity_rules*.gd   the rules engine: catalog data plus pure functions
 data/rules/*.json             the rules data
@@ -111,8 +114,9 @@ scenes/ui/                    the .tscn files for the above
 
 - `permissions/internet` and `permissions/access_network_state` are enabled in
   `export_presets.cfg` and must stay that way. Debug exports get INTERNET
-  implicitly for the remote debugger, so anything networked (the planned GM
-  connection) would appear to work in testing and fail only in a release APK.
+  implicitly for the remote debugger, so the GM connection would appear to work
+  in testing and fail only in a release APK. **This has not been verified from a
+  release build yet** -- see the open items in `MULTIPLAYER.md`.
 - Architectures ship **arm64-v8a only**. Enabling `architectures/x86_64` allows
   running on an Android emulator but takes the APK from roughly 33 MB to 61 MB,
   so turn it on for emulator testing and back off before tagging a release.
@@ -121,7 +125,48 @@ scenes/ui/                    the .tscn files for the above
 
 ---
 
-## 8. Dice: the simulation is authoritative
+## 8. The table: one owner per document
+
+Multiplayer is built (see `MULTIPLAYER.md`). Three rules decide where anything
+new belongs, and all three fail silently when broken -- nothing errors, the two
+devices simply diverge, and it surfaces weeks later as a sheet nobody can
+explain.
+
+- **Identity is a `CampaignSession` `player_id`, never an ENet peer id.** Peer
+  ids are random per connection; a player returning next week gets a new one.
+  `EnetTransport` maps peer to `player_id` on handshake and exposes only the
+  stable id upward. A peer id must never reach a signal, a log event or a UI
+  label. `PlayerIdentity` is where a player device stores the id it was issued.
+
+- **The GM's device owns the campaign. The player's device owns the character.**
+  Sequence numbers are assigned only by the host, so one history exists. AP
+  awards are events the player's device applies to its own character file -- a
+  GM never writes to a hero they cannot see. What crosses the wire the other way
+  is a `CharacterSnapshot`: read-only numbers, no skills or equipment, because
+  anything a GM could edit would create a second writer.
+
+- **Rolls travel as settled facts.** Resolved on the roller's device and sent as
+  a `RollResult`; nothing re-simulates or re-rolls on receipt. See section 9.
+
+The event log is append-only with a sequence, which is what makes reconnect
+"replay everything after seq N". Two consequences:
+
+- Never derive the next sequence number from `events.size()`. The log can be
+  compacted (`CampaignStore.compact`) or loaded as a tail, and deriving it would
+  reissue numbers already spent. `CampaignSession` tracks the mark, and the
+  campaign header stores it so a lost log still continues the sequence.
+- Never make correctness depend on replaying the log. Seats carry current state
+  -- AP totals, character bindings, who the GM is -- so trimming history costs
+  history and nothing else.
+
+Both transports poll explicitly rather than off a frame signal, so the screen
+that owns a connection is what pumps it and tearing that screen down closes the
+socket. `LanDiscovery` is a convenience and is allowed to fail on its own:
+typing the GM's address is a supported path, never a degraded one.
+
+---
+
+## 9. Dice: the simulation is authoritative
 
 When the 3D dice tray is built, the result is **read from where the dice
 settle**. Dice collide with each other and with the tray walls, and those

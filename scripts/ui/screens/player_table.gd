@@ -71,6 +71,7 @@ func setup(
 
 	_build()
 	_render()
+	_push_character()
 	set_process(true)
 
 
@@ -154,6 +155,9 @@ func _build_ap_section(parent: Container) -> void:
 	_character_picker = OptionButton.new()
 	_character_picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_character_picker.custom_minimum_size = Vector2(0, 36)
+	# Choosing a different hero is a change of which character this device is
+	# playing, so the GM's copy has to follow it.
+	_character_picker.item_selected.connect(func(_index: int): _push_character())
 	Widgets.field_row(section, "Apply to", _character_picker, _palette)
 
 	_claim_button = Button.new()
@@ -359,6 +363,29 @@ func _send_chat() -> void:
 	_chat_field.text = ""
 
 
+## Send the GM this device's hero, as numbers they can read but not edit.
+##
+## Called when the table is joined and after anything changes the character here.
+## Snapshot on change rather than live sync: the GM only ever reads these, so a
+## live connection would turn every CharacterDoc signal into a network event and
+## buy nothing.
+##
+## Which hero is "this device's" is whatever the claim picker is pointing at,
+## which is the only place the person has said which one they are playing.
+func _push_character() -> void:
+	if _transport == null or _character_picker == null:
+		return
+	if _character_picker.get_selected() < 0:
+		return
+	var file_name := String(_character_picker.get_item_metadata(_character_picker.get_selected()))
+	if file_name.is_empty():
+		return
+	var doc = _store.load_doc(file_name)
+	if doc == null:
+		return
+	_transport.send_character(CharacterSnapshot.of_doc(doc))
+
+
 ## Apply banked awards to a hero on this device.
 ##
 ## The conflict rule made concrete: the GM's award is an event, and the player's
@@ -384,6 +411,20 @@ func _on_claim_pressed() -> void:
 	_status.text = "%d AP added to %s." % [granted, doc.get_hero_name()]
 	_status.add_theme_color_override("font_color", _palette.accent)
 	_render()
+	# The character just changed, which is exactly when a snapshot is due.
+	_push_character()
+
+
+## Put the cursor in the message box, the same shortcut the GM screen uses.
+func focus_chat() -> void:
+	if _chat_field != null:
+		_chat_field.grab_focus()
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed(&"table_chat"):
+		focus_chat()
+		get_viewport().set_input_as_handled()
 
 
 func _on_leave_pressed() -> void:

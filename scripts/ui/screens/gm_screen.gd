@@ -51,6 +51,8 @@ var _hosting: bool = false
 var _table_status: Label
 var _table_hint: Label
 var _host_button: Button
+var _chat_field: LineEdit
+var _chat_target: OptionButton
 var _presence_clock: float = 0.0
 
 var _title: Label
@@ -152,6 +154,106 @@ func _build_table_section(parent: Container) -> void:
 	_host_button.pressed.connect(_on_host_pressed)
 	section.add_child(_host_button)
 
+	_build_chat(section)
+
+
+## The GM's half of the conversation.
+##
+## Without this, private chat only works in one direction: a player can whisper
+## a question and the GM has no way to answer it except out loud, which defeats
+## the point of a private line at a table where everyone can hear each other.
+##
+## The recipient picker lists seats by name, because the GM is the one device
+## that legitimately holds the seat list -- a player device never does.
+func _build_chat(parent: Container) -> void:
+	_chat_target = OptionButton.new()
+	_chat_target.name = "ChatTargetPicker"
+	_chat_target.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_chat_target.custom_minimum_size = Vector2(0, 36)
+	Widgets.field_row(parent, "Say to", _chat_target, _palette)
+
+	_chat_field = LineEdit.new()
+	_chat_field.name = "ChatField"
+	_chat_field.placeholder_text = "Message the table"
+	_chat_field.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_chat_field.custom_minimum_size = Vector2(0, 40)
+	_chat_field.text_submitted.connect(func(_text: String): _send_chat())
+	parent.add_child(_chat_field)
+
+	var send := Button.new()
+	send.name = "SendChatButton"
+	send.text = "Send"
+	send.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	send.custom_minimum_size = Vector2(0, 36)
+	send.pressed.connect(_send_chat)
+	parent.add_child(send)
+
+
+## Rebuild the recipient list from the current seats.
+##
+## Selection is preserved by player_id rather than by index: a seat removed above
+## the chosen one would otherwise silently retarget a private line at somebody
+## else.
+func _render_chat_targets() -> void:
+	if _chat_target == null:
+		return
+	var previous := ""
+	if _chat_target.get_selected() >= 0:
+		previous = String(_chat_target.get_item_metadata(_chat_target.get_selected()))
+
+	_chat_target.clear()
+	_chat_target.add_item("Everyone")
+	_chat_target.set_item_metadata(0, "")
+	var restore := 0
+	var index := 1
+	for seat in _session.seats:
+		if bool(seat.get("is_gm", false)):
+			continue
+		var player_id := String(seat.get("player_id", ""))
+		_chat_target.add_item("Only %s" % String(seat.get("player_name", "this seat")))
+		_chat_target.set_item_metadata(index, player_id)
+		if player_id == previous:
+			restore = index
+		index += 1
+	_chat_target.select(restore)
+
+
+func _send_chat() -> void:
+	var text := _chat_field.text.strip_edges()
+	if text.is_empty() or _session == null:
+		return
+
+	var to := ""
+	if _chat_target.get_selected() >= 0:
+		to = String(_chat_target.get_item_metadata(_chat_target.get_selected()))
+
+	if _hosting and _transport != null:
+		# Hosting: the transport logs it and delivers it, so the GM's own line
+		# gets a sequence number from the same place every other event does.
+		_transport.send_chat(text, to)
+	else:
+		# Not hosting. Still worth recording -- a GM running the table on one
+		# device uses the log as their notes.
+		_session.append_chat(String(_session.gm_seat().get("player_id", "")), text, to)
+	_store.flush_events(_session)
+	_chat_field.text = ""
+	_render_feed()
+
+
+## Put the cursor in the message box.
+##
+## Bound to an input action rather than to a raw key: the project has an Input
+## Map, and reaching past it for a keycode is how a shortcut becomes unrebindable.
+func focus_chat() -> void:
+	if _chat_field != null:
+		_chat_field.grab_focus()
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed(&"table_chat"):
+		focus_chat()
+		get_viewport().set_input_as_handled()
+
 
 func _build_header(parent: Container) -> void:
 	var margin := MarginContainer.new()
@@ -227,6 +329,7 @@ func refresh() -> void:
 	_character_cache.clear()
 	_title.text = _session.display_name
 	_render_table()
+	_render_chat_targets()
 	_render_seats()
 	_render_feed()
 
@@ -385,8 +488,21 @@ func _build_character_row(parent: Container, seat: Dictionary) -> void:
 
 
 ## Durability, action check and last resorts -- what a GM asks a player for.
+##
+## Two sources, in order. A hero bound to a file on this device is read from that
+## file. Otherwise the seat may carry a snapshot the player's device pushed,
+## which is the ordinary case at a real table: the player made their hero on
+## their own phone and the GM has never had a copy.
 func _build_key_numbers(parent: Container, seat: Dictionary) -> void:
 	var summary := _summary_for(String(seat.get("character_file", "")))
+	var from_snapshot := false
+
+	if summary.is_empty():
+		var snapshot = seat.get("character_snapshot", {})
+		if typeof(snapshot) == TYPE_DICTIONARY and CharacterSnapshot.is_usable(snapshot):
+			summary = snapshot
+			from_snapshot = true
+
 	if summary.is_empty():
 		Widgets.muted_text(parent, "No hero bound, so no numbers to show.", _palette, Widgets.FONT_CAPTION)
 		return
@@ -418,6 +534,23 @@ func _build_key_numbers(parent: Container, seat: Dictionary) -> void:
 		AlternityNum.as_int(resorts.get("available", 0)),
 		AlternityNum.as_int(resorts.get("max", 0)),
 	])
+
+	if not from_snapshot:
+		return
+
+	# Say where the numbers came from and how old they are. A snapshot is a fact
+	# about the past, and a GM reading a stale durability track as current is the
+	# one way this policy can mislead.
+	var age := CharacterSnapshot.age_seconds(summary)
+	var freshness := "just now" if age >= 0 and age < 60 else (
+		"%d minutes ago" % int(age / 60.0) if age >= 60 else "at some point"
+	)
+	Widgets.muted_text(
+		parent,
+		"%s, sent from their device %s." % [String(summary.get("hero_name", "Their hero")), freshness],
+		_palette,
+		Widgets.FONT_CAPTION
+	)
 
 
 func _metric(parent: Container, name: String, value: String) -> void:
@@ -705,6 +838,7 @@ func _on_host_pressed() -> void:
 		_transport.player_connected.connect(_on_player_connected)
 		_transport.player_disconnected.connect(_on_player_disconnected)
 		_transport.event_received.connect(_on_networked_event)
+		_transport.character_received.connect(_on_character_received)
 		_transport.transport_error.connect(_on_transport_error)
 
 	if _transport.host(_session, EnetTransport.DEFAULT_PORT) != OK:
@@ -780,6 +914,16 @@ func _on_networked_event(_event: Dictionary) -> void:
 	_store.flush_events(_session)
 	_render_feed()
 	_render_table()
+
+
+## A player pushed their hero's numbers.
+##
+## Saved because the snapshot lives on the seat: a GM who reopens the campaign
+## next week should still see what the character looked like, rather than an
+## empty row until that player happens to connect again.
+func _on_character_received(_player_id: String, _snapshot: Dictionary) -> void:
+	_store.save(_session)
+	_render_seats()
 
 
 func _on_transport_error(message: String) -> void:
