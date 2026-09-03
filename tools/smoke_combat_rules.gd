@@ -25,12 +25,15 @@ func _init() -> void:
 	_rules.load_core_data()
 	_combat = _rules.combat
 
+	_test_armor_layers()
 	_test_resistance()
+	_test_awareness()
 	_test_dodge()
 	_test_parry()
 	_test_weapon_failures()
 	_test_death_and_dying()
 	_test_condition()
+	_test_end_of_scene()
 	_test_recovery()
 	_test_last_resort()
 	_test_blasts()
@@ -45,6 +48,40 @@ func _hero(con: int = 10, dex: int = 10, str_score: int = 10) -> Dictionary:
 	character["abilities"]["DEX"] = dex
 	character["abilities"]["STR"] = str_score
 	return character
+
+
+# --- Armor -----------------------------------------------------------------
+
+## Layers do not add up: roll them all, keep the best.
+##
+## The rule that makes wearing three kinds of armor pointless as protection --
+## and still costly, because the penalties do stack.
+func _test_armor_layers() -> void:
+	check_eq(_combat.best_absorption([2, 5, 3]), 5, "the best layer is the one that counts")
+	check_eq(_combat.best_absorption([5]), 5, "one layer is its own best")
+	check_eq(_combat.best_absorption([]), 0, "no armor absorbs nothing")
+	# A d4-2 that rolled a 1 absorbs nothing rather than adding damage.
+	check_eq(_combat.best_absorption([-1, -3]), 0, "a negative roll absorbs nothing")
+	check_eq(_combat.best_absorption([-1, 2]), 2, "and does not drag a good layer down")
+
+	# A T'sa has a natural hide, which is a layer like any other -- it is not
+	# worn, and it still competes for "best" alongside anything that is.
+	var tsa := _hero(10)
+	for candidate in _rules.species:
+		if String(candidate.get("name", "")) == "T'sa":
+			tsa["species_id"] = AlternityNum.as_int(candidate.get("id", 0))
+	var hide: Array = _combat.armor_layers(tsa, "li")
+	check_true(hide.size() > 0, "a T'sa's natural hide is an armor layer")
+	if hide.size() > 0:
+		check_false(String(hide[0]["notation"]).is_empty(), "with dice to roll")
+
+	# The attack decides which rating answers it, not the armor.
+	var bare := _hero(10)
+	for impact in ["li", "hi", "en"]:
+		var layers: Array = _combat.armor_layers(bare, impact)
+		check_true(typeof(layers) == TYPE_ARRAY, "an unarmored hero has a layer list for %s" % impact)
+	check_eq(_combat.armor_layers(bare, "plasma").size(), 0, "an unknown impact type matches no rating")
+	check_eq(_combat.armor_layers(bare, "").size(), 0, "and neither does none at all")
 
 
 # --- Defence ---------------------------------------------------------------
@@ -73,6 +110,45 @@ func _test_resistance() -> void:
 	check_true(_combat.can_defend(true), "while an aware one can")
 
 
+## Awareness is three situations that look alike and are not.
+func _test_awareness() -> void:
+	var target := _hero(10, 14, 8)
+	var resisting: int = _rules.character_resistance_modifier(target, "DEX")
+
+	var normal: Dictionary = _combat.target_defence(target, false)
+	check_eq(AlternityNum.as_int(normal["resistance_step"]), resisting, "a ready target resists")
+	check_true(bool(normal["can_dodge"]), "and can dodge")
+	check_true(bool(normal["can_parry"]), "and parry")
+
+	# Never saw it coming: nothing at all.
+	var ambushed: Dictionary = _combat.target_defence(target, false, false)
+	check_eq(AlternityNum.as_int(ambushed["resistance_step"]), 0, "an unseen attacker is unresisted")
+	check_false(bool(ambushed["can_dodge"]), "and cannot be dodged")
+	check_false(bool(ambushed["can_parry"]), "or parried")
+
+	# From behind is not the same thing. They know there is a fight; they just
+	# cannot turn to meet this one.
+	var behind: Dictionary = _combat.target_defence(target, false, true, true)
+	check_eq(
+		AlternityNum.as_int(behind["resistance_step"]), resisting,
+		"a rear attack is still resisted -- being attacked from behind is not being unaware"
+	)
+	check_false(bool(behind["can_dodge"]), "but cannot be dodged")
+	check_false(bool(behind["can_parry"]), "or parried")
+
+	# Pinned is the one restraint that takes everything away.
+	var pinned: Dictionary = _combat.target_defence(target, true, true, false, true)
+	check_eq(AlternityNum.as_int(pinned["resistance_step"]), 0, "a pinned target resists nothing")
+	check_false(bool(pinned["can_dodge"]), "and cannot dodge")
+	check_true(String(pinned["reason"]).to_lower().contains("pinned"), "and the reason says why")
+
+	# Every state that is not one of those leaves the target defending normally.
+	check_true(
+		bool(_combat.target_defence(target, true)["can_parry"]),
+		"prone and held are miserable, not helpless -- they are simply not modelled here"
+	)
+
+
 ## A dodge amplifies the dodger's own resistance; it is not an opposed check.
 func _test_dodge() -> void:
 	check_eq(_combat.dodge_step("amazing"), 3, "an Amazing dodge is +3 against the attacker")
@@ -84,6 +160,14 @@ func _test_dodge() -> void:
 	# The risk that makes spending the action a decision rather than a habit.
 	check_eq(_combat.dodge_step("critical failure"), -2, "a fumbled dodge helps the attacker")
 	check_true(_combat.dodge_step("critical failure") < 0, "which is a bonus to them, not a penalty")
+
+	# And it costs more than the action: everything afterwards is worse.
+	check_eq(_combat.DODGE_LATER_PENALTY, 1, "a dodge puts +1 step on the rest of the round")
+
+	# Two things in one phase costs accuracy, not a second action -- which is how
+	# a character with one action per round does two things at all.
+	check_eq(AlternityNum.as_int(_combat.TWO_ACTIONS_STEPS["primary"]), 2, "the first of two costs +2 steps")
+	check_eq(AlternityNum.as_int(_combat.TWO_ACTIONS_STEPS["secondary"]), 4, "and the second +4")
 
 
 ## A parry is an opposed comparison of degrees, and blocks completely or not at
@@ -194,6 +278,34 @@ func _test_condition() -> void:
 
 ## The cadences are wildly different, and a campaign running for months needs
 ## them right or a hero either never recovers or never suffers.
+## Stun comes back all at once when the shooting stops, and takes the
+## unconsciousness with it.
+func _test_end_of_scene() -> void:
+	var hero := _hero(12)
+	var stun_max := AlternityNum.as_int(_rules.durability(hero).get("stun", 0))
+
+	check_eq(_combat.end_scene(hero), 0, "an unhurt hero has nothing to clear")
+
+	hero["damage"]["stun"] = stun_max
+	check_true(_combat.is_knocked_out(hero), "a full stun track is unconsciousness")
+	check_eq(_combat.end_scene(hero), stun_max, "the scene ending clears all of it")
+	check_eq(AlternityNum.as_int(hero["damage"]["stun"]), 0, "leaving the track empty")
+	check_false(_combat.is_knocked_out(hero), "so they are awake again")
+
+	# Only stun. A scene ending does not mend a wound.
+	var wounded := _hero(12)
+	wounded["damage"]["stun"] = 3
+	wounded["damage"]["wound"] = 4
+	wounded["damage"]["mortal"] = 1
+	_combat.end_scene(wounded)
+	check_eq(AlternityNum.as_int(wounded["damage"]["wound"]), 4, "wounds are untouched by the scene ending")
+	check_eq(AlternityNum.as_int(wounded["damage"]["mortal"]), 1, "and so is mortal damage")
+	check_true(_combat.is_dying(wounded), "a dying hero is still dying when the shooting stops")
+
+	# How long being knocked out lasts, which nothing shortens.
+	check_eq(_combat.KNOCKOUT_ROUNDS, 2, "a knockout lasts this round and the next")
+
+
 func _test_recovery() -> void:
 	check_eq(String(_combat.RECOVERY["stun"]["cadence"]), "scene", "stun is gone by the end of the scene")
 	check_eq(String(_combat.RECOVERY["fatigue"]["cadence"]), "hour", "fatigue comes back hourly")

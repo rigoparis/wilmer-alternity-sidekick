@@ -28,6 +28,71 @@ func _get_parent():
 	return _parent_ref.get_ref()
 
 
+# --- Armor -----------------------------------------------------------------
+
+## Which of a piece of armor's three ratings answers this attack.
+##
+## Decided by the attack, not by the armor: an attack is low impact, high impact
+## or energy, and the matching rating is the only one that rolls.
+const IMPACT_KEYS := {
+	"li": "armor_li",
+	"hi": "armor_hi",
+	"en": "armor_en",
+}
+
+
+## Every layer of armor that could absorb this kind of attack.
+##
+## Returns [{name, notation}] -- worn armor, a species' natural hide, cybertech
+## plating, mutation and psionic shields alike. They do not add up; see
+## best_absorption. Handing back the list rather than a number is what lets a
+## caller roll each one, which is what the rule asks for.
+func armor_layers(character: Dictionary, impact_type: String) -> Array:
+	var key := String(IMPACT_KEYS.get(impact_type.to_lower(), ""))
+	if key.is_empty():
+		return []
+
+	var rows: Array = []
+	var summary: Dictionary = _get_parent().equipment.equipment_summary(character)
+	var equipped = summary.get("equipped_armor", [])
+	if typeof(equipped) == TYPE_ARRAY:
+		rows.append_array(equipped)
+	# Cybertech plating is not part of the equipment summary's armor list, so it
+	# is gathered here rather than silently left out of the comparison.
+	rows.append_array(_get_parent().cybertech.cybertech_armor_rows(character))
+
+	var layers: Array = []
+	for row in rows:
+		if typeof(row) != TYPE_DICTIONARY:
+			continue
+		var item: Dictionary = row.get("item", {})
+		var notation := String(item.get(key, "")).strip_edges()
+		if notation.is_empty() or notation == "-":
+			continue
+		layers.append({
+			"name": String(item.get("name", row.get("name", "Armor"))),
+			"notation": notation,
+		})
+	return layers
+
+
+## The absorption from a set of layer rolls: the best one, and only the best.
+##
+## Layers do not add up. A character in a vest under a hide under a shield rolls
+## all three and uses whichever came out highest; the rest are thrown away.
+##
+## The mirror of that is that the *penalties* all stack, which is what makes
+## layering a real decision rather than free protection -- see
+## equipped_armor_action_penalty.
+##
+## A negative roll absorbs nothing rather than adding damage.
+func best_absorption(rolls: Array) -> int:
+	var best := 0
+	for value in rolls:
+		best = maxi(best, AlternityNum.as_int(value))
+	return best
+
+
 # --- Defence ---------------------------------------------------------------
 
 ## What a target's own body is worth against an attack, in steps.
@@ -70,6 +135,23 @@ func dodge_step(degree: String) -> int:
 	return 0
 
 
+## What dodging costs beyond the action itself.
+##
+## The dodge is declared in the first phase the character has an action in, and
+## takes that action. It then puts +1 step on everything they do for the rest of
+## the round -- so a dodge is not only an action spent, it makes the actions that
+## follow it worse. Source: Player's Handbook pp. 71-72.
+const DODGE_LATER_PENALTY := 1
+
+
+## Two related activities in one phase, on a single action.
+##
+## Not two actions: this is how a character with one action per round does two
+## things at once, and it costs them accuracy rather than another action.
+## Source: Player's Handbook p. 51.
+const TWO_ACTIONS_STEPS := {"primary": 2, "secondary": 4}
+
+
 ## Whether a parry stops an attack outright.
 ##
 ## An opposed comparison of degrees rather than of numbers: a parry equal to or
@@ -94,6 +176,58 @@ func parry_blocks(attack_degree: String, parry_degree: String) -> bool:
 ## passive resistance modifier as well. Source: Player's Handbook p. 32.
 func can_defend(target_aware: bool) -> bool:
 	return target_aware
+
+
+## Everything the target contributes to an attack against them.
+##
+## Awareness is not one flag, because the books do not treat it as one. Three
+## situations look similar and are not:
+##
+##   they cannot see the attacker   no resistance, no dodge, no parry --
+##                                  a sniper, or someone sneaking up
+##   the attack comes from behind   resistance still applies; they simply cannot
+##                                  turn to meet it, so no dodge or parry
+##   they are pinned                immobilised, so no resistance and no defence
+##
+## Prone and held are deliberately absent: both are miserable to be in and
+## neither makes a character unaware. They keep their resistance and can still
+## defend. Source: Player's Handbook p. 32, Gamemaster Guide pp. 44-45.
+##
+## Returns {resistance_step, can_dodge, can_parry, reason}.
+func target_defence(
+	target: Dictionary,
+	is_melee: bool,
+	sees_attacker: bool = true,
+	from_rear: bool = false,
+	pinned: bool = false
+) -> Dictionary:
+	if pinned:
+		return {
+			"resistance_step": 0,
+			"can_dodge": false,
+			"can_parry": false,
+			"reason": "Pinned: immobilised, so nothing is resisted and nothing is dodged.",
+		}
+	if not sees_attacker:
+		return {
+			"resistance_step": 0,
+			"can_dodge": false,
+			"can_parry": false,
+			"reason": "They never saw it coming.",
+		}
+	if from_rear:
+		return {
+			"resistance_step": resistance_step(target, is_melee, true),
+			"can_dodge": false,
+			"can_parry": false,
+			"reason": "From behind: they resist as normal but cannot turn to meet it.",
+		}
+	return {
+		"resistance_step": resistance_step(target, is_melee, true),
+		"can_dodge": true,
+		"can_parry": true,
+		"reason": "",
+	}
 
 
 # --- Critical failures -----------------------------------------------------
@@ -182,7 +316,36 @@ func condition_of(character: Dictionary) -> String:
 	return "Unhurt"
 
 
+## How long a knockout lasts before the character may try to wake.
+##
+## The round it happened in and all of the next, with no exceptions -- not even a
+## teammate with a trauma pack shortens it. Only after that do the Resolve checks
+## start. Source: Gamemaster Guide p. 53.
+const KNOCKOUT_ROUNDS := 2
+
+
 # --- Recovery --------------------------------------------------------------
+
+## End the scene: stun clears and anybody it knocked out wakes up.
+##
+## Stun is the one track that comes back on its own and it comes back all at
+## once. The round-by-round Resolve check is an in-scene loop for waking before
+## the shooting stops; once the scene ends it is moot.
+##
+## Mutates the character and returns how much stun was cleared, so a screen can
+## say what happened rather than silently changing a sheet.
+## Source: Player's Handbook p. 54, Gamemaster Guide p. 53.
+func end_scene(character: Dictionary) -> int:
+	var damage: Dictionary = character.get("damage", {})
+	var cleared := AlternityNum.as_int(damage.get("stun", 0))
+	if cleared <= 0:
+		return 0
+	damage["stun"] = 0
+	character["damage"] = damage
+	return cleared
+
+
+
 
 ## How each damage track comes back.
 ##
