@@ -293,25 +293,93 @@ const SITUATION_MODIFIERS := [
 	{"id": "amazing", "name": "Amazing", "step": -3},
 ]
 
-## Common combat situations, as instances of the categories above.
+## Range modifiers, which depend on what kind of weapon is firing.
 ##
-## Offered so a GM can tap "heavy cover" instead of deciding that heavy cover is
-## Extreme and that Extreme is +3. Each one names the category it comes from, so
-## nothing here is a second rule -- it is the same table with familiar labels.
+## Table P22: Range Modifiers by Weapon Type, Player's Handbook p. 73.
 ##
-## Range steps come from the band the shot falls in, which every weapon already
-## carries in its own data as short/medium/long.
-const COMBAT_SITUATIONS := [
-	{"id": "range_short", "group": "Range", "name": "Short range", "step": -1, "from": "ordinary"},
-	{"id": "range_medium", "group": "Range", "name": "Medium range", "step": 0, "from": "marginal"},
-	{"id": "range_long", "group": "Range", "name": "Long range", "step": 1, "from": "slight"},
-	{"id": "cover_light", "group": "Cover", "name": "Light cover", "step": 1, "from": "slight"},
-	{"id": "cover_heavy", "group": "Cover", "name": "Heavy cover", "step": 3, "from": "extreme"},
-	{"id": "light_dim", "group": "Visibility", "name": "Moonlight", "step": 1, "from": "slight"},
-	{"id": "light_none", "group": "Visibility", "name": "Total darkness", "step": 3, "from": "extreme"},
-	{"id": "zero_g", "group": "Environment", "name": "Zero gravity, untrained", "step": 3, "from": "extreme"},
+## A first version of this applied one scale to every weapon -- short -1, medium
+## 0, long +1 -- which is right for a rifle and wrong for everything else. A
+## pistol at long range is +3, not +1.
+##
+## The bands themselves come off the weapon's own stat line, which is written
+## short/medium/long in metres. There is no band past long: a shot beyond a
+## weapon's long range cannot be fired at all.
+const RANGE_MODIFIERS_BY_WEAPON := {
+	# Bow, crossbow, sling; also thrown weapons.
+	"primitive": {"short": -1, "medium": 1, "long": 2},
+	"pistol": {"short": -1, "medium": 1, "long": 3},
+	"smg": {"short": -1, "medium": 1, "long": 3},
+	"rifle": {"short": -1, "medium": 0, "long": 1},
+	# Heavy weapons fired directly behave as rifles; indirect fire inverts,
+	# being hopeless up close and designed for distance.
+	"heavy_direct": {"short": -1, "medium": 0, "long": 1},
+	"heavy_indirect": {"short": 2, "medium": -2, "long": 0},
+}
+
+## What a heavy weapon firing indirectly suffers inside melee range, and what a
+## rifle or direct-fire heavy weapon suffers there. Both from the same table.
+const RANGE_MODIFIER_MELEE_RANGE := {
+	"rifle": 1,
+	"heavy_direct": 1,
+	"heavy_indirect": 4,
+}
+
+## Everything else that moves an attack up or down the step scale.
+##
+## Modifiers for Ranged Weapons, Gamemaster Guide p. 46, and Modifiers to Unarmed
+## and Melee Attacks, Gamemaster Guide p. 44. A negative step is a bonus.
+##
+## `scope` says which table a row belongs to, because two of them genuinely
+## disagree: a prone target is harder to shoot (+2) and easier to hit with a club
+## (-2). Reading one table for both would make lying down a universal defence.
+const ATTACK_MODIFIERS := [
+	# --- The attacker's own situation, identical in both tables ---
+	{"id": "attacker_rear", "group": "Attacker", "name": "Attacking from the rear", "step": -2, "scope": "both"},
+	{"id": "attacker_flank", "group": "Attacker", "name": "Attacking from the flank", "step": -1, "scope": "both"},
+	{"id": "attacker_high_ground", "group": "Attacker", "name": "Higher ground", "step": -1, "scope": "both"},
+	{"id": "attacker_off_balance", "group": "Attacker", "name": "Off balance", "step": 2, "scope": "both"},
+	{"id": "attacker_prone", "group": "Attacker", "name": "Attacker is prone", "step": 2, "scope": "both"},
+	{"id": "attacker_running", "group": "Attacker", "name": "Attacker is running", "step": 2, "scope": "both"},
+	{"id": "attacker_sprinting", "group": "Attacker", "name": "Attacker is sprinting", "step": 3, "scope": "both"},
+
+	# --- The target, where the two tables part company ---
+	{"id": "target_prone_ranged", "group": "Target", "name": "Target is prone", "step": 2, "scope": "ranged"},
+	{"id": "target_kneeling_ranged", "group": "Target", "name": "Target is sitting or kneeling", "step": 1, "scope": "ranged"},
+	{"id": "target_prone_melee", "group": "Target", "name": "Target is prone", "step": -2, "scope": "melee"},
+	{"id": "target_kneeling_melee", "group": "Target", "name": "Target is sitting or kneeling", "step": -1, "scope": "melee"},
+
+	# --- Cover. Ranged only; a club does not care about a low wall the way a
+	# --- bullet does, and the melee table does not list it.
+	{"id": "cover_light", "group": "Cover", "name": "Light cover", "step": 1, "scope": "ranged"},
+	{"id": "cover_medium", "group": "Cover", "name": "Medium cover", "step": 2, "scope": "ranged"},
+	{"id": "cover_heavy", "group": "Cover", "name": "Heavy cover", "step": 3, "scope": "ranged"},
+
+	# --- Illumination, identical in both tables ---
+	{"id": "light_twilight", "group": "Illumination", "name": "Twilight or poor visibility", "step": 1, "scope": "both"},
+	{"id": "light_moonlight", "group": "Illumination", "name": "Moonlight", "step": 2, "scope": "both"},
+	{"id": "light_none", "group": "Illumination", "name": "Total darkness", "step": 3, "scope": "both"},
+
+	# --- Firing mode. Burst is steadier than a single shot; autofire spreads
+	# --- across targets and is handled per target, not as one flat row.
+	{"id": "mode_single", "group": "Firing mode", "name": "Single shot", "step": 0, "scope": "ranged"},
+	{"id": "mode_burst", "group": "Firing mode", "name": "Burst", "step": -1, "scope": "ranged"},
+
+	# --- Declared manoeuvres ---
+	{"id": "called_shot", "group": "Manoeuvre", "name": "Called shot", "step": 4, "scope": "both"},
+	{"id": "aimed", "group": "Manoeuvre", "name": "Aimed last phase", "step": -1, "scope": "both"},
+	{"id": "charging", "group": "Manoeuvre", "name": "Charging", "step": -2, "scope": "melee"},
 ]
 
+## The step penalty each target of an autofire sweep takes, in order.
+##
+## Gamemaster Guide p. 46. Autofire is walked across up to three targets within
+## six metres of each other, and one control die is rolled against three
+## situation dice at once -- so this is three separate results, not one attack.
+const AUTOFIRE_TARGET_STEPS := [1, 2, 3]
+
+## A called shot that lands is promoted one degree, the same promotion the
+## firepower rule gives. Gamemaster Guide p. 50.
+const CALLED_SHOT_PROMOTES := true
 const COMPLEX_CHECK_RULES := {
 	"summary": "Complex skill checks are used for tasks that take more than one roll or where the GM wants tension over time.",
 	"successes": "Ordinary success counts as 1 success, Good as 2, and Amazing as 3.",

@@ -2855,16 +2855,20 @@ func character_degraded_damage_grade(character: Dictionary, damage_type: String,
 	return degrade_damage_grade(damage_type, weapon_grade, target_toughness)
 
 
-## The step a judged situation is worth. See SITUATION_MODIFIERS.
+## The step a judged situation is worth.
 ##
-## Unknown categories are worth nothing rather than guessed at: a GM who taps
-## something this build does not know should get an unmodified check, not a
-## silently invented penalty.
+## Looks in the general Situation Die Modifiers scale and in the combat tables,
+## so a caller can mix "the circumstances are Extreme" with "heavy cover" without
+## caring which book the row came from.
+##
+## Unknown ids are worth nothing rather than guessed at: a GM who taps something
+## this build does not know should get an unmodified check, not a silently
+## invented penalty.
 func situation_step_for(category_id: String) -> int:
 	for row in SITUATION_MODIFIERS:
 		if String(row.get("id", "")) == category_id:
 			return _as_int(row.get("step", 0))
-	for row in COMBAT_SITUATIONS:
+	for row in ATTACK_MODIFIERS:
 		if String(row.get("id", "")) == category_id:
 			return _as_int(row.get("step", 0))
 	return 0
@@ -2879,6 +2883,62 @@ func net_situation_steps(category_ids: Array) -> int:
 	for id in category_ids:
 		total += situation_step_for(String(id))
 	return total
+
+
+## The modifiers that apply to one kind of attack.
+##
+## Two rows genuinely disagree between the ranged and melee tables -- a prone
+## target is harder to shoot and easier to club -- so offering one list for both
+## would make lying down a universal defence.
+func attack_modifiers_for(scope: String) -> Array:
+	var out: Array = []
+	for row in ATTACK_MODIFIERS:
+		var row_scope := String(row.get("scope", "both"))
+		if row_scope == "both" or row_scope == scope:
+			out.append(row)
+	return out
+
+
+## The step a shot takes for the band it falls in.
+##
+## Table P22: range modifiers depend on the weapon, not just the distance. A
+## rifle at long range is +1; a pistol at the same band is +3.
+##
+## `band` is "short", "medium" or "long". Anything else -- including a distance
+## past the weapon's long range, which cannot be fired at all -- returns 0, so a
+## caller must check the range itself rather than relying on a penalty to stand
+## in for "impossible".
+func range_step_for(weapon_type: String, band: String) -> int:
+	var table = RANGE_MODIFIERS_BY_WEAPON.get(weapon_type, {})
+	if typeof(table) != TYPE_DICTIONARY:
+		return 0
+	return _as_int(table.get(band, 0))
+
+
+## Which band a distance falls in, given a weapon's own short/medium/long range.
+##
+## Returns "short", "medium", "long", or "" when the shot is out of range --
+## there is no band past long, and no shot can be fired there.
+func range_band_for(metres: float, short_range: float, medium_range: float, long_range: float) -> String:
+	if metres <= short_range:
+		return "short"
+	if metres <= medium_range:
+		return "medium"
+	if metres <= long_range:
+		return "long"
+	return ""
+
+
+## A called shot that lands is promoted one degree. Gamemaster Guide p. 50.
+##
+## The same promotion the firepower rule gives, so both go through one place.
+func promote_degree(degree: String) -> String:
+	match degree.to_lower():
+		"ordinary":
+			return "good"
+		"good":
+			return "amazing"
+	return degree
 
 
 ## Raise a hit's quality when firepower outclasses toughness.

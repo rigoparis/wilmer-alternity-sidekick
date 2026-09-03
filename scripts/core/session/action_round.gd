@@ -87,10 +87,15 @@ func add_combatant(id: String, display_name: String, actions: int = 1, kind: Str
 		"name": display_name,
 		# Empty until their action check comes in.
 		"degree": "",
-		"score": 0,
+		# The character's own action check score -- their target number, not what
+		# they rolled. This is what orders a phase; see acting_in().
+		"check_score": 0,
+		# What they actually rolled, kept for display. Lower is better.
+		"roll": 0,
+		"critical": false,
 		"actions": maxi(1, actions),
-		"acted": 0,
 		"out": false,
+		"pending_out": false,
 		"out_reason": "",
 	})
 	return true
@@ -119,17 +124,28 @@ func remove_combatant(id: String) -> bool:
 
 ## Record what a combatant's action check came to.
 ##
-## `degree` is what rules.resolve_check() returned, lowercased. `score` is the
-## roll total, kept because ties inside a phase break on it.
+## `degree` is what rules.resolve_check() returned. `check_score` is the
+## character's own action check score -- their target number -- and `roll` is
+## what the dice actually showed.
+##
+## Both are stored because they are different things and only one of them orders
+## a phase. An earlier version sorted by the roll, which is backwards in a
+## roll-under system: it put the worst rollers first. Player's Handbook p. 50 is
+## explicit that ties are broken "in order of their action check scores -- highest
+## score first", meaning the character's score, not the die.
 ##
 ## A Failure or a Critical Failure is not an absence of a result -- it puts the
 ## combatant in the Marginal phase, which is where most of a bad round happens.
-func record_check(id: String, degree: String, score: int) -> bool:
+## A Critical Failure additionally goes last in that phase, whatever their score.
+func record_check(id: String, degree: String, check_score: int, roll: int = 0, is_critical: bool = false) -> bool:
 	var entry := combatant(id)
 	if entry.is_empty():
 		return false
-	entry["degree"] = _phase_for_degree(degree)
-	entry["score"] = score
+	var lowered := degree.to_lower()
+	entry["degree"] = _phase_for_degree(lowered)
+	entry["check_score"] = check_score
+	entry["roll"] = roll
+	entry["critical"] = is_critical or lowered.contains("critical")
 	return true
 
 
@@ -183,16 +199,22 @@ func phase_name() -> String:
 
 
 ## Everyone who may act in the current phase, in the order they act.
-##
-## A combatant acts in the phase they rolled and in every phase after it, so the
-## Amazing phase holds only the Amazing rollers while Marginal holds everybody
-## still standing. Within a phase the higher action check goes first, which
-## matters for who a shot is declared against -- though the results all land
-## together at the end of it.
 func acting_now() -> Array:
 	return acting_in(phase())
 
 
+## Everyone who may act in one phase, in order.
+##
+## Two rules decide who is in the list. A combatant acts in the phase their check
+## reached and in every phase after it -- so a good roll buys earlier
+## opportunities, not just an earlier turn. But they only get one action per
+## phase, and only as many actions as their Constitution and Will allow: a
+## character with three actions who rolled Amazing acts in Amazing, Good and
+## Ordinary, and is finished before Marginal.
+##
+## Order inside the phase is by the character's own action check score, highest
+## first, with one exception -- a Critical Failure goes last in Marginal
+## regardless of how good their score is.
 func acting_in(phase_id: String) -> Array:
 	var wanted := PHASES.find(phase_id)
 	if wanted == -1:
@@ -200,29 +222,68 @@ func acting_in(phase_id: String) -> Array:
 
 	var out: Array = []
 	for entry in combatants:
+		# Only actually out. Somebody dropped during this phase still completes
+		# what they declared; see knock_out().
 		if bool(entry.get("out", false)):
 			continue
 		var earned := PHASES.find(String(entry.get("degree", "marginal")))
-		# Earned an earlier phase, so they act in this one too.
-		if earned != -1 and earned <= wanted:
-			out.append(entry)
+		if earned == -1 or earned > wanted:
+			continue
+		# One action per phase, starting at the phase they earned.
+		if wanted - earned >= AlternityNum.as_int(entry.get("actions", 1), 1):
+			continue
+		out.append(entry)
 
-	out.sort_custom(func(a, b): return AlternityNum.as_int(a.get("score", 0)) > AlternityNum.as_int(b.get("score", 0)))
+	out.sort_custom(_before)
 	return out
 
 
-## Take a combatant out of the fight.
+## Sort order inside a phase.
 ##
-## The reason the round tracks this at all: everything they had scheduled in
-## later phases goes with them. Dropped in Amazing, they do not act in Good,
-## Ordinary or Marginal -- which is what makes rolling well worth so much.
+## Highest action check score first. A Critical Failure is sorted behind
+## everybody, which only ever matters in Marginal -- the one phase a critical
+## failure can act in.
+func _before(a: Dictionary, b: Dictionary) -> bool:
+	var a_critical := bool(a.get("critical", false))
+	var b_critical := bool(b.get("critical", false))
+	if a_critical != b_critical:
+		return b_critical
+	return AlternityNum.as_int(a.get("check_score", 0)) > AlternityNum.as_int(b.get("check_score", 0))
+
+
+## Take a combatant out of the fight, as of the end of this phase.
+##
+## Deferred on purpose. A phase resolves as a unit: everything declared in it
+## happens, and the consequences land together when it closes. Two combatants who
+## drop each other in the same phase both connect, and somebody shot in the Good
+## phase still completes the action they had declared there.
+##
+## What being dropped costs is the phases after it -- which is what makes rolling
+## well worth so much. Dropped in Amazing, they do not act in Good, Ordinary or
+## Marginal.
 func knock_out(id: String, reason: String = "") -> bool:
 	var entry := combatant(id)
-	if entry.is_empty() or bool(entry.get("out", false)):
+	if entry.is_empty() or bool(entry.get("out", false)) or bool(entry.get("pending_out", false)):
 		return false
-	entry["out"] = true
+	entry["pending_out"] = true
 	entry["out_reason"] = reason
+	# Outside a running phase there is nothing to finish, so it lands at once.
+	if state != STATE_ACTIVE:
+		_apply_pending()
 	return true
+
+
+## Whether a combatant has been dropped this phase but is still finishing it.
+func is_falling(id: String) -> bool:
+	return bool(combatant(id).get("pending_out", false))
+
+
+## Close out everyone dropped during the phase that just ended.
+func _apply_pending() -> void:
+	for entry in combatants:
+		if bool(entry.get("pending_out", false)):
+			entry["pending_out"] = false
+			entry["out"] = true
 
 
 func revive(id: String) -> bool:
@@ -230,6 +291,7 @@ func revive(id: String) -> bool:
 	if entry.is_empty():
 		return false
 	entry["out"] = false
+	entry["pending_out"] = false
 	entry["out_reason"] = ""
 	return true
 
@@ -238,7 +300,8 @@ func is_out(id: String) -> bool:
 	return bool(combatant(id).get("out", false))
 
 
-## Everyone still standing.
+## Everyone still standing, which includes anyone dropped in the current phase
+## and still finishing it.
 func standing() -> Array:
 	var out: Array = []
 	for entry in combatants:
@@ -255,6 +318,9 @@ func standing() -> Array:
 func advance_phase() -> String:
 	if state != STATE_ACTIVE:
 		return ""
+	# The phase is over, so its results land now -- including anybody dropped
+	# during it, who has just finished the action they had declared.
+	_apply_pending()
 	phase_index += 1
 	if phase_index >= PHASES.size():
 		state = STATE_FINISHED
@@ -281,7 +347,7 @@ func next_round() -> ActionRound:
 			AlternityNum.as_int(entry.get("actions", 1), 1),
 			String(entry.get("kind", KIND_PLAYER))
 		)
-		if bool(entry.get("out", false)):
+		if bool(entry.get("out", false)) or bool(entry.get("pending_out", false)):
 			following.knock_out(String(entry.get("id", "")), String(entry.get("out_reason", "")))
 	return following
 
