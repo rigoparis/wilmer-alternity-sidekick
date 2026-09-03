@@ -150,10 +150,14 @@ rebindable.
 | `smoke_campaign_session` | 82 | the document, reconnect flow, the replay window |
 | `smoke_campaign_store` | 76 | the sidecar log, compaction, a lost log, rename |
 | `smoke_gm_screen` | 87 | M1's checkpoint, driven through the real shell |
-| `smoke_enet_transport` | 71 | two peers over the loopback, handshake, reconnect |
+| `smoke_enet_transport` | 96 | two peers over the loopback, handshake, reconnect, the check round trip |
 | `smoke_lan_discovery` | 26 | a busy port, foreign traffic, a departed host |
 | `smoke_table_session` | 68 | M2's checkpoint: two whole shells against each other |
 | `smoke_character_sync` | 43 | the snapshot policy and the conflict rule |
+| `smoke_skill_check` | 77 | the check document, both directions, the step total |
+| `smoke_die_shape` | 738 | every die read at every one of its numbers |
+| `smoke_dice_tray` | 64 | real physics: dice settle, in range, always answer |
+| `smoke_check_flow` | 45 | a check end to end through two shells and real dice |
 
 Every one of these was checked by breaking the thing it claims to test and
 confirming it fails.
