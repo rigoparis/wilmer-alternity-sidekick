@@ -36,6 +36,8 @@ func _run() -> void:
 	await _test_roll_travels_as_a_fact()
 	await _test_chat_and_private_lines()
 	await _test_gm_events_reach_the_player()
+	await _test_check_round_trip()
+	await _test_gm_calls_for_a_check()
 	await _test_reconnect_replays_the_gap()
 	await _test_unknown_player_can_be_refused()
 	await _test_peer_ids_never_escape()
@@ -261,6 +263,97 @@ func _test_gm_events_reach_the_player() -> void:
 	)
 	check_eq(_client.last_seen_seq(), AlternityNum.as_int(awarded.get("seq", 0)),
 		"the client tracks how far its log has got")
+
+
+# --- Checks ----------------------------------------------------------------
+
+## The round trip: a player asks, the GM sets the difficulty, the answer comes
+## back. The dice are thrown after this, on the player's device.
+func _test_check_round_trip() -> void:
+	var Check = preload("res://scripts/core/session/skill_check.gd")
+	var player_id := String(_host.connected_players()[0])
+
+	var asked := []
+	_host.check_requested.connect(func(from: String, check: Dictionary): asked.append([from, check]))
+	var ruled := []
+	_client.check_ruled.connect(func(check: Dictionary): ruled.append(check))
+
+	var request = Check.request(player_id, {"id": 1}, {"ordinary": 12, "good": 6, "amazing": 3, "step": 1}, "Athletics - Climb")
+	_client.request_check(request.to_dict())
+	var arrived := await _pump_until(func(): return asked.size() > 0)
+	check_true(arrived, "the request reaches the GM")
+	if not arrived:
+		return
+
+	var received: Dictionary = asked[0][1]
+	check_eq(String(asked[0][0]), player_id, "the GM knows who asked")
+	check_eq(String(received.get("skill_label", "")), "Athletics - Climb", "and what they want to attempt")
+	check_eq(AlternityNum.as_int(received.get("ordinary", 0)), 12, "and the score to roll against")
+	check_eq(AlternityNum.as_int(received.get("player_step", 0)), 1, "and the steps the character already carries")
+	check_eq(AlternityNum.as_int(received.get("gm_step", 0)), 0, "with nothing from the GM yet")
+
+	# The GM rules on it.
+	var ruling = Check.from_dict(received)
+	check_true(ruling.rule(2, "the ledge is wet"), "the GM sets a step")
+	_host.send_ruling(ruling.to_dict(), player_id)
+	arrived = await _pump_until(func(): return ruled.size() > 0)
+	check_true(arrived, "the ruling comes back")
+	if not arrived:
+		return
+
+	var answered = Check.from_dict(ruled[0])
+	check_eq(answered.check_id, request.check_id, "answering the check that was asked")
+	check_eq(answered.gm_step, 2, "with the GM's steps")
+	check_eq(answered.reason, "the ledge is wet", "and their reason")
+	check_eq(answered.player_step, 1, "the character's own steps came back untouched")
+	# Both halves, which is the number the tray throws against.
+	check_eq(answered.total_step(), 3, "and the total is both contributions")
+	check_true(answered.is_rollable(), "the check is ready to roll")
+
+
+## A device must not be able to ask as somebody else. The asker is whoever the
+## socket says it is, not whoever the message claims -- otherwise a ruling meant
+## for one player could be steered at another.
+func _test_gm_calls_for_a_check() -> void:
+	var Check = preload("res://scripts/core/session/skill_check.gd")
+	var real_id := String(_host.connected_players()[0])
+
+	var asked := []
+	_host.check_requested.connect(func(from: String, check: Dictionary): asked.append([from, check]))
+	var spoofed = Check.request("somebody-else-entirely", {"id": 1}, {"ordinary": 10, "step": 0}, "Athletics")
+	_client.request_check(spoofed.to_dict())
+	var arrived := await _pump_until(func(): return asked.size() > 0)
+	check_true(arrived, "the spoofed request still arrives")
+	if arrived:
+		check_eq(String(asked[0][0]), real_id, "but the GM is told who really sent it")
+		check_eq(
+			String(asked[0][1].get("player_id", "")), real_id,
+			"and the check itself is corrected before the GM sees it"
+		)
+
+	# The other direction: the GM calls for a check nobody asked for.
+	var called := []
+	_client.check_ruled.connect(func(check: Dictionary): called.append(check))
+	var call = Check.call_for("Awareness - Perception", 1, "the corridor is dark", 12)
+	_host.send_ruling(call.to_dict(), real_id)
+	arrived = await _pump_until(func(): return called.size() > 0)
+	check_true(arrived, "a called check reaches the player")
+	if not arrived:
+		return
+
+	var incoming = Check.from_dict(called[called.size() - 1])
+	check_eq(incoming.origin, Check.ORIGIN_GM, "marked as the GM asking")
+	check_eq(incoming.gm_step, 1, "with the step already set")
+	check_eq(incoming.ordinary, 0, "and no score, which the GM does not have")
+	check_false(incoming.is_rollable(), "so it is not rollable until the player supplies one")
+	check_true(incoming.accept({"ordinary": 11, "step": 0}), "the player's device supplies it")
+	check_true(incoming.is_rollable(), "and then it can be rolled")
+
+	# Called to the whole table rather than one seat.
+	var broadcast_count: int = called.size()
+	_host.send_ruling(Check.call_for("Awareness", 0).to_dict())
+	arrived = await _pump_until(func(): return called.size() > broadcast_count)
+	check_true(arrived, "a check called to the whole table reaches a player")
 
 
 # --- Reconnect -------------------------------------------------------------

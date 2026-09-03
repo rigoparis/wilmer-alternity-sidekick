@@ -47,6 +47,19 @@ signal events_replayed(events: Array)
 ## set for a private line with the GM.
 signal chat_received(player_id: String, text: String, to_player_id: String)
 
+## A player wants to attempt a skill and is waiting on a step ruling.
+##
+## Host side only. The check carries what is being attempted and the score to
+## roll against; what it is missing is the GM's half of the step total.
+signal check_requested(player_id: String, check: Dictionary)
+
+## The GM answered a request, or called for a check unprompted.
+##
+## Client side only. Both arrive here because they end in the same place -- a
+## check with a known total step, ready for the tray -- and a screen that had to
+## tell them apart would duplicate the roll path.
+signal check_ruled(check: Dictionary)
+
 ## A player pushed their character's current numbers.
 ##
 ## A snapshot, taken when the character changes -- not a live view. The player's

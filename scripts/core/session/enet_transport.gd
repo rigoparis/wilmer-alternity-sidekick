@@ -49,6 +49,15 @@ const MSG_CHAT := "chat"
 ## event -- and the GM only ever reads these numbers, so there is nothing a live
 ## connection would buy.
 const MSG_CHARACTER := "character"
+
+## A player asking to attempt a skill, and the GM's answer.
+##
+## Two messages rather than one because they travel in opposite directions and
+## mean different things: a request is "may I, and how hard is it", a ruling is
+## "here is the step". A GM calling for a check unprompted sends a ruling with no
+## request in front of it, which is exactly what a ruling already is.
+const MSG_CHECK_REQUEST := "check_request"
+const MSG_CHECK_RULING := "check_ruling"
 const MSG_WELCOME := "welcome"
 const MSG_DENIED := "denied"
 const MSG_EVENT := "event"
@@ -265,6 +274,35 @@ func send_roll(roll: Dictionary) -> void:
 	_send_to_host({"kind": MSG_ROLL, "roll": roll})
 
 
+## Ask the GM to set the difficulty of a check.
+##
+## The reply comes back as `check_ruled`. With no table open there is nobody to
+## ask, and the caller is expected to set the step itself rather than wait -- see
+## the roll screen, which stays usable on one device.
+func request_check(check: Dictionary) -> void:
+	if _role == Role.GM:
+		return
+	_send_to_host({"kind": MSG_CHECK_REQUEST, "check": check})
+
+
+## Answer a request, or call for a check unprompted.
+##
+## Host side. `to_player_id` empty means the whole table, which is only
+## meaningful for a check the GM is calling -- a ruling answers one request and
+## carries the asker's id inside it.
+func send_ruling(check: Dictionary, to_player_id: String = "") -> void:
+	if _role != Role.GM:
+		push_error("EnetTransport.send_ruling is the host's job")
+		return
+	var message := {"kind": MSG_CHECK_RULING, "check": check}
+	if to_player_id.is_empty():
+		_send_to_peer(MultiplayerPeer.TARGET_PEER_BROADCAST, message)
+		return
+	var target := AlternityNum.as_int(_player_to_peer.get(to_player_id, 0))
+	if target > 0:
+		_send_to_peer(target, message)
+
+
 ## Push this device's character numbers to the GM.
 ##
 ## `snapshot` is a summary, not a character: enough for the GM to read out a
@@ -350,6 +388,16 @@ func _handle_as_host(from_peer: int, message: Dictionary) -> void:
 			var event := _log_and_broadcast(CampaignSession.EVENT_ROLL, player_id, roll)
 			roll_received.emit(player_id, roll)
 			event_received.emit(event)
+		MSG_CHECK_REQUEST:
+			var player_id := String(_peer_to_player.get(from_peer, ""))
+			if player_id.is_empty():
+				return
+			var check: Dictionary = message.get("check", {}) if typeof(message.get("check")) == TYPE_DICTIONARY else {}
+			# The asker is whoever the socket says it is, not whoever the message
+			# claims: a device must not be able to request a check as somebody
+			# else and have the GM's ruling go to them.
+			check["player_id"] = player_id
+			check_requested.emit(player_id, check)
 		MSG_CHARACTER:
 			var player_id := String(_peer_to_player.get(from_peer, ""))
 			if player_id.is_empty():
@@ -500,6 +548,11 @@ func _handle_as_client(message: Dictionary) -> void:
 				return
 			_note_seq(events[events.size() - 1])
 			events_replayed.emit(events)
+		MSG_CHECK_RULING:
+			var check = message.get("check", {})
+			if typeof(check) != TYPE_DICTIONARY:
+				return
+			check_ruled.emit(check)
 		MSG_EVENT:
 			var event = message.get("event", {})
 			if typeof(event) != TYPE_DICTIONARY:

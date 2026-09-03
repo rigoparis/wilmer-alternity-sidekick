@@ -2137,6 +2137,11 @@ func skill_score(character: Dictionary, skill: Dictionary) -> Dictionary:
 		"ordinary": ordinary,
 		"good": good,
 		"amazing": int(floor(ordinary / 4.0)),
+		# The raw step total as well as the die it produces. `die` is what a sheet
+		# shows; `step` is what a GM's situation modifier gets added to, and it
+		# cannot be recovered from the notation -- action_step_die() caps at -5 and
+		# collapses everything past +7 into a count of d20s.
+		"step": step,
 		"die": action_step_die(step),
 		"usable": true,
 		"trained_only": trained_only,

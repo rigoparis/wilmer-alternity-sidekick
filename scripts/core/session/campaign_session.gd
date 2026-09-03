@@ -27,6 +27,13 @@ const EVENT_JOIN := "join"
 const EVENT_AP_AWARD := "ap_award"
 const EVENT_AP_SET := "ap_set"
 
+## A GM called for a check. Logged because it is something the GM did at the
+## table, and it stands whether or not anybody answered it.
+##
+## A player's own request is not logged: if they roll, the roll event carries the
+## whole check, and if they change their mind nothing happened.
+const EVENT_CHECK := "check"
+
 ## AP Award reasons based on core Alternity GM guidelines
 const AP_REASON_COMPLETION := "Adventure Completion"
 const AP_REASON_ROLEPLAYING := "Roleplaying Bonus"
