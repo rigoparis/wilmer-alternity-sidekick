@@ -12,6 +12,7 @@ extends SceneTree
 
 const SHELL := preload("res://scenes/ui/app_shell.tscn")
 const STORE_DIR := "user://__shot_store__/"
+const CAMPAIGN_DIR := "user://__shot_campaigns__/"
 
 ## Width, height, label.
 const SIZES := [
@@ -33,6 +34,7 @@ func _init() -> void:
 func _run() -> void:
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(_out_dir))
 	_seed_store()
+	_seed_campaigns()
 
 	for spec in SIZES:
 		await _capture(spec[0], spec[1], String(spec[2]))
@@ -103,6 +105,33 @@ func _seed_store() -> void:
 	store.clear_last_opened()
 
 
+## A campaign with seats, a bound hero, AP and a log, so the GM screen is
+## photographed doing its job rather than showing three empty sections.
+func _seed_campaigns() -> void:
+	var store := CampaignStore.new(CAMPAIGN_DIR)
+	for entry in store.list():
+		store.delete(String(entry["campaign_id"]))
+
+	var session := CampaignSession.new("The Verge")
+	var gm := session.add_seat("Rodri")
+	session.set_gm(gm)
+	var alice := session.add_seat("Alice", "Vance_Kellar.json")
+	var bob := session.add_seat("Bob", "Mira_Sostrand.json")
+
+	session.append_event(CampaignSession.EVENT_JOIN, alice, {"player_name": "Alice"})
+	session.append_chat(alice, "We break for the airlock.")
+	session.append_roll(alice, {"notation": "d20", "total": 14, "label": "Action check"})
+	session.append_chat(gm, "The seal is rusted through -- roll Strength.", alice)
+	session.append_roll(bob, {"notation": "d20+d4", "total": 9, "label": "Athletics"})
+	session.award_ap(alice, 3, CampaignSession.AP_REASON_HEROISM)
+	session.award_table_ap(1, CampaignSession.AP_REASON_COMPLETION)
+	store.save(session)
+
+	var quiet := CampaignSession.new("Dark Matter: Session Zero")
+	store.save(quiet)
+	store.clear_last_opened()
+
+
 func _capture(width: int, height: int, label: String) -> void:
 	var window := root.get_window()
 	window.size = Vector2i(width, height)
@@ -124,6 +153,7 @@ func _capture(width: int, height: int, label: String) -> void:
 
 	var shell = SHELL.instantiate()
 	shell.store_directory = STORE_DIR
+	shell.campaign_directory = CAMPAIGN_DIR
 	root.add_child(shell)
 
 	# Several frames: containers settle their layout over more than one pass.
@@ -152,6 +182,26 @@ func _capture(width: int, height: int, label: String) -> void:
 				for _i in 12:
 					await process_frame
 				_save(shell, "%s_tab_%s" % [label, id])
+
+	# The campaign list and the GM screen, which are the multiplayer feature's
+	# single-device half and have the same reasons to be looked at as the sheet.
+	shell._show_campaigns()
+	for _i in 12:
+		await process_frame
+	_save(shell, "%s_campaigns" % label)
+
+	var campaigns: Array = shell.campaigns.list()
+	for entry in campaigns:
+		var session = shell.campaigns.load_session(String(entry["campaign_id"]))
+		if session == null:
+			continue
+		shell._open_campaign(session)
+		for _i in 12:
+			await process_frame
+		# Both a populated campaign and an empty one: the empty states are where
+		# a section collapses to nothing and nobody notices.
+		var slug := "busy" if session.seats.size() > 0 else "empty"
+		_save(shell, "%s_gm_%s" % [label, slug])
 
 	shell.queue_free()
 	await process_frame

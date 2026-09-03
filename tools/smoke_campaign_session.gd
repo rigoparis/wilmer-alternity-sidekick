@@ -22,6 +22,7 @@ func _init() -> void:
 	_test_reconnect_flow()
 	_test_ap_awards()
 	_test_persistence()
+	_test_replay_window()
 
 	finish()
 
@@ -233,3 +234,49 @@ func _test_persistence() -> void:
 	var junk := Session.from_dict({"seats": "not an array", "events": 42})
 	check_eq(junk.seats.size(), 0, "a malformed seats field is ignored")
 	check_eq(junk.events.size(), 0, "a malformed events field is ignored")
+
+
+## The replay window a reconnecting client asks for.
+##
+## The client remembers the last sequence number it saw and the host sends
+## everything after it. Both halves have to be exact: an off-by-one either
+## repeats a roll in the feed or drops one silently.
+func _test_replay_window() -> void:
+	var session := Session.new("Replay")
+	var pid := session.add_seat("Nadia")
+	for i in 6:
+		session.append_chat(pid, "line %d" % i)
+
+	check_eq(session.last_seq(), 6, "the high-water mark tracks the newest event")
+	check_eq(session.events_since(6).size(), 0, "a client that is up to date gets nothing")
+	check_eq(session.events_since(4).size(), 2, "a client two behind gets two events")
+	check_eq(
+		AlternityNum.as_int(session.events_since(4)[0].get("seq", 0)), 5,
+		"replay starts at the event after the one the client last saw"
+	)
+	check_eq(session.events_since(0).size(), 6, "a client that has seen nothing gets everything")
+
+	# The client side of the same exchange. Applying a replay twice is the normal
+	# case -- a dropped acknowledgement means the host resends -- so adopting an
+	# event the client already holds must be a no-op rather than a duplicate.
+	var client := Session.new("Replay")
+	client.adopt_events(session.events_since(3))
+	check_eq(client.events.size(), 3, "the client adopts the replayed tail")
+	check_eq(client.last_seq(), 6, "adopted events carry their own sequence numbers")
+	check_false(client.adopt_event(session.events[5]), "re-adopting a held event is refused")
+	check_eq(client.events.size(), 3, "and does not duplicate it")
+	check_true(client.adopt_event(session.append_chat(pid, "new")), "a genuinely new event is adopted")
+	check_eq(client.last_seq(), 7, "the client mark follows the host")
+
+	# Trimming is what keeps a year of play bounded. Seats carry current state,
+	# so what it costs is history and never correctness.
+	session.award_ap(pid, 5)
+	var before_ap := session.get_seat_ap(pid)
+	check_eq(session.trim_events(2), 6, "trimming reports how many events it dropped")
+	check_eq(session.events.size(), 2, "only the newest events remain")
+	check_eq(session.get_seat_ap(pid), before_ap, "trimming does not disturb seat state")
+	check_eq(
+		AlternityNum.as_int(session.append_chat(pid, "after").get("seq", 0)), 9,
+		"appending after a trim continues the sequence rather than restarting"
+	)
+	check_eq(session.trim_events(50), 0, "trimming to more than is held does nothing")

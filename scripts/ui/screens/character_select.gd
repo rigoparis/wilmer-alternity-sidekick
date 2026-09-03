@@ -16,6 +16,10 @@ extends Control
 ## A character was chosen or created and should be opened.
 signal character_opened(doc: CharacterDoc)
 
+## The campaign list was asked for. A sibling destination, not an overlay: a
+## campaign opens onto a screen of its own.
+signal campaigns_opened
+
 const CONFIRM_ROUTE := preload("res://scenes/ui/routes/confirm_route.tscn")
 const IMPORT_ROUTE := preload("res://scenes/ui/routes/import_character_route.tscn")
 const OPTIONAL_RULES_ROUTE := preload("res://scenes/ui/routes/optional_rules_route.tscn")
@@ -133,6 +137,14 @@ func _build_actions(parent: Container) -> void:
 	import_button.custom_minimum_size = Vector2(0, 44)
 	import_button.pressed.connect(_on_import_pressed)
 	bar.add_child(import_button)
+
+	var campaigns := Button.new()
+	campaigns.name = "CampaignsButton"
+	campaigns.text = "Campaigns"
+	campaigns.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	campaigns.custom_minimum_size = Vector2(0, 44)
+	campaigns.pressed.connect(func(): campaigns_opened.emit())
+	bar.add_child(campaigns)
 
 
 ## One side of the reading gutter on a wide screen.

@@ -48,6 +48,15 @@ var events: Array = []
 ## Campaign-level optional rules set by the GM and synced to all players at the table.
 var optional_rules: Dictionary = {}
 
+## Highest sequence number issued so far.
+##
+## Tracked rather than derived from events.size() because the stored log may be
+## compacted -- a year of play is unbounded, and only the tail is worth keeping.
+## Deriving the next number from the array length would then reissue sequence 1
+## over a trimmed log, and reconnect replay ("everything after seq N") would
+## silently resend or skip.
+var _last_seq: int = 0
+
 
 func _init(name: String = "New Campaign") -> void:
 	campaign_id = new_id()
@@ -148,8 +157,9 @@ func set_gm(player_id: String) -> bool:
 ## Append one event. Stamps time and a monotonic sequence number so the log
 ## stays ordered even when two events share a timestamp.
 func append_event(kind: String, player_id: String, payload: Dictionary) -> Dictionary:
+	_last_seq += 1
 	var event := {
-		"seq": events.size() + 1,
+		"seq": _last_seq,
 		"kind": kind,
 		"player_id": player_id,
 		"at": int(Time.get_unix_time_from_system()),
@@ -191,6 +201,71 @@ func recent_events(count: int) -> Array:
 	if count <= 0 or events.is_empty():
 		return []
 	return events.slice(maxi(0, events.size() - count))
+
+
+## Everything issued after `seq`, which is what a reconnecting client asks for.
+##
+## The client remembers the last sequence number it saw; the host replays from
+## there. Nothing is re-derived from the payloads -- seats already carry current
+## state -- so a gap caused by log compaction costs history, never correctness.
+func events_since(seq: int) -> Array:
+	var out: Array = []
+	for event in events:
+		if AlternityNum.as_int(event.get("seq", 0)) > seq:
+			out.append(event)
+	return out
+
+
+## Highest sequence number issued, whether or not that event is still in memory.
+func last_seq() -> int:
+	return _last_seq
+
+
+## Raise the sequence high-water mark without adding an event.
+##
+## Needed when a stored log has been compacted: the header remembers how far the
+## campaign got, and the surviving lines start later than that. Only ever raises
+## it -- lowering would reissue numbers that are already spent.
+func restore_last_seq(seq: int) -> void:
+	_last_seq = maxi(_last_seq, seq)
+
+
+## Replace the in-memory log with events that already carry sequence numbers.
+##
+## Used by the store when loading, and by a client applying a replay. Sequence
+## numbers are preserved rather than reassigned, and the counter advances to the
+## highest one seen so later appends cannot collide with a trimmed prefix.
+func adopt_events(loaded: Array) -> void:
+	events = loaded.duplicate(true)
+	for event in events:
+		_last_seq = maxi(_last_seq, AlternityNum.as_int(event.get("seq", 0)))
+
+
+## Append an event that was issued elsewhere, keeping its sequence number.
+##
+## Returns false for one already present, so a replay that overlaps what the
+## client already has is idempotent rather than duplicating the tail.
+func adopt_event(event: Dictionary) -> bool:
+	var seq := AlternityNum.as_int(event.get("seq", 0))
+	for existing in events:
+		if AlternityNum.as_int(existing.get("seq", 0)) == seq:
+			return false
+	events.append(event.duplicate(true))
+	_last_seq = maxi(_last_seq, seq)
+	return true
+
+
+## Drop all but the newest `keep` events from memory.
+##
+## Safe because seats carry current state: AP totals, character bindings and GM
+## designation all live on the seat, not in the log. Sequence numbers of what
+## remains are untouched, so replay still lines up.
+func trim_events(keep: int) -> int:
+	if keep < 0 or events.size() <= keep:
+		return 0
+	var dropped := events.size() - keep
+	events = events.slice(dropped)
+	return dropped
 
 
 ## Award achievement points to a player seat.
@@ -297,7 +372,7 @@ static func from_dict(data: Dictionary) -> CampaignSession:
 	session.seats = seats_data.duplicate(true) if typeof(seats_data) == TYPE_ARRAY else []
 
 	var events_data = data.get("events", [])
-	session.events = events_data.duplicate(true) if typeof(events_data) == TYPE_ARRAY else []
+	session.adopt_events(events_data if typeof(events_data) == TYPE_ARRAY else [])
 
 	var rules_data = data.get("optional_rules", {})
 	session.optional_rules = rules_data.duplicate(true) if typeof(rules_data) == TYPE_DICTIONARY else {}

@@ -19,9 +19,12 @@ extends Control
 const RulesScript := preload("res://scripts/alternity_rules.gd")
 const SELECT_SCREEN := preload("res://scenes/ui/screens/character_select.tscn")
 const SHEET_SCREEN := preload("res://scenes/ui/screens/character_sheet.tscn")
+const CAMPAIGN_SELECT_SCREEN := preload("res://scenes/ui/screens/campaign_select.tscn")
+const GM_SCREEN := preload("res://scenes/ui/screens/gm_screen.tscn")
 
 var rules
 var store: CharacterStore
+var campaigns: CampaignStore
 var router: UiRouter
 
 var _background: ColorRect
@@ -29,6 +32,8 @@ var _modal_host: ModalHost
 var _screens: Control
 var _select: CharacterSelectScreen
 var _sheet: CharacterSheetScreen
+var _campaign_select: CampaignSelectScreen
+var _gm: GmScreen
 var _palette: ThemePalette
 
 var _is_wide: bool = false
@@ -39,11 +44,18 @@ var _is_wide: bool = false
 ## do this: without it they would read and overwrite real saved characters.
 @export var store_directory: String = ""
 
+## Where campaigns are read and written. Empty means user://campaigns/.
+##
+## Separate from store_directory because the two stores are separate; a test
+## that redirects one and not the other would still write real files.
+@export var campaign_directory: String = ""
+
 
 func _ready() -> void:
 	rules = RulesScript.new()
 	rules.load_core_data()
 	store = CharacterStore.new(rules) if store_directory.is_empty() else CharacterStore.new(rules, store_directory)
+	campaigns = CampaignStore.new() if campaign_directory.is_empty() else CampaignStore.new(campaign_directory)
 
 	_palette = _resolve_palette()
 	_connect_theme()
@@ -113,6 +125,7 @@ func _show_select() -> void:
 	_screens.add_child(_select)
 	_select.setup(rules, store, router, _palette)
 	_select.character_opened.connect(_open_sheet)
+	_select.campaigns_opened.connect(_show_campaigns)
 
 
 func _open_sheet(doc: CharacterDoc) -> void:
@@ -131,9 +144,44 @@ func _on_sheet_closed() -> void:
 	_show_select()
 
 
+## The campaign list, a sibling of the character list rather than a route.
+##
+## A destination, not an overlay: opening a campaign leads to a full screen of
+## its own, and the router's stack is for things you come back from.
+func _show_campaigns() -> void:
+	_clear_screens()
+	_campaign_select = CAMPAIGN_SELECT_SCREEN.instantiate()
+	_campaign_select.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_screens.add_child(_campaign_select)
+	_campaign_select.setup(campaigns, router, _palette)
+	_campaign_select.campaign_opened.connect(_open_campaign)
+	_campaign_select.closed.connect(_on_campaigns_closed)
+
+
+func _open_campaign(session: CampaignSession) -> void:
+	_clear_screens()
+	_gm = GM_SCREEN.instantiate()
+	_gm.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_screens.add_child(_gm)
+	_gm.setup(session, campaigns, store, rules, router, _palette)
+	_gm.closed.connect(_on_gm_closed)
+
+
+func _on_campaigns_closed() -> void:
+	campaigns.clear_last_opened()
+	_show_select()
+
+
+func _on_gm_closed() -> void:
+	campaigns.clear_last_opened()
+	_show_campaigns()
+
+
 func _clear_screens() -> void:
 	_select = null
 	_sheet = null
+	_campaign_select = null
+	_gm = null
 	for child in _screens.get_children():
 		_screens.remove_child(child)
 		child.queue_free()
@@ -151,6 +199,14 @@ func _rebuild_active_screen() -> void:
 			if not was_on.is_empty():
 				_sheet.restore_tab(was_on)
 			return
+	# Colours are baked in at build time, so a theme change rebuilds whatever
+	# screen is showing -- not always the character list.
+	if _gm != null and is_instance_valid(_gm):
+		_open_campaign(_gm.session())
+		return
+	if _campaign_select != null and is_instance_valid(_campaign_select):
+		_show_campaigns()
+		return
 	_show_select()
 
 
@@ -179,6 +235,12 @@ func _handle_back() -> void:
 	if _sheet != null and is_instance_valid(_sheet):
 		_on_sheet_closed()
 		return
+	if _gm != null and is_instance_valid(_gm):
+		_on_gm_closed()
+		return
+	if _campaign_select != null and is_instance_valid(_campaign_select):
+		_on_campaigns_closed()
+		return
 	# At the character list there is nowhere further back, so honour the quit.
 	get_tree().quit()
 
@@ -201,6 +263,14 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if _sheet != null and is_instance_valid(_sheet):
 		_on_sheet_closed()
+		get_viewport().set_input_as_handled()
+		return
+	if _gm != null and is_instance_valid(_gm):
+		_on_gm_closed()
+		get_viewport().set_input_as_handled()
+		return
+	if _campaign_select != null and is_instance_valid(_campaign_select):
+		_on_campaigns_closed()
 		get_viewport().set_input_as_handled()
 
 
