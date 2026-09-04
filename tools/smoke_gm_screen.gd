@@ -14,6 +14,7 @@ extends "res://tools/test_harness.gd"
 
 const SHELL := preload("res://scenes/ui/app_shell.tscn")
 const Session := preload("res://scripts/core/session/campaign_session.gd")
+const BLAST_ROUTE := preload("res://scenes/ui/routes/combat_blast_route.tscn")
 
 const TEST_DIR := "user://__gm_test__/"
 const TEST_CAMPAIGN_DIR := "user://__gm_test_campaigns__/"
@@ -43,6 +44,7 @@ func _run() -> void:
 	await _test_set_ap()
 	await _test_feed()
 	await _test_attack_targets()
+	await _test_a_blast()
 	await _test_remove_seat()
 	await _test_back_unwinds()
 	await _test_rename_and_delete()
@@ -523,6 +525,101 @@ func _gather_attack_buttons(node: Node, into: Dictionary) -> void:
 				if not bound.is_empty():
 					into[String(bound[0])] = child
 		_gather_attack_buttons(child, into)
+
+
+# --- Blasts ----------------------------------------------------------------
+
+## An explosion is several attacks at once, and none of them is rolled to hit.
+##
+## Driven through the route rather than the button, because the button opens a
+## dice tray and what is being tested is who the blast reaches and what band they
+## end up in.
+func _test_a_blast() -> void:
+	var gm = _gm_screen()
+	if not check(gm != null, "the GM screen is showing"):
+		return
+
+	var route = BLAST_ROUTE.instantiate()
+	_shell.add_child(route)
+	route.configure({
+		"palette": ThemePalette.new(),
+		"rules": _shell.rules,
+		"combatants": [
+			{"id": "close", "name": "Close", "dodging": false},
+			{"id": "middle", "name": "Middle", "dodging": false},
+			{"id": "outer", "name": "Outer", "dodging": false},
+			{"id": "flat", "name": "Flat", "dodging": true},
+			{"id": "away", "name": "Away", "dodging": false},
+		],
+	})
+	await process_frame
+
+	# Nobody is caught until the GM says where they were. A screen that assumed
+	# everybody was standing in the blast would be a screen that kills the party.
+	check_eq(route.caught().size(), 0, "nobody is in the blast to begin with")
+
+	route._on_zone_pressed("close", "amazing", HBoxContainer.new())
+	route._on_zone_pressed("middle", "good", HBoxContainer.new())
+	route._on_zone_pressed("outer", "ordinary", HBoxContainer.new())
+
+	var bands: Dictionary = {}
+	for target in route.caught():
+		bands[String(target["player_id"])] = String(target["zone"])
+	check_eq(bands.size(), 3, "three people are caught")
+	check_eq(String(bands.get("close", "")), "amazing", "the close one takes the Amazing damage")
+	check_eq(String(bands.get("middle", "")), "good", "the middle one the Good")
+	check_eq(String(bands.get("outer", "")), "ordinary", "and the outer one the Ordinary")
+	check_false(bands.has("away"), "somebody clear of it takes nothing")
+
+	# Hitting the deck drops a band, and out of the outer band it drops them out
+	# of the blast entirely.
+	route._on_zone_pressed("flat", "amazing", HBoxContainer.new())
+	var dropped: Dictionary = {}
+	for target in route.caught():
+		dropped[String(target["player_id"])] = target
+	check_eq(String(dropped["flat"]["zone"]), "good", "a dodger in the close band takes the Good damage")
+	check_eq(
+		String(dropped["flat"]["declared_zone"]), "amazing",
+		"while the band they were actually standing in is still on the record"
+	)
+
+	route._on_zone_pressed("flat", "ordinary", HBoxContainer.new())
+	var escaped := true
+	for target in route.caught():
+		if String(target["player_id"]) == "flat":
+			escaped = false
+	check_true(escaped, "and a dodger in the outer band is out of it altogether")
+
+	# What it closes with is what the screen needs to build the attacks.
+	var closed = []
+	route.closed.connect(func(result): closed.append(result))
+	route._choose_weapon({
+		"name": "Grenade, plasma",
+		"combat": {"damage": "d4+2w/d6+2w/d4m", "damage_type": "En/G", "thrown": true},
+	})
+	route._submit()
+	await process_frame
+	check_eq(closed.size(), 1, "confirming closes with a blast")
+	if closed.is_empty():
+		return
+	var blast: Dictionary = closed[0]
+	check_eq(String(blast.get("weapon_name", "")), "Grenade, plasma", "naming what went off")
+	check_eq(String(blast.get("impact_type", "")), "en", "with the impact type its armor is read for")
+	check_eq(String(blast.get("firepower", "")), "G", "and the firepower grade")
+	check_eq((blast.get("targets", []) as Array).size(), 3, "and everyone it reached")
+
+	# The damage entry each band rolls is the weapon's own, picked by the band.
+	check_eq(
+		_shell.rules.combat.damage_entry_for(String(blast.get("damage_text", "")), "amazing"), "d4m",
+		"the close band rolls the Amazing entry"
+	)
+	check_eq(
+		_shell.rules.combat.damage_entry_for(String(blast.get("damage_text", "")), "ordinary"), "d4+2w",
+		"and the outer band the Ordinary one"
+	)
+
+	route.queue_free()
+	await process_frame
 
 
 # --- Removal and navigation ------------------------------------------------

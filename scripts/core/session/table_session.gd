@@ -44,6 +44,12 @@ signal action_check_wanted
 ## somebody deals with it.
 signal attack_arrived(attack: CombatAttack)
 
+## The scene ended and this character's stun has cleared.
+##
+## Carries how much was cleared, so a screen can say what happened rather than a
+## damage track silently emptying itself.
+signal scene_ended(stun_cleared: int)
+
 ## Something went wrong that a player should see.
 signal trouble(message: String)
 
@@ -416,7 +422,11 @@ func _remember(event: Dictionary) -> void:
 ## they committed -- so a picker asking which hero should receive the award is
 ## a question with one possible answer.
 func _absorb(event: Dictionary) -> void:
-	if String(event.get("kind", "")) != CampaignSession.EVENT_AP_AWARD:
+	var kind := String(event.get("kind", ""))
+	if kind == CampaignSession.EVENT_SCENE_END:
+		_end_the_scene()
+		return
+	if kind != CampaignSession.EVENT_AP_AWARD:
 		return
 	if String(event.get("player_id", "")) != transport.local_player_id():
 		return
@@ -441,6 +451,27 @@ func _absorb(event: Dictionary) -> void:
 	# them, so the copy the GM holds has to follow.
 	push_character()
 	ap_applied.emit(amount, reason)
+
+
+## The shooting has stopped: clear the stun and wake up.
+##
+## Applied here rather than by the GM for the same reason damage is: this device
+## owns the character. The GM says when the scene ended; what that does to a
+## particular hero is worked out where the hero lives.
+##
+## Only stun. A scene ending does not mend a wound, and a dying character is
+## still dying when the room goes quiet.
+func _end_the_scene() -> void:
+	if doc == null or rules == null:
+		return
+	var cleared: int = doc.apply([CharacterDoc.DAMAGE], func(character):
+		return rules.combat.end_scene(character))
+	if cleared <= 0:
+		return
+	if store != null:
+		store.save(doc)
+	push_character()
+	scene_ended.emit(cleared)
 
 
 ## The most recent events, newest first, ready to render.
@@ -482,6 +513,8 @@ func describe(event: Dictionary) -> String:
 			]
 		CampaignSession.EVENT_AP_SET:
 			return "Your achievement points were set to %d" % AlternityNum.as_int(payload.get("new_ap", 0)) if mine else "A total was adjusted"
+		CampaignSession.EVENT_SCENE_END:
+			return "The scene ended -- your stun clears"
 		CampaignSession.EVENT_CHECK:
 			return "The GM called for %s" % SkillCheck.from_dict(payload).describe()
 		CampaignSession.EVENT_JOIN:

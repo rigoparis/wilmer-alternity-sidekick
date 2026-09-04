@@ -49,6 +49,7 @@ const AP_AWARD_ROUTE := preload("res://scenes/ui/routes/ap_award_route.tscn")
 const CHECK_STEP_ROUTE := preload("res://scenes/ui/routes/check_step_route.tscn")
 const CHARACTER_VIEW_ROUTE := preload("res://scenes/ui/routes/character_view_route.tscn")
 const COMBAT_ATTACK_ROUTE := preload("res://scenes/ui/routes/combat_attack_route.tscn")
+const COMBAT_BLAST_ROUTE := preload("res://scenes/ui/routes/combat_blast_route.tscn")
 const DICE_TRAY_ROUTE := preload("res://scenes/ui/routes/dice_tray_route.tscn")
 const SKILL_PICK_ROUTE := preload("res://scenes/ui/routes/skill_pick_route.tscn")
 const TABLE_SETTINGS_ROUTE := preload("res://scenes/ui/routes/table_settings_route.tscn")
@@ -223,6 +224,7 @@ func _render_combat() -> void:
 		var start := _small_button("Start combat", _on_start_combat_pressed)
 		start.add_theme_stylebox_override("normal", Widgets.flat_style(_palette.surface_soft, _palette.accent, 6))
 		_combat_body.add_child(start)
+		_combat_body.add_child(_end_scene_button())
 		return
 
 	var heading := Widgets.text(_combat_body, _fight.describe(), _palette, Widgets.FONT_SUBHEADING, _palette.accent)
@@ -256,9 +258,14 @@ func _render_combat() -> void:
 		advance.add_theme_stylebox_override("normal", Widgets.flat_style(_palette.surface_soft, _palette.accent, 6))
 		actions.add_child(advance)
 
+	var blast := _small_button("Something goes off", _on_blast_pressed)
+	actions.add_child(blast)
+
 	var stop := _small_button("End combat", _on_end_combat_pressed)
 	stop.add_theme_color_override("font_color", _palette.warning)
 	actions.add_child(stop)
+
+	_combat_body.add_child(_end_scene_button())
 
 
 func _render_waiting_for_checks() -> void:
@@ -505,6 +512,32 @@ func _on_end_combat_pressed() -> void:
 	refresh()
 
 
+## The button that says the shooting has stopped.
+##
+## Separate from ending combat, because they are different things: a fight can
+## end with the scene still running, and the next wave coming through the door
+## does not hand anybody their stun back.
+func _end_scene_button() -> Button:
+	var button := _small_button("End the scene (clears stun)", _on_end_scene_pressed)
+	button.tooltip_text = "Stun clears for everyone and anybody it knocked out wakes up. Wounds are untouched."
+	return button
+
+
+## Tell the table the scene is over.
+##
+## An event rather than a message, because that is what it is -- something that
+## happened at the table, which the log should carry and a player who reconnects
+## should be replayed. Each device applies it to its own character; nothing here
+## writes to a sheet.
+func _on_end_scene_pressed() -> void:
+	_session.append_event(CampaignSession.EVENT_SCENE_END, "", {
+		"text": "The scene ended. Stun clears and anybody it knocked out wakes up.",
+	})
+	_store.save(_session)
+	_broadcast_recent()
+	refresh()
+
+
 ## An action check the GM rolled on somebody's behalf.
 ##
 ## Uses their own character, so a player who stepped away is not penalised for
@@ -596,6 +629,14 @@ func _on_attack_pressed(player_id: String) -> void:
 	if not is_instance_valid(self) or degree.is_empty():
 		return
 
+	# A natural 20 is not merely a miss: something happened to the weapon. Rolled
+	# here rather than left to the GM to remember, because the one time it comes
+	# up is the one time everybody is looking at the dice.
+	if degree.to_lower() == "critical failure":
+		await _roll_weapon_failure(declaration)
+		if not is_instance_valid(self):
+			return
+
 	var split: Dictionary = _rules.combat.split_weapon_type("%s/%s" % [
 		String(declaration.get("impact_type", "hi")),
 		String(declaration.get("firepower", "O")),
@@ -660,6 +701,115 @@ func _roll_to_hit(declaration: Dictionary, steps: int) -> String:
 	if not is_instance_valid(self) or typeof(outcome) != TYPE_DICTIONARY or not outcome.has("check"):
 		return ""
 	return SkillCheck.from_dict(outcome["check"]).degree()
+
+
+## An explosion, which is several attacks at once.
+##
+## Nothing is rolled to hit: an explosive does not miss, it goes off, and what a
+## person takes is decided by where they were standing. So this skips straight to
+## the damage -- one roll per band rather than one per person, because the blast
+## is a single event and everybody in the same band was hit by the same thing.
+func _on_blast_pressed() -> void:
+	if _fight == null or _router == null:
+		return
+
+	var standing: Array = []
+	for entry in _fight.standing():
+		standing.append({
+			"id": String(entry.get("id", "")),
+			"name": String(entry.get("name", "Someone")),
+			"dodging": not String(entry.get("dodge", "")).is_empty(),
+		})
+
+	var blast = await _router.push(COMBAT_BLAST_ROUTE, {
+		"palette": _palette,
+		"rules": _rules,
+		"combatants": standing,
+	})
+	if not is_instance_valid(self) or typeof(blast) != TYPE_DICTIONARY:
+		return
+
+	var damage_text := String(blast.get("damage_text", ""))
+	var rolled_by_zone: Dictionary = {}
+	for target in blast.get("targets", []):
+		var zone := String(target.get("zone", ""))
+		if rolled_by_zone.has(zone):
+			continue
+		var entry: String = _rules.combat.damage_entry_for(damage_text, zone)
+		var total := await _roll_blast_band(entry, String(blast.get("weapon_name", "")), zone)
+		if not is_instance_valid(self):
+			return
+		rolled_by_zone[zone] = {"total": total, "entry": entry}
+
+	for target in blast.get("targets", []):
+		var zone := String(target.get("zone", ""))
+		var band: Dictionary = rolled_by_zone.get(zone, {})
+		var attack := CombatAttack.declare(
+			String(target.get("player_id", "")),
+			String(blast.get("weapon_name", "An explosion")),
+			String(blast.get("weapon_name", "an explosion")),
+			zone.capitalize(),
+			AlternityNum.as_int(band.get("total", 0)),
+			_rules.combat.damage_track_of(String(band.get("entry", ""))),
+			String(blast.get("impact_type", "en")),
+			String(blast.get("firepower", "O"))
+		)
+		# There is no attacker to see coming and nothing to turn aside: a blast
+		# is resisted by armor and by where you were standing, and by nothing
+		# else. Saying so on the attack keeps the target from being offered a
+		# parry against an explosion.
+		attack.sees_attacker = true
+		attack.from_rear = false
+		attack.is_melee = false
+		_send_attack(attack)
+
+
+## One band's worth of damage. Everybody in it takes the same roll.
+func _roll_blast_band(entry: String, weapon_name: String, zone: String) -> int:
+	var term := DiceNotation.parse(entry)
+	if not bool(term.get("ok", false)):
+		return 0
+	var rolled = await _router.push(DICE_TRAY_ROUTE, {
+		"palette": _palette,
+		"rules": _rules,
+		"terms": [term],
+		"label": "%s -- %s band (%s)" % [weapon_name, zone.capitalize(), entry],
+	})
+	if not is_instance_valid(self) or typeof(rolled) != TYPE_DICTIONARY:
+		return 0
+	return maxi(0, AlternityNum.as_int(rolled.get("total", 0)))
+
+
+## What went wrong with the weapon on a natural 20.
+##
+## Table G8: a d8, read down a different column for a firearm than for a club.
+## The result is logged rather than applied: jamming a weapon and dropping it are
+## things that happen to an attacker the app is not tracking, and the GM is the
+## one holding that fiction.
+func _roll_weapon_failure(declaration: Dictionary) -> void:
+	var is_firearm: bool = not bool(declaration.get("is_melee", false))
+	var rolled = await _router.push(DICE_TRAY_ROUTE, {
+		"palette": _palette,
+		"rules": _rules,
+		"terms": [DiceNotation.parse("d8")],
+		"label": "What went wrong with the %s" % String(declaration.get("weapon_name", "weapon")),
+	})
+	if not is_instance_valid(self) or typeof(rolled) != TYPE_DICTIONARY:
+		return
+
+	var failure: Dictionary = _rules.combat.weapon_failure(
+		AlternityNum.as_int(rolled.get("total", 1), 1), is_firearm
+	)
+	var text := "%s rolled a natural 20 with the %s: %s. %s" % [
+		String(declaration.get("attacker_name", "Someone")),
+		String(declaration.get("weapon_name", "weapon")),
+		String(failure.get("result", "")).replace("_", " "),
+		String(failure.get("detail", "")),
+	]
+	_session.append_event(CampaignSession.EVENT_NOTE, "", {"text": text})
+	_store.save(_session)
+	_status.text = text
+	_status.add_theme_color_override("font_color", _palette.warning)
 
 
 ## Roll one damage entry on the tray. Nothing is subtracted here: the armor is
@@ -1222,6 +1372,8 @@ func _describe_event(event: Dictionary) -> String:
 				AlternityNum.as_int(payload.get("new_ap", 0)),
 				AlternityNum.as_int(payload.get("previous_ap", 0)),
 			]
+		CampaignSession.EVENT_SCENE_END:
+			return "%s  the scene ended -- stun cleared" % stamp
 		CampaignSession.EVENT_ATTACK:
 			return "%s  %s" % [stamp, CombatAttack.from_dict(payload).describe()]
 		CampaignSession.EVENT_CHECK:

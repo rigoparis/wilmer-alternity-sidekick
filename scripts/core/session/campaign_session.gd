@@ -34,6 +34,14 @@ const EVENT_AP_SET := "ap_set"
 ## whole check, and if they change their mind nothing happened.
 const EVENT_CHECK := "check"
 
+## The scene ended: the shooting has stopped and everyone catches their breath.
+##
+## Table-wide rather than per-seat, because a scene is a thing that happens to
+## the table. What it does happens on each player's own device: stun clears all
+## at once and anybody it knocked out wakes up, and only the device that owns a
+## character may write that.
+const EVENT_SCENE_END := "scene_end"
+
 ## An attack was declared against a seat, and what it did.
 ##
 ## Logged once, when the target's device has reported back, so the line says both

@@ -256,6 +256,28 @@ func _capture(width: int, height: int, label: String) -> void:
 			for _i in 6:
 				await process_frame
 
+			# And the blast, which is the other shape an attack comes in: one
+			# event, several people, and a band each.
+			shell.router.push(
+				load("res://scenes/ui/routes/combat_blast_route.tscn"),
+				{
+					"palette": shell._palette,
+					"rules": shell.rules,
+					"combatants": [
+						{"id": "a", "name": "Alice", "dodging": false},
+						{"id": "b", "name": "Bob", "dodging": true},
+					],
+				}
+			)
+			for _i in 12:
+				await process_frame
+			_save(shell, "%s_blast_route" % label)
+			var blast_route = shell.router._host.top_route()
+			if blast_route != null:
+				blast_route.close(null)
+			for _i in 6:
+				await process_frame
+
 	# The player's half of the multiplayer feature. Joining is photographed with
 	# nothing found, which is the state a player actually opens it in and the one
 	# where an empty section is easiest to get wrong.

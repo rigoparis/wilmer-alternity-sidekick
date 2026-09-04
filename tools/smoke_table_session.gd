@@ -53,6 +53,7 @@ func _run() -> void:
 	await _test_a_round_of_combat()
 	await _test_an_attack_lands()
 	await _test_defending()
+	await _test_the_scene_ends()
 	await _test_reconnect_loses_nothing()
 	await _test_leaving_closes_the_table()
 
@@ -718,6 +719,68 @@ func _test_defending() -> void:
 
 	_gm_screen()._on_end_combat_pressed()
 	await _wait_for(func(): return _table().active_round == null)
+
+
+# --- The scene ending ------------------------------------------------------
+
+## The GM says when the shooting stopped; each device works out what that means
+## for its own character.
+##
+## Stun is the one track that comes back on its own and it comes back all at
+## once, taking the unconsciousness with it. Nothing else moves: a scene ending
+## does not mend a wound, and a dying character is still dying when the room
+## goes quiet.
+func _test_the_scene_ends() -> void:
+	var gm = _gm_screen()
+	var table = _table()
+	if not check(gm != null and table != null and table.doc != null, "a player is at the table"):
+		return
+
+	# Hurt them on their own device, the way an attack would have.
+	table.doc.apply([CharacterDoc.DAMAGE], func(character):
+		var tracks: Dictionary = character.get("damage", {})
+		tracks["stun"] = AlternityNum.as_int(_player_shell.rules.durability(character).get("stun", 0))
+		tracks["wound"] = 4
+		tracks["mortal"] = 1
+		character["damage"] = tracks)
+	check_true(_player_shell.rules.combat.is_knocked_out(table.doc.raw()), "a full stun track is unconsciousness")
+
+	gm._on_end_scene_pressed()
+	var cleared := await _wait_for(func():
+		return AlternityNum.as_int(_table().doc.raw().get("damage", {}).get("stun", 0)) == 0)
+	check_true(cleared, "ending the scene clears the stun on the player's own device")
+	if not cleared:
+		return
+
+	table = _table()
+	check_false(_player_shell.rules.combat.is_knocked_out(table.doc.raw()), "so they are awake again")
+	check_eq(
+		AlternityNum.as_int(table.doc.raw().get("damage", {}).get("wound", 0)), 4,
+		"wounds are untouched"
+	)
+	check_true(_player_shell.rules.combat.is_dying(table.doc.raw()), "and a dying hero is still dying")
+
+	# It is written to the player's own file, not merely to the copy in memory.
+	var reopened = _player_shell.store.load_doc(table.doc.source_file)
+	if reopened != null:
+		check_eq(
+			AlternityNum.as_int(reopened.raw().get("damage", {}).get("stun", 0)), 0,
+			"and saved, so it survives closing the app"
+		)
+
+	# The GM's copy follows, because their roster reads the character they hold.
+	var followed := await _wait_for(func():
+		var held = CharacterSnapshot.character_of(_gm_screen().session().committed_character(_joined_player_id))
+		return AlternityNum.as_int(held.get("damage", {}).get("stun", 0)) == 0)
+	check_true(followed, "and the GM's copy follows it")
+
+	# It is in the log, so a player who reconnects is replayed it rather than
+	# quietly keeping their stun.
+	var logged := false
+	for event in _gm_screen().session().events:
+		if String(event.get("kind", "")) == CampaignSession.EVENT_SCENE_END:
+			logged = true
+	check_true(logged, "and the scene ending is in the log")
 
 
 # --- Reconnect -------------------------------------------------------------

@@ -233,9 +233,45 @@ changes a few times a round, and a player joining mid-fight then needs no catch
    offered on the incoming-attack card, against melee only, and is decided where
    the character lives: a parry as good as the attack stops it outright and
    nothing is applied.
-4. **The rest.** Weapon failures on a natural 20, blasts, and the recovery
-   prompts between sessions — all have rules and tests already; they need
-   somewhere to be shown.
+4. ~~**The rest.**~~ Done. A natural 20 on an attack rolls Table G8 and logs
+   what went wrong with the weapon. An explosion is its own route: the GM picks
+   what went off and puts each person in a band, and anyone dodging has hit the
+   deck and drops one. Ending the scene clears stun across the table.
+
+   One thing here is not what the plan assumed. `combat.blast_zone()` takes a
+   distance and three radii, and **the radii are not in the catalogue** — an
+   explosive carries its damage triple, its impact type and its firepower grade
+   and no blast dimensions at all. A distance-driven screen would have been three
+   numbers typed out of a book under pressure, so the route asks for the band
+   directly, which is the question a GM answers at the table anyway.
+
+### What stage 4 actually built
+
+| Piece | Where |
+|---|---|
+| Table G8 on a natural 20 | `gm_screen._roll_weapon_failure` |
+| The explosion, and who was standing where | `scripts/ui/routes/combat_blast_route.gd` |
+| Fanning it out into one attack per person | `gm_screen._on_blast_pressed` |
+| Ending the scene | `gm_screen._on_end_scene_pressed` → `EVENT_SCENE_END` |
+| Clearing the stun, on the device that owns the character | `table_session._end_the_scene` |
+
+Ending the scene travels as an **event**, not a message. That is what it is —
+something that happened at the table, which the log should carry and a player who
+reconnects should be replayed. Each device applies it to its own character;
+nothing on the GM's side writes to a sheet.
+
+Two rolls that are not per person. An explosion rolls once per band rather than
+once per target, because the blast is a single event and everybody in the same
+band was hit by the same thing. And nothing is rolled to hit at all: an explosive
+does not miss, it goes off, and what a person takes is decided by where they were
+standing.
+
+What is still not built: the long recovery. Wounds come back over weeks and
+fatigue over hours, both through Resolve checks, and mortal damage only through
+surgery. `combat.RECOVERY` and `recovery_amount()` have the cadences and the
+amounts; nothing offers them, because that is a thing a player does to their own
+sheet between sessions rather than a thing that happens at a table.
+
 
 ### What stage 3 actually built
 

@@ -58,6 +58,7 @@ func build(container: Container) -> void:
 	if not table.changed.is_connected(_on_table_changed):
 		table.changed.connect(_on_table_changed)
 		table.ap_applied.connect(_on_ap_applied)
+		table.scene_ended.connect(_on_scene_ended)
 		table.trouble.connect(_on_trouble)
 		table.round_changed.connect(_on_round_changed)
 		table.action_check_wanted.connect(_on_action_check_wanted)
@@ -613,6 +614,15 @@ func _on_ap_applied(amount: int, reason: String) -> void:
 	]
 	# The character changed, so the sheet is rebuilding anyway; this only needs
 	# to make sure the note is on screen when it does.
+	refresh(true)
+
+
+## The GM ended the scene and this hero's stun cleared.
+##
+## Worth saying out loud: a damage track emptying itself while somebody is
+## looking at another tab is otherwise indistinguishable from a bug.
+func _on_scene_ended(stun_cleared: int) -> void:
+	_last_award = "The scene ended -- %d stun cleared. Anybody it knocked out is awake." % stun_cleared
 	refresh(true)
 
 
