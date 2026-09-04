@@ -429,6 +429,24 @@ func _test_the_round_travels() -> void:
 		acting.append(String(entry["id"]))
 	check_true(acting.has(player_id), "the player acts in the phase they earned")
 
+	# A dodge travels on its own, before the attack it is defending against --
+	# the GM rolls the attacks, so the penalty has to be in their hands first.
+	var dodges := []
+	_host.defence_declared.connect(func(from: String, data: Dictionary): dodges.append([from, data]))
+	_client.send_defence({
+		"round_id": fight.round_id,
+		"kind": "dodge",
+		"degree": "Good",
+		"roll": 5,
+	})
+	arrived = await _pump_until(func(): return dodges.size() > 0)
+	check_true(arrived, "the dodge reaches the GM")
+	if not arrived:
+		return
+	check_eq(String(dodges[0][0]), player_id, "attributed by the socket, not by the message")
+	check_eq(String((dodges[0][1] as Dictionary).get("degree", "")), "Good", "carrying how well it was rolled")
+	check_eq(String((dodges[0][1] as Dictionary).get("kind", "")), "dodge", "and what kind of defence it was")
+
 	# Ending the fight is an empty round, which is how a client knows to put the
 	# board away rather than leaving a stale one on screen.
 	_host.send_round({})

@@ -189,6 +189,10 @@ func describe() -> String:
 
 	var taken := AlternityNum.as_int(result.get("primary_damage", 0))
 	var soaked := AlternityNum.as_int(result.get("absorbed", 0))
+	# A parry beat it. Said before the armor, because a parried attack never
+	# reached the armor -- it was turned aside.
+	if bool(result.get("parried", false)):
+		return line + " -- parried"
 	if bool(result.get("negated", false)):
 		return line + ", stopped entirely"
 	if soaked > 0:

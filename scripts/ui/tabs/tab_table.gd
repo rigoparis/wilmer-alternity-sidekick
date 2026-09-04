@@ -19,6 +19,13 @@ extends SheetTab
 ## Only offered when this device is actually at a table.
 const CAMPAIGN_SECTION := &"meta"
 
+## Acrobatics - Dodge. Usable untrained, so there is always something to roll.
+const SKILL_DODGE := 21
+
+## What a character parries with: whatever they are holding, or their hands. The
+## better of the two is offered, which is what a player would pick anyway.
+const PARRY_SKILLS := [11, 15]
+
 var _status: Label
 var _combat_body: VBoxContainer
 var _chat_field: LineEdit
@@ -178,6 +185,8 @@ func _render_combat(table: TableSession) -> void:
 		turn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		turn.custom_minimum_size = Vector2(1, 0)
 
+	_render_dodge(table, fight, mine)
+
 	var order: Array = []
 	for entry in fight.acting_now():
 		order.append(String(entry.get("name", "someone")))
@@ -238,6 +247,30 @@ func _render_incoming(table: TableSession) -> void:
 		resolve.pressed.connect(_on_resolve_attack_pressed.bind(attack))
 		card.add_child(resolve)
 
+		# A parry answers one attack rather than the round, so it is offered here
+		# rather than on the phase board -- and only against something close
+		# enough to turn aside.
+		var parry_skill: Dictionary = _parry_skill()
+		if (attack as CombatAttack).is_melee and _can_defend(attack) and not parry_skill.is_empty():
+			var parry := Button.new()
+			parry.name = "ParryButton"
+			parry.text = "Parry with %s" % ctx.rules.skill_label(parry_skill)
+			parry.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			parry.custom_minimum_size = Vector2(0, 36)
+			parry.clip_text = true
+			parry.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+			parry.pressed.connect(_on_parry_pressed.bind(attack))
+			card.add_child(parry)
+
+			var note := Widgets.muted_text(
+				card,
+				"A parry as good as the attack stops it outright. A worse one does nothing, and it costs an action either way.",
+				ctx.palette,
+				Widgets.FONT_CAPTION
+			)
+			note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			note.custom_minimum_size = Vector2(1, 0)
+
 
 func _small_button(label: String, handler: Callable) -> Button:
 	var button := Button.new()
@@ -261,6 +294,69 @@ func _on_dismiss_attack_pressed(attack: CombatAttack) -> void:
 		return
 	ctx.table.apply_attack(attack, 0)
 	ctx.table.report_attack(attack, 0, {})
+	_on_round_changed()
+
+
+## Whether this attack can be defended against at all.
+##
+## The GM decided it when they declared: somebody who never saw it coming, or who
+## is pinned, or who is being hit from behind, is not turning anything aside.
+func _can_defend(attack: CombatAttack) -> bool:
+	if ctx == null or ctx.doc == null:
+		return false
+	var defence: Dictionary = ctx.rules.combat.target_defence(
+		ctx.doc.raw(), attack.is_melee, attack.sees_attacker, attack.from_rear, attack.pinned
+	)
+	return bool(defence.get("can_parry", false))
+
+
+## What this character parries with: the better of what they hold and their hands.
+func _parry_skill() -> Dictionary:
+	if ctx == null or ctx.doc == null:
+		return {}
+	var best: Dictionary = {}
+	var best_score := -1
+	for skill_id in PARRY_SKILLS:
+		var skill: Dictionary = ctx.rules.get_skill_by_id(skill_id)
+		if skill.is_empty():
+			continue
+		var score: Dictionary = ctx.rules.skill_score(ctx.doc.raw(), skill)
+		if not bool(score.get("usable", false)):
+			continue
+		var ordinary := AlternityNum.as_int(score.get("ordinary", 0))
+		if ordinary > best_score:
+			best_score = ordinary
+			best = skill
+	return best
+
+
+## Turn one attack aside, or fail to.
+##
+## The comparison is of degrees, not of numbers: a parry as good as the attack
+## stops it completely, and a worse one does nothing at all. Either way the
+## attack is answered here and then resolved normally -- a failed parry does not
+## excuse the character from taking the hit.
+func _on_parry_pressed(attack: CombatAttack) -> void:
+	if ctx == null or ctx.table == null or ctx.checks == null or ctx.doc == null:
+		return
+	var skill: Dictionary = _parry_skill()
+	if skill.is_empty():
+		return
+
+	var check := SkillCheck.call_for(ctx.rules.skill_label(skill), 0, "Parrying", AlternityNum.as_int(skill.get("id", -1), -1))
+	var rolled = await ctx.checks.run_called(check, ctx.doc, skill)
+	if not is_instance_valid(self) or rolled == null:
+		return
+
+	if not ctx.rules.combat.parry_blocks(attack.degree, (rolled as SkillCheck).degree()):
+		# It got through. The attack still has to be resolved, so hand them
+		# straight on to doing that rather than leaving the card looking answered.
+		_on_trouble("The parry was not good enough -- the attack still lands.")
+		await _on_resolve_attack_pressed(attack)
+		return
+
+	var outcome: Dictionary = ctx.table.apply_attack(attack, 0, true)
+	ctx.table.report_attack(attack, 0, outcome, false, true)
 	_on_round_changed()
 
 
@@ -321,6 +417,66 @@ func _survives_the_hit(knockout: Dictionary) -> bool:
 	if rolled == null:
 		return true
 	return (rolled as SkillCheck).is_success()
+
+
+## The dodge, and what it costs.
+##
+## Offered only while they have an action to spend it on, and said out loud in
+## the button's own caption: one dodge covers every attack for the rest of the
+## round, it takes the action for this phase, and everything they do afterwards
+## is one step worse. That is a real decision, and a button that only said
+## "Dodge" would hide both halves of it.
+func _render_dodge(table: TableSession, fight: ActionRound, mine: Dictionary) -> void:
+	if table.is_dodging():
+		var already := Widgets.text(
+			_combat_body,
+			"You are dodging (%s). It covers every attack until the round ends." % fight.dodge_of(String(mine.get("id", ""))),
+			ctx.palette,
+			Widgets.FONT_DETAIL,
+			ctx.palette.accent
+		)
+		already.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		already.custom_minimum_size = Vector2(1, 0)
+		return
+
+	if AlternityNum.as_int(mine.get("actions", 0)) <= 0:
+		Widgets.muted_text(
+			_combat_body, "You have no actions left this round.", ctx.palette, Widgets.FONT_CAPTION
+		)
+		return
+
+	var dodge := Button.new()
+	dodge.name = "DodgeButton"
+	dodge.text = "Dodge"
+	dodge.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	dodge.custom_minimum_size = Vector2(0, 40)
+	dodge.clip_text = true
+	dodge.pressed.connect(_on_dodge_pressed)
+	_combat_body.add_child(dodge)
+
+	var cost := Widgets.muted_text(
+		_combat_body,
+		"Costs your action this phase and puts +%d step on everything after it. One dodge covers every attack for the rest of the round."
+			% ctx.rules.combat.DODGE_LATER_PENALTY,
+		ctx.palette,
+		Widgets.FONT_CAPTION
+	)
+	cost.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	cost.custom_minimum_size = Vector2(1, 0)
+
+
+func _on_dodge_pressed() -> void:
+	if ctx == null or ctx.table == null or ctx.checks == null or ctx.doc == null:
+		return
+	var skill: Dictionary = ctx.rules.get_skill_by_id(SKILL_DODGE)
+	if skill.is_empty():
+		return
+	var check := SkillCheck.call_for(ctx.rules.skill_label(skill), 0, "Dodging", SKILL_DODGE)
+	var rolled = await ctx.checks.run_called(check, ctx.doc, skill)
+	if not is_instance_valid(self) or rolled == null:
+		return
+	ctx.table.send_dodge(rolled)
+	_on_round_changed()
 
 
 ## Which phases this player acts in.

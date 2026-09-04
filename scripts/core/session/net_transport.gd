@@ -61,6 +61,12 @@ signal round_updated(round_data: Dictionary)
 ## a player wants to see in the log.
 signal action_check_received(player_id: String, result: Dictionary)
 
+## A player declared a dodge for this round.
+##
+## Host side. Carries the degree it was rolled at, which is what the step penalty
+## on every attack against them is worked out from -- see combat.dodge_step.
+signal defence_declared(player_id: String, defence: Dictionary)
+
 ## An attack landed on this device's character.
 ##
 ## Client side. Already rolled: the GM is the attacker and has decided both

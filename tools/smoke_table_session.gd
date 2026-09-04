@@ -52,6 +52,7 @@ func _run() -> void:
 	await _test_ap_lands_on_the_committed_hero()
 	await _test_a_round_of_combat()
 	await _test_an_attack_lands()
+	await _test_defending()
 	await _test_reconnect_loses_nothing()
 	await _test_leaving_closes_the_table()
 
@@ -590,6 +591,133 @@ func _find_named(node: Node, wanted: String) -> Node:
 		if found != null:
 			return found
 	return null
+
+
+# --- Defending -------------------------------------------------------------
+
+## The two defences, which are not the same shape.
+##
+## A dodge is declared once and covers the round, so it travels to the GM on its
+## own and lands on the round -- the GM rolls the attacks, so the penalty has to
+## be in their hands before the next one. A parry answers a single attack and is
+## decided on the device that owns the character, like everything else about it.
+##
+## And the actions dial, which is the GM's: nothing in the app can know
+## everything that costs an action, so the number is theirs to set.
+func _test_defending() -> void:
+	var gm = _gm_screen()
+	var table = _table()
+	if not check(gm != null and table != null and table.doc != null, "a player is at the table"):
+		return
+
+	gm._on_start_combat_pressed()
+	var started := await _wait_for(func(): return _table().active_round != null)
+	if not check(started, "combat starts"):
+		return
+	table = _table()
+
+	var answer := SkillCheck.new(table.transport.local_player_id(), SkillCheck.ORIGIN_GM)
+	answer.ordinary = 13
+	answer.resolve({"degree": "Good", "total": 6, "is_critical_failure": false})
+	table.send_action_check(answer)
+	var recorded := await _wait_for(func(): return _gm_screen()._fight.has_all_checks())
+	if not check(recorded, "the action check reaches the GM"):
+		return
+	_gm_screen()._on_start_round_pressed()
+	var running := await _wait_for(func():
+		return _table().active_round != null and _table().active_round.state == ActionRound.STATE_ACTIVE)
+	if not check(running, "the round starts"):
+		return
+
+	# The GM's dial. It reaches the player, because the phase board is drawn from
+	# the round the GM sends and the number decides which phases they reach.
+	table = _table()
+	var before: int = table.active_round.actions_of(_joined_player_id)
+	_gm_screen()._on_actions_pressed(_joined_player_id, -1)
+	var fewer := await _wait_for(func():
+		return _table().active_round.actions_of(_joined_player_id) == before - 1)
+	check_true(fewer, "the GM taking an action away reaches the player")
+	_gm_screen()._on_actions_pressed(_joined_player_id, 1)
+	var restored := await _wait_for(func():
+		return _table().active_round.actions_of(_joined_player_id) == before)
+	check_true(restored, "and so does giving it back")
+
+	# The dodge, declared on the player's device.
+	table = _table()
+	check_false(table.is_dodging(), "nobody is dodging to begin with")
+	var dodge := SkillCheck.new(table.transport.local_player_id(), SkillCheck.ORIGIN_GM)
+	dodge.ordinary = 11
+	dodge.resolve({"degree": "Good", "total": 5, "is_success": true})
+	table.send_dodge(dodge)
+	check_true(table.is_dodging(), "the local board says so at once, without waiting for the GM")
+
+	var told := await _wait_for(func(): return _gm_screen()._fight.is_dodging(_joined_player_id))
+	check_true(told, "and the GM is told")
+	if not told:
+		return
+	check_eq(
+		_gm_screen()._fight.dodge_of(_joined_player_id), "Good",
+		"with the degree, which is what the penalty is worked out from"
+	)
+	check_eq(
+		_gm_screen()._rules.combat.dodge_step("Good"), 2,
+		"a Good dodge is worth two steps against everyone shooting at them"
+	)
+
+	# Which the GM's own copy keeps, so a reopened campaign does not forget it.
+	var stored = _gm_shell.campaigns.load_session(_gm_screen().session().campaign_id)
+	check_true(
+		ActionRound.from_dict(stored.current_round()).is_dodging(_joined_player_id),
+		"and it is stored with the round"
+	)
+
+	# A parry: one attack, decided here, and it stops the attack outright when it
+	# is as good as it.
+	var wound_before := AlternityNum.as_int(table.doc.raw().get("damage", {}).get("wound", 0))
+	var swung := CombatAttack.declare(_joined_player_id, "A thug", "Knife", "Ordinary", 5, "w", "li", "O")
+	swung.is_melee = true
+	_gm_screen().transport().send_attack(swung.to_dict(), _joined_player_id)
+	var incoming := await _wait_for(func(): return not _table().incoming_attacks.is_empty())
+	if not check(incoming, "the melee attack arrives"):
+		return
+
+	table = _table()
+	var parried: CombatAttack = table.next_attack()
+	check_true(
+		_gm_screen()._rules.combat.parry_blocks(parried.degree, "Good"),
+		"a Good parry beats an Ordinary attack"
+	)
+	check_false(
+		_gm_screen()._rules.combat.parry_blocks(parried.degree, "Marginal"),
+		"a marginal one does not"
+	)
+
+	var outcome: Dictionary = table.apply_attack(parried, 0, true)
+	check_true(outcome.is_empty(), "a parried attack has nothing to apply")
+	check_eq(
+		AlternityNum.as_int(table.doc.raw().get("damage", {}).get("wound", 0)), wound_before,
+		"so the character is untouched"
+	)
+	table.report_attack(parried, 0, outcome, false, true)
+	check_true(parried.describe().contains("parried"), "and the line says it was parried")
+
+	var reported := await _wait_for(func():
+		for event in _gm_screen().session().events:
+			var payload = event.get("payload", {})
+			if typeof(payload) == TYPE_DICTIONARY and bool(payload.get("result", {}).get("parried", false)):
+				return true
+		return false)
+	check_true(reported, "and the GM is told it was turned aside")
+
+	# A new round is a new dodge: it covers this one and no more.
+	_gm_screen()._on_next_round_pressed()
+	var fresh := await _wait_for(func():
+		return _table().active_round != null and _table().active_round.number > 1)
+	check_true(fresh, "the next round reaches the player")
+	check_false(_table().is_dodging(), "and they are not still dodging in it")
+
+	_gm_screen()._on_end_combat_pressed()
+	await _wait_for(func(): return _table().active_round == null)
 
 
 # --- Reconnect -------------------------------------------------------------

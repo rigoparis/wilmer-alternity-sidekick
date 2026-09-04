@@ -34,6 +34,8 @@ func _init() -> void:
 	_test_acting_in_every_later_phase()
 	_test_order_within_a_phase()
 	_test_actions_run_out()
+	_test_the_gm_controls_the_actions()
+	_test_dodging()
 	_test_being_dropped_costs_later_phases()
 	_test_phases_advance_once()
 	_test_next_round()
@@ -209,6 +211,83 @@ func _test_actions_run_out() -> void:
 	late.start()
 	check_eq(late.acting_in("amazing").size(), 0, "they do not act early")
 	check_eq(late.acting_in("marginal").size(), 1, "but they do act in their own phase")
+
+
+## The GM's dial on how many actions somebody gets.
+##
+## No model can know everything that costs an action, so the number is editable
+## rather than derived once and defended. What it must not do is drift: an action
+## taken away for being stunned is a one-round thing, and the next round starts
+## from what the character's own numbers allow.
+func _test_the_gm_controls_the_actions() -> void:
+	var combat := Round.new()
+	combat.add_combatant("hero", "Hero", 3)
+	combat.record_check("hero", "Amazing", 14, 3)
+	combat.start()
+	check_eq(combat.actions_of("hero"), 3, "a combatant starts with what their sheet allows")
+	check_eq(combat.acting_in("ordinary").size(), 1, "which reaches the Ordinary phase")
+
+	check_true(combat.adjust_actions("hero", -1), "the GM can take one away")
+	check_eq(combat.actions_of("hero"), 2, "leaving two")
+	check_eq(combat.acting_in("good").size(), 1, "they still act in Good")
+	check_eq(combat.acting_in("ordinary").size(), 0, "but no longer in Ordinary")
+
+	check_true(combat.adjust_actions("hero", 1), "and can give it back")
+	check_eq(combat.acting_in("ordinary").size(), 1, "which returns the phase")
+
+	check_true(combat.set_actions("hero", 5), "and can hand out more than the sheet allows")
+	check_eq(combat.acting_in("marginal").size(), 1, "reaching every phase")
+
+	# Zero is a real answer: somebody who does nothing this round.
+	check_true(combat.set_actions("hero", 0), "the GM can take them all")
+	for phase_id in Round.PHASES:
+		check_eq(combat.acting_in(phase_id).size(), 0, "which leaves them acting in no phase (%s)" % phase_id)
+	check_eq(combat.set_actions("hero", -4), true, "and cannot go below nothing")
+	check_eq(combat.actions_of("hero"), 0, "so it stops at zero")
+
+	check_false(combat.set_actions("nobody", 2), "a combatant who is not there cannot be adjusted")
+	check_false(combat.adjust_actions("nobody", 1), "in either direction")
+
+	# The next round starts from the character's own numbers, not from what the
+	# GM did to this one.
+	var following := combat.next_round()
+	check_eq(following.actions_of("hero"), 3, "the next round starts from what the sheet allows")
+
+
+## The dodge: one action, one round, every attack.
+func _test_dodging() -> void:
+	var combat := Round.new()
+	combat.add_combatant("hero", "Hero", 2)
+	combat.add_combatant("other", "Other", 2)
+	combat.record_check("hero", "Good", 12, 6)
+	combat.record_check("other", "Good", 11, 7)
+	combat.start()
+
+	check_false(combat.is_dodging("hero"), "nobody is dodging to begin with")
+	check_eq(combat.dodge_of("hero"), "", "and there is no degree to read")
+
+	check_true(combat.declare_dodge("hero", "Good"), "a dodge is declared")
+	check_true(combat.is_dodging("hero"), "and stands")
+	check_eq(combat.dodge_of("hero"), "Good", "with the degree it was rolled at")
+	check_false(combat.is_dodging("other"), "and covers only the one who declared it")
+
+	# The dodge is their action for the phase, and the phase window already
+	# charges them for it -- so declaring one does not also cost an action.
+	check_eq(combat.actions_of("hero"), 2, "declaring a dodge does not spend a second action")
+
+	# It survives the trip to the players, because it is what makes the next
+	# attack harder and the GM is the one who applies it.
+	var copy := Round.from_dict(JSON.parse_string(JSON.stringify(combat.to_dict())))
+	check_eq(copy.dodge_of("hero"), "Good", "and travels with the round")
+
+	# Somebody out of the fight is not dodging anything.
+	combat.knock_out("other", "unconscious")
+	combat.advance_phase()
+	check_false(combat.declare_dodge("other", "Amazing"), "somebody out of the fight cannot dodge")
+
+	# A new round is a new dodge.
+	var following := combat.next_round()
+	check_false(following.is_dodging("hero"), "a dodge does not carry into the next round")
 
 
 ## Being dropped costs every action scheduled after it.

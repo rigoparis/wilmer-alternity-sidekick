@@ -64,6 +64,15 @@ const MSG_CHECK_RULING := "check_ruling"
 const MSG_ROUND := "round"
 const MSG_ACTION_CHECK := "action_check"
 
+## A player declared a dodge, and how well they rolled it.
+##
+## Client to host, and it has to arrive before the next attack rather than with
+## it: a dodge is a step penalty on everyone shooting at them for the rest of the
+## round, and the GM is the one who rolls those attacks. A parry travels the
+## other way, on the attack result, because it answers one attack rather than
+## the round.
+const MSG_DEFENCE := "defence"
+
 ## An attack, and what the target made of it. Two messages because they travel
 ## in opposite directions and mean different things: one is a settled fact about
 ## what the attacker did, the other a settled fact about what it cost.
@@ -328,6 +337,13 @@ func send_attack_result(attack: Dictionary) -> void:
 	_send_to_host({"kind": MSG_ATTACK_RESULT, "attack": attack})
 
 
+## Tell the GM about a dodge, so the attacks that follow it are harder.
+func send_defence(defence: Dictionary) -> void:
+	if _role == Role.GM:
+		return
+	_send_to_host({"kind": MSG_DEFENCE, "defence": defence})
+
+
 ## Answer the action check the round is waiting on.
 func send_action_check(result: Dictionary) -> void:
 	if _role == Role.GM:
@@ -455,6 +471,14 @@ func _handle_as_host(from_peer: int, message: Dictionary) -> void:
 				return
 			var resolved: Dictionary = message.get("attack", {}) if typeof(message.get("attack")) == TYPE_DICTIONARY else {}
 			attack_resolved.emit(player_id, resolved)
+		MSG_DEFENCE:
+			var player_id := String(_peer_to_player.get(from_peer, ""))
+			if player_id.is_empty():
+				return
+			var defence: Dictionary = message.get("defence", {}) if typeof(message.get("defence")) == TYPE_DICTIONARY else {}
+			# Whose dodge it is comes from the socket, for the same reason an
+			# action check does: a device speaks only for itself.
+			defence_declared.emit(player_id, defence)
 		MSG_ACTION_CHECK:
 			var player_id := String(_peer_to_player.get(from_peer, ""))
 			if player_id.is_empty():

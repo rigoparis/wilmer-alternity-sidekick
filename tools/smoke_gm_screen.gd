@@ -442,6 +442,29 @@ func _test_attack_targets() -> void:
 	check_true(targets.has(bob), "and the one standing there waiting for theirs")
 	check_false(bool(targets[bob].disabled), "who can still be shot at")
 
+	# Every row carries the actions dial, because no model can know everything
+	# that costs an action and the GM is the one who does.
+	var alice_actions: int = gm._fight.actions_of(alice)
+	check_true(alice_actions > 0, "a combatant starts with actions to spend")
+	gm._on_actions_pressed(alice, -1)
+	await process_frame
+	check_eq(gm._fight.actions_of(alice), alice_actions - 1, "the GM can take one away")
+	check_true(
+		ActionRound.from_dict(_shell.campaigns.load_session(gm.session().campaign_id).current_round())
+			.actions_of(alice) == alice_actions - 1,
+		"and it is published with the round rather than left on the screen"
+	)
+	gm._on_actions_pressed(alice, 1)
+	await process_frame
+	check_eq(gm._fight.actions_of(alice), alice_actions, "and give it back")
+
+	# A dodge a player declared shows on their row, because it is what makes the
+	# GM's next attack against them harder.
+	gm._on_defence_declared(alice, {"kind": "dodge", "degree": "Good"})
+	await process_frame
+	check_true(gm._fight.is_dodging(alice), "a declared dodge lands on the round")
+	check_true(_combat_lines(gm).contains("dodging"), "and is visible on their row")
+
 	# Somebody out of the fight is not a target. Shooting the unconscious is a
 	# thing that happens at tables, and it is not an action round action.
 	gm._fight.knock_out(bob, "unconscious")
@@ -467,23 +490,39 @@ func _test_attack_targets() -> void:
 	await process_frame
 
 
+## Everything the combat section is currently saying, as one string.
+func _combat_lines(gm) -> String:
+	var lines: Array = []
+	_gather_labels(gm._combat_body, lines)
+	return "
+".join(lines)
+
+
+func _gather_labels(node: Node, into: Array) -> void:
+	for child in node.get_children():
+		if child is Label:
+			into.append(String((child as Label).text))
+		_gather_labels(child, into)
+
+
 ## The Attack buttons on the combat section, keyed by the seat each aims at.
 func _attack_buttons(gm) -> Dictionary:
 	var out: Dictionary = {}
-	for row in gm._combat_body.get_children():
-		if not (row is HBoxContainer):
-			continue
-		for child in row.get_children():
-			if child is Button and String(child.text) == "Attack":
-				# The row label carries the name; the seat comes off the callable
-				# the button was built with, which is what actually gets used.
-				var connections: Array = child.pressed.get_connections()
-				if connections.is_empty():
-					continue
+	_gather_attack_buttons(gm._combat_body, out)
+	return out
+
+
+func _gather_attack_buttons(node: Node, into: Dictionary) -> void:
+	for child in node.get_children():
+		if child is Button and String((child as Button).text) == "Attack":
+			# The seat comes off the callable the button was built with, which is
+			# what actually gets used when somebody presses it.
+			var connections: Array = (child as Button).pressed.get_connections()
+			if not connections.is_empty():
 				var bound: Array = (connections[0]["callable"] as Callable).get_bound_arguments()
 				if not bound.is_empty():
-					out[String(bound[0])] = child
-	return out
+					into[String(bound[0])] = child
+		_gather_attack_buttons(child, into)
 
 
 # --- Removal and navigation ------------------------------------------------

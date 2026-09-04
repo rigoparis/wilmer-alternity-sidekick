@@ -142,6 +142,8 @@ func _seed_campaigns() -> void:
 	fight.add_combatant(bob, "Bob", 2)
 	fight.record_check(alice, "Amazing", 14, 4)
 	fight.record_check(bob, "Good", 11, 8)
+	# Somebody dodging, so the badge and the row it sits on are photographed.
+	fight.declare_dodge(bob, "Good")
 	fight.start()
 	fight.advance_phase()
 	session.set_round(fight.to_dict())
@@ -283,12 +285,18 @@ func _capture(width: int, height: int, label: String) -> void:
 		player_fight.record_check("ally", "Amazing", 14, 3)
 		player_fight.start()
 		player_fight.advance_phase()
+		player_fight.declare_dodge("ally", "Amazing")
 		shell.table.active_round = player_fight
 		# An attack waiting to be resolved, which is the card the player actually
 		# reacts to and the one that is easiest to get wrong when it is empty.
 		shell.table.incoming_attacks.append(CombatAttack.declare(
 			"me", "A thug", "Charge pistol", "Good", 7, "w", "hi", "O"
 		))
+		# And one in melee, which is the only kind that can be parried -- so the
+		# card with both answers on it gets photographed too.
+		var knife := CombatAttack.declare("me", "A thug", "Knife", "Ordinary", 4, "w", "li", "O")
+		knife.is_melee = true
+		shell.table.incoming_attacks.append(knife)
 		shell._open_sheet(player_doc)
 		for _i in 12:
 			await process_frame

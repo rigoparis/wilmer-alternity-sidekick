@@ -199,10 +199,17 @@ changes a few times a round, and a player joining mid-fight then needs no catch
    resistance, no defence), from behind (resists, cannot turn to meet it), pinned
    (nothing at all). `combat.target_defence()` answers all three.
 
-4. **Actions spent.** `ActionRound` knows how many actions a combatant has and
-   which phases that reaches, but nothing decrements as they act. Dodging costs
-   the first action; that has to come off the same pool. **Still open** — it is
-   what stage 3 needs.
+4. ~~**Actions spent.**~~ Closed, and not by tracking. Nothing in the app can
+   know everything that costs an action — reloading, being restrained, an
+   argument about what a character is doing — so the number is the GM's to set,
+   with a `−  n  +` dial on every combat row. Zero is allowed and means they do
+   nothing this round. It resets to what the character's own Constitution and
+   Will allow at the start of the next round, so an action taken away for being
+   stunned does not quietly cost them one for the rest of the fight.
+
+   A dodge needs no deduction at all: the phase window already gives one action
+   per phase from the phase a combatant earned, so the dodge *is* their action
+   for that phase.
 
 5. **Toughness.** `combat.toughness_of(character)` reads it off the best armor
    worn, defaulting to Ordinary. That is the other half of the firepower
@@ -220,10 +227,35 @@ changes a few times a round, and a player joining mid-fight then needs no catch
    armor, applies it to its own sheet, makes any endurance check and reports
    back. `combat_modifiers_route` was not needed: the panel is part of the attack
    route, which is where a GM wants it.
-3. **Defence.** Dodge and parry, which needs gap 4.
+3. ~~**Defence.**~~ Done. A dodge is declared on the player's device, travels to
+   the GM on its own message, lands on the round, and is added as a step penalty
+   to every attack the GM rolls against them for the rest of it. A parry is
+   offered on the incoming-attack card, against melee only, and is decided where
+   the character lives: a parry as good as the attack stops it outright and
+   nothing is applied.
 4. **The rest.** Weapon failures on a natural 20, blasts, and the recovery
    prompts between sessions — all have rules and tests already; they need
    somewhere to be shown.
+
+### What stage 3 actually built
+
+| Piece | Where |
+|---|---|
+| The actions dial and the dodge on the round | `action_round.set_actions` / `adjust_actions` / `declare_dodge` |
+| The dial, on every combat row | `gm_screen._combat_row` |
+| A dodge on the wire, before the attack it defends against | `MSG_DEFENCE`, `transport.send_defence` |
+| Declaring one | `tab_table._on_dodge_pressed` → `table_session.send_dodge` |
+| Applying it to the attack roll | `gm_screen._on_attack_pressed` |
+| The parry | `tab_table._on_parry_pressed`, `combat.parry_blocks` |
+
+The two defences are not the same shape, and the code says so. A dodge is
+declared once and covers the round, so it has to reach the GM *before* the next
+attack — the GM is the one rolling those. A parry answers a single attack and is
+decided on the device that owns the character, like everything else about it.
+
+A dodge only counts if the target could defend at all: somebody who never saw
+this one coming is not dodging it, however well they rolled.
+
 
 ### What stage 2 actually built
 

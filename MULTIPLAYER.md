@@ -149,10 +149,10 @@ rebindable.
 |---|---|---|
 | `smoke_campaign_session` | 82 | the document, reconnect flow, the replay window |
 | `smoke_campaign_store` | 76 | the sidecar log, compaction, a lost log, rename |
-| `smoke_gm_screen` | 104 | M1's checkpoint, driven through the real shell, and who the GM can attack |
-| `smoke_enet_transport` | 96 | two peers over the loopback, handshake, reconnect, the check round trip |
+| `smoke_gm_screen` | 110 | M1's checkpoint, driven through the real shell, and who the GM can attack |
+| `smoke_enet_transport` | 115 | two peers over the loopback, handshake, reconnect, the check round trip |
 | `smoke_lan_discovery` | 26 | a busy port, foreign traffic, a departed host |
-| `smoke_table_session` | 111 | M2's checkpoint: two whole shells against each other, including an attack both halves of |
+| `smoke_table_session` | 132 | M2's checkpoint: two whole shells against each other, including an attack both halves of |
 | `smoke_character_sync` | 43 | the snapshot policy and the conflict rule |
 | `smoke_skill_check` | 77 | the check document, both directions, the step total |
 | `smoke_die_shape` | 738 | every die read at every one of its numbers |

@@ -262,9 +262,11 @@ func next_attack() -> CombatAttack:
 ## Returns what apply_damage returned. Applying and reporting are separate calls
 ## because an Amazing hit puts an endurance check between them, and that check is
 ## rolled against the character as the hit left them.
-func apply_attack(attack: CombatAttack, absorbed: int) -> Dictionary:
+func apply_attack(attack: CombatAttack, absorbed: int, parried: bool = false) -> Dictionary:
 	incoming_attacks.erase(attack)
-	if doc == null or rules == null or not attack.hits():
+	if doc == null or rules == null or not attack.hits() or parried:
+		# A parry that beat the attack stops it outright: no primary damage, so
+		# there is nothing to apply and nothing to save.
 		return {}
 
 	# Through apply() rather than around it: a lambda captures a local by value,
@@ -293,11 +295,18 @@ func apply_attack(attack: CombatAttack, absorbed: int) -> Dictionary:
 ##
 ## What goes back is an outcome, never the character: the GM needs to know they
 ## put somebody down, not what is on their sheet.
-func report_attack(attack: CombatAttack, absorbed: int, outcome: Dictionary, knocked_out: bool = false) -> void:
+func report_attack(
+	attack: CombatAttack,
+	absorbed: int,
+	outcome: Dictionary,
+	knocked_out: bool = false,
+	parried: bool = false
+) -> void:
 	var down := knocked_out
 	if doc != null and rules != null:
 		down = down or rules.combat.is_knocked_out(doc.raw())
 	attack.resolve({
+		"parried": parried,
 		"primary_damage": AlternityNum.as_int(outcome.get("primary_damage", 0)),
 		"secondary_stun": AlternityNum.as_int(outcome.get("secondary_stun", 0)),
 		"secondary_wound": AlternityNum.as_int(outcome.get("secondary_wound", 0)),
@@ -348,6 +357,34 @@ func acting_now() -> bool:
 		if String(entry.get("id", "")) == transport.local_player_id():
 			return true
 	return false
+
+
+## Tell the GM this character is dodging, and how well.
+##
+## Sent rather than applied: the dodge is a step penalty on every attack against
+## them for the rest of the round, and the GM's device is the one rolling those
+## attacks. The local copy of the round is updated too, so the board says so
+## without waiting for the GM to send it back.
+func send_dodge(check: SkillCheck) -> void:
+	if transport == null or check == null:
+		return
+	var degree := check.degree()
+	if active_round != null:
+		active_round.declare_dodge(transport.local_player_id(), degree)
+		round_changed.emit()
+	transport.send_defence({
+		"round_id": active_round.round_id if active_round != null else "",
+		"kind": "dodge",
+		"degree": degree,
+		"roll": AlternityNum.as_int(check.result.get("total", 0)),
+	})
+
+
+## Whether this device's character has already dodged this round.
+func is_dodging() -> bool:
+	if active_round == null or transport == null:
+		return false
+	return active_round.is_dodging(transport.local_player_id())
 
 
 ## Send the action check this device just rolled.

@@ -62,7 +62,8 @@ var phase_index: int = 0
 ## Combatants, keyed by the id that identifies them elsewhere -- a player_id for
 ## a seated player.
 ##
-## Each is {id, kind, name, degree, score, actions, acted, out, out_reason}.
+## Each is {id, kind, name, degree, check_score, roll, critical, actions,
+## dodge, out, pending_out, out_reason}.
 var combatants: Array = []
 
 
@@ -93,7 +94,16 @@ func add_combatant(id: String, display_name: String, actions: int = 1, kind: Str
 		# What they actually rolled, kept for display. Lower is better.
 		"roll": 0,
 		"critical": false,
+		# How many actions they get this round. Derived from CON and WIL when the
+		# round is built and adjustable by the GM afterwards -- see set_actions.
 		"actions": maxi(1, actions),
+		# What the character's own numbers allow, which is what the next round
+		# starts from. Kept separately so a GM taking an action away for being
+		# stunned does not quietly cost them one for the rest of the fight.
+		"base_actions": maxi(1, actions),
+		# The degree of a dodge declared this round, or "" for none. One dodge
+		# covers every attack against them until the round ends.
+		"dodge": "",
 		"out": false,
 		"pending_out": false,
 		"out_reason": "",
@@ -110,6 +120,64 @@ func combatant(id: String) -> Dictionary:
 		if String(entry.get("id", "")) == id:
 			return entry
 	return {}
+
+
+## How many actions somebody gets this round.
+##
+## The GM's dial, because no model can know everything that costs an action. A
+## character who is stunned, restrained, reloading or arguing with the GM has
+## fewer than their sheet says, and the sheet is not where that is decided.
+##
+## Zero is allowed and means they do nothing this round, which is a real thing
+## that happens to people. There is no upper bound for the same reason there is
+## no lower one: the GM is the one who knows.
+func set_actions(id: String, actions: int) -> bool:
+	var entry := combatant(id)
+	if entry.is_empty():
+		return false
+	entry["actions"] = maxi(0, actions)
+	return true
+
+
+## Give somebody an action or take one away.
+func adjust_actions(id: String, delta: int) -> bool:
+	var entry := combatant(id)
+	if entry.is_empty():
+		return false
+	return set_actions(id, AlternityNum.as_int(entry.get("actions", 1), 1) + delta)
+
+
+func actions_of(id: String) -> int:
+	return AlternityNum.as_int(combatant(id).get("actions", 0))
+
+
+# --- Dodging ---------------------------------------------------------------
+
+## Record a dodge, by how well it was rolled.
+##
+## A dodge is declared in the first phase the character has an action in and
+## takes that action -- which the phase window already charges them for, since it
+## gives one action per phase from the phase they earned. So nothing is deducted
+## here: the dodge *is* their action for that phase.
+##
+## One dodge covers every attack against them for the rest of the round, which is
+## why it lives on the round rather than on an attack. It is cleared when the
+## round ends, because the next round is a new one.
+func declare_dodge(id: String, degree: String) -> bool:
+	var entry := combatant(id)
+	if entry.is_empty() or bool(entry.get("out", false)):
+		return false
+	entry["dodge"] = degree
+	return true
+
+
+## The degree of the dodge somebody declared this round, or "" if they have not.
+func dodge_of(id: String) -> String:
+	return String(combatant(id).get("dodge", ""))
+
+
+func is_dodging(id: String) -> bool:
+	return not dodge_of(id).is_empty()
 
 
 func remove_combatant(id: String) -> bool:
@@ -338,13 +406,18 @@ func is_finished() -> bool:
 ## Everyone starts owing a fresh action check, because they do. Whoever was
 ## knocked out stays out: coming back is a thing that happens to a character, and
 ## the GM says when.
+##
+## Two things deliberately do not carry over. A dodge covers one round and this
+## is a different one. And the action count goes back to what the character's own
+## Constitution and Will allow, so a GM who took an action away for being stunned
+## does not have to remember to give it back a round later.
 func next_round() -> ActionRound:
 	var following := ActionRound.new(number + 1)
 	for entry in combatants:
 		following.add_combatant(
 			String(entry.get("id", "")),
 			String(entry.get("name", "")),
-			AlternityNum.as_int(entry.get("actions", 1), 1),
+			AlternityNum.as_int(entry.get("base_actions", entry.get("actions", 1)), 1),
 			String(entry.get("kind", KIND_PLAYER))
 		)
 		if bool(entry.get("out", false)) or bool(entry.get("pending_out", false)):

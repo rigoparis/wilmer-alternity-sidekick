@@ -314,6 +314,8 @@ func _render_acting_order() -> void:
 		# saying so is the difference between a bug and the rule.
 		if bool(entry.get("pending_out", false)):
 			line += "   -- going down"
+		if not String(entry.get("dodge", "")).is_empty():
+			line += "   dodging (%s)" % String(entry.get("dodge", ""))
 		_combat_row(line, String(entry.get("id", "")))
 
 	# Everyone else still on their feet. They are not acting this phase, and they
@@ -328,10 +330,10 @@ func _render_acting_order() -> void:
 	if not bystanders.is_empty():
 		Widgets.muted_text(_combat_body, "Also on the field", _palette, Widgets.FONT_CAPTION)
 		for entry in bystanders:
-			_combat_row(
-				"   %s" % String(entry.get("name", "Someone")),
-				String(entry.get("id", ""))
-			)
+			var waiting := "   %s" % String(entry.get("name", "Someone"))
+			if not String(entry.get("dodge", "")).is_empty():
+				waiting += "   dodging (%s)" % String(entry.get("dodge", ""))
+			_combat_row(waiting, String(entry.get("id", "")))
 
 	var sidelined: Array = []
 	for entry in _fight.combatants:
@@ -349,28 +351,98 @@ func _render_acting_order() -> void:
 
 
 ## One combatant: what they are doing, and the button that shoots at them.
+## One combatant: what they are doing, how many actions they have left, and the
+## button that shoots at them.
+##
+## Two rows on a phone rather than one. The controls are fixed-width and the name
+## is not, so on one line the name is what gets trimmed -- and the name is the
+## part a GM is reading.
 func _combat_row(line: String, player_id: String) -> void:
-	var row := HBoxContainer.new()
-	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_theme_constant_override("separation", Widgets.GAP_ROW)
-	_combat_body.add_child(row)
+	var wide := _is_wide()
+
+	var outer := BoxContainer.new()
+	outer.vertical = not wide
+	outer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	outer.add_theme_constant_override("separation", Widgets.GAP_TIGHT)
+	_combat_body.add_child(outer)
 
 	var label := Label.new()
 	label.text = line
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	label.custom_minimum_size = Vector2(1, 0)
 	label.add_theme_color_override("font_color", _palette.text)
 	label.add_theme_font_size_override("font_size", Widgets.FONT_DETAIL)
-	row.add_child(label)
+	if wide:
+		label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	else:
+		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	outer.add_child(label)
+
+	var controls := HBoxContainer.new()
+	controls.size_flags_horizontal = Control.SIZE_EXPAND_FILL if not wide else Control.SIZE_SHRINK_END
+	controls.add_theme_constant_override("separation", Widgets.GAP_TIGHT)
+	outer.add_child(controls)
+
+	# How many actions they have this round, and the dial that changes it.
+	# Nothing in the app can know everything that costs an action -- reloading,
+	# being restrained, an argument with the GM -- so the GM sets the number.
+	controls.add_child(_dial_button("-", player_id, -1, _fight.actions_of(player_id) <= 0))
+
+	var count := Label.new()
+	count.text = "%d" % _fight.actions_of(player_id)
+	count.custom_minimum_size = Vector2(24, 0)
+	count.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	count.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	count.add_theme_color_override("font_color", _palette.muted)
+	count.add_theme_font_size_override("font_size", Widgets.FONT_DETAIL)
+	controls.add_child(count)
+
+	controls.add_child(_dial_button("+", player_id, 1))
+
+	var actions_label := Label.new()
+	actions_label.text = "actions"
+	actions_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	actions_label.add_theme_color_override("font_color", _palette.muted)
+	actions_label.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
+	if wide:
+		# In a shrink-to-fit row an expanding label collapses to nothing, which
+		# leaves the dial as two unlabelled buttons around a bare number.
+		actions_label.size_flags_horizontal = Control.SIZE_SHRINK_END
+	else:
+		actions_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		actions_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		actions_label.custom_minimum_size = Vector2(1, 0)
+	controls.add_child(actions_label)
 
 	var attack := _small_button("Attack", _on_attack_pressed.bind(player_id))
-	attack.custom_minimum_size = Vector2(84, 32)
+	attack.custom_minimum_size = Vector2(80, 32)
 	attack.size_flags_horizontal = Control.SIZE_SHRINK_END
 	# Nothing to attack with until the target's device has sent a character: the
 	# armor, the toughness and the resistance all come off their sheet.
 	attack.disabled = not CharacterSnapshot.is_usable(_session.committed_character(player_id))
-	row.add_child(attack)
+	controls.add_child(attack)
+
+
+## One end of the actions dial.
+##
+## Not built through _small_button: that one lets a button be narrower than its
+## own text, which on a single character trims it to nothing at all.
+func _dial_button(label: String, player_id: String, delta: int, is_disabled: bool = false) -> Button:
+	var button := Button.new()
+	button.text = label
+	button.custom_minimum_size = Vector2(34, 32)
+	button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	button.disabled = is_disabled
+	button.pressed.connect(_on_actions_pressed.bind(player_id, delta))
+	return button
+
+
+## The GM giving somebody an action or taking one away.
+func _on_actions_pressed(player_id: String, delta: int) -> void:
+	if _fight == null:
+		return
+	_fight.adjust_actions(player_id, delta)
+	_publish_round()
 
 
 # --- Running the fight -----------------------------------------------------
@@ -511,6 +583,15 @@ func _on_attack_pressed(player_id: String) -> void:
 		+ AlternityNum.as_int(defence.get("resistance_step", 0))
 	)
 
+	# A dodge declared this round is a step penalty on everyone shooting at them
+	# until the round ends, and it is applied here because the GM rolls the
+	# attacks. It only counts if they could defend at all: somebody who never saw
+	# this one coming is not dodging it, however well they rolled.
+	var dodge_step := 0
+	if _fight != null and bool(defence.get("can_dodge", false)):
+		dodge_step = _rules.combat.dodge_step(_fight.dodge_of(player_id))
+		steps += dodge_step
+
 	var degree := await _roll_to_hit(declaration, steps)
 	if not is_instance_valid(self) or degree.is_empty():
 		return
@@ -622,6 +703,22 @@ func _on_attack_resolved(player_id: String, data: Dictionary) -> void:
 	_session.append_attack(player_id, attack.to_dict())
 	_store.save(_session)
 	refresh()
+
+
+## A player declared a dodge. It goes on the round, which is what makes the
+## attacks that follow it harder.
+func _on_defence_declared(player_id: String, defence: Dictionary) -> void:
+	if _fight == null:
+		return
+	if String(defence.get("kind", "dodge")) != "dodge":
+		return
+	if not _fight.declare_dodge(player_id, String(defence.get("degree", ""))):
+		return
+	_session.append_event(CampaignSession.EVENT_NOTE, player_id, {
+		"text": "%s is dodging (%s)" % [_player_name(player_id), String(defence.get("degree", "no better"))],
+	})
+	_store.save(_session)
+	_publish_round()
 
 
 func _on_action_check_received(player_id: String, result: Dictionary) -> void:
@@ -1489,6 +1586,7 @@ func _toggle_hosting() -> void:
 		_transport.check_requested.connect(_on_check_requested)
 		_transport.action_check_received.connect(_on_action_check_received)
 		_transport.attack_resolved.connect(_on_attack_resolved)
+		_transport.defence_declared.connect(_on_defence_declared)
 		_transport.transport_error.connect(_on_transport_error)
 
 	if _transport.host(_session, EnetTransport.DEFAULT_PORT) != OK:
