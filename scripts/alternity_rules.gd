@@ -3788,6 +3788,18 @@ func _skill_roll_notes(skill: Dictionary) -> Array:
 
 
 const SKILL_SUMMARY_ROLL_NOTES := {
+	# Alien technology, which Dark*Matter charges for twice over: once for
+	# working on it, and once for merely using it.
+	#
+	# Building or repairing it is Technical Science, and always +3 steps, plus a
+	# further step for every Progress Level the item stands above the hero's own.
+	# Using it is its own penalty, and Xenoengineering is what reduces that --
+	# by 1, 2 or 3 steps for an Ordinary, Good or Amazing result.
+	# Source: Dark Matter Campaign Setting Part 1: Player Rules p. 55.
+	115: ["Alien technology: +3 steps, and 1 more for every Progress Level the item is above the hero's own. Source: Dark Matter Campaign Setting Part 1: Player Rules p. 55."],
+	116: ["Alien technology: +3 steps, and 1 more for every Progress Level the item is above the hero's own. Source: Dark Matter Campaign Setting Part 1: Player Rules p. 55."],
+	117: ["Alien technology: +3 steps, and 1 more for every Progress Level the item is above the hero's own. Source: Dark Matter Campaign Setting Part 1: Player Rules p. 55."],
+	175: ["A successful check cuts the penalty for using the device by 1, 2 or 3 steps for an Ordinary, Good or Amazing result. A Critical Failure ruins it outright. Source: Dark Matter Campaign Setting Part 1: Player Rules p. 55."],
 		0: ["Armor can impose action check and Dexterity resistance penalties; Armor Operation can reduce those penalties."],
 		1: ["Combat armor ranks reduce armor penalties for standard combat armor."],
 		2: ["Powered armor ranks reduce armor penalties for powered armor."],

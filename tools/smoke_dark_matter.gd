@@ -44,6 +44,9 @@ func _init() -> void:
 	_test_lore_is_a_free_agent_skill()
 	_test_fx_energy_pool()
 	_test_psionic_energy_purchases()
+	_test_alien_technology()
+	_test_the_two_pools_are_separate()
+	_test_species_creation_budgets()
 	_test_core_is_untouched()
 
 	finish()
@@ -565,6 +568,90 @@ func _points_for_level(level: int) -> int:
 		if _rules.achievements.achievement_level_for_points(points) >= level:
 			return points
 	return 0
+
+
+## Alien technology is charged for twice: once to work on it, once to use it.
+##
+## Building or repairing it is Technical Science and always +3 steps, plus a step
+## per Progress Level the item stands above the hero. Using it is its own penalty,
+## which Xenoengineering reduces rather than removes.
+## Source: Dark Matter Campaign Setting Part 1: Player Rules p. 55.
+func _test_alien_technology() -> void:
+	var dark := _hero("Dark*Matter")
+	# Technical Science-invention, -juryrig and -repair: the three the rule names.
+	for skill_id in [115, 116, 117]:
+		var detail: Dictionary = _rules.skill_detail(_rules.get_skill_by_id(skill_id), dark)
+		var found := false
+		for note in detail.get("roll_notes", []):
+			if String(note).contains("Alien technology") and String(note).contains("+3 steps"):
+				found = true
+		check_true(found, "%s carries the alien tech penalty" % _rules.skill_name_for_id(skill_id))
+
+	var xeno: Dictionary = _rules.skill_detail(_skill_named("Xenoengineering"), dark)
+	var reduces := false
+	for note in xeno.get("roll_notes", []):
+		if String(note).contains("1, 2 or 3 steps"):
+			reduces = true
+	check_true(reduces, "Xenoengineering says by how much a success cuts the penalty")
+
+
+## FX energy and psionic energy are separate pools and stay that way.
+##
+## A Dark*Matter hero can hold both -- an arcanist who also took Psionic
+## Awareness -- and neither pool pays for the other, nor does spending one
+## interfere with the other recovering. They are separate fields for that reason,
+## and a single "energy" field would have quietly merged them.
+## Source: Beyond Science: A Guide to FX pp. 11-12.
+func _test_the_two_pools_are_separate() -> void:
+	var both := _dm_caster(_first_fx_broad_name())
+	_rules.set_perk_selected(both, "psionic_awareness", 3)
+	both["abilities"]["WIL"] = 12
+
+	var fx_before: Dictionary = _rules.fx.fx_energy(both)
+	var psi_before: Dictionary = _rules.psionic_energy(both)
+	check_true(AlternityNum.as_int(fx_before.get("max", 0)) > 0, "the hero has an FX pool")
+	check_true(AlternityNum.as_int(psi_before.get("max", 0)) > 0, "and a psionic pool")
+
+	# Spend FX; the psionic pool must not move.
+	both["fx"]["energy_used"] = 3
+	check_eq(
+		AlternityNum.as_int(_rules.psionic_energy(both).get("available", 0)),
+		AlternityNum.as_int(psi_before.get("available", 0)),
+		"spending FX energy leaves the psionic pool alone"
+	)
+
+	# And the other way.
+	both["psionic_energy_used"] = 2
+	check_eq(
+		AlternityNum.as_int(_rules.fx.fx_energy(both).get("available", 0)),
+		AlternityNum.as_int(fx_before.get("available", 0)) - 3,
+		"and spending psionic energy leaves the FX pool where the FX spend left it"
+	)
+
+
+## What each species brings to creation, and what it does not.
+##
+## Humans get 5 skill points and a broad skill of their own choosing; that is the
+## whole of their species benefit, and it is why they get one. Nobody else gets
+## either -- an alien hero is limited to the fixed free skills their species is
+## born with.
+## Source: Player's Handbook pp. 33-34; Dark Matter Campaign Setting Chapter 10.
+func _test_species_creation_budgets() -> void:
+	for entry in _rules.species:
+		var name := String(entry.get("name", ""))
+		var points := AlternityNum.as_int(entry.get("skill_points", 0))
+		var broads := AlternityNum.as_int(entry.get("broad_skills", 0))
+		if name == "Human":
+			check_eq(points, 5, "a Human brings 5 extra skill points")
+			check_eq(broads, 1, "and one broad skill of their choosing")
+		else:
+			check_eq(points, 0, "%s brings no extra skill points" % name)
+			check_eq(broads, 0, "and no broad skill of their choosing" % [])
+		# Every species begins with a fixed handful, chosen for them.
+		check_true(
+			(entry.get("free_skill_ids", []) as Array).size() >= 6,
+			"%s begins with its own free skills" % name
+		)
 
 
 ## The gate, checked from the other side.
