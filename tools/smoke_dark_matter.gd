@@ -40,6 +40,8 @@ func _init() -> void:
 	_test_the_new_skills()
 	_test_alien_heroes()
 	_test_enochian()
+	_test_setting_repriced_schools()
+	_test_lore_is_a_free_agent_skill()
 	_test_core_is_untouched()
 
 	finish()
@@ -449,6 +451,46 @@ func _limits(species_name: String, ability: String) -> Array:
 	for value in raw:
 		out.append(AlternityNum.as_int(value))
 	return out
+
+
+## A school a setting reprints at its own price.
+##
+## Beyond Science prices Hermeticism at 9 (p. 14, Table F3); Dark*Matter reprints
+## it at 10 (Part 2: Arcana p. 74, Table D6). Neither number is wrong, so the
+## campaign has to decide -- and the surcharge stacks on top of whichever it is.
+func _test_setting_repriced_schools() -> void:
+	var core := _hero("Core")
+	check_eq(_rules.fx.fx_skill_cost(core, "Hermeticism"), 9, "Beyond Science prices Hermeticism at 9")
+
+	var dark := _dm_caster("Hermeticism")
+	check_eq(
+		_rules.fx.fx_skill_cost(dark, "Hermeticism"),
+		10 + AlternityRules.DARK_MATTER_TALENT_SURCHARGE,
+		"Dark*Matter reprints it at 10, and the talent still pays their point on top"
+	)
+
+	# A school with no reprint is unaffected in either direction.
+	check_eq(
+		_rules.fx.fx_skill_cost(core, "Diabolism"),
+		AlternityNum.as_int(_rules.fx.get_broad_skill("Diabolism").get("cost", 0)),
+		"a school nobody reprinted keeps its listed price in Core"
+	)
+
+
+## Lore is a Free Agent skill, and the discount that goes with that.
+##
+## "Lore (WIL-based, Cost 6, Pr. F)". The profession code was missing when the
+## skill was added, so a Free Agent -- the profession the setting built it for --
+## was being charged list price for their own skill, and nothing said so.
+func _test_lore_is_a_free_agent_skill() -> void:
+	var lore := _skill_named("Lore")
+	check_eq(String(lore.get("professions", "")), "F", "Lore is a Free Agent skill")
+
+	const PROFESSION_FREE_AGENT := 4
+	var free_agent := _hero("Dark*Matter", SPECIES_HUMAN, PROFESSION_FREE_AGENT)
+	var combat_spec := _hero("Dark*Matter", SPECIES_HUMAN, PROFESSION_COMBAT_SPEC)
+	check_eq(_rules.skill_cost(free_agent, lore), 5, "a Free Agent pays 5 for it")
+	check_eq(_rules.skill_cost(combat_spec, lore), 6, "and anybody else pays the listed 6")
 
 
 ## The gate, checked from the other side.

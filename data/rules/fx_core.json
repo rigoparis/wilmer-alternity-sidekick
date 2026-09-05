@@ -106,8 +106,11 @@
       "meta": "Cost: 11 skill points / Governing Abilities: Intelligence, Will",
       "name": "Hermeticism",
       "rank_benefits": {},
-      "source": "Beyond Science: A Guide to FX, pg. 27",
-      "supplement": "beyond_science"
+      "source": "Beyond Science: A Guide to FX p. 14, Table F3 (cost 9); Dark Matter Campaign Setting Part 2: Arcana p. 74, Table D6 (cost 10).",
+      "supplement": "beyond_science",
+      "cost_by_setting": {
+        "Dark*Matter": 10
+      }
     },
     "Illusion": {
       "ability": "WIL/INT",

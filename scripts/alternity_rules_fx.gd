@@ -351,14 +351,30 @@ func _talent_surcharge(character: Dictionary) -> int:
 	return AlternityRules.DARK_MATTER_TALENT_SURCHARGE
 
 
+## What the book on the table prices this at.
+##
+## A setting may reprint a school at its own price rather than adopt the one it
+## inherited: Beyond Science prices Hermeticism at 9 (p. 14, Table F3) and
+## Dark*Matter reprints it at 10 (Part 2: Arcana p. 74, Table D6). Both are
+## correct in their own book, so the entry carries both and the campaign decides
+## -- rather than one of them being quietly wrong for half the tables using it.
+func _listed_cost(character: Dictionary, entry: Dictionary) -> int:
+	var overrides = entry.get("cost_by_setting")
+	if typeof(overrides) == TYPE_DICTIONARY:
+		for setting_name in overrides:
+			if _get_parent().is_setting_available(character, String(setting_name)):
+				return AlternityNum.as_int(overrides[setting_name])
+	return AlternityNum.as_int(entry.get("cost", 0))
+
+
 func fx_skill_cost_for_rank(character: Dictionary, skill_name: String, rank: int) -> int:
 	var surcharge := _talent_surcharge(character)
 	var broad = get_broad_skill(skill_name)
 	if not broad.is_empty():
-		return AlternityNum.as_int(broad.get("cost", 0)) + surcharge if rank == 1 else 0
+		return _listed_cost(character, broad) + surcharge if rank == 1 else 0
 	var specialty = get_specialty_skill(skill_name)
 	if not specialty.is_empty():
-		var base_cost = AlternityNum.as_int(specialty.get("cost", 0)) + surcharge
+		var base_cost = _listed_cost(character, specialty) + surcharge
 		var primary_group := primary_broad_group(character)
 		var skill_broad = String(specialty.get("broad_skill", ""))
 		if not primary_group.is_empty() and skill_broad != primary_group:
