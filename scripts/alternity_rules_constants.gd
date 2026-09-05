@@ -77,6 +77,76 @@ const DARK_MATTER_FX_PERKS := ["faith", "arcane_magic"]
 ## Source: Dark Matter Campaign Setting, Chapter 3: Heroes of Dark Matter.
 const DARK_MATTER_TALENT_SURCHARGE := 1
 
+## Requisition Subsystem (Arms & Equipment Guide p. 5)
+## The check is rolled strictly against Administration-bureaucracy.
+const REQUISITION_SKILL_ID := 120 # Administration-bureaucracy
+const REQUISITION_AVAILABILITY_MODIFIERS := {
+	"Any": 0,
+	"Common": 0,
+	"Controlled": 1,
+	"Military": 2,
+	"Restricted": 3,
+}
+const REQUISITION_URGENCY_MODIFIERS := {
+	"emergency": 2,
+	"short_notice": 1,
+	"standard": 0,
+	"advance": -1,
+}
+const REQUISITION_NECESSITY_MODIFIERS := {
+	"essential": -2,
+	"useful": 0,
+	"luxury": 2,
+}
+const REQUISITION_OUTCOMES := {
+	"amazing": "In stock locally; delivered within minutes.",
+	"good": "Processed from local depot; delivered within d6 hours.",
+	"ordinary": "Ordered from agency; delivered in time for assignment (requires 24h advance notice).",
+	"failure": "Shipping delays occur; item fails to arrive in time. A new Administration-bureaucracy check is required to re-file.",
+	"critical_failure": "Paperwork discrepancy catches up. Delayed d4 hours filling out correction forms with auditors; subject to GM reprimand or demotion.",
+}
+
+## Investigate Modifiers (Player's Handbook p. 93)
+## Within each group, modifiers are mutually exclusive; across groups they are cumulative.
+const INVESTIGATE_TIME_MODIFIERS := {
+	"hasty": 2,
+	"normal": 0,
+	"careful": -2,
+}
+const INVESTIGATE_FRESHNESS_MODIFIERS := {
+	"fresh": -1,
+	"recent": 0,
+	"days_old": 2,
+	"old": 4,
+}
+const INVESTIGATE_CLUE_MODIFIERS := {
+	"obvious": -2,
+	"standard": 0,
+	"small": 2,
+	"concealed": 4,
+}
+const INVESTIGATE_SITE_MODIFIERS := {
+	"undisturbed": 0,
+	"disturbed": 2,
+}
+
+## Contacts & Allegiances (Table D8, Dark Matter p. 245 / GMG p. 104-105)
+const CONTACT_RELATION_MODIFIERS := {
+	"area_of_expertise": -1,
+	"close_ally": -1,
+	"casual": 0,
+	"high_risk": 2,
+	"extreme_danger": 4,
+}
+const CONTACT_OUTCOMES := {
+	"amazing": "Immediate, enthusiastic help; provides requested resources, gear, or info plus additional assistance.",
+	"good": "Reliable help delivered within reasonable time.",
+	"ordinary": "Basic help delivered; bare minimum requirements met.",
+	"failure": "Contact refuses or is unavailable / unable to assist.",
+	"critical_failure": "Relationship damaged; contact becomes hostile, cuts ties, or launches internal inquiry.",
+}
+
+
 ## What a psionic action costs, whatever power is used.
 ##
 ## The cost is flat and does not vary by discipline or specialty: a specialty
@@ -725,6 +795,12 @@ const SPECIALTY_SUMMARIES := {
 	173: "Produce false documentation, and make it survive inspection. At rank 4 the hero gains a -1 step bonus to forge and anyone checking the result takes +1 step, improving to 2 steps at rank 8 and 3 at rank 12. It cannot be attempted untrained.",
 	174: "Work between languages rather than in one. At rank 4 the hero picks a language family they already hold a member of at rank 3 and can translate anything in it at a +1 step penalty. It cannot be attempted untrained.",
 	175: "Examine and repair extraterrestrial technology. Alien tech carries a +3 step penalty plus 1 more per Progress Level above the campaign's own, which a successful check reduces by 1, 2 or 3 steps; a critical failure ruins the device. It cannot be attempted untrained.",
+	176: "The study of human society, cultures, languages, and historical development. It covers sociology, anthropology, history, and linguistic structures across civilizations. Source: Dark Matter Campaign Setting p. 51.",
+	177: "The study of human cultures, beliefs, social practices, and physical remains. Source: Dark Matter Campaign Setting p. 51.",
+	178: "Recalling factual historical timelines, events, and analyzing social trends across eras. Source: Dark Matter Campaign Setting p. 51.",
+	179: "Familiarity with underground net forums, black market data exchanges, grayware sites, and digital netiquette to locate untraceable connections and illicit information. Source: Dark Matter Campaign Setting pp. 51, 57.",
+	180: "Investigative reporting, interviewing, newsgathering, and media storytelling. Source: Player's Handbook p. 99; Dark Matter Campaign Setting p. 51.",
+	181: "Visual composition, exposure, image processing, and forensic or documentary photography. Source: Player's Handbook p. 99; Dark Matter Campaign Setting p. 51.",
 
 	1: "Specialized operation of standard combat armor, including reducing armor penalties and shield parries.",
 	2: "Specialized operation of powered armor; this skill cannot be used untrained.",

@@ -234,7 +234,7 @@ func _capture(width: int, height: int, label: String) -> void:
 			doc.apply(CharacterDoc.ALL, func(c): c["setting"] = "Dark*Matter")
 			for _i in 12:
 				await process_frame
-			for id in ["basics", "skills", "summary"]:
+			for id in ["basics", "equipment", "skills", "summary"]:
 				sheet._select_tab(id)
 				for _i in 12:
 					await process_frame

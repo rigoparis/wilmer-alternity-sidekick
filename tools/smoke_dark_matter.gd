@@ -47,6 +47,14 @@ func _init() -> void:
 	_test_alien_technology()
 	_test_the_two_pools_are_separate()
 	_test_species_creation_budgets()
+	_test_dark_matter_mutant_restrictions()
+	_test_incantation_sasquatch_gating()
+	_test_dark_matter_untrained_fx_feat_check()
+	_test_social_science_and_setting_skills()
+	_test_career_packages()
+	_test_requisition_subsystem()
+	_test_investigate_modifiers()
+	_test_contacts_allegiances()
 	_test_core_is_untouched()
 
 	finish()
@@ -702,3 +710,290 @@ func _first_fx_broad_name() -> String:
 		if String(broad.get("setting", "")).is_empty() and not name.is_empty():
 			return name
 	return ""
+
+
+## Mutants in Dark*Matter: no Amazing advantages or Extreme drawbacks (p. 73).
+func _test_dark_matter_mutant_restrictions() -> void:
+	var dm_mutant := _hero("Dark*Matter", 6)
+	var core_mutant := _hero("Core", 6)
+
+	var amazing_mut := {"id": "test_amazing", "tier": "Amazing", "type": "advantage"}
+	var good_mut := {"id": "test_good", "tier": "Good", "type": "advantage"}
+	var extreme_drawback := {"id": "test_extreme", "tier": "Extreme", "type": "drawback"}
+	var ordinary_drawback := {"id": "test_ord", "tier": "Ordinary", "type": "drawback"}
+
+	check_false(_rules.is_entry_available(dm_mutant, amazing_mut), "Amazing advantage is not available in Dark*Matter")
+	check_true(_rules.is_entry_available(core_mutant, amazing_mut), "Amazing advantage is available in Core")
+	check_true(_rules.is_entry_available(dm_mutant, good_mut), "Good advantage is available in Dark*Matter")
+
+	check_false(_rules.is_entry_available(dm_mutant, extreme_drawback), "Extreme drawback is not available in Dark*Matter")
+	check_true(_rules.is_entry_available(core_mutant, extreme_drawback), "Extreme drawback is available in Core")
+	check_true(_rules.is_entry_available(dm_mutant, ordinary_drawback), "Ordinary drawback is available in Dark*Matter")
+
+	# Validation complaint if Dark*Matter mutant holds Amazing advantage or Extreme drawback
+	var invalid_dm := _hero("Dark*Matter", 6)
+	for m in _rules.mutation_advantages:
+		if String(m.get("tier", "")) == "Amazing":
+			invalid_dm["mutations"]["advantages"].append(String(m.get("id", "")))
+			break
+	check_true(
+		_complains_about(invalid_dm, "restricted to Ordinary and Good"),
+		"Dark*Matter mutant with Amazing advantage fails validation"
+	)
+	var core_with_amazing := _hero("Core", 6)
+	core_with_amazing["mutations"]["advantages"] = invalid_dm["mutations"]["advantages"].duplicate()
+	check_false(
+		_complains_about(core_with_amazing, "restricted to Ordinary and Good"),
+		"Core mutant with Amazing advantage is permitted"
+	)
+
+
+## Incantation Faith FX: Sasquatch only (Dark Matter p. 226).
+func _test_incantation_sasquatch_gating() -> void:
+	var sasquatch := _hero("Dark*Matter", 11)
+	var human := _hero("Dark*Matter", SPECIES_HUMAN)
+	var grey := _hero("Dark*Matter", AlternityNum.as_int(_species_named("Grey").get("id", -1)))
+
+	var incantation := _rules.fx.get_broad_skill("Incantation")
+	check_true(not incantation.is_empty(), "Incantation exists")
+	check_true(_rules.is_entry_available(sasquatch, incantation), "Incantation is available to Sasquatch")
+	check_false(_rules.is_entry_available(human, incantation), "Incantation is not available to Human")
+	check_false(_rules.is_entry_available(grey, incantation), "Incantation is not available to Grey")
+
+	var miracles: Array = _rules.fx.get_specialty_skills_for_broad("Incantation")
+	check_eq(miracles.size(), 4, "Incantation has 4 miracles")
+	for m in miracles:
+		check_true(_rules.is_entry_available(sasquatch, m), "%s available to Sasquatch" % m.get("name", ""))
+		check_false(_rules.is_entry_available(human, m), "%s hidden from Human" % m.get("name", ""))
+
+	# Validation complains if non-Sasquatch holds Incantation
+	var illegal_human := _hero("Dark*Matter", SPECIES_HUMAN)
+	_rules.fx.add_fx_skill(illegal_human, "Incantation")
+	check_true(
+		_complains_about(illegal_human, "Only Sasquatch"),
+		"Human holding Incantation fails validation"
+	)
+
+
+## Untrained FX in Dark*Matter rolls as feat check using specialty ability (Dark Matter p. 75).
+func _test_dark_matter_untrained_fx_feat_check() -> void:
+	var caster := _dm_caster("Enochian")
+	caster["abilities"]["WIL"] = 14
+	# White salamander is untrained: true under Enochian (WIL)
+	var ws_score: Dictionary = _rules.fx.fx_skill_score(caster, "White salamander")
+	check_true(bool(ws_score.get("usable", false)), "White salamander is usable untrained")
+	check_true(bool(ws_score.get("via_broad", false)), "rolled via broad")
+	check_eq(AlternityNum.as_int(ws_score.get("ordinary", 0)), 14, "ordinary target is full Will score 14")
+	check_eq(AlternityNum.as_int(ws_score.get("step", 0)), 1, "base feat check die is +d4 (step 1)")
+
+	# Lumen is untrained: false, so cannot be used untrained
+	var lumen_score: Dictionary = _rules.fx.fx_skill_score(caster, "Lumen")
+	check_false(bool(lumen_score.get("usable", true)), "Lumen cannot be used untrained")
+
+
+## Setting skills: Social Science, Anthropology, History, Linguistics, Net Savvy, Journalism, Photography.
+func _test_social_science_and_setting_skills() -> void:
+	var core := _hero("Core")
+	var dm := _hero("Dark*Matter")
+
+	var ss := _skill_named("Social Science")
+	check_true(not ss.is_empty(), "Social Science ships")
+	check_eq(String(ss.get("stat", "")), "INT", "Social Science is INT-based")
+	check_eq(AlternityNum.as_int(ss.get("base_price", 0)), 6, "Social Science costs 6")
+	check_eq(String(ss.get("professions", "")), "DT", "Social Science is Diplomat/Tech Op")
+	check_false(_rules.is_entry_available(core, ss), "Social Science is hidden in Core")
+	check_true(_rules.is_entry_available(dm, ss), "Social Science is available in Dark*Matter")
+
+	var anthro := _skill_named("Anthropology")
+	check_true(not anthro.is_empty(), "Anthropology ships")
+	check_eq(AlternityNum.as_int(anthro.get("broad_id", -1)), 176, "Anthropology sits under Social Science")
+	check_eq(AlternityNum.as_int(anthro.get("base_price", 0)), 3, "Anthropology costs 3")
+	check_false(_rules.is_entry_available(core, anthro), "Anthropology is hidden in Core")
+	check_true(_rules.is_entry_available(dm, anthro), "Anthropology is available in Dark*Matter")
+
+	var hist := _skill_named("History")
+	check_true(not hist.is_empty(), "History ships")
+	check_eq(AlternityNum.as_int(hist.get("broad_id", -1)), 176, "History sits under Social Science")
+	check_eq(AlternityNum.as_int(hist.get("base_price", 0)), 3, "History costs 3")
+	check_false(_rules.is_entry_available(core, hist), "History is hidden in Core")
+	check_true(_rules.is_entry_available(dm, hist), "History is available in Dark*Matter")
+
+	var ling := _skill_named("Linguistics")
+	check_true(not ling.is_empty(), "Linguistics ships")
+	check_eq(AlternityNum.as_int(ling.get("broad_id", -1)), 176, "Linguistics sits under Social Science")
+	check_false(bool(ling.get("untrained", true)), "Linguistics cannot be used untrained")
+	check_false(_rules.is_entry_available(core, ling), "Linguistics is hidden in Core")
+	check_true(_rules.is_entry_available(dm, ling), "Linguistics is available in Dark*Matter")
+
+	var net_savvy := _skill_named("Net Savvy")
+	check_true(not net_savvy.is_empty(), "Net Savvy ships")
+	check_eq(AlternityNum.as_int(net_savvy.get("broad_id", -1)), 137, "Net Savvy sits under Street Smart")
+	check_eq(AlternityNum.as_int(net_savvy.get("base_price", 0)), 3, "Net Savvy costs 3")
+	check_eq(String(net_savvy.get("professions", "")), "FT", "Net Savvy is Free Agent/Tech Op")
+	check_false(_rules.is_entry_available(core, net_savvy), "Net Savvy is hidden in Core")
+	check_true(_rules.is_entry_available(dm, net_savvy), "Net Savvy is available in Dark*Matter")
+
+	var journ := _skill_named("Journalism")
+	check_true(not journ.is_empty(), "Journalism ships")
+	check_eq(AlternityNum.as_int(journ.get("broad_id", -1)), 128, "Journalism sits under Creativity")
+	check_eq(AlternityNum.as_int(journ.get("base_price", 0)), 1, "Journalism costs 1")
+	check_false(_rules.is_entry_available(core, journ), "Journalism is hidden in Core")
+	check_true(_rules.is_entry_available(dm, journ), "Journalism is available in Dark*Matter")
+
+	var photo := _skill_named("Photography")
+	check_true(not photo.is_empty(), "Photography ships")
+	check_eq(AlternityNum.as_int(photo.get("broad_id", -1)), 128, "Photography sits under Creativity")
+	check_eq(AlternityNum.as_int(photo.get("base_price", 0)), 1, "Photography costs 1")
+	check_false(_rules.is_entry_available(core, photo), "Photography is hidden in Core")
+	check_true(_rules.is_entry_available(dm, photo), "Photography is available in Dark*Matter")
+
+	# Profession discounts
+	const PROFESSION_DIPLOMAT := 1
+	var dip := _hero("Dark*Matter", SPECIES_HUMAN, PROFESSION_DIPLOMAT)
+	check_eq(_rules.skill_cost(dip, ss), 5, "a Diplomat pays 5 for Social Science")
+	check_eq(_rules.skill_cost(dip, anthro), 2, "a Diplomat pays 2 for Anthropology")
+
+
+## Career packages catalog, dynamic cost calculations, and application.
+func _test_career_packages() -> void:
+	var dm := _hero("Dark*Matter")
+	var core := _hero("Core")
+
+	var dm_pkgs := _rules.available_career_packages(dm)
+	var core_pkgs := _rules.available_career_packages(core)
+	check_true(dm_pkgs.size() >= 6, "Dark*Matter has access to career packages")
+	check_true(core_pkgs.size() >= 1, "Core has access to core career packages")
+
+	# Verify canonical cost calculation
+	var mercenary := _rules.get_career_package_by_id("mercenary")
+	check_true(not mercenary.is_empty(), "Mercenary package ships")
+	var merc_hero := _hero("Core", SPECIES_HUMAN, PROFESSION_COMBAT_SPEC)
+	check_eq(_rules.career_package_cost(merc_hero, mercenary), 25, "Mercenary costs 25 SP")
+
+	var sof := _rules.get_career_package_by_id("soldier_of_fortune")
+	check_true(not sof.is_empty(), "Soldier of Fortune package ships")
+	var sof_hero := _hero("Dark*Matter", SPECIES_HUMAN, PROFESSION_COMBAT_SPEC)
+	check_eq(_rules.career_package_cost(sof_hero, sof), 32, "Soldier of Fortune costs 32 SP")
+
+	var sec := _rules.get_career_package_by_id("corporate_security_specialist")
+	check_true(not sec.is_empty(), "Corporate Security Specialist package ships")
+	var sec_hero := _hero("Dark*Matter", SPECIES_HUMAN, PROFESSION_COMBAT_SPEC)
+	check_eq(_rules.career_package_cost(sec_hero, sec), 30, "Corporate Security Specialist costs 30 SP")
+
+	var forensics := _rules.get_career_package_by_id("forensics_expert")
+	check_true(not forensics.is_empty(), "Forensics Expert package ships")
+	const PROFESSION_TECH_OP := 2
+	var fore_hero := _hero("Dark*Matter", SPECIES_HUMAN, PROFESSION_TECH_OP)
+	check_eq(_rules.career_package_cost(fore_hero, forensics), 42, "Forensics Expert costs 42 SP")
+
+	var xeno := _rules.get_career_package_by_id("xenoengineer")
+	check_true(not xeno.is_empty(), "Xenoengineer package ships")
+	var xeno_hero := _hero("Dark*Matter", SPECIES_HUMAN, PROFESSION_TECH_OP)
+	check_eq(_rules.career_package_cost(xeno_hero, xeno), 45, "Xenoengineer costs 45 SP")
+
+	var gadget := _rules.get_career_package_by_id("gadgeteer")
+	check_true(not gadget.is_empty(), "Gadgeteer package ships")
+	var gad_hero := _hero("Dark*Matter", SPECIES_HUMAN, PROFESSION_TECH_OP)
+	check_eq(_rules.career_package_cost(gad_hero, gadget), 36, "Gadgeteer costs 36 SP")
+
+	var occ := _rules.get_career_package_by_id("occultist")
+	check_true(not occ.is_empty(), "Occultist package ships")
+	const PROFESSION_DIPLOMAT := 1
+	var occ_hero := _hero("Dark*Matter", SPECIES_HUMAN, PROFESSION_DIPLOMAT)
+	check_eq(_rules.career_package_cost(occ_hero, occ, 0), 38, "Occultist (Alchemist) costs 38 SP")
+
+	# Test apply_career_package
+	var applied_hero := _hero("Dark*Matter", SPECIES_HUMAN, PROFESSION_COMBAT_SPEC)
+	var res := _rules.apply_career_package(applied_hero, "soldier_of_fortune")
+	check_true(bool(res.get("ok", false)), "apply_career_package succeeds")
+	check_eq(String(applied_hero.get("career", "")), "Soldier of Fortune", "career name is set")
+	var pistol := _rules.get_skill_by_name("Pistol")
+	var mrw := _rules.get_skill_by_name("Modern Ranged Weapons")
+	check_true(_rules.skill_rank(applied_hero, AlternityNum.as_int(pistol.get("id"))) >= 1, "Pistol rank is at least 1")
+	check_true(_rules.skill_rank(applied_hero, AlternityNum.as_int(mrw.get("id"))) >= 1, "Modern Ranged Weapons broad is held")
+
+
+## Requisition Subsystem (Arms & Equipment Guide p. 5).
+func _test_requisition_subsystem() -> void:
+	# Step modifier tests
+	check_eq(_rules.requisition_step_modifier({"availability": "Common"}), 0, "Common availability +0")
+	check_eq(_rules.requisition_step_modifier({"availability": "Controlled"}), 1, "Controlled availability +1")
+	check_eq(_rules.requisition_step_modifier({"availability": "Military"}), 2, "Military availability +2")
+	check_eq(_rules.requisition_step_modifier({"availability": "Restricted"}), 3, "Restricted availability +3")
+
+	check_eq(_rules.requisition_step_modifier({"urgency": "standard"}), 0, "standard urgency +0")
+	check_eq(_rules.requisition_step_modifier({"urgency": "short_notice"}), 1, "short notice +1")
+	check_eq(_rules.requisition_step_modifier({"urgency": "emergency"}), 2, "emergency +2")
+	check_eq(_rules.requisition_step_modifier({"urgency": "advance"}), -1, "advance -1")
+
+	check_eq(_rules.requisition_step_modifier({"necessity": "useful"}), 0, "useful +0")
+	check_eq(_rules.requisition_step_modifier({"necessity": "essential"}), -2, "essential -2")
+	check_eq(_rules.requisition_step_modifier({"necessity": "luxury"}), 2, "luxury +2")
+
+	var combo := _rules.requisition_step_modifier({
+		"availability": "Military", # +2
+		"urgency": "short_notice",  # +1
+		"necessity": "essential"    # -2
+	})
+	check_eq(combo, 1, "Combined options sum correctly: 2 + 1 - 2 = 1")
+
+	# Check score calculation
+	var hero := _hero("Dark*Matter")
+	hero["abilities"]["WIL"] = 14
+	var score_info := _rules.requisition_check_score(hero, {"availability": "Common"})
+	check_eq(AlternityNum.as_int(score_info.get("ordinary", 0)), 14, "untrained fallback uses WIL feat score 14")
+	check_eq(AlternityNum.as_int(score_info.get("step", 0)), 1, "base feat check step is 1 (+d4)")
+
+	# Resolution
+	var outcome := _rules.resolve_requisition_check(hero, 5, 2, {"availability": "Common"})
+	check_true(outcome.has("degree"), "returns degree")
+	check_true(outcome.has("outcome_description"), "returns outcome description")
+
+
+## Investigate Modifiers (Player's Handbook p. 93).
+func _test_investigate_modifiers() -> void:
+	# Freshness
+	check_eq(_rules.investigate_step_modifier({"freshness": "fresh"}), -1, "fresh -1")
+	check_eq(_rules.investigate_step_modifier({"freshness": "recent"}), 0, "recent freshness +0")
+	check_eq(_rules.investigate_step_modifier({"freshness": "days_old"}), 2, "days old +2")
+	check_eq(_rules.investigate_step_modifier({"freshness": "old"}), 4, "old +4")
+
+	# Site condition
+	check_eq(_rules.investigate_step_modifier({"site": "undisturbed"}), 0, "undisturbed site +0")
+	check_eq(_rules.investigate_step_modifier({"site": "disturbed"}), 2, "disturbed site +2")
+
+	# Clue size
+	check_eq(_rules.investigate_step_modifier({"clue": "obvious"}), -2, "obvious clue -2")
+	check_eq(_rules.investigate_step_modifier({"clue": "standard"}), 0, "standard clue +0")
+	check_eq(_rules.investigate_step_modifier({"clue": "small"}), 2, "small clue +2")
+	check_eq(_rules.investigate_step_modifier({"clue": "concealed"}), 4, "concealed clue +4")
+
+	# Cumulative across groups
+	var cumulative := _rules.investigate_step_modifier({
+		"freshness": "days_old", # +2
+		"clue": "small",         # +2
+		"site": "disturbed",     # +2
+	})
+	check_eq(cumulative, 6, "groups are cumulative: 2 + 2 + 2 = 6")
+
+	# Related skill reductions
+	check_eq(_rules.investigate_step_modifier({}, 1), -1, "rank 1-4 gives -1 step")
+	check_eq(_rules.investigate_step_modifier({}, 4), -1, "rank 4 gives -1 step")
+	check_eq(_rules.investigate_step_modifier({}, 5), -2, "rank 5-8 gives -2 steps")
+	check_eq(_rules.investigate_step_modifier({}, 8), -2, "rank 8 gives -2 steps")
+	check_eq(_rules.investigate_step_modifier({}, 9), -3, "rank 9-12 gives -3 steps")
+	check_eq(_rules.investigate_step_modifier({}, 12), -3, "rank 12 gives -3 steps")
+
+
+## Contacts and Allegiances (Table D8, Dark Matter p. 245).
+func _test_contacts_allegiances() -> void:
+	check_eq(_rules.contact_step_modifier({"favor": "area_of_expertise"}), -1, "area of expertise -1")
+	check_eq(_rules.contact_step_modifier({"favor": "close_ally"}), -1, "close ally -1")
+	check_eq(_rules.contact_step_modifier({"favor": "casual"}), 0, "casual favor +0")
+	check_eq(_rules.contact_step_modifier({"favor": "high_risk"}), 2, "high risk favor +2")
+	check_eq(_rules.contact_step_modifier({"favor": "extreme_danger"}), 4, "extreme danger favor +4")
+	check_eq(_rules.contact_step_modifier({"abused_penalty": 2}), 2, "abused contact adds +2 steps")
+
+	var check_res := _rules.resolve_contact_check(6, 1, 12, {"favor": "casual"})
+	check_true(check_res.has("degree"), "returns degree")
+	check_true(check_res.has("outcome_description"), "returns outcome description")

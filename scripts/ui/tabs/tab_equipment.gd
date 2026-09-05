@@ -14,6 +14,12 @@ extends SheetTab
 
 const CATALOG_ROUTE := preload("res://scenes/ui/routes/catalog_route.tscn")
 
+var _req_availability: String = "Common"
+var _req_urgency: String = "standard"
+var _req_necessity: String = "useful"
+var _req_outcome_text: String = ""
+var _req_outcome_degree: String = ""
+
 
 func watched_sections() -> Array:
 	# Abilities are watched because carrying capacity and Strength damage derive
@@ -41,6 +47,156 @@ func _build_summary(container: Container) -> void:
 	var penalty: int = rules.equipment.equipped_armor_action_penalty(ctx.doc.raw())
 	if penalty != 0:
 		Widgets.metric(box, "Armour action penalty", "%+d steps" % penalty, palette)
+
+	if rules.is_dark_matter(ctx.doc.raw()):
+		_build_requisition(container)
+
+
+func _build_requisition(container: Container) -> void:
+	var rules: AlternityRules = ctx.rules
+	var palette := ctx.palette
+	var doc := ctx.doc
+	var raw := doc.raw()
+
+	var box := Widgets.section(container, "Requisition", palette)
+
+	Widgets.muted_text(
+		box,
+		"Request agency gear (Arms & Equipment Guide p. 5). Rolled against Administration-bureaucracy (or Will feat check if untrained).",
+		palette,
+		Widgets.FONT_CAPTION
+	)
+
+	var options := {
+		"availability": _req_availability,
+		"urgency": _req_urgency,
+		"necessity": _req_necessity,
+	}
+
+	# Availability picker
+	_requisition_picker(
+		box, "Item Availability",
+		[
+			{"id": "Common", "name": "Common (+0)"},
+			{"id": "Controlled", "name": "Controlled (+1)"},
+			{"id": "Military", "name": "Military (+2)"},
+			{"id": "Restricted", "name": "Restricted (+3)"},
+		],
+		_req_availability,
+		func(val: String):
+			_req_availability = val
+			_rebuild()
+	)
+
+	# Urgency picker
+	_requisition_picker(
+		box, "Urgency",
+		[
+			{"id": "standard", "name": "Standard (+0)"},
+			{"id": "advance", "name": "Advance notice (-1)"},
+			{"id": "short_notice", "name": "Short notice (+1)"},
+			{"id": "emergency", "name": "Emergency (+2)"},
+		],
+		_req_urgency,
+		func(val: String):
+			_req_urgency = val
+			_rebuild()
+	)
+
+	# Necessity picker
+	_requisition_picker(
+		box, "Necessity",
+		[
+			{"id": "useful", "name": "Useful (+0)"},
+			{"id": "essential", "name": "Essential (-2)"},
+			{"id": "luxury", "name": "Luxury (+2)"},
+		],
+		_req_necessity,
+		func(val: String):
+			_req_necessity = val
+			_rebuild()
+	)
+
+	var score_info: Dictionary = rules.requisition_check_score(raw, options)
+	var ord_target := AlternityNum.as_int(score_info.get("ordinary", 10))
+	var good_target := AlternityNum.as_int(score_info.get("good", 5))
+	var amz_target := AlternityNum.as_int(score_info.get("amazing", 2))
+	var step := AlternityNum.as_int(score_info.get("step", 0))
+	var die_str := String(score_info.get("die", "+d0"))
+
+	Widgets.metric(box, "Target score", "%d / %d / %d" % [ord_target, good_target, amz_target], palette)
+	Widgets.metric(box, "Situation die", "%s (%+d step%s)" % [die_str, step, "" if abs(step) == 1 else "s"], palette)
+
+	if not _req_outcome_text.is_empty():
+		Widgets.separator(box, palette)
+		var outcome_card := VBoxContainer.new()
+		outcome_card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var res_label := Label.new()
+		res_label.text = "Result: %s" % _req_outcome_degree
+		res_label.add_theme_color_override("font_color", palette.accent)
+		res_label.add_theme_font_size_override("font_size", Widgets.FONT_DETAIL)
+		outcome_card.add_child(res_label)
+
+		var desc_label := Label.new()
+		desc_label.text = _req_outcome_text
+		desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		desc_label.custom_minimum_size = Vector2(1, 0)
+		desc_label.add_theme_color_override("font_color", palette.text)
+		desc_label.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
+		outcome_card.add_child(desc_label)
+		box.add_child(outcome_card)
+
+	var roll_btn := Button.new()
+	roll_btn.text = "Roll Requisition Check"
+	roll_btn.custom_minimum_size = Vector2(0, 44)
+	roll_btn.pressed.connect(func():
+		if ctx.checks != null:
+			var rolled = await ctx.checks.run_requisition_check(ctx.doc, options)
+			if rolled != null:
+				var degree: String = (rolled as SkillCheck).degree()
+				var outcome_key := degree.to_lower().replace(" ", "_")
+				_req_outcome_degree = degree
+				_req_outcome_text = String(AlternityRulesConstants.REQUISITION_OUTCOMES.get(outcome_key, ""))
+				_rebuild()
+		else:
+			var d20 := randi_range(1, 20)
+			var sit := 0
+			if die_str.begins_with("+d") and die_str != "+d0":
+				sit = randi_range(1, int(die_str.substr(2)))
+			elif die_str.begins_with("-d"):
+				sit = -randi_range(1, int(die_str.substr(2)))
+			var outcome := rules.resolve_requisition_check(raw, d20, sit, options)
+			_req_outcome_degree = String(outcome.get("degree", "Failure"))
+			_req_outcome_text = String(outcome.get("outcome_description", ""))
+			_rebuild()
+	)
+	box.add_child(roll_btn)
+
+
+func _requisition_picker(parent: Container, label_text: String, entries: Array, current_val: String, changed: Callable) -> void:
+	var label := Label.new()
+	label.text = label_text
+	label.add_theme_color_override("font_color", ctx.palette.muted)
+	label.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
+	parent.add_child(label)
+
+	var picker := OptionButton.new()
+	picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	picker.custom_minimum_size = Vector2(0, 42)
+	parent.add_child(picker)
+
+	var selected := 0
+	for i in entries.size():
+		var id := String(entries[i]["id"])
+		picker.add_item(String(entries[i]["name"]), i)
+		if id == current_val:
+			selected = i
+	picker.select(selected)
+
+	picker.item_selected.connect(func(index: int):
+		changed.call(String(entries[index]["id"]))
+	)
+
 
 
 func _build_carried(container: Container) -> void:

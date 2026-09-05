@@ -1,0 +1,250 @@
+{
+  "schema_version": 1,
+  "sources": [
+    {
+      "id": "phb",
+      "name": "Player's Handbook",
+      "chapter": "Chapter 9: Careers",
+      "pages": "112-124"
+    },
+    {
+      "id": "dm",
+      "name": "Dark Matter Campaign Setting",
+      "chapter": "Chapter 3: Heroes of Dark Matter",
+      "pages": "62-70"
+    }
+  ],
+  "disclaimer": "Point totals are calculated dynamically using canonical core rules; point totals may differ slightly from the original printed rulebook's editorial math errors.",
+  "packages": [
+    {
+      "id": "mercenary",
+      "name": "Mercenary",
+      "profession_code": "C",
+      "profession_name": "Combat Spec",
+      "setting": "Core",
+      "source": "Player's Handbook p. 113",
+      "printed_cost": 25,
+      "canonical_cost": 25,
+      "description": "A soldier-for-hire skilled with modern ranged weapons and tactical armor.",
+      "skills": [
+        {"name": "Armor Operation", "type": "broad", "rank": 1},
+        {"name": "Combat armor", "type": "specialty", "rank": 1, "broad": "Armor Operation"},
+        {"name": "Modern Ranged Weapons", "type": "broad", "rank": 1},
+        {"name": "SMG", "type": "specialty", "rank": 2, "broad": "Modern Ranged Weapons"},
+        {"name": "Interaction", "type": "broad", "rank": 1},
+        {"name": "Bargain", "type": "specialty", "rank": 1, "broad": "Interaction"},
+        {"name": "Intimidate", "type": "specialty", "rank": 1, "broad": "Interaction"}
+      ]
+    },
+    {
+      "id": "soldier_of_fortune",
+      "name": "Soldier of Fortune",
+      "profession_code": "C",
+      "profession_name": "Combat Spec",
+      "setting": "Dark Matter",
+      "source": "Dark•Matter Campaign Setting p. 63",
+      "printed_cost": 33,
+      "canonical_cost": 32,
+      "description": "A gritty contemporary combatant focused on close-quarters combat, survivalism, and street negotiations.",
+      "skills": [
+        {"name": "Unarmed Attack", "type": "broad", "rank": 1},
+        {"name": "Brawl", "type": "specialty", "rank": 1, "broad": "Unarmed Attack"},
+        {"name": "Modern Ranged Weapons", "type": "broad", "rank": 1},
+        {"name": "Pistol", "type": "specialty", "rank": 1, "broad": "Modern Ranged Weapons"},
+        {"name": "SMG", "type": "specialty", "rank": 1, "broad": "Modern Ranged Weapons"},
+        {"name": "Stamina", "type": "broad", "rank": 1},
+        {"name": "Endurance", "type": "specialty", "rank": 1, "broad": "Stamina"},
+        {"name": "Movement", "type": "broad", "rank": 1},
+        {"name": "Survival", "type": "broad", "rank": 1},
+        {"name": "Interaction", "type": "broad", "rank": 1},
+        {"name": "Bargain", "type": "specialty", "rank": 1, "broad": "Interaction"},
+        {"name": "Intimidate", "type": "specialty", "rank": 1, "broad": "Interaction"}
+      ]
+    },
+    {
+      "id": "corporate_security_specialist",
+      "name": "Corporate Security Specialist",
+      "profession_code": "C",
+      "profession_name": "Combat Spec",
+      "setting": "Dark Matter",
+      "source": "Dark•Matter Campaign Setting p. 62",
+      "printed_cost": 29,
+      "canonical_cost": 30,
+      "description": "A trained corporate protector skilled in handguns, security hardware, and interrogation.",
+      "skills": [
+        {"name": "Modern Ranged Weapons", "type": "broad", "rank": 1},
+        {"name": "Pistol", "type": "specialty", "rank": 1, "broad": "Modern Ranged Weapons"},
+        {"name": "Security", "type": "broad", "rank": 1},
+        {"name": "Protection Protocols", "type": "specialty", "rank": 2, "broad": "Security"},
+        {"name": "Security Devices", "type": "specialty", "rank": 1, "broad": "Security"},
+        {"name": "Investigate", "type": "broad", "rank": 1},
+        {"name": "Interrogate", "type": "specialty", "rank": 1, "broad": "Investigate"}
+      ]
+    },
+    {
+      "id": "forensics_expert",
+      "name": "Forensics Expert",
+      "profession_code": "T",
+      "profession_name": "Tech Op",
+      "setting": "Dark Matter",
+      "source": "Dark•Matter Campaign Setting p. 69",
+      "printed_cost": 36,
+      "canonical_cost": 42,
+      "description": "A technical crime scene investigator combining forensic medicine, chemistry, and deduction.",
+      "skills": [
+        {"name": "Knowledge", "type": "broad", "rank": 1},
+        {"name": "Computer Operation", "type": "specialty", "rank": 1, "broad": "Knowledge"},
+        {"name": "Deduce", "type": "specialty", "rank": 1, "broad": "Knowledge"},
+        {"name": "Medical Science", "type": "broad", "rank": 1},
+        {"name": "Forensics", "type": "specialty", "rank": 2, "broad": "Medical Science"},
+        {"name": "Physical Science", "type": "broad", "rank": 1},
+        {"name": "Chemistry", "type": "specialty", "rank": 2, "broad": "Physical Science"},
+        {"name": "Awareness", "type": "broad", "rank": 1},
+        {"name": "Perception", "type": "specialty", "rank": 1, "broad": "Awareness"},
+        {"name": "Investigate", "type": "broad", "rank": 1},
+        {"name": "Search", "type": "specialty", "rank": 1, "broad": "Investigate"}
+      ]
+    },
+    {
+      "id": "xenoengineer",
+      "name": "Xenoengineer",
+      "profession_code": "T",
+      "profession_name": "Tech Op",
+      "setting": "Dark Matter",
+      "source": "Dark•Matter Campaign Setting p. 69",
+      "printed_cost": 37,
+      "canonical_cost": 45,
+      "description": "A specialist in extraterrestrial engineering, physical sciences, and alien tech analysis.",
+      "skills": [
+        {"name": "Knowledge", "type": "broad", "rank": 1},
+        {"name": "Computer Operation", "type": "specialty", "rank": 1, "broad": "Knowledge"},
+        {"name": "Deduce", "type": "specialty", "rank": 1, "broad": "Knowledge"},
+        {"name": "Physical Science", "type": "broad", "rank": 1},
+        {"name": "System Operation", "type": "broad", "rank": 1},
+        {"name": "Engineering", "type": "specialty", "rank": 1, "broad": "System Operation"},
+        {"name": "Technical Science", "type": "broad", "rank": 1},
+        {"name": "Repair", "type": "specialty", "rank": 2, "broad": "Technical Science"},
+        {"name": "Technical Knowledge", "type": "specialty", "rank": 1, "broad": "Technical Science"},
+        {"name": "Xenoengineering", "type": "specialty", "rank": 2, "broad": "Technical Science"}
+      ]
+    },
+    {
+      "id": "gadgeteer",
+      "name": "Gadgeteer",
+      "profession_code": "T",
+      "profession_name": "Tech Op",
+      "setting": "Dark Matter",
+      "source": "Dark•Matter Campaign Setting p. 69",
+      "printed_cost": 32,
+      "canonical_cost": 36,
+      "description": "An inventive technician proficient in juryrigging equipment, repairing devices, and defeating security.",
+      "skills": [
+        {"name": "Knowledge", "type": "broad", "rank": 1},
+        {"name": "Security", "type": "broad", "rank": 1},
+        {"name": "Security Devices", "type": "specialty", "rank": 1, "broad": "Security"},
+        {"name": "Technical Science", "type": "broad", "rank": 1},
+        {"name": "Invention", "type": "specialty", "rank": 1, "broad": "Technical Science"},
+        {"name": "Juryrig", "type": "specialty", "rank": 3, "broad": "Technical Science"},
+        {"name": "Repair", "type": "specialty", "rank": 2, "broad": "Technical Science"}
+      ]
+    },
+    {
+      "id": "occultist",
+      "name": "Occultist",
+      "profession_code": "D",
+      "profession_name": "Diplomat",
+      "setting": "Dark Matter",
+      "source": "Dark•Matter Campaign Setting p. 65",
+      "printed_cost": 33,
+      "canonical_cost": 38,
+      "description": "A scholarly investigator of the occult, arcane grimoires, and supernatural traditions.",
+      "skills": [
+        {"name": "Knowledge", "type": "broad", "rank": 1},
+        {"name": "Language", "type": "specialty", "rank": 1, "broad": "Knowledge"},
+        {"name": "Investigate", "type": "broad", "rank": 1},
+        {"name": "Research", "type": "specialty", "rank": 1, "broad": "Investigate"},
+        {"name": "Lore", "type": "broad", "rank": 1},
+        {"name": "Occult Lore", "type": "specialty", "rank": 1, "broad": "Lore"},
+        {"name": "Interaction", "type": "broad", "rank": 1},
+        {"name": "Charm", "type": "specialty", "rank": 1, "broad": "Interaction"}
+      ],
+      "faith_choices": [
+        {
+          "id": "alchemist",
+          "name": "Alchemist (Hermeticism)",
+          "cost": 33,
+          "skills": [
+            {"name": "Hermeticism", "type": "fx_broad", "rank": 1},
+            {"name": "Sleep of Morpheus", "type": "fx_specialty", "rank": 1, "broad": "Hermeticism"}
+          ]
+        },
+        {
+          "id": "diabolist",
+          "name": "Diabolist (Diabolism)",
+          "cost": 35,
+          "skills": [
+            {"name": "Diabolism", "type": "fx_broad", "rank": 1},
+            {"name": "Command", "type": "fx_specialty", "rank": 1, "broad": "Diabolism"}
+          ]
+        },
+        {
+          "id": "mystic",
+          "name": "Mystic (Enochian)",
+          "cost": 31,
+          "skills": [
+            {"name": "Enochian", "type": "fx_broad", "rank": 1},
+            {"name": "Grace", "type": "fx_specialty", "rank": 1, "broad": "Enochian"}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "visionary",
+      "name": "Visionary",
+      "profession_code": "D",
+      "profession_name": "Diplomat",
+      "setting": "Dark Matter",
+      "source": "Dark•Matter Campaign Setting p. 65",
+      "printed_cost": 33,
+      "canonical_cost": 35,
+      "description": "A spiritually attuned investigator whose faith connects them to supernatural and transcendent guidance.",
+      "skills": [
+        {"name": "Social Science", "type": "broad", "rank": 1},
+        {"name": "History", "type": "specialty", "rank": 1, "broad": "Social Science"},
+        {"name": "Awareness", "type": "broad", "rank": 1},
+        {"name": "Intuition", "type": "specialty", "rank": 1, "broad": "Awareness"},
+        {"name": "Resolve", "type": "broad", "rank": 1},
+        {"name": "Mental Resolve", "type": "specialty", "rank": 1, "broad": "Resolve"}
+      ],
+      "faith_choices": [
+        {
+          "id": "shaman",
+          "name": "Shaman (Shamanism)",
+          "cost": 33,
+          "skills": [
+            {"name": "Shamanism", "type": "fx_broad", "rank": 1},
+            {"name": "Trance visions", "type": "fx_specialty", "rank": 1, "broad": "Shamanism"}
+          ]
+        },
+        {
+          "id": "houngan",
+          "name": "Houngan (Voodoo)",
+          "cost": 33,
+          "skills": [
+            {"name": "Voodoo", "type": "fx_broad", "rank": 1},
+            {"name": "Legba rides", "type": "fx_specialty", "rank": 1, "broad": "Voodoo"}
+          ]
+        },
+        {
+          "id": "monotheist",
+          "name": "Monotheist (Monotheism)",
+          "cost": 34,
+          "skills": [
+            {"name": "Monotheism", "type": "fx_broad", "rank": 1},
+            {"name": "Guidance", "type": "fx_specialty", "rank": 1, "broad": "Monotheism"}
+          ]
+        }
+      ]
+    }
+  ]
+}

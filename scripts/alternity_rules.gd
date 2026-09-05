@@ -51,6 +51,9 @@ var fx_broad_skills: Array = []
 var fx_broad_skills_by_name: Dictionary = {}
 var fx_specialty_skills_by_broad: Dictionary = {}
 var fx_specialty_skills_by_name: Dictionary = {}
+var skills_by_name: Dictionary = {}
+var career_packages: Array = []
+var career_packages_by_id: Dictionary = {}
 
 
 func load_core_data(path := "res://data/rules/alternity_core.json") -> void:
@@ -75,6 +78,7 @@ func load_core_data(path := "res://data/rules/alternity_core.json") -> void:
 	_load_mutation_catalog()
 	_load_cybertech_catalog()
 	_load_fx_catalog()
+	_load_career_packages_catalog()
 
 
 func _index_constants() -> void:
@@ -272,6 +276,25 @@ func _load_fx_catalog(path := "res://data/rules/fx_core.json") -> void:
 		if fx_specialty_skills_by_broad.has(broad_name):
 			fx_specialty_skills_by_broad[broad_name].append(spec)
 
+
+func _load_career_packages_catalog(path := "res://data/rules/career_packages.json") -> void:
+	career_packages.clear()
+	career_packages_by_id.clear()
+
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		return
+
+	var parsed = JSON.parse_string(file.get_as_text())
+	if typeof(parsed) != TYPE_DICTIONARY:
+		return
+
+	career_packages = parsed.get("packages", [])
+	for pkg in career_packages:
+		if typeof(pkg) == TYPE_DICTIONARY:
+			var pkg_id := String(pkg.get("id", ""))
+			if not pkg_id.is_empty():
+				career_packages_by_id[pkg_id] = pkg
 
 
 func _load_psionics_catalog(path := "res://data/rules/psionics_core.json") -> void:
@@ -548,6 +571,15 @@ func combat_spec_bonus_specialties(_character: Dictionary = {}) -> Array:
 ## the check does not fail loudly, it just quietly offers Dark Matter content in
 ## a Core campaign.
 func is_entry_available(character: Dictionary, entry: Dictionary) -> bool:
+	var req_species := String(entry.get("required_species", "")).strip_edges()
+	if not req_species.is_empty():
+		var sp := get_species_by_id(_as_int(character.get("species_id", -1)))
+		if String(sp.get("name", "")) != req_species:
+			return false
+	if is_dark_matter(character):
+		var tier := String(entry.get("tier", ""))
+		if tier == "Amazing" or tier == "Extreme":
+			return false
 	# Both gates, and an entry may carry either or neither. A supplement entry is
 	# available in any setting the table plays, so long as the book is on the
 	# table; a setting entry is available in that setting whatever books are out.
@@ -2629,6 +2661,11 @@ func _validate_fx(character: Dictionary, messages: Array) -> void:
 		if not fx.is_fx_skill_selected(character, parent):
 			messages.append("%s requires the %s broad skill." % [name, parent])
 
+	var sp_info := get_species_by_id(_as_int(character.get("species_id", -1)))
+	var sp_name := String(sp_info.get("name", ""))
+	if fx.is_fx_skill_selected(character, "Incantation") and sp_name != "Sasquatch":
+		messages.append("Only Sasquatch are capable of Incantation Faith FX. Source: Beyond Science p. 47; Dark Matter Chapter 10 p. 261.")
+
 
 func _validate_perks_and_flaws(character: Dictionary, messages: Array) -> void:
 	var perks_limit_count := non_gm_perk_count(character)
@@ -2703,6 +2740,13 @@ func _validate_mutations(character: Dictionary, messages: Array) -> void:
 			var allowed_count := _as_int(mutations.mutation_distribution(character, "drawback").get(tier, 0))
 			if count > allowed_count:
 				messages.append("Mutation drawbacks exceed the selected point distribution for %s by %d." % [tier, count - allowed_count])
+		if is_dark_matter(character):
+			for adv in advantages:
+				if String(adv.get("tier", "")) == "Amazing":
+					messages.append("Mutant heroes in Dark*Matter are restricted to Ordinary and Good advantages; %s is Amazing. Source: Dark Matter Campaign Setting p. 59, 74." % adv.get("name", ""))
+			for drw in drawbacks:
+				if String(drw.get("tier", "")) == "Extreme":
+					messages.append("Mutant heroes in Dark*Matter are restricted to Slight and Moderate drawbacks; %s is Extreme. Source: Dark Matter Campaign Setting p. 59, 74." % drw.get("name", ""))
 
 
 func _validate_cybertech(character: Dictionary, messages: Array) -> void:
@@ -3555,12 +3599,16 @@ func skill_label(skill: Dictionary) -> String:
 
 func _index_skills() -> void:
 	skills_by_id.clear()
+	skills_by_name.clear()
 	broad_skills.clear()
 	specialty_skills_by_broad_id.clear()
 
 	for skill in skills:
 		var id := _as_int(skill.get("id", -1))
 		skills_by_id[id] = skill
+		var s_name := String(skill.get("name", "")).strip_edges().to_lower()
+		if not s_name.is_empty():
+			skills_by_name[s_name] = skill
 		if skill.get("type", "") == "broad":
 			broad_skills.append(skill)
 		else:
@@ -3572,6 +3620,15 @@ func _index_skills() -> void:
 	broad_skills.sort_custom(func(a, b): return String(a.get("name", "")) < String(b.get("name", "")))
 	for broad_id in specialty_skills_by_broad_id.keys():
 		specialty_skills_by_broad_id[broad_id].sort_custom(func(a, b): return String(a.get("name", "")) < String(b.get("name", "")))
+
+
+func get_skill_by_name(skill_name: String) -> Dictionary:
+	var key := skill_name.strip_edges().to_lower()
+	if key == "language" or key == "languages" or key == "(specific language)":
+		return get_skill_by_id(73)
+	if key == "protocols" or key == "security protocols" or key == "security-protocols":
+		return get_skill_by_id(104)
+	return skills_by_name.get(key, {})
 
 
 func _index_equipment() -> void:
@@ -3965,3 +4022,210 @@ func psionic_armor_rows(character: Dictionary) -> Array:
 			"item": item,
 		})
 	return rows
+
+
+# -----------------------------------------------------------------------------
+# Career Packages & Subsystems (Core & Dark*Matter)
+# -----------------------------------------------------------------------------
+
+## Available career packages for this character based on setting.
+func available_career_packages(character: Dictionary) -> Array:
+	var out: Array = []
+	var is_dm := is_dark_matter(character)
+	for pkg in career_packages:
+		if typeof(pkg) != TYPE_DICTIONARY:
+			continue
+		var s := String(pkg.get("setting", ""))
+		if is_dm:
+			# Dark Matter hero can choose Dark Matter packages or Core general packages
+			if s == "Dark Matter" or s == "Core":
+				out.append(pkg)
+		else:
+			# Non-Dark Matter heroes only see non-Dark Matter packages
+			if s != "Dark Matter":
+				out.append(pkg)
+	return out
+
+
+func get_career_package_by_id(package_id: String) -> Dictionary:
+	return career_packages_by_id.get(package_id, {})
+
+
+## Calculates the true canonical skill point cost of a career package dynamically
+## based on the character's species free skills and profession discounts.
+func career_package_cost(character: Dictionary, package: Dictionary, choice_index: int = 0) -> int:
+	var total_cost := 0
+	var broads_accounted: Dictionary = {}
+
+	for item in package.get("skills", []):
+		var s_name := String(item.get("name", ""))
+		var s_type := String(item.get("type", "specialty"))
+		var rank := _as_int(item.get("rank", 1))
+		var skill := get_skill_by_name(s_name)
+		if skill.is_empty():
+			continue
+
+		if s_type == "broad":
+			var b_id := _as_int(skill.get("id", -1))
+			if not broads_accounted.has(b_id):
+				broads_accounted[b_id] = true
+				total_cost += skill_cost(character, skill)
+		else:
+			var b_id := _as_int(skill.get("broad_id", -1))
+			if b_id > 0 and not broads_accounted.has(b_id):
+				broads_accounted[b_id] = true
+				var parent_skill := get_skill_by_id(b_id)
+				if not parent_skill.is_empty():
+					total_cost += skill_cost(character, parent_skill)
+			for r in range(1, rank + 1):
+				total_cost += skill_purchase_cost(character, skill, r)
+
+	var choices: Array = package.get("faith_choices", [])
+	if not choices.is_empty():
+		var idx: int = clampi(choice_index, 0, choices.size() - 1)
+		var choice: Dictionary = choices[idx]
+		for item in choice.get("skills", []):
+			var f_name := String(item.get("name", ""))
+			var f_type := String(item.get("type", ""))
+			var rank := _as_int(item.get("rank", 1))
+			if f_type == "fx_broad":
+				total_cost += fx.fx_skill_cost(character, f_name)
+			else:
+				for r in range(1, rank + 1):
+					total_cost += fx.fx_skill_cost_for_rank(character, f_name, r)
+
+	return total_cost
+
+
+## Applies a career package to the character dictionary.
+func apply_career_package(character: Dictionary, package_id: String, choice_index: int = 0) -> Dictionary:
+	var pkg: Dictionary = get_career_package_by_id(package_id)
+	if pkg.is_empty():
+		return {"ok": false, "reason": "Unknown career package: %s" % package_id}
+
+	ensure_character_shape(character)
+	character["career"] = String(pkg.get("name", ""))
+
+	for item in pkg.get("skills", []):
+		var s_name := String(item.get("name", ""))
+		var s_type := String(item.get("type", "specialty"))
+		var rank := _as_int(item.get("rank", 1))
+		var skill := get_skill_by_name(s_name)
+		if skill.is_empty():
+			continue
+		var s_id := _as_int(skill.get("id", -1))
+		if s_type == "broad":
+			set_skill_rank(character, s_id, maxi(1, skill_rank(character, s_id)))
+		else:
+			var b_id := _as_int(skill.get("broad_id", -1))
+			if b_id > 0 and skill_rank(character, b_id) < 1:
+				set_skill_rank(character, b_id, 1)
+			set_skill_rank(character, s_id, maxi(rank, skill_rank(character, s_id)))
+
+	var choices: Array = pkg.get("faith_choices", [])
+	if not choices.is_empty():
+		var idx: int = clampi(choice_index, 0, choices.size() - 1)
+		var choice: Dictionary = choices[idx]
+		for item in choice.get("skills", []):
+			var f_name := String(item.get("name", ""))
+			var f_type := String(item.get("type", ""))
+			var rank := _as_int(item.get("rank", 1))
+			fx.add_fx_skill(character, f_name)
+			if f_type != "fx_broad":
+				character["fx"]["selected_skills"][f_name] = rank
+
+	return {"ok": true, "career": character["career"]}
+
+
+## Requisition Subsystem (Arms & Equipment Guide p. 5)
+## Check is rolled strictly against Administration-bureaucracy.
+func requisition_step_modifier(options: Dictionary) -> int:
+	var step := 0
+	var avail := String(options.get("availability", "Common"))
+	step += AlternityRulesConstants.REQUISITION_AVAILABILITY_MODIFIERS.get(avail, 0)
+	var urgency := String(options.get("urgency", "standard"))
+	step += AlternityRulesConstants.REQUISITION_URGENCY_MODIFIERS.get(urgency, 0)
+	var necessity := String(options.get("necessity", "useful"))
+	step += AlternityRulesConstants.REQUISITION_NECESSITY_MODIFIERS.get(necessity, 0)
+	return step
+
+
+func requisition_check_score(character: Dictionary, options: Dictionary = {}) -> Dictionary:
+	var skill_id := AlternityRulesConstants.REQUISITION_SKILL_ID
+	var bureaucracy := get_skill_by_id(skill_id)
+	var base_check: Dictionary
+	if bureaucracy.is_empty() or skill_rank(character, skill_id) <= 0:
+		var admin := get_skill_by_id(119) # Administration broad
+		if not admin.is_empty() and skill_rank(character, 119) > 0:
+			base_check = skill_score(character, bureaucracy)
+		else:
+			base_check = feat_check_score(character, "WIL")
+	else:
+		base_check = skill_score(character, bureaucracy)
+
+	var step := _as_int(base_check.get("step", 0)) + requisition_step_modifier(options)
+	return {
+		"ordinary": _as_int(base_check.get("ordinary", 10)),
+		"good": _as_int(base_check.get("good", 5)),
+		"amazing": _as_int(base_check.get("amazing", 2)),
+		"marginal": _as_int(base_check.get("marginal", 11)),
+		"step": step,
+		"die": action_step_die(step),
+		"outcomes": AlternityRulesConstants.REQUISITION_OUTCOMES,
+	}
+
+
+func resolve_requisition_check(character: Dictionary, control_die: int, situation_roll: int, options: Dictionary = {}) -> Dictionary:
+	var score_info := requisition_check_score(character, options)
+	var target := _as_int(score_info.get("ordinary", 10))
+	var die_str := String(score_info.get("die", "+d0"))
+	var result := resolve_check(control_die, situation_roll, target, die_str)
+	var degree := String(result.get("degree", "Failure"))
+	var outcome_key := degree.to_lower().replace(" ", "_")
+	var desc := String(AlternityRulesConstants.REQUISITION_OUTCOMES.get(outcome_key, ""))
+	result["outcome_description"] = desc
+	return result
+
+
+## Investigate Modifiers (Player's Handbook p. 93)
+## Within each group, modifiers are mutually exclusive; across groups they are cumulative.
+func investigate_step_modifier(options: Dictionary, related_skill_rank: int = 0) -> int:
+	var step := 0
+	var time_opt := String(options.get("time", "normal"))
+	step += AlternityRulesConstants.INVESTIGATE_TIME_MODIFIERS.get(time_opt, 0)
+	var fresh_opt := String(options.get("freshness", "recent"))
+	step += AlternityRulesConstants.INVESTIGATE_FRESHNESS_MODIFIERS.get(fresh_opt, 0)
+	var clue_opt := String(options.get("clue", "standard"))
+	step += AlternityRulesConstants.INVESTIGATE_CLUE_MODIFIERS.get(clue_opt, 0)
+	var site_opt := String(options.get("site", "undisturbed"))
+	step += AlternityRulesConstants.INVESTIGATE_SITE_MODIFIERS.get(site_opt, 0)
+
+	if related_skill_rank >= 9:
+		step -= 3
+	elif related_skill_rank >= 5:
+		step -= 2
+	elif related_skill_rank >= 1:
+		step -= 1
+
+	return step
+
+
+## Contacts & Allegiances (Table D8, Dark Matter p. 245 / GMG p. 104-105)
+func contact_step_modifier(options: Dictionary) -> int:
+	var step := 0
+	var favor := String(options.get("favor", "casual"))
+	step += AlternityRulesConstants.CONTACT_RELATION_MODIFIERS.get(favor, 0)
+	var abused := _as_int(options.get("abused_penalty", 0))
+	step += max(0, abused)
+	return step
+
+
+func resolve_contact_check(control_die: int, situation_roll: int, target_score: int, options: Dictionary = {}) -> Dictionary:
+	var step := contact_step_modifier(options)
+	var die_str := action_step_die(step)
+	var result := resolve_check(control_die, situation_roll, target_score, die_str)
+	var degree := String(result.get("degree", "Failure"))
+	var outcome_key := degree.to_lower().replace(" ", "_")
+	var desc := String(AlternityRulesConstants.CONTACT_OUTCOMES.get(outcome_key, ""))
+	result["outcome_description"] = desc
+	return result

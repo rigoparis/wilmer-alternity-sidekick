@@ -524,7 +524,13 @@ func fx_skill_score(character: Dictionary, skill_name: String) -> Dictionary:
 				% [skill_name, parent_name]
 			)
 		via_broad = true
-		ability_score = _broad_ability_score(character, parent_name)
+		if _get_parent().is_dark_matter(character):
+			# Dark Matter Part 2: Arcana p. 75: untrained FX skill checks are made
+			# using a feat check using the ability score associated with the specialty skill used.
+			var spec_ability := String(specialty.get("ability", "WIL"))
+			ability_score = AlternityNum.as_int(abilities.get(spec_ability, 10))
+		else:
+			ability_score = _broad_ability_score(character, parent_name)
 
 	var rank_bonus := 0 if (is_broad or via_broad) else rank
 	var ordinary := ability_score + rank_bonus

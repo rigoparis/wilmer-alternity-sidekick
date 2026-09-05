@@ -155,17 +155,33 @@ func _test_independent_of_setting() -> void:
 	check_true(_rules.is_entry_available(core, robot), "a Dataware perk works in Core")
 	check_true(_rules.is_entry_available(dark, robot), "and in Dark*Matter")
 
-	# A setting entry does not care which books are out. Incantation is
-	# Dark*Matter's own school and carries no supplement tag, so it must survive
-	# Beyond Science being put away.
+	# A setting entry does not care which books are out. Enochian and
+	# Incantation are Dark*Matter's own schools and carry no supplement tag, so they
+	# must survive Beyond Science being put away. Incantation is strictly for
+	# Sasquatch (Dark Matter p. 226).
 	var incantation := _rules.fx.get_broad_skill("Incantation")
+	var enochian := _rules.fx.get_broad_skill("Enochian")
 	check_true(not incantation.is_empty(), "the Incantation school ships")
-	check_eq(String(incantation.get("supplement", "")), "", "Dark*Matter's own school belongs to no supplement")
+	check_true(not enochian.is_empty(), "the Enochian school ships")
+	check_eq(String(incantation.get("supplement", "")), "", "Incantation belongs to no supplement")
+	check_eq(String(enochian.get("supplement", "")), "", "Enochian belongs to no supplement")
 
 	_rules.set_supplement(dark, "beyond_science", false)
 	check_true(
+		_rules.is_entry_available(dark, enochian),
+		"Dark*Matter keeps its own Arcane FX with Beyond Science off"
+	)
+	var sasquatch := _character()
+	sasquatch["setting"] = "Dark*Matter"
+	sasquatch["species_id"] = 11
+	_rules.set_supplement(sasquatch, "beyond_science", false)
+	check_true(
+		_rules.is_entry_available(sasquatch, incantation),
+		"Dark*Matter Sasquatch keeps Incantation with Beyond Science off"
+	)
+	check_false(
 		_rules.is_entry_available(dark, incantation),
-		"Dark*Matter keeps its own FX with Beyond Science off"
+		"Dark*Matter Human cannot take Sasquatch-only Incantation"
 	)
 	check_false(
 		_rules.is_entry_available(core, incantation),

@@ -47,6 +47,9 @@ const AGE_CATEGORIES := [
 	"adolescent", "young_adult", "mature", "middle_aged", "old", "ancient",
 ]
 
+var _selected_pkg_idx: int = -1
+var _selected_faith_choice_idx: int = 0
+
 
 func watched_sections() -> Array:
 	# Everything: species, profession and abilities all cascade, and the setting
@@ -70,15 +73,151 @@ func build(container: Container) -> void:
 func _build_identity(container: Container) -> void:
 	var doc := ctx.doc
 	var palette := ctx.palette
+	var rules: AlternityRules = ctx.rules
 	var box := Widgets.section(container, "Hero", palette)
 
 	_text_field(box, "Hero name", doc.get_hero_name(), func(value: String): doc.set_hero_name(value))
 	_text_field(box, "Player", doc.get_player_name(), func(value: String): doc.set_player_name(value))
 	_text_field(box, "Career", doc.get_career(), func(value: String): doc.set_career(value))
 
+	if rules.is_dark_matter(doc.raw()):
+		_build_career_packages(box)
+
 	_build_setting_picker(box)
 
 	_build_age_picker(box)
+
+
+func _build_career_packages(parent: Container) -> void:
+	var doc := ctx.doc
+	var rules: AlternityRules = ctx.rules
+	var palette := ctx.palette
+	var raw := doc.raw()
+
+	var pkgs: Array = rules.available_career_packages(raw)
+	if pkgs.is_empty():
+		return
+
+	Widgets.separator(parent, palette)
+
+	var label := Label.new()
+	label.text = "Career Package"
+	label.add_theme_color_override("font_color", palette.muted)
+	label.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
+	parent.add_child(label)
+
+	var picker := OptionButton.new()
+	picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	picker.custom_minimum_size = Vector2(0, 42)
+	parent.add_child(picker)
+
+	picker.add_item("— Select a career package to apply —", 0)
+
+	var current_career := doc.get_career()
+	var preselected := 0
+
+	for i in pkgs.size():
+		var pkg: Dictionary = pkgs[i]
+		var pkg_name := String(pkg.get("name", ""))
+		var cost := rules.career_package_cost(raw, pkg, _selected_faith_choice_idx)
+		picker.add_item("%s (%d SP)" % [pkg_name, cost], i + 1)
+		if _selected_pkg_idx == i:
+			preselected = i + 1
+		elif _selected_pkg_idx < 0 and pkg_name == current_career:
+			preselected = i + 1
+
+	picker.select(preselected)
+
+	var selected_idx := preselected - 1
+	if selected_idx >= 0 and selected_idx < pkgs.size():
+		var pkg: Dictionary = pkgs[selected_idx]
+		_build_package_details(parent, pkg, selected_idx)
+
+	picker.item_selected.connect(func(index: int):
+		_selected_pkg_idx = index - 1
+		_selected_faith_choice_idx = 0
+		_rebuild())
+
+
+func _build_package_details(parent: Container, pkg: Dictionary, _pkg_idx: int) -> void:
+	var doc := ctx.doc
+	var rules: AlternityRules = ctx.rules
+	var palette := ctx.palette
+	var raw := doc.raw()
+
+	var desc := String(pkg.get("description", "")).strip_edges()
+	if not desc.is_empty():
+		var desc_label := Label.new()
+		desc_label.text = desc
+		desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		desc_label.custom_minimum_size = Vector2(1, 0)
+		desc_label.add_theme_color_override("font_color", palette.text)
+		desc_label.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
+		parent.add_child(desc_label)
+
+	var source := String(pkg.get("source", "")).strip_edges()
+	if not source.is_empty():
+		Widgets.muted_text(parent, "Source: %s" % source, palette, Widgets.FONT_CAPTION)
+
+	var faith_choices: Array = pkg.get("faith_choices", [])
+	if not faith_choices.is_empty():
+		var faith_label := Label.new()
+		faith_label.text = "Tradition Choice"
+		faith_label.add_theme_color_override("font_color", palette.muted)
+		faith_label.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
+		parent.add_child(faith_label)
+
+		var faith_picker := OptionButton.new()
+		faith_picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		faith_picker.custom_minimum_size = Vector2(0, 42)
+		for f_i in faith_choices.size():
+			var fc: Dictionary = faith_choices[f_i]
+			var f_name := String(fc.get("name", ""))
+			var f_cost := rules.career_package_cost(raw, pkg, f_i)
+			faith_picker.add_item("%s (%d SP)" % [f_name, f_cost], f_i)
+		faith_picker.select(clampi(_selected_faith_choice_idx, 0, faith_choices.size() - 1))
+		faith_picker.item_selected.connect(func(f_idx: int):
+			_selected_faith_choice_idx = f_idx
+			_rebuild())
+		parent.add_child(faith_picker)
+
+	# Summary of skills included
+	var skill_summaries: Array = []
+	for item in pkg.get("skills", []):
+		var s_name := String(item.get("name", ""))
+		var s_type := String(item.get("type", "specialty"))
+		var rank := AlternityNum.as_int(item.get("rank", 1))
+		if s_type == "broad":
+			skill_summaries.append(s_name)
+		else:
+			skill_summaries.append("%s %d" % [s_name, rank])
+	if not faith_choices.is_empty():
+		var chosen_fc: Dictionary = faith_choices[clampi(_selected_faith_choice_idx, 0, faith_choices.size() - 1)]
+		for item in chosen_fc.get("skills", []):
+			var f_name := String(item.get("name", ""))
+			var rank := AlternityNum.as_int(item.get("rank", 1))
+			skill_summaries.append("%s %d" % [f_name, rank])
+
+	Widgets.muted_text(
+		parent,
+		"Includes: %s" % (", ".join(skill_summaries)),
+		palette,
+		Widgets.FONT_CAPTION
+	)
+
+	var apply_btn := Button.new()
+	var total_cost := rules.career_package_cost(raw, pkg, _selected_faith_choice_idx)
+	apply_btn.text = "Apply %s (%d SP)" % [String(pkg.get("name", "")), total_cost]
+	apply_btn.custom_minimum_size = Vector2(0, 44)
+	apply_btn.pressed.connect(func():
+		var pkg_id := String(pkg.get("id", ""))
+		doc.apply(CharacterDoc.ALL, func(c):
+			rules.apply_career_package(c, pkg_id, _selected_faith_choice_idx)
+		)
+		save_requested.emit()
+	)
+	parent.add_child(apply_btn)
+
 
 
 ## Level and the achievement points that drive it.

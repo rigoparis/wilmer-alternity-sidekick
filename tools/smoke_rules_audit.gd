@@ -2332,13 +2332,25 @@ func _init() -> void:
 
 	var dm_char: Dictionary = rules.default_character()
 	dm_char["setting"] = "Dark*Matter"
+	dm_char["species_id"] = 11 # Sasquatch (Dark Matter p. 226)
 	rules.ensure_character_shape(dm_char)
 	var dm_broads: Array = rules.fx.get_broad_skills_for_character(dm_char)
 	var dm_has_incantation := false
 	for b in dm_broads:
 		if String(b.get("name", "")) == "Incantation":
 			dm_has_incantation = true
-	assert_true.call(dm_has_incantation, "Dark*Matter character can see Incantation faith")
+	assert_true.call(dm_has_incantation, "Dark*Matter Sasquatch character can see Incantation faith")
+
+	var dm_human: Dictionary = rules.default_character()
+	dm_human["setting"] = "Dark*Matter"
+	dm_human["species_id"] = 0 # Human
+	rules.ensure_character_shape(dm_human)
+	var dm_human_broads: Array = rules.fx.get_broad_skills_for_character(dm_human)
+	var human_has_incantation := false
+	for b in dm_human_broads:
+		if String(b.get("name", "")) == "Incantation":
+			human_has_incantation = true
+	assert_true.call(not human_has_incantation, "Dark*Matter Human character cannot see Incantation faith")
 
 	# 8. Super Power FX 6 Categories & 37 Canonical Powers Verification
 	var expected_super_powers: Dictionary = {
