@@ -60,6 +60,67 @@ static func section(parent: Container, title: String, palette: ThemePalette) -> 
 	return box
 
 
+## A titled panel with an action control aligned to the right side of the header.
+static func section_with_action(
+	parent: Container,
+	title: String,
+	action_control: Control,
+	palette: ThemePalette
+) -> VBoxContainer:
+	var panel := PanelContainer.new()
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel.add_theme_stylebox_override("panel", flat_style(palette.surface, palette.border, 8, true))
+	parent.add_child(panel)
+
+	var margin := MarginContainer.new()
+	for side in ["left", "right", "top", "bottom"]:
+		margin.add_theme_constant_override("margin_" + side, PAD_PANEL)
+	panel.add_child(margin)
+
+	var box := VBoxContainer.new()
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	box.add_theme_constant_override("separation", GAP_ROW)
+	margin.add_child(box)
+
+	var header_row := HBoxContainer.new()
+	header_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header_row.add_theme_constant_override("separation", GAP_ROW)
+	box.add_child(header_row)
+
+	var label := Label.new()
+	label.text = title
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.add_theme_color_override("font_color", palette.text)
+	label.add_theme_font_size_override("font_size", FONT_SECTION_TITLE)
+	header_row.add_child(label)
+
+	if action_control != null:
+		action_control.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		header_row.add_child(action_control)
+
+	return box
+
+
+## Let a section grow to fill the space its host offers.
+##
+## A section is Panel > Margin > VBox and the caller only ever holds the VBox,
+## so making one stretch means setting the flag on all three. Three tabs were
+## each walking up that chain themselves with get_parent().get_parent(), which
+## silently stops working the day either builder gains or loses a wrapper --
+## the section does not error, it just stops filling. Kept here, beside the
+## builders that decide the nesting.
+static func expand_section(content: Container) -> void:
+	content.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	var margin := content.get_parent()
+	if margin == null:
+		return
+	(margin as Control).size_flags_vertical = Control.SIZE_EXPAND_FILL
+	var panel := margin.get_parent()
+	if panel != null:
+		(panel as Control).size_flags_vertical = Control.SIZE_EXPAND_FILL
+
+
 ## Wrapping body text.
 ##
 ## The custom_minimum_size.x of 1 is load-bearing on narrow screens: without a
@@ -194,7 +255,7 @@ static func metric(parent: Container, name: String, value: String, palette: Them
 
 
 ## One cell of a data table. Header cells are accented and non-wrapping.
-static func table_cell(parent: GridContainer, content: String, palette: ThemePalette, header: bool = false, alignment: int = HORIZONTAL_ALIGNMENT_LEFT) -> Label:
+static func table_cell(parent: GridContainer, content: String, palette: ThemePalette, header: bool = false, alignment: HorizontalAlignment = HORIZONTAL_ALIGNMENT_LEFT) -> Label:
 	var label := Label.new()
 	label.text = content
 	label.horizontal_alignment = alignment
@@ -207,38 +268,56 @@ static func table_cell(parent: GridContainer, content: String, palette: ThemePal
 	return label
 
 
-## A labelled on/off row.
+## A labelled on/off checkbox row.
 ##
-## CheckButton rather than CheckBox: ThemeService deliberately strips the
-## CheckBox styleboxes so the old custom check artwork can show through, which
-## would leave a plain CheckBox here looking unstyled. The switch is also a
-## larger touch target.
+## Uses Godot's primitive CheckBox with check-square icons, matching the
+## app's soft-cornered icon language.
 static func toggle_row(
 	parent: Container,
 	label_text: String,
 	pressed: bool,
 	palette: ThemePalette,
-	compact: bool = false
-) -> CheckButton:
-	var toggle := CheckButton.new()
+	compact: bool = false,
+	expand: bool = false
+) -> CheckBox:
+	var toggle := CheckBox.new()
 	toggle.text = label_text
 	toggle.button_pressed = pressed
-	# Compact sits inline beside another control and sizes to its label; the full
-	# form is a row of its own and takes the width.
-	# Neither form stretches to the container. A CheckButton draws its switch at
-	# its own right edge, so a full-width one on a 1900px screen put the label at
-	# one end and the control it labels 1400px away at the other. Both forms size
-	# to a fixed width and let a trailing spacer absorb the rest.
-	toggle.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	toggle.custom_minimum_size = Vector2(132 if compact else 320, 36 if compact else 44)
+	if expand:
+		toggle.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		toggle.clip_text = true
+		toggle.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	else:
+		toggle.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	toggle.custom_minimum_size = Vector2(0, 36 if compact else 40)
 	toggle.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	toggle.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	toggle.add_theme_font_size_override("font_size", FONT_CAPTION if compact else FONT_DETAIL)
 
-	# The switch shows the state; the row does not. Inheriting the theme's
-	# Button styles filled an enabled toggle with the accent colour and left
-	# pale text on top of it, which was both loud and hard to read.
-	for state in ["normal", "hover", "pressed", "focus", "disabled"]:
-		toggle.add_theme_stylebox_override(state, flat_style(palette.surface_soft, palette.border, 6))
+	toggle.add_theme_icon_override("checked", preload("res://assets/check-square.svg"))
+	toggle.add_theme_icon_override("unchecked", preload("res://assets/check-square-empty.svg"))
+	toggle.add_theme_color_override("icon_normal_color", Color(palette.muted, 0.7))
+	toggle.add_theme_color_override("icon_pressed_color", palette.accent)
+	toggle.add_theme_color_override("icon_hover_color", palette.text)
+	toggle.add_theme_color_override("icon_hover_pressed_color", palette.accent)
+
+	var base_style := flat_style(palette.surface_soft, palette.border, 6)
+	base_style.content_margin_left = PAD_PANEL
+	base_style.content_margin_right = PAD_PANEL
+	base_style.content_margin_top = GAP_ROW
+	base_style.content_margin_bottom = GAP_ROW
+
+	var hover_style := flat_style(palette.surface_soft, palette.accent, 6)
+	hover_style.content_margin_left = PAD_PANEL
+	hover_style.content_margin_right = PAD_PANEL
+	hover_style.content_margin_top = GAP_ROW
+	hover_style.content_margin_bottom = GAP_ROW
+
+	for state in ["normal", "pressed", "focus", "disabled"]:
+		toggle.add_theme_stylebox_override(state, base_style)
+	for state in ["hover", "hover_pressed"]:
+		toggle.add_theme_stylebox_override(state, hover_style)
+	toggle.add_theme_constant_override("h_separation", GAP_SECTION)
 	for state in ["font_color", "font_pressed_color", "font_hover_color", "font_focus_color"]:
 		toggle.add_theme_color_override(state, palette.text)
 
@@ -253,10 +332,11 @@ static func toggle_row(
 	parent.add_child(row)
 	row.add_child(toggle)
 
-	var slack := Control.new()
-	slack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	slack.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(slack)
+	if not expand:
+		var slack := Control.new()
+		slack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		slack.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(slack)
 	return toggle
 
 
@@ -384,6 +464,62 @@ static func icon_button(icon: Texture2D, palette: ThemePalette, size: Vector2 = 
 	for state in ["icon_normal_color", "icon_pressed_color", "icon_hover_color", "icon_focus_color"]:
 		button.add_theme_color_override(state, palette.text)
 	return button
+
+
+## A compact header button that toggles between [pen] Edit and [check] Save.
+static func edit_toggle_button(is_editing: bool, palette: ThemePalette) -> Button:
+	var btn := Button.new()
+	btn.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	btn.custom_minimum_size = Vector2(80, 32)
+	btn.expand_icon = true
+	btn.focus_mode = Control.FOCUS_NONE
+	btn.add_theme_constant_override("h_separation", 6)
+	btn.add_theme_font_size_override("font_size", FONT_DETAIL)
+
+	var normal_box := flat_style(palette.surface_soft, palette.accent if is_editing else palette.border, 6)
+	normal_box.content_margin_left = 10
+	normal_box.content_margin_right = 10
+	normal_box.content_margin_top = 4
+	normal_box.content_margin_bottom = 4
+
+	var hover_box := flat_style(palette.surface_soft.lightened(0.1), palette.accent, 6)
+	hover_box.content_margin_left = 10
+	hover_box.content_margin_right = 10
+	hover_box.content_margin_top = 4
+	hover_box.content_margin_bottom = 4
+
+	var pressed_box := flat_style(palette.surface, palette.accent, 6)
+	pressed_box.content_margin_left = 10
+	pressed_box.content_margin_right = 10
+	pressed_box.content_margin_top = 4
+	pressed_box.content_margin_bottom = 4
+
+	for state in ["normal", "hover", "pressed", "focus"]:
+		btn.remove_theme_stylebox_override(state)
+
+	btn.add_theme_stylebox_override("normal", normal_box)
+	btn.add_theme_stylebox_override("hover", hover_box)
+	btn.add_theme_stylebox_override("pressed", pressed_box)
+	btn.add_theme_stylebox_override("focus", hover_box)
+
+	if is_editing:
+		btn.text = "Save"
+		btn.icon = preload("res://assets/check-square.svg")
+		for state in ["font_color", "font_hover_color", "font_focus_color", "icon_normal_color", "icon_hover_color", "icon_focus_color"]:
+			btn.add_theme_color_override(state, palette.accent)
+		btn.add_theme_color_override("font_pressed_color", palette.accent.lightened(0.2))
+		btn.add_theme_color_override("icon_pressed_color", palette.accent.lightened(0.2))
+	else:
+		btn.text = "Edit"
+		btn.icon = preload("res://assets/pen.svg")
+		for state in ["font_color", "icon_normal_color"]:
+			btn.add_theme_color_override(state, palette.text)
+		for state in ["font_hover_color", "font_focus_color", "icon_hover_color", "icon_focus_color"]:
+			btn.add_theme_color_override(state, palette.accent)
+		btn.add_theme_color_override("font_pressed_color", palette.accent)
+		btn.add_theme_color_override("icon_pressed_color", palette.accent)
+
+	return btn
 
 
 static func flat_style(background: Color, border: Color, radius: int, shadow: bool = false) -> StyleBoxFlat:

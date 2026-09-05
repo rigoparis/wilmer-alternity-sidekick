@@ -60,6 +60,14 @@ func setup(palette: ThemePalette, title: String, used: int, total: int) -> void:
 
 
 ## Redraw without rebuilding, so tapping a box does not cost a tab rebuild.
+## How many points are currently marked off.
+##
+## Exists so a tab syncing a tracker to the document can tell whether anything
+## actually moved without reading into the widget's own state.
+func value() -> int:
+	return _used
+
+
 func set_value(used: int) -> void:
 	_used = clampi(used, 0, maxi(_total, used))
 	_render()
@@ -73,13 +81,19 @@ func _render() -> void:
 		_palette.warning if (_used >= _total and _total > 0) else _palette.muted
 	)
 
-	for child in _boxes.get_children():
-		_boxes.remove_child(child)
-		child.queue_free()
-
 	# A track long enough to stop fitting stops being boxes. Better a readable
 	# bar than four rows of squares nobody can count.
 	if _total > MAX_BOXES:
+		if _boxes.get_child_count() == 1 and _boxes.get_child(0) is ProgressBar:
+			var existing_bar := _boxes.get_child(0) as ProgressBar
+			existing_bar.max_value = maxi(1, _total)
+			existing_bar.value = _used
+			return
+
+		for child in _boxes.get_children():
+			_boxes.remove_child(child)
+			child.queue_free()
+
 		var bar := ProgressBar.new()
 		bar.min_value = 0
 		bar.max_value = maxi(1, _total)
@@ -96,26 +110,45 @@ func _render() -> void:
 		_boxes.add_child(bar)
 		return
 
+	# Fast path: update existing box buttons in place without destroying and re-instantiating.
+	if _boxes.get_child_count() == _total:
+		var can_reuse := true
+		for child in _boxes.get_children():
+			if not (child is Button):
+				can_reuse = false
+				break
+		if can_reuse:
+			for index in range(_total):
+				var box := _boxes.get_child(index) as Button
+				_apply_box_style(box, index < _used)
+			return
+
+	for child in _boxes.get_children():
+		_boxes.remove_child(child)
+		child.queue_free()
+
 	for index in range(_total):
 		_boxes.add_child(_make_box(index))
 
 
-func _make_box(index: int) -> Button:
-	var filled := index < _used
-	var box := Button.new()
-	box.custom_minimum_size = BOX_SIZE
-	box.focus_mode = Control.FOCUS_NONE
-	box.tooltip_text = "%d" % (index + 1)
-
+func _apply_box_style(box: Button, filled: bool) -> void:
 	var fill := _palette.warning if filled else _palette.surface_soft
 	var edge := _palette.warning if filled else _palette.border
 	for state in ["normal", "hover", "pressed", "focus", "disabled"]:
 		box.add_theme_stylebox_override(state, Widgets.flat_style(fill, edge, 4))
 
+
+func _make_box(index: int) -> Button:
+	var box := Button.new()
+	box.custom_minimum_size = BOX_SIZE
+	box.focus_mode = Control.FOCUS_NONE
+	box.tooltip_text = "%d" % (index + 1)
+	_apply_box_style(box, index < _used)
+
 	box.pressed.connect(func():
 		# Tapping the box that is currently the last filled one clears it, so
 		# undoing a hit is one tap rather than a trip to a stepper.
-		var target := index if (filled and index == _used - 1) else index + 1
+		var target := index if (index == _used - 1) else index + 1
 		set_value(target)
 		value_changed.emit(_used))
 	return box

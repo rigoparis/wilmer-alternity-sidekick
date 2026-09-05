@@ -50,10 +50,10 @@ func _last_opened_path() -> String:
 ## Falls back to the top-level achievement_level for files saved before the
 ## summary block existed.
 func list() -> Array:
-	var saved: Array = []
+	var records: Array = []
 	var dir := DirAccess.open(_dir)
 	if dir == null:
-		return saved
+		return records
 
 	for file_name in dir.get_files():
 		if not file_name.ends_with(".json"):
@@ -69,7 +69,7 @@ func list() -> Array:
 		if level == 1:
 			level = AlternityNum.as_int(data.get("achievement_level", 1), 1)
 
-		saved.append({
+		records.append({
 			"file_name": file_name,
 			"hero_name": String(data.get("hero_name", "New Hero")),
 			"species_id": AlternityNum.as_int(data.get("species_id", 0)),
@@ -78,8 +78,8 @@ func list() -> Array:
 			"mod_time": FileAccess.get_modified_time(path),
 		})
 
-	saved.sort_custom(func(a, b): return a["mod_time"] > b["mod_time"])
-	return saved
+	records.sort_custom(func(a, b): return a["mod_time"] > b["mod_time"])
+	return records
 
 
 func exists(file_name: String) -> bool:

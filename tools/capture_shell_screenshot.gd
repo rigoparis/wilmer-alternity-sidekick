@@ -213,6 +213,20 @@ func _capture(width: int, height: int, label: String) -> void:
 					await process_frame
 				_save(shell, "%s_tab_%s" % [label, id])
 
+				var inst = sheet._instances.get(id)
+				if id == "skills" and inst != null and inst.has_method("_set_editing_skills"):
+					inst._set_editing_skills(true)
+					for _i in 12:
+						await process_frame
+					_save(shell, "%s_tab_skills_editing" % label)
+					inst._set_editing_skills(false)
+				elif id == "fx" and inst != null and inst.has_method("_set_editing_powers"):
+					inst._set_editing_powers(true)
+					for _i in 12:
+						await process_frame
+					_save(shell, "%s_tab_fx_editing" % label)
+					inst._set_editing_powers(false)
+
 	# The campaign list and the GM screen, which are the multiplayer feature's
 	# single-device half and have the same reasons to be looked at as the sheet.
 	shell._show_campaigns()
@@ -278,6 +292,66 @@ func _capture(width: int, height: int, label: String) -> void:
 			for _i in 6:
 				await process_frame
 
+			# Character view route, as a GM sees a committed player's sheet.
+			var alice_seat: Dictionary = session.seats[1]
+			shell.router.push(
+				load("res://scenes/ui/routes/character_view_route.tscn"),
+				{
+					"palette": shell._palette,
+					"rules": shell.rules,
+					"snapshot": session.committed_character(String(alice_seat.get("player_id", ""))),
+					"player": String(alice_seat.get("player_name", "Alice")),
+				}
+			)
+			for _i in 12:
+				await process_frame
+			_save(shell, "%s_character_view" % label)
+			var view_route = shell.router._host.top_route()
+			if view_route != null:
+				view_route.close(null)
+			for _i in 6:
+				await process_frame
+
+			# Skill pick route with shortcut buttons.
+			shell.router.push(
+				load("res://scenes/ui/routes/skill_pick_route.tscn"),
+				{
+					"palette": shell._palette,
+					"rules": shell.rules,
+					"shortcuts": session.most_checked(6),
+				}
+			)
+			for _i in 12:
+				await process_frame
+			_save(shell, "%s_skill_pick" % label)
+			var pick_route = shell.router._host.top_route()
+			if pick_route != null:
+				pick_route.close(null)
+			for _i in 6:
+				await process_frame
+
+			# Optional rules route.
+			var opt_char = shell.rules.default_character()
+			shell.rules.ensure_character_shape(opt_char)
+			shell.router.push(
+				load("res://scenes/ui/routes/optional_rules_route.tscn"),
+				{
+					"palette": shell._palette,
+					"rules": shell.rules,
+					"character": opt_char,
+					"confirm_text": "Confirm Rules",
+				}
+			)
+			for _i in 12:
+				await process_frame
+			_save(shell, "%s_optional_rules" % label)
+			var opt_route = shell.router._host.top_route()
+			if opt_route != null:
+				opt_route.close(null)
+			for _i in 6:
+				await process_frame
+
+
 	# The player's half of the multiplayer feature. Joining is photographed with
 	# nothing found, which is the state a player actually opens it in and the one
 	# where an empty section is easiest to get wrong.
@@ -322,6 +396,7 @@ func _capture(width: int, height: int, label: String) -> void:
 		shell._open_sheet(player_doc)
 		for _i in 12:
 			await process_frame
+		_save(shell, "%s_sheet_banner" % label)
 		# The tab bar is on Basics by default; the point of the shot is the Table.
 		var player_sheet = shell._screens.get_child(0)
 		player_sheet._select_tab("table")

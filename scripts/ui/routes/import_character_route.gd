@@ -33,7 +33,7 @@ func title() -> String:
 func _build() -> void:
 	var panel := PanelContainer.new()
 	panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	panel.add_theme_stylebox_override("panel", Widgets.flat_style(_palette.surface, _palette.border, 8))
+	panel.add_theme_stylebox_override("panel", Widgets.flat_style(_palette.surface, _palette.border, 8, true))
 	add_child(panel)
 
 	var margin := MarginContainer.new()
@@ -49,7 +49,7 @@ func _build() -> void:
 	var heading := Label.new()
 	heading.text = title()
 	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	heading.add_theme_color_override("font_color", _palette.text)
+	heading.add_theme_color_override("font_color", _palette.accent)
 	heading.add_theme_font_size_override("font_size", 20)
 	box.add_child(heading)
 
@@ -61,36 +61,36 @@ func _build() -> void:
 	)
 
 	_edit = TextEdit.new()
-	_edit.placeholder_text = "Paste character JSON here"
+	_edit.placeholder_text = "{\"name\": \"...\"}"
+	_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_edit.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_edit.custom_minimum_size = Vector2(0, 160)
+	_edit.custom_minimum_size = Vector2(0, 180)
 	_edit.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
 	box.add_child(_edit)
 
-	_status = Label.new()
-	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_status.custom_minimum_size = Vector2(1, 0)
-	_status.add_theme_color_override("font_color", _palette.muted)
-	_status.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
-	box.add_child(_status)
-
-	var sources := HBoxContainer.new()
-	sources.add_theme_constant_override("separation", Widgets.GAP_ROW)
-	box.add_child(sources)
+	var tools := HBoxContainer.new()
+	tools.add_theme_constant_override("separation", Widgets.GAP_ROW)
+	box.add_child(tools)
 
 	var paste := Button.new()
 	paste.text = "Paste from clipboard"
 	paste.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	paste.custom_minimum_size = Vector2(0, 44)
+	paste.custom_minimum_size = Vector2(0, 38)
+	paste.add_theme_stylebox_override("normal", Widgets.flat_style(_palette.surface_soft, _palette.border, 6))
 	paste.pressed.connect(_on_paste)
-	sources.add_child(paste)
+	tools.add_child(paste)
 
-	var from_file := Button.new()
-	from_file.text = "Load file"
-	from_file.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	from_file.custom_minimum_size = Vector2(0, 44)
-	from_file.pressed.connect(_on_browse)
-	sources.add_child(from_file)
+	var browse := Button.new()
+	browse.text = "Load from file..."
+	browse.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	browse.custom_minimum_size = Vector2(0, 38)
+	browse.add_theme_stylebox_override("normal", Widgets.flat_style(_palette.surface_soft, _palette.border, 6))
+	browse.pressed.connect(_on_browse)
+	tools.add_child(browse)
+
+	_status = Widgets.text(box, "", _palette, Widgets.FONT_CAPTION, _palette.warning)
+	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_status.custom_minimum_size = Vector2(1, 0)
 
 	var actions := HBoxContainer.new()
 	actions.add_theme_constant_override("separation", Widgets.GAP_ROW)
@@ -100,6 +100,7 @@ func _build() -> void:
 	cancel.text = "Cancel"
 	cancel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	cancel.custom_minimum_size = Vector2(0, 44)
+	cancel.add_theme_stylebox_override("normal", Widgets.flat_style(_palette.surface_soft, _palette.border, 6))
 	cancel.pressed.connect(func(): close(null))
 	actions.add_child(cancel)
 
@@ -107,6 +108,7 @@ func _build() -> void:
 	confirm.text = "Import"
 	confirm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	confirm.custom_minimum_size = Vector2(0, 44)
+	confirm.add_theme_stylebox_override("normal", Widgets.flat_style(_palette.surface_soft, _palette.accent, 6))
 	confirm.pressed.connect(_on_import)
 	actions.add_child(confirm)
 

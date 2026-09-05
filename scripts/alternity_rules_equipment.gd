@@ -571,8 +571,9 @@ func _weapon_attack_form(character: Dictionary, item: Dictionary) -> Dictionary:
 			score["good"] = AlternityNum.as_int(parts[1], 0)
 			score["amazing"] = AlternityNum.as_int(parts[2], 0)
 
-	var accuracy: int = AlternityNum.as_int(combat.get("accuracy", 0))
-	score["step"] = AlternityNum.as_int(score.get("step", 1)) + accuracy
+	if _get_parent().optional_rule_enabled(character, "weapon_accuracy"):
+		var accuracy: int = AlternityNum.as_int(combat.get("accuracy", 0))
+		score["step"] = AlternityNum.as_int(score.get("step", 1)) + accuracy
 	var damage := String(combat.get("damage", ""))
 	if bool(combat.get("strength_based", false)):
 		var abilities: Dictionary = _get_parent().effective_abilities(character)
@@ -701,8 +702,8 @@ func _damage_segment_with_bonus(segment: String, bonus: int) -> String:
 	var next_modifier := current_modifier + bonus
 	if next_modifier == 0:
 		return "%s%s" % [base, suffix]
-	var sign := "+" if next_modifier > 0 else ""
-	return "%s%s%d%s" % [base, sign, next_modifier, suffix]
+	var sign_str := "+" if next_modifier > 0 else ""
+	return "%s%s%d%s" % [base, sign_str, next_modifier, suffix]
 
 
 func _dash_for_empty_or_zero(value) -> String:

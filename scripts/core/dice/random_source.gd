@@ -35,6 +35,7 @@ func roll(_term: Dictionary, _label: String = "") -> RollResult:
 
 ## Convenience: parse and roll in one step. Returns a result with ok=false
 ## semantics (an empty notation and zero total) if the text does not parse.
+@warning_ignore("redundant_await")
 func roll_notation(text: String, label: String = "") -> RollResult:
 	var term := DiceNotation.parse(text)
 	if not bool(term.get("ok", false)):

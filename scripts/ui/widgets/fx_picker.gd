@@ -24,6 +24,12 @@ signal change_requested
 ## Emitted with the skill record when someone asks to read one.
 signal detail_requested(skill: Dictionary)
 
+const ICON_CHECK := preload("res://assets/check-square.svg")
+const ICON_UNCHECK := preload("res://assets/check-square-empty.svg")
+const ICON_MINUS := preload("res://assets/minus-square.svg")
+const ICON_PLUS := preload("res://assets/add-square.svg")
+const ICON_QUESTION := preload("res://assets/question-square.svg")
+
 var _ctx: SheetContext
 
 var _category := ""
@@ -37,6 +43,7 @@ var _card_columns: Array[Container] = []
 func _init() -> void:
 	add_theme_constant_override("separation", Widgets.GAP_ROW)
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	size_flags_vertical = Control.SIZE_EXPAND_FILL
 
 
 func setup(context: SheetContext) -> void:
@@ -44,6 +51,24 @@ func setup(context: SheetContext) -> void:
 	var categories := _categories()
 	_category = "" if categories.is_empty() else String(categories[0])
 	_build()
+
+
+func _make_flat_icon_btn(icon: Texture2D, min_size: Vector2, tooltip: String = "") -> Button:
+	var btn := Button.new()
+	btn.flat = true
+	btn.custom_minimum_size = min_size
+	btn.icon = icon
+	btn.expand_icon = true
+	btn.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	btn.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	btn.tooltip_text = tooltip
+	btn.add_theme_color_override("icon_normal_color", _ctx.palette.text)
+	btn.add_theme_color_override("icon_hover_color", _ctx.palette.accent)
+	btn.add_theme_color_override("icon_pressed_color", _ctx.palette.accent)
+	btn.add_theme_color_override("icon_disabled_color", Color(_ctx.palette.muted, 0.25))
+	for state in ["normal", "hover", "pressed", "focus", "disabled"]:
+		btn.add_theme_stylebox_override(state, StyleBoxEmpty.new())
+	return btn
 
 
 ## The categories this character can actually reach, in catalog order.
@@ -76,10 +101,30 @@ func _build() -> void:
 
 	_build_category_bar()
 
-	_list = VBoxContainer.new()
-	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_list.add_theme_constant_override("separation", Widgets.GAP_ROW)
-	add_child(_list)
+	if _ctx.is_wide_layout:
+		size_flags_vertical = Control.SIZE_EXPAND_FILL
+		var scroll := ScrollContainer.new()
+		scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		scroll.custom_minimum_size = Vector2(0, 200)
+		scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		add_child(scroll)
+
+		var margin := MarginContainer.new()
+		margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		margin.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		margin.add_theme_constant_override("margin_right", 14)
+		scroll.add_child(margin)
+
+		_list = VBoxContainer.new()
+		_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_list.add_theme_constant_override("separation", Widgets.GAP_ROW)
+		margin.add_child(_list)
+	else:
+		_list = VBoxContainer.new()
+		_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_list.add_theme_constant_override("separation", Widgets.GAP_ROW)
+		add_child(_list)
 
 	_refresh_list()
 
@@ -180,50 +225,32 @@ func _specialties(broad_name: String) -> Array:
 ## its buy button at the other -- the row is wide, not readable. Two columns of
 ## cards keep each one at a width you can take in, and use the height that a
 ## single stacked list leaves empty.
-func _card_host(index: int) -> Container:
-	if _card_columns.is_empty():
-		return _list
-	return _card_columns[index % _card_columns.size()]
+func _card_host(_index: int) -> Container:
+	return _list
 
 
-## Build the column hosts for this refresh, or none when narrow.
 func _reset_card_columns() -> void:
 	_card_columns.clear()
-	if not _ctx.is_wide_layout:
-		return
-	var row := HBoxContainer.new()
-	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_theme_constant_override("separation", Widgets.GAP_ROW)
-	_list.add_child(row)
-	for _i in 2:
-		var column := VBoxContainer.new()
-		column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		column.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-		column.add_theme_constant_override("separation", Widgets.GAP_ROW)
-		row.add_child(column)
-		_card_columns.append(column)
+
+
+## Rebuild only the power list rows without tearing down search or school tabs.
+func refresh_skills() -> void:
+	_refresh_list()
 
 
 func _build_broad(broad: Dictionary, host: Container) -> void:
 	var rules: AlternityRules = _ctx.rules
-	var palette := _ctx.palette
 	var raw := _ctx.doc.raw()
 	var broad_name := String(broad.get("name", ""))
 	var owned: bool = rules.fx.is_fx_skill_selected(raw, broad_name)
 
-	var box := Widgets.section(host, "", palette)
-	_build_row(box, broad, true)
+	_build_row(host, broad, true)
 
-	# A power cannot be used without its parent school, so listing powers before
-	# the school is owned would offer something unbuyable.
 	if not owned:
-		Widgets.muted_text(
-			box, "Take this school to unlock its powers.", palette, Widgets.FONT_CAPTION
-		)
 		return
 
 	for specialty in _specialties(broad_name):
-		_build_row(box, specialty, false)
+		_build_row(host, specialty, false)
 
 
 func _build_row(parent: Container, skill: Dictionary, is_broad: bool) -> void:
@@ -234,134 +261,178 @@ func _build_row(parent: Container, skill: Dictionary, is_broad: bool) -> void:
 	var skill_name := String(skill.get("name", ""))
 	var rank: int = rules.fx.fx_skill_rank(raw, skill_name)
 	var owned: bool = rules.fx.is_fx_skill_selected(raw, skill_name)
+	var max_rank := 1 if is_broad else AlternityRules.MAX_SPECIALTY_RANK
 
-	# Same reasoning as the core skill rows: at 390px a name, its numbers and
-	# two buttons cannot share a line and still leave the name readable.
-	var compact := not _ctx.is_wide_layout
+	if is_broad:
+		if parent.get_child_count() > 0:
+			var sep := Control.new()
+			sep.custom_minimum_size = Vector2(0, 4)
+			parent.add_child(sep)
+
+		var row := HBoxContainer.new()
+		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_theme_constant_override("separation", Widgets.GAP_ROW)
+		parent.add_child(row)
+
+		var check_btn := _make_flat_icon_btn(
+			ICON_CHECK if owned else ICON_UNCHECK,
+			Vector2(32, 32),
+			"Drop school" if owned else "Take school"
+		)
+		check_btn.add_theme_color_override("icon_normal_color", palette.accent if owned else Color(palette.muted, 0.4))
+		check_btn.pressed.connect(func():
+			if not owned:
+				doc.apply([CharacterDoc.FX], func(c): rules.fx.add_fx_skill(c, skill_name))
+			else:
+				doc.apply([CharacterDoc.FX], func(c): rules.fx.remove_fx_skill(c, skill_name))
+			change_requested.emit()
+		)
+		row.add_child(check_btn)
+
+		var name_lbl := Label.new()
+		name_lbl.text = skill_name
+		name_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		name_lbl.add_theme_color_override("font_color", palette.text)
+		name_lbl.add_theme_font_size_override("font_size", Widgets.FONT_BODY)
+		row.add_child(name_lbl)
+
+		var detail_btn := _make_flat_icon_btn(
+			ICON_QUESTION,
+			Vector2(34, 34),
+			"View details for %s" % skill_name
+		)
+		detail_btn.add_theme_color_override("icon_normal_color", Color(palette.muted, 0.8))
+		detail_btn.pressed.connect(func(): detail_requested.emit(skill))
+		row.add_child(detail_btn)
+
+		var slack := Control.new()
+		slack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(slack)
+
+		var cost_lbl := Label.new()
+		cost_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		cost_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		cost_lbl.add_theme_font_size_override("font_size", Widgets.FONT_DETAIL)
+		if owned:
+			var spent: int = rules.fx.fx_skill_cost_for_rank(raw, skill_name, 1)
+			cost_lbl.text = "Spent %d" % spent
+			cost_lbl.add_theme_color_override("font_color", palette.accent)
+		else:
+			var cost: int = rules.fx.fx_skill_cost_for_rank(raw, skill_name, 1)
+			cost_lbl.text = "Cost %d" % cost
+			cost_lbl.add_theme_color_override("font_color", palette.muted)
+		row.add_child(cost_lbl)
+		return
+
+	# Specialty power row
+	var item_container := VBoxContainer.new()
+	item_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	item_container.add_theme_constant_override("separation", 2)
+	parent.add_child(item_container)
 
 	var row := HBoxContainer.new()
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_theme_constant_override("separation", Widgets.GAP_ROW)
-	parent.add_child(row)
+	item_container.add_child(row)
 
-	if not is_broad:
-		var indent := Control.new()
-		indent.custom_minimum_size = Vector2(Widgets.PAD_PANEL, 0)
-		row.add_child(indent)
+	var indent := Control.new()
+	indent.custom_minimum_size = Vector2(18, 0)
+	row.add_child(indent)
 
-	var host: Container = row
-	if compact:
-		var stack := VBoxContainer.new()
-		stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		stack.add_theme_constant_override("separation", Widgets.GAP_TIGHT)
-		row.add_child(stack)
-		host = stack
-
-	# The name is a button: tapping a power is how you read what it does.
-	var name_button := Button.new()
-	name_button.text = skill_name
-	name_button.tooltip_text = skill_name
-	name_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	name_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	name_button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	name_button.custom_minimum_size = Vector2(1, 36)
-	if is_broad:
-		name_button.add_theme_color_override("font_color", palette.accent)
-	name_button.pressed.connect(func(): detail_requested.emit(skill))
-	host.add_child(name_button)
-
-	var actions: Container = row
-	if compact:
-		actions = HBoxContainer.new()
-		actions.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		actions.add_theme_constant_override("separation", Widgets.GAP_ROW)
-		host.add_child(actions)
-
-	var score: Dictionary = rules.fx.fx_skill_score(raw, skill_name)
-	var ordinary := AlternityNum.as_int(score.get("ordinary", 0))
-	var die := String(score.get("die", ""))
-	var usable: bool = bool(score.get("usable", true))
-	var via_broad: bool = bool(score.get("via_broad", false))
-	var reading := "Ordinary score %d, step die %s, rank %d" % [ordinary, die, rank]
-
-	# What one use costs, said on the row. The pool is the constraint on how
-	# often any of this can be cast, so the price belongs beside the score
-	# rather than buried in the reference text.
-	var activation: Dictionary = rules.fx.fx_activation_cost(raw, skill_name)
-	var energy := ""
-	if not is_broad and AlternityNum.as_int(activation.get("total", 0)) > 0:
-		energy = "%d FX" % AlternityNum.as_int(activation.get("total", 0))
-		var top := AlternityNum.as_int(activation.get("points_max", 0))
-		if top > AlternityNum.as_int(activation.get("points", 0)):
-			energy = "%d-%d FX" % [AlternityNum.as_int(activation.get("total", 0)), top]
-		# The surcharge is already inside that number; "Rank 0 (broad)" on the
-		# same row is what says why. Spelling it out per row wrapped a sentence
-		# beside every one of the fifty-odd miracles a faith carries.
-
-	var stats := Label.new()
-	if owned:
-		stats.text = "Rank %d   score %d   %s" % [rank, ordinary, die]
-	elif via_broad:
-		# Reachable on the broad skill alone. Saying "Not taken" hid a power the
-		# hero can actually use today.
-		stats.text = "Rank 0 (broad)   score %d   %s" % [ordinary, die]
-		reading = ("Cast through the broad skill, at its score and its die. "
-			+ "Costs %s, a point more than it would with a rank of its own."
-		) % energy
-	elif not usable:
-		stats.text = "Not taken"
-		reading = String(score.get("reason", "This power cannot be attempted."))
-	else:
-		stats.text = "Not taken"
-	if not energy.is_empty() and (owned or via_broad):
-		stats.text += "   -   %s" % energy
-	stats.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	stats.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	stats.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT if compact else HORIZONTAL_ALIGNMENT_RIGHT
-	stats.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	stats.custom_minimum_size = Vector2(1 if compact else 150, 0)
-	stats.add_theme_color_override("font_color", palette.muted)
-	stats.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
-	stats.tooltip_text = reading
-	# FX rows carry a wider "Remove" than the core skill rows do, so on compact
-	# the numbers get their own line instead of being clipped to "Rank 1  score".
-	if compact:
-		host.add_child(stats)
-		host.move_child(stats, actions.get_index())
-	else:
-		actions.add_child(stats)
-
-	# A broad is owned or not; a power also has ranks to raise, so it keeps a
-	# buy button after the first purchase where the broad does not.
-	var can_buy := not owned or not is_broad
-	if can_buy:
-		var cost: int = rules.fx.fx_skill_cost(raw, skill_name)
-		var buy := Widgets.cost_button("Take" if not owned else "+1", cost)
-		buy.custom_minimum_size = Vector2(116, 36)
-		buy.pressed.connect(func():
+	var check_btn := _make_flat_icon_btn(
+		ICON_CHECK if rank > 0 else ICON_UNCHECK,
+		Vector2(32, 32),
+		"Sell power" if rank > 0 else "Buy power"
+	)
+	check_btn.add_theme_color_override("icon_normal_color", palette.accent if rank > 0 else Color(palette.muted, 0.4))
+	check_btn.pressed.connect(func():
+		if rank <= 0:
 			doc.apply([CharacterDoc.FX], func(c): rules.fx.add_fx_skill(c, skill_name))
-			change_requested.emit())
-		actions.add_child(buy)
-
-	if owned:
-		var drop := Button.new()
-		var is_rank_drop := not is_broad and rank > 1
-		drop.text = "-1" if is_rank_drop else "Remove"
-		drop.tooltip_text = "Drop a rank and refund its cost" if is_rank_drop else "Give up this power"
-		drop.custom_minimum_size = Vector2(44 if is_rank_drop else 92, 36)
-		drop.clip_text = true
-		drop.pressed.connect(func():
+		else:
 			doc.apply([CharacterDoc.FX], func(c): rules.fx.remove_fx_skill(c, skill_name))
-			change_requested.emit())
-		actions.add_child(drop)
+		change_requested.emit()
+	)
+	row.add_child(check_btn)
 
-	# Only some powers can be made always-active, so the control appears only
-	# where it applies rather than being drawn disabled everywhere.
+	var name_box := VBoxContainer.new()
+	name_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_box.custom_minimum_size = Vector2(130, 0)
+	name_box.add_theme_constant_override("separation", 0)
+	row.add_child(name_box)
+
+	var name_lbl := Label.new()
+	name_lbl.text = skill_name
+	name_lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	name_lbl.add_theme_color_override("font_color", palette.text)
+	name_lbl.add_theme_font_size_override("font_size", Widgets.FONT_BODY)
+	name_box.add_child(name_lbl)
+
+	var next_cost: int = rules.fx.fx_skill_cost(raw, skill_name)
+	var sub_text := ""
+	if rank >= max_rank:
+		sub_text = "At maximum rank"
+	elif rank <= 0:
+		sub_text = "Buy %d SP" % next_cost
+	else:
+		sub_text = "Next rank %d SP" % next_cost
+
+	var sub_lbl := Label.new()
+	sub_lbl.text = sub_text
+	sub_lbl.add_theme_color_override("font_color", palette.muted)
+	sub_lbl.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
+	name_box.add_child(sub_lbl)
+
+	var minus_btn := _make_flat_icon_btn(ICON_MINUS, Vector2(34, 34), "Reduce rank")
+	minus_btn.disabled = (rank <= 0)
+	minus_btn.pressed.connect(func():
+		doc.apply([CharacterDoc.FX], func(c): rules.fx.remove_fx_skill(c, skill_name))
+		change_requested.emit()
+	)
+	row.add_child(minus_btn)
+
+	var plus_btn := _make_flat_icon_btn(ICON_PLUS, Vector2(34, 34), "Increase rank")
+	plus_btn.disabled = (rank >= max_rank)
+	plus_btn.pressed.connect(func():
+		doc.apply([CharacterDoc.FX], func(c): rules.fx.add_fx_skill(c, skill_name))
+		change_requested.emit()
+	)
+	row.add_child(plus_btn)
+
+	var detail_btn := _make_flat_icon_btn(
+		ICON_QUESTION,
+		Vector2(34, 34),
+		"View details for %s" % skill_name
+	)
+	detail_btn.add_theme_color_override("icon_normal_color", Color(palette.muted, 0.8))
+	detail_btn.pressed.connect(func(): detail_requested.emit(skill))
+	row.add_child(detail_btn)
+
+	var slack := Control.new()
+	slack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(slack)
+
+	var rank_lbl := Label.new()
+	rank_lbl.text = "Rank %d" % rank
+	rank_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	rank_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	rank_lbl.custom_minimum_size = Vector2(48, 0)
+	rank_lbl.add_theme_color_override("font_color", palette.text if rank > 0 else palette.muted)
+	rank_lbl.add_theme_font_size_override("font_size", Widgets.FONT_DETAIL)
+	row.add_child(rank_lbl)
+
 	if owned and rules.fx.can_fx_skill_be_permanent(skill_name):
+		var perm_row := HBoxContainer.new()
+		perm_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		item_container.add_child(perm_row)
+
+		var perm_indent := Control.new()
+		perm_indent.custom_minimum_size = Vector2(50, 0)
+		perm_row.add_child(perm_indent)
+
 		var permanent: bool = rules.fx.is_fx_skill_permanent(raw, skill_name)
-		var toggle := Widgets.toggle_row(host, "Always active (reserves pool)", permanent, palette)
-		toggle.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
+		var toggle := Widgets.toggle_row(perm_row, "Always active (reserves pool)", permanent, palette, true)
 		toggle.toggled.connect(func(pressed: bool):
 			doc.apply([CharacterDoc.FX], func(c):
 				rules.fx.set_fx_skill_permanent(c, skill_name, pressed))
-			change_requested.emit())
+			change_requested.emit()
+		)

@@ -31,6 +31,7 @@ var dice: Array[int] = []
 var modifier: int = 0
 
 ## +1, or -1 for a subtracted situation die such as "-d4".
+@warning_ignore("shadowed_global_identifier")
 var sign: int = 1
 
 ## Signed sum of dice plus modifier.

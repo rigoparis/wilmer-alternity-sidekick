@@ -30,6 +30,7 @@ var _query: String = ""
 var _ability: String = NO_ABILITY
 var _list: VBoxContainer
 var _empty_note: Label
+var _shortcuts_grid: GridContainer
 
 
 ## props:
@@ -57,7 +58,7 @@ func title() -> String:
 func _build() -> void:
 	var panel := PanelContainer.new()
 	panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	panel.add_theme_stylebox_override("panel", Widgets.flat_style(_palette.surface, _palette.border, 8))
+	panel.add_theme_stylebox_override("panel", Widgets.flat_style(_palette.surface, _palette.border, 8, true))
 	add_child(panel)
 
 	var margin := MarginContainer.new()
@@ -70,21 +71,19 @@ func _build() -> void:
 	column.add_theme_constant_override("separation", Widgets.GAP_SECTION)
 	margin.add_child(column)
 
-	var heading := Widgets.text(column, _heading, _palette, Widgets.FONT_SECTION_TITLE)
+	var heading := Widgets.text(column, _heading, _palette, Widgets.FONT_SECTION_TITLE, _palette.accent)
 	heading.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	heading.custom_minimum_size = Vector2(1, 0)
 
 	_build_shortcuts(column)
 
-	var search := LineEdit.new()
+	var search := SearchField.new()
 	search.name = "SkillSearch"
-	search.placeholder_text = "Search skills"
-	search.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	search.custom_minimum_size = Vector2(0, 40)
-	search.text_changed.connect(func(text: String):
+	column.add_child(search)
+	search.setup(_palette, "Search skills")
+	search.query_changed.connect(func(text: String):
 		_query = text.strip_edges().to_lower()
 		_refresh())
-	column.add_child(search)
 
 	_build_ability_filter(column)
 
@@ -105,7 +104,8 @@ func _build() -> void:
 	cancel.name = "CancelButton"
 	cancel.text = "Cancel"
 	cancel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	cancel.custom_minimum_size = Vector2(0, 40)
+	cancel.custom_minimum_size = Vector2(0, 42)
+	cancel.add_theme_stylebox_override("normal", Widgets.flat_style(_palette.surface_soft, _palette.border, 6))
 	cancel.pressed.connect(func(): close(null))
 	column.add_child(cancel)
 
@@ -121,12 +121,12 @@ func _build_shortcuts(parent: Container) -> void:
 		return
 
 	Widgets.muted_text(parent, "Checked most at this table", _palette, Widgets.FONT_CAPTION)
-	var grid := GridContainer.new()
-	grid.columns = 3 if _is_wide() else 2
-	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	grid.add_theme_constant_override("h_separation", Widgets.GAP_ROW)
-	grid.add_theme_constant_override("v_separation", Widgets.GAP_ROW)
-	parent.add_child(grid)
+	_shortcuts_grid = GridContainer.new()
+	_shortcuts_grid.columns = 3 if _is_wide() else 2
+	_shortcuts_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_shortcuts_grid.add_theme_constant_override("h_separation", Widgets.GAP_ROW)
+	_shortcuts_grid.add_theme_constant_override("v_separation", Widgets.GAP_ROW)
+	parent.add_child(_shortcuts_grid)
 
 	for entry in _shortcuts:
 		var skill: Dictionary = _rules.get_skill_by_id(AlternityNum.as_int(entry.get("skill_id", -1), -1))
@@ -138,7 +138,7 @@ func _build_shortcuts(parent: Container) -> void:
 		button.custom_minimum_size = Vector2(0, 38)
 		button.add_theme_stylebox_override("normal", Widgets.flat_style(_palette.surface_soft, _palette.accent, 6))
 		button.pressed.connect(func(): close(skill))
-		grid.add_child(button)
+		_shortcuts_grid.add_child(button)
 
 	Widgets.separator(parent, _palette)
 
@@ -146,26 +146,54 @@ func _build_shortcuts(parent: Container) -> void:
 func _build_ability_filter(parent: Container) -> void:
 	var bar := HBoxContainer.new()
 	bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	bar.add_theme_constant_override("separation", Widgets.GAP_TIGHT)
+	bar.add_theme_constant_override("separation", 4)
 	parent.add_child(bar)
+
+	var update_filter_styles := func():
+		for child in bar.get_children():
+			var btn := child as Button
+			if btn == null:
+				continue
+			var is_active: bool = btn.text == _ability
+			btn.button_pressed = is_active
+			btn.remove_theme_stylebox_override("normal")
+			if is_active:
+				btn.add_theme_stylebox_override("normal", Widgets.flat_style(_palette.accent, _palette.accent, 6))
+				btn.add_theme_color_override("font_color", _palette.surface)
+			else:
+				btn.add_theme_stylebox_override("normal", Widgets.flat_style(_palette.surface_soft, _palette.border, 6))
+				btn.add_theme_color_override("font_color", _palette.text)
 
 	for ability in [NO_ABILITY, "STR", "DEX", "CON", "INT", "WIL", "PER"]:
 		var button := Button.new()
 		button.text = ability
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		button.custom_minimum_size = Vector2(0, 34)
+		button.custom_minimum_size = Vector2(0, 38)
 		button.toggle_mode = true
 		button.button_pressed = ability == _ability
 		button.pressed.connect(func():
 			_ability = ability
-			for other in bar.get_children():
-				(other as Button).button_pressed = (other as Button).text == ability
+			update_filter_styles.call()
 			_refresh())
 		bar.add_child(button)
 
+	update_filter_styles.call()
 
+
+## Whether there is room for three columns of shortcuts.
+##
+## configure() runs before the router presents the route, so during the first
+## build there is no viewport to measure and asking for one is an error. The
+## columns are rebuilt in _ready, which is the first moment the answer is real.
 func _is_wide() -> bool:
+	if not is_inside_tree():
+		return false
 	return get_viewport_rect().size.x >= ModalHost.COMPACT_WIDTH
+
+
+func _ready() -> void:
+	if _shortcuts_grid != null:
+		_shortcuts_grid.columns = 3 if _is_wide() else 2
 
 
 func _refresh() -> void:
@@ -210,5 +238,7 @@ func _build_row(skill: Dictionary) -> void:
 	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.custom_minimum_size = Vector2(0, 36)
+	button.add_theme_stylebox_override("normal", Widgets.flat_style(_palette.surface_soft, _palette.border, 6))
+	button.add_theme_stylebox_override("hover", Widgets.flat_style(_palette.surface_soft.lightened(0.1), _palette.accent, 6))
 	button.pressed.connect(func(): close(skill))
 	_list.add_child(button)

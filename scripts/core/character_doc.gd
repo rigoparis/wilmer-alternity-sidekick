@@ -116,6 +116,16 @@ func touch(sections: Array) -> void:
 
 
 func _invalidate(sections: Array) -> void:
+	# Every section, damage included.
+	#
+	# Damage looks like the cheap exception -- durability capacities, skill
+	# budgets and abilities really are invariant to it -- and skipping it during
+	# a fight is tempting because that is when mutations arrive fastest. But
+	# summary() carries action_check, whose step and die include dazed_penalty,
+	# and that reads the damage tracks (Player's Handbook Chapter 3 p. 54). A
+	# cache kept across a damage change therefore reports the action check the
+	# hero had before they were hurt, which is the number they roll against.
+	# Nothing errors; the sheet is simply wrong until some other edit lands.
 	_summary_valid = false
 	_summary_cache.clear()
 	_set_dirty(true)

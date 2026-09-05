@@ -76,7 +76,7 @@ func title() -> String:
 func _build() -> void:
 	var panel := PanelContainer.new()
 	panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	panel.add_theme_stylebox_override("panel", Widgets.flat_style(_palette.surface, _palette.border, 8))
+	panel.add_theme_stylebox_override("panel", Widgets.flat_style(_palette.surface, _palette.border, 8, true))
 	add_child(panel)
 
 	var margin := MarginContainer.new()
@@ -118,6 +118,7 @@ func _build() -> void:
 	cancel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	cancel.custom_minimum_size = Vector2(0, 42)
 	cancel.clip_text = true
+	cancel.add_theme_stylebox_override("normal", Widgets.flat_style(_palette.surface_soft, _palette.border, 6))
 	cancel.pressed.connect(func(): close(null))
 	actions.add_child(cancel)
 
@@ -156,13 +157,11 @@ func _build_weapon(parent: Container) -> void:
 	_picker.add_theme_constant_override("separation", Widgets.GAP_TIGHT)
 	section.add_child(_picker)
 
-	var search := LineEdit.new()
+	var search := SearchField.new()
 	search.name = "ExplosiveSearch"
-	search.placeholder_text = "Search"
-	search.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	search.custom_minimum_size = Vector2(0, 40)
-	search.text_changed.connect(_refresh_weapons)
 	_picker.add_child(search)
+	search.setup(_palette, "Search explosives")
+	search.query_changed.connect(_refresh_weapons)
 
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -265,6 +264,8 @@ func _build_targets(parent: Container) -> void:
 		var name_line := String(entry.get("name", "Someone"))
 		if bool(entry.get("dodging", false)):
 			name_line += "   (dodging -- drops a band)"
+		elif not String(entry.get("dodge_degree", "")).is_empty():
+			name_line += "   (dodge failed: %s -- no band drop)" % String(entry.get("dodge_degree", ""))
 		var label := Widgets.text(box, name_line, _palette, Widgets.FONT_DETAIL)
 		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		label.custom_minimum_size = Vector2(1, 0)
@@ -277,11 +278,16 @@ func _build_targets(parent: Container) -> void:
 			var button := Button.new()
 			button.text = String(ZONE_NAMES.get(zone, zone))
 			button.toggle_mode = true
-			button.button_pressed = String(_zones.get(player_id, "")) == zone
+			var is_selected: bool = String(_zones.get(player_id, "")) == zone
+			button.button_pressed = is_selected
 			button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			button.custom_minimum_size = Vector2(0, 34)
 			button.clip_text = true
 			button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+			if is_selected and not zone.is_empty():
+				button.add_theme_stylebox_override("normal", Widgets.flat_style(_palette.surface_soft, _palette.accent, 6))
+			else:
+				button.add_theme_stylebox_override("normal", Widgets.flat_style(_palette.surface_soft, _palette.border, 6))
 			button.pressed.connect(_on_zone_pressed.bind(player_id, zone, row))
 			row.add_child(button)
 
@@ -290,7 +296,16 @@ func _on_zone_pressed(player_id: String, zone: String, row: HBoxContainer) -> vo
 	_zones[player_id] = zone
 	var wanted := String(ZONE_NAMES.get(zone, zone))
 	for child in row.get_children():
-		(child as Button).button_pressed = (child as Button).text == wanted
+		var btn := child as Button
+		if btn == null:
+			continue
+		var is_selected: bool = btn.text == wanted
+		btn.button_pressed = is_selected
+		btn.remove_theme_stylebox_override("normal")
+		if is_selected and not zone.is_empty():
+			btn.add_theme_stylebox_override("normal", Widgets.flat_style(_palette.surface_soft, _palette.accent, 6))
+		else:
+			btn.add_theme_stylebox_override("normal", Widgets.flat_style(_palette.surface_soft, _palette.border, 6))
 	_refresh()
 
 

@@ -15,6 +15,18 @@ func heading() -> String:
 	return "Psionics"
 
 
+## Psionic energy is spent under DAMAGE.
+##
+## It is a consumable track like stun or fatigue and is announced as one, so a
+## tab that watched only its own sections would draw a stale energy pool every
+## time a power was cast.
+func watched_sections() -> Array:
+	var list := super.watched_sections()
+	if not list.has(CharacterDoc.DAMAGE):
+		list.append(CharacterDoc.DAMAGE)
+	return list
+
+
 ## Psionics only applies to characters with psionic potential -- a Mindwalker,
 ## or a species with the talent. Showing the tab otherwise offers powers that
 ## cannot be bought.

@@ -27,9 +27,9 @@ const ABILITY_NAMES := {
 
 ## Value stored on the character, and the label shown for it.
 const SETTINGS := [
-	{"value": "Core", "label": "Core"},
-	{"value": "Star*Drive", "label": "Star*Drive"},
-	{"value": "Dark*Matter", "label": "Dark*Matter"},
+	{"value": "Core", "label": "Core", "enabled": true},
+	{"value": "Star*Drive", "label": "Star*Drive (Planned)", "enabled": false},
+	{"value": "Dark*Matter", "label": "Dark*Matter (In Progress)", "enabled": false},
 ]
 
 
@@ -183,10 +183,13 @@ func _build_setting_picker(parent: Container) -> void:
 	var selected := 0
 	for i in SETTINGS.size():
 		picker.add_item(String(SETTINGS[i]["label"]), i)
+		var is_enabled: bool = bool(SETTINGS[i].get("enabled", true))
 		# Stored values have varied ("Dark*Matter" and "Dark Matter" both
 		# appear), so match loosely rather than on an exact string.
 		if _same_setting(current, String(SETTINGS[i]["value"])):
 			selected = i
+		elif not is_enabled:
+			picker.set_item_disabled(i, true)
 	picker.select(selected)
 	parent.add_child(picker)
 
@@ -201,7 +204,7 @@ func _build_setting_picker(parent: Container) -> void:
 
 	Widgets.muted_text(
 		parent,
-		"Optional-setting content only appears while its setting is selected.",
+		"Core is currently supported. Dark*Matter is in active development, and Star*Drive is planned for a future update.",
 		palette,
 		Widgets.FONT_CAPTION
 	)

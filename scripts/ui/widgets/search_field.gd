@@ -65,6 +65,27 @@ func setup(palette: ThemePalette, placeholder: String = "Search...", label_text:
 	_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	# 42px clears the touch-target minimum; this is a phone-first app.
 	_edit.custom_minimum_size = Vector2(0, 42)
+
+	var normal_style := Widgets.flat_style(palette.surface, palette.border, 8)
+	normal_style.content_margin_left = 12
+	normal_style.content_margin_right = 12
+	normal_style.content_margin_top = 8
+	normal_style.content_margin_bottom = 8
+	_edit.add_theme_stylebox_override("normal", normal_style)
+
+	var focus_style := Widgets.flat_style(palette.surface, palette.accent, 8)
+	focus_style.content_margin_left = 12
+	focus_style.content_margin_right = 12
+	focus_style.content_margin_top = 8
+	focus_style.content_margin_bottom = 8
+	_edit.add_theme_stylebox_override("focus", focus_style)
+
+	_edit.add_theme_color_override("font_color", palette.text)
+	_edit.add_theme_color_override("font_placeholder_color", palette.muted)
+	_edit.add_theme_color_override("caret_color", palette.text)
+	_edit.add_theme_color_override("clear_button_color", palette.muted)
+	_edit.add_theme_color_override("clear_button_color_pressed", palette.accent)
+
 	_edit.text_changed.connect(_on_text_changed)
 	_edit.text_submitted.connect(_on_submitted)
 	add_child(_edit)

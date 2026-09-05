@@ -193,7 +193,8 @@ func _test_open_the_table() -> void:
 		return
 	gm._toggle_hosting()
 	await process_frame
-	check_true(gm.is_hosting(), "the table is open")
+	if not check_true(gm.is_hosting(), "the table is open"):
+		return
 
 	# The player joins.
 	var player_select = _screen(_player_shell, "character_select")

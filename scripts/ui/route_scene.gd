@@ -30,6 +30,7 @@ signal closed(result: Variant)
 
 ## Ask the router to resize; a route whose content grew or shrank emits this
 ## rather than reaching for the host.
+@warning_ignore("unused_signal")
 signal size_hint_changed
 
 var _closed: bool = false

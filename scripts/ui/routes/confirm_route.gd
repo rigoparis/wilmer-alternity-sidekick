@@ -77,6 +77,7 @@ func _build() -> void:
 	cancel.text = _cancel_text
 	cancel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	cancel.custom_minimum_size = Vector2(0, 42)
+	cancel.add_theme_stylebox_override("normal", Widgets.flat_style(_palette.surface_soft, _palette.border, 6))
 	cancel.pressed.connect(func(): close(null))
 	actions.add_child(cancel)
 
@@ -90,5 +91,7 @@ func _build() -> void:
 		confirm.add_theme_stylebox_override("hover", Widgets.flat_style(_palette.surface_soft.lightened(0.1), accent, 6))
 		confirm.add_theme_stylebox_override("pressed", Widgets.flat_style(accent, Color(0, 0, 0, 0), 6))
 		confirm.add_theme_color_override("font_color", accent)
+	else:
+		confirm.add_theme_stylebox_override("normal", Widgets.flat_style(_palette.surface_soft, _palette.accent, 6))
 	confirm.pressed.connect(func(): close(true))
 	actions.add_child(confirm)

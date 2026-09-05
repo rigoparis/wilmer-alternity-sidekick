@@ -75,7 +75,8 @@
 			"damage_upgrading": false,
 			"dazed": false,
 			"monetary_awards_uncapped": false,
-			"psionic_talents": false
+			"psionic_talents": false,
+			"weapon_accuracy": false
 		},
 		"player_name": "Fixture",
 		"profession_id": 6.0,

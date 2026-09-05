@@ -26,6 +26,12 @@ enum Mode {
 
 const ABILITIES := ["STR", "DEX", "CON", "INT", "WIL", "PER"]
 
+const ICON_CHECK := preload("res://assets/check-square.svg")
+const ICON_UNCHECK := preload("res://assets/check-square-empty.svg")
+const ICON_MINUS := preload("res://assets/minus-square.svg")
+const ICON_PLUS := preload("res://assets/add-square.svg")
+const ICON_QUESTION := preload("res://assets/question-square.svg")
+
 var _ctx: SheetContext
 var _mode: int = Mode.NORMAL
 
@@ -44,14 +50,40 @@ signal detail_requested(skill: Dictionary)
 func _init() -> void:
 	add_theme_constant_override("separation", Widgets.GAP_ROW)
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	size_flags_vertical = Control.SIZE_EXPAND_FILL
 
 
 func setup(context: SheetContext, mode: int) -> void:
 	_ctx = context
 	_mode = mode
-	# Psionics are Will-based, so opening on STR would show an empty list.
-	_ability = "WIL" if mode == Mode.PSIONIC else "STR"
+	if _mode == Mode.PSIONIC:
+		_ability = "WIL"
+	elif _ability.is_empty():
+		_ability = "STR"
 	_build()
+
+
+## Rebuild only the skill list rows without tearing down search or ability tabs.
+func refresh_skills() -> void:
+	_refresh_list()
+
+
+func _make_flat_icon_btn(icon: Texture2D, min_size: Vector2, tooltip: String = "") -> Button:
+	var btn := Button.new()
+	btn.flat = true
+	btn.custom_minimum_size = min_size
+	btn.icon = icon
+	btn.expand_icon = true
+	btn.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	btn.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	btn.tooltip_text = tooltip
+	btn.add_theme_color_override("icon_normal_color", _ctx.palette.text)
+	btn.add_theme_color_override("icon_hover_color", _ctx.palette.accent)
+	btn.add_theme_color_override("icon_pressed_color", _ctx.palette.accent)
+	btn.add_theme_color_override("icon_disabled_color", Color(_ctx.palette.muted, 0.25))
+	for state in ["normal", "hover", "pressed", "focus", "disabled"]:
+		btn.add_theme_stylebox_override(state, StyleBoxEmpty.new())
+	return btn
 
 
 func _build() -> void:
@@ -72,10 +104,30 @@ func _build() -> void:
 	if _mode == Mode.NORMAL:
 		_build_ability_bar()
 
-	_list = VBoxContainer.new()
-	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_list.add_theme_constant_override("separation", Widgets.GAP_ROW)
-	add_child(_list)
+	if _ctx.is_wide_layout:
+		size_flags_vertical = Control.SIZE_EXPAND_FILL
+		var scroll := ScrollContainer.new()
+		scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		scroll.custom_minimum_size = Vector2(0, 200)
+		scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		add_child(scroll)
+
+		var margin := MarginContainer.new()
+		margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		margin.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		margin.add_theme_constant_override("margin_right", 14)
+		scroll.add_child(margin)
+
+		_list = VBoxContainer.new()
+		_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_list.add_theme_constant_override("separation", Widgets.GAP_ROW)
+		margin.add_child(_list)
+	else:
+		_list = VBoxContainer.new()
+		_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_list.add_theme_constant_override("separation", Widgets.GAP_ROW)
+		add_child(_list)
 
 	_refresh_list()
 
@@ -186,50 +238,30 @@ func _specialties(broad: Dictionary) -> Array:
 ## its buy button at the other -- the row is wide, not readable. Two columns of
 ## cards keep each one at a width you can take in, and use the height that a
 ## single stacked list leaves empty.
-func _card_host(index: int) -> Container:
-	if _card_columns.is_empty():
-		return _list
-	return _card_columns[index % _card_columns.size()]
+## Single column card host.
+func _card_host(_index: int) -> Container:
+	return _list
 
 
-## Build the column hosts for this refresh, or none when narrow.
 func _reset_card_columns() -> void:
 	_card_columns.clear()
-	if not _ctx.is_wide_layout:
-		return
-	var row := HBoxContainer.new()
-	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_theme_constant_override("separation", Widgets.GAP_ROW)
-	_list.add_child(row)
-	for _i in 2:
-		var column := VBoxContainer.new()
-		column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		column.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-		column.add_theme_constant_override("separation", Widgets.GAP_ROW)
-		row.add_child(column)
-		_card_columns.append(column)
 
 
 func _build_broad(broad: Dictionary, host: Container) -> void:
 	var rules: AlternityRules = _ctx.rules
-	var palette := _ctx.palette
 	var raw := _ctx.doc.raw()
 	var broad_id := AlternityNum.as_int(broad.get("id", -1), -1)
 	var owned: bool = rules.is_skill_selected(raw, broad_id)
 
-	var box := Widgets.section(host, "", palette)
-	_build_row(box, broad, true)
+	_build_row(host, broad, true)
 
-	# Specialties are only useful once the broad is owned, and the rules require
-	# it, so listing them beforehand would offer something unbuyable.
 	if not owned:
-		Widgets.muted_text(box, "Buy the broad skill to unlock its specialties.", palette, Widgets.FONT_CAPTION)
 		return
 
 	for specialty in _specialties(broad):
 		if not rules.is_entry_available(raw, specialty):
 			continue
-		_build_row(box, specialty, false)
+		_build_row(host, specialty, false)
 
 
 func _build_row(parent: Container, skill: Dictionary, is_broad: bool) -> void:
@@ -240,129 +272,164 @@ func _build_row(parent: Container, skill: Dictionary, is_broad: bool) -> void:
 
 	var skill_id := AlternityNum.as_int(skill.get("id", -1), -1)
 	var rank: int = rules.skill_rank(raw, skill_id)
-	# Per skill, not per character: after creation a specialty may only gain one
-	# rank at a time, so the ceiling depends on where this skill already sits.
 	var max_rank: int = 1 if is_broad else rules.max_rank_for_skill(raw, skill_id)
 
-	# The name always gets its own line. It used to share one with the numbers
-	# and the stepper on a wide screen, but wide lays the cards out in two
-	# columns, so a card is about 470px however large the window is -- and
-	# "Armor Operation - Combat armor" beside a stepper clipped to "Armor Op".
+	if is_broad:
+		if parent.get_child_count() > 0:
+			var sep := Control.new()
+			sep.custom_minimum_size = Vector2(0, 4)
+			parent.add_child(sep)
+
+		var row := HBoxContainer.new()
+		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_theme_constant_override("separation", Widgets.GAP_ROW)
+		parent.add_child(row)
+
+		var check_btn := _make_flat_icon_btn(
+			ICON_CHECK if rank > 0 else ICON_UNCHECK,
+			Vector2(32, 32),
+			"Sell broad skill" if rank > 0 else "Buy broad skill"
+		)
+		check_btn.add_theme_color_override("icon_normal_color", palette.accent if rank > 0 else Color(palette.muted, 0.4))
+		check_btn.pressed.connect(func():
+			if rank <= 0:
+				doc.apply(CharacterDoc.ALL, func(c): rules.set_skill_rank(c, skill_id, 1))
+			else:
+				doc.apply(CharacterDoc.ALL, func(c): rules.set_skill_rank(c, skill_id, 0))
+			change_requested.emit()
+		)
+		row.add_child(check_btn)
+
+		var full_label := String(rules.skill_label(skill))
+		var name_lbl := Label.new()
+		name_lbl.text = full_label
+		name_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		name_lbl.add_theme_color_override("font_color", palette.text)
+		name_lbl.add_theme_font_size_override("font_size", Widgets.FONT_BODY)
+		row.add_child(name_lbl)
+
+		var detail_btn := _make_flat_icon_btn(
+			ICON_QUESTION,
+			Vector2(34, 34),
+			"View details for %s" % full_label
+		)
+		detail_btn.add_theme_color_override("icon_normal_color", Color(palette.muted, 0.8))
+		detail_btn.pressed.connect(func(): detail_requested.emit(skill))
+		row.add_child(detail_btn)
+
+		var slack := Control.new()
+		slack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(slack)
+
+		var cost_lbl := Label.new()
+		cost_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		cost_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		cost_lbl.add_theme_font_size_override("font_size", Widgets.FONT_DETAIL)
+		if rank > 0:
+			if rules.is_free_species_skill(raw, skill_id):
+				cost_lbl.text = "Free"
+			else:
+				var spent: int = rules.skill_cost(raw, skill)
+				cost_lbl.text = "Spent %d" % spent
+			cost_lbl.add_theme_color_override("font_color", palette.accent)
+		else:
+			if rules.is_free_species_skill(raw, skill_id):
+				cost_lbl.text = "Free"
+			else:
+				var cost: int = rules.skill_cost(raw, skill)
+				cost_lbl.text = "Cost %d" % cost
+			cost_lbl.add_theme_color_override("font_color", palette.muted)
+		row.add_child(cost_lbl)
+		return
+
+	# Specialty row
 	var row := HBoxContainer.new()
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_theme_constant_override("separation", Widgets.GAP_ROW)
 	parent.add_child(row)
 
-	if not is_broad:
-		var indent := Control.new()
-		indent.custom_minimum_size = Vector2(Widgets.PAD_PANEL, 0)
-		row.add_child(indent)
+	var indent := Control.new()
+	indent.custom_minimum_size = Vector2(18, 0)
+	row.add_child(indent)
 
-	var stack := VBoxContainer.new()
-	stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	stack.add_theme_constant_override("separation", Widgets.GAP_TIGHT)
-	row.add_child(stack)
+	var check_btn := _make_flat_icon_btn(
+		ICON_CHECK if rank > 0 else ICON_UNCHECK,
+		Vector2(32, 32),
+		"Sell specialty" if rank > 0 else "Buy specialty"
+	)
+	check_btn.add_theme_color_override("icon_normal_color", palette.accent if rank > 0 else Color(palette.muted, 0.4))
+	check_btn.pressed.connect(func():
+		if rank <= 0:
+			doc.apply(CharacterDoc.ALL, func(c): rules.set_skill_rank(c, skill_id, 1))
+		else:
+			doc.apply(CharacterDoc.ALL, func(c): rules.set_skill_rank(c, skill_id, 0))
+		change_requested.emit()
+	)
+	row.add_child(check_btn)
 
-	# The name is a button so reference text is one tap away.
-	#
-	# A specialty is only ever drawn inside its own broad skill's card, whose
-	# header already names the discipline, so the row shows the bare specialty.
-	# The full label went in whole -- and on a 390px phone "Extrasensory
-	# Perception (ESP) - Battle Mind" clipped to "...(ESP) - B", spending the
-	# entire row on the one word every row in the card shared. The tooltip and
-	# the detail sheet still carry the qualified name.
-	var full_label := String(rules.skill_label(skill))
-	var name_button := Button.new()
-	name_button.text = full_label if is_broad else String(skill.get("name", ""))
-	name_button.tooltip_text = full_label
-	name_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	name_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	name_button.clip_text = true
-	name_button.custom_minimum_size = Vector2(1, 36)
-	if is_broad:
-		name_button.add_theme_color_override("font_color", palette.accent)
-	name_button.pressed.connect(func(): detail_requested.emit(skill))
-	stack.add_child(name_button)
+	var name_box := VBoxContainer.new()
+	name_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_box.custom_minimum_size = Vector2(130, 0)
+	name_box.add_theme_constant_override("separation", 0)
+	row.add_child(name_box)
 
-	var actions := HBoxContainer.new()
-	actions.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	actions.add_theme_constant_override("separation", Widgets.GAP_ROW)
-	stack.add_child(actions)
+	var name_str := String(skill.get("name", ""))
+	var name_lbl := Label.new()
+	name_lbl.text = name_str
+	name_lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	name_lbl.add_theme_color_override("font_color", palette.text)
+	name_lbl.add_theme_font_size_override("font_size", Widgets.FONT_BODY)
+	name_box.add_child(name_lbl)
 
-	var score: Dictionary = rules.skill_score(raw, skill)
-	var ordinary := AlternityNum.as_int(score.get("ordinary", 0))
-	var die := String(score.get("die", ""))
-
-	# What the next rank costs, said in words rather than left as a bare number
-	# beside the buttons. "+1  2" read as two unrelated figures.
 	var next_cost: int = rules.next_skill_rank_cost(raw, skill)
-	var restorable: bool = is_broad and rules.is_normally_free_species_skill(raw, skill_id)
-	var price := ""
+	var sub_text := ""
 	if rank >= max_rank:
-		price = "at maximum rank"
-	elif restorable and rank <= 0:
-		price = "free, granted by your species"
-	elif next_cost > 0:
-		price = "next rank %d SP" % next_cost
-
-	# An unusable skill has no score to show. Printing "score 0  +d0" reads as a
-	# terrible-but-legal roll rather than as a door that is shut, which is what
-	# a psionic power without its discipline actually is.
-	var usable: bool = bool(score.get("usable", true))
-	var via_broad: bool = bool(score.get("via_broad", false))
-	# What a psionic action costs, on the row. The pool is the whole constraint
-	# on how often a psion can act, and the cost is not on the power -- it is 1
-	# for a specialty you hold, 2 for reaching one through its discipline.
-	# Source: Player's Handbook p. 228.
-	var energy := ""
-	if usable and rules.is_psionic_skill(skill):
-		var activation: Dictionary = rules.psionic_activation_cost(raw, skill)
-		energy = "%d PSP" % AlternityNum.as_int(activation.get("points", 0))
-
-	var stats_text := ""
-	if not usable:
-		stats_text = "Rank %d   not available" % rank
-	elif via_broad:
-		# Said on the rank rather than on its own line. Every rank 0 specialty
-		# in a held discipline is in this state, so a full sentence each
-		# repeated four and five times down a single card.
-		stats_text = "Rank %d (broad)   score %d   %s" % [rank, ordinary, die]
+		sub_text = "At maximum rank"
+	elif rank <= 0:
+		sub_text = "Buy %d SP" % next_cost
 	else:
-		stats_text = "Rank %d   score %d   %s" % [rank, ordinary, die]
-	if not energy.is_empty():
-		stats_text += "   -   %s" % energy
-	if not price.is_empty():
-		stats_text += "   -   %s" % price
+		sub_text = "Next rank %d SP" % next_cost
 
-	var stats := Label.new()
-	stats.text = stats_text
-	stats.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	stats.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	stats.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	stats.custom_minimum_size = Vector2(1, 0)
-	stats.add_theme_color_override("font_color", palette.muted)
-	stats.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
-	stats.tooltip_text = "Ordinary score %d, step die %s, rank %d" % [ordinary, die, rank]
-	if not usable:
-		stats.tooltip_text = String(score.get("reason", "This skill cannot be attempted."))
-	elif via_broad:
-		# Otherwise a rank 0 row showing a healthy score looks like a bug.
-		stats.tooltip_text = "Rolled through %s, the broad skill, at its score and its die. Buying a rank here would score %d at %s instead." % [
-			rules.skill_name_for_id(AlternityNum.as_int(skill.get("broad_id", -1), -1)),
-			ordinary + 1,
-			"+d0",
-		]
-	actions.add_child(stats)
+	var sub_lbl := Label.new()
+	sub_lbl.text = sub_text
+	sub_lbl.add_theme_color_override("font_color", palette.muted)
+	sub_lbl.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
+	name_box.add_child(sub_lbl)
 
-	if not usable:
-		Widgets.muted_text(stack, String(score.get("reason", "")), palette, Widgets.FONT_CAPTION)
+	var minus_btn := _make_flat_icon_btn(ICON_MINUS, Vector2(34, 34), "Reduce rank")
+	minus_btn.disabled = (rank <= 0)
+	minus_btn.pressed.connect(func():
+		doc.apply(CharacterDoc.ALL, func(c): rules.set_skill_rank(c, skill_id, rank - 1))
+		change_requested.emit()
+	)
+	row.add_child(minus_btn)
 
-	# Minus, rank, plus -- the shape the old UI used, and the one that says at a
-	# glance what the number is and which way it moves. A pair of Buy and Sell
-	# buttons had to spell out both, and still did not show the rank.
-	var stepper := NumberStepper.new()
-	actions.add_child(stepper)
-	stepper.setup(palette, "", rank, 0, max_rank, 1, 0, true)
-	stepper.value_changed.connect(func(value: int):
-		doc.apply(CharacterDoc.ALL, func(c): rules.set_skill_rank(c, skill_id, value))
-		change_requested.emit())
+	var plus_btn := _make_flat_icon_btn(ICON_PLUS, Vector2(34, 34), "Increase rank")
+	plus_btn.disabled = (rank >= max_rank)
+	plus_btn.pressed.connect(func():
+		doc.apply(CharacterDoc.ALL, func(c): rules.set_skill_rank(c, skill_id, rank + 1))
+		change_requested.emit()
+	)
+	row.add_child(plus_btn)
+
+	var detail_btn := _make_flat_icon_btn(
+		ICON_QUESTION,
+		Vector2(34, 34),
+		"View details for %s" % name_str
+	)
+	detail_btn.add_theme_color_override("icon_normal_color", Color(palette.muted, 0.8))
+	detail_btn.pressed.connect(func(): detail_requested.emit(skill))
+	row.add_child(detail_btn)
+
+	var slack := Control.new()
+	slack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(slack)
+
+	var rank_lbl := Label.new()
+	rank_lbl.text = "Rank %d" % rank
+	rank_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	rank_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	rank_lbl.custom_minimum_size = Vector2(48, 0)
+	rank_lbl.add_theme_color_override("font_color", palette.text if rank > 0 else palette.muted)
+	rank_lbl.add_theme_font_size_override("font_size", Widgets.FONT_DETAIL)
+	row.add_child(rank_lbl)

@@ -190,14 +190,11 @@ func _test_stepper() -> void:
 	var changes: Array = []
 	stepper.value_changed.connect(func(v): changes.append(v))
 
-	var minus: Button = null
-	var plus: Button = null
-	for child in stepper.get_children():
-		if child is Button:
-			if child.text == "-":
-				minus = child
-			elif child.text == "+":
-				plus = child
+	# By name, not by label: the dial draws icons rather than "-" and "+" text,
+	# so matching on the text found neither button and the whole stepper test
+	# bailed out without checking anything.
+	var minus: Button = stepper.get_node_or_null("MinusButton") as Button
+	var plus: Button = stepper.get_node_or_null("PlusButton") as Button
 	if not check(minus != null and plus != null, "the stepper has both buttons"):
 		box.queue_free()
 		return

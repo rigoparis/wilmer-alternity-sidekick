@@ -119,7 +119,11 @@ func _build_actions(parent: Container) -> void:
 	# between a VBox and an HBox at build time and could not react to a resize;
 	# a VBoxContainer that switches its own layout would need a rebuild either
 	# way, so this keeps the simple form and lets the shell rebuild on resize.
-	var bar: BoxContainer = HBoxContainer.new() if _is_wide() else VBoxContainer.new()
+	var bar: BoxContainer
+	if _is_wide():
+		bar = HBoxContainer.new()
+	else:
+		bar = VBoxContainer.new()
 	bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	bar.add_theme_constant_override("separation", Widgets.GAP_SECTION)
 	parent.add_child(bar)

@@ -20,6 +20,8 @@ const TAB_BASICS := preload("res://scenes/ui/tabs/tab_basics.tscn")
 const TAB_MUTATIONS := preload("res://scenes/ui/tabs/tab_mutations.tscn")
 const TAB_SUMMARY := preload("res://scenes/ui/tabs/tab_summary.tscn")
 const TAB_FX := preload("res://scenes/ui/tabs/tab_fx.tscn")
+const TAB_SKILLS := preload("res://scenes/ui/tabs/tab_skills.tscn")
+const TAB_PSIONICS := preload("res://scenes/ui/tabs/tab_psionics.tscn")
 const OPTIONAL_RULES_ROUTE := preload("res://scenes/ui/routes/optional_rules_route.tscn")
 
 var _rules: AlternityRules
@@ -41,14 +43,18 @@ func _run() -> void:
 	await _test_summary_is_self_contained()
 	await _test_permanent_fx_effects_render()
 	await _test_optional_rules_route()
+	await _test_skills_tab()
+	await _test_psionics_tab()
+	await _test_fx_tab()
+	await _test_summary_attack_forms_and_tables()
 
 	finish()
 
 
-func _mount(scene: PackedScene, doc: CharacterDoc):
+func _mount(scene: PackedScene, doc: CharacterDoc, is_wide: bool = false):
 	var tab = scene.instantiate()
 	root.add_child(tab)
-	tab.bind(Context.new(doc, _rules, null, ThemePalette.new(), false))
+	tab.bind(Context.new(doc, _rules, null, ThemePalette.new(), is_wide))
 	return tab
 
 
@@ -393,3 +399,128 @@ func _test_optional_rules_route() -> void:
 	check_true(_rules.optional_rule_enabled(doc.raw(), "2a"), "the chosen rule reaches the character")
 
 	route.queue_free()
+
+
+func _test_skills_tab() -> void:
+	var doc := Doc.new(_rules)
+	doc.set_species_id(0)     # Human
+	doc.set_profession_id(0)  # Combat Spec
+
+	# Mount wide (desktop) layout first
+	var tab = _mount(TAB_SKILLS, doc, true)
+	await process_frame
+	check_true(tab.get_child_count() > 0, "Skills tab renders in wide layout")
+	check_true(tab.has_custom_scroll(), "Skills tab declares custom scroll")
+
+	var labels := _labels_in(tab)
+	check_true(_any_label_contains(labels, "Skill points"), "Skills tab shows Skill points progress")
+	check_true(_any_label_contains(labels, "Broad skills"), "Skills tab shows Broad skills progress")
+	check_true(_any_label_contains(labels, "Selected Skills"), "Skills tab has Selected Skills breakdown")
+
+	# Select a broad skill
+	var athletics = _rules.get_skill_by_id(1) # Athletics
+	doc.apply(CharacterDoc.ALL, func(c):
+		_rules.set_skill_rank(c, 1, 1))
+	await process_frame
+
+	labels = _labels_in(tab)
+	check_true(_any_label_contains(labels, "Athletics"), "Selected skills breakdown lists Athletics")
+
+	tab.queue_free()
+
+	# Mount compact (mobile) layout
+	var tab_mobile = _mount(TAB_SKILLS, doc, false)
+	await process_frame
+	check_true(tab_mobile.get_child_count() > 0, "Skills tab renders in compact layout")
+	labels = _labels_in(tab_mobile)
+	check_true(_any_label_contains(labels, "Selected Skills"), "Compact layout has Selected Skills accordion")
+	tab_mobile.queue_free()
+
+
+func _test_psionics_tab() -> void:
+	var doc := Doc.new(_rules)
+	doc.set_species_id(1)     # Fraal (psionic)
+	doc.set_profession_id(6)  # Mindwalker (psionic)
+
+	var tab = _mount(TAB_PSIONICS, doc, true)
+	await process_frame
+	check_true(tab.get_child_count() > 0, "Psionics tab renders")
+	check_true(tab.has_custom_scroll(), "Psionics tab declares custom scroll")
+
+	var labels := _labels_in(tab)
+	check_true(_any_label_contains(labels, "Psionic Energy"), "Psionics tab shows Psionic Energy tracker")
+	check_true(_any_label_contains(labels, "Selected Powers"), "Psionics tab shows Selected Powers breakdown")
+
+	tab.queue_free()
+
+
+func _test_fx_tab() -> void:
+	var doc := Doc.new(_rules)
+	doc.set_species_id(0)
+	doc.set_profession_id(0)
+
+	doc.apply(CharacterDoc.ALL, func(c):
+		_rules.fx.set_fx_talent(c, true)
+		_rules.fx.set_energy_pool(c, 10)
+		_rules.fx.add_fx_skill(c, "Shamanism")
+		_rules.fx.add_fx_skill(c, "Animal voice")
+	)
+
+	# 1. Desktop wide layout
+	var tab_wide = _mount(TAB_FX, doc, true)
+	await process_frame
+	check_true(tab_wide.get_child_count() > 0, "FX tab renders in wide layout")
+	check_true(tab_wide.has_custom_scroll(), "FX tab declares custom scroll")
+
+	var labels := _labels_in(tab_wide)
+	check_true(_any_label_contains(labels, "FX Energy"), "Wide FX tab shows FX Energy tracker")
+	check_true(_any_label_contains(labels, "Selected Powers"), "Wide FX tab shows Selected Powers breakdown")
+	check_true(_any_label_contains(labels, "FX Cost"), "Wide FX tab has FX Cost column")
+	check_true(_any_label_contains(labels, "Shamanism"), "Selected Powers lists Shamanism broad")
+	check_true(_any_label_contains(labels, "Animal voice"), "Selected Powers lists Animal voice power")
+	tab_wide.queue_free()
+
+	# 2. Compact mobile layout
+	var tab_mobile = _mount(TAB_FX, doc, false)
+	await process_frame
+	check_true(tab_mobile.get_child_count() > 0, "FX tab renders in compact layout")
+	labels = _labels_in(tab_mobile)
+	check_true(_any_label_contains(labels, "Selected Powers"), "Compact FX tab has Selected Powers accordion")
+	tab_mobile.queue_free()
+
+
+func _test_summary_attack_forms_and_tables() -> void:
+	var doc := Doc.new(_rules)
+	doc.set_species_id(0)
+	doc.set_profession_id(0)
+
+	doc.apply(CharacterDoc.ALL, func(c):
+		_rules.set_skill_rank(c, 3, 1) # Athletics
+		_rules.set_skill_rank(c, 4, 1) # Climb
+		_rules.fx.set_fx_talent(c, true)
+		_rules.fx.set_energy_pool(c, 8)
+		_rules.fx.add_fx_skill(c, "Necromancy")
+		_rules.fx.add_fx_skill(c, "Animate dead")
+	)
+
+	var tab = _mount(TAB_SUMMARY, doc, true)
+	await process_frame
+	check_true(tab.get_child_count() > 0, "Summary tab mounts")
+
+	var labels := _labels_in(tab)
+	# Attack forms card checks
+	check_true(_any_label_contains(labels, "Attack Forms"), "Summary shows Attack Forms section")
+	check_true(_any_label_contains(labels, "Score"), "Attack card has Score field")
+	check_true(_any_label_contains(labels, "Damage O/G/A"), "Attack card has Damage O/G/A field")
+	check_true(_any_label_contains(labels, "Range"), "Attack card has Range field")
+	check_true(_any_label_contains(labels, "Hide"), "Attack card has Hide field")
+	check_true(_any_label_contains(labels, "Clip"), "Attack card has Clip field")
+
+	# Skills and FX reference tables
+	check_true(_any_label_contains(labels, "Athletics"), "Summary skills table has Athletics")
+	check_true(_any_label_contains(labels, "Climb"), "Summary skills table has Climb")
+	check_true(_any_label_contains(labels, "Necromancy"), "Summary FX table has Necromancy")
+	check_true(_any_label_contains(labels, "Animate dead"), "Summary FX table has Animate dead")
+	check_true(_any_label_contains(labels, "FX Cost"), "Summary FX table has FX Cost header")
+
+	tab.queue_free()

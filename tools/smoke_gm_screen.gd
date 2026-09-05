@@ -269,6 +269,21 @@ func _test_players_commit_their_own_character() -> void:
 	check_false(gm.session().has_committed_character(bob), "an uncommitted seat has no character")
 	check_true(gm._summary_of(gm.session().committed_character(bob)).is_empty(), "and no numbers")
 
+	# Opening the committed sheet presents CHARACTER_VIEW_ROUTE, and on desktop
+	# the tab context is updated to wide layout in _ready.
+	var top_seen := [null]
+	var inspector := func() -> void:
+		await process_frame
+		var route = _shell.router._host.top_route()
+		top_seen[0] = route
+		if route != null:
+			check_true(route._tab.ctx.is_wide_layout, "sheet context was updated to wide layout in _ready")
+			route.close(null)
+	inspector.call_deferred()
+
+	await gm._on_open_sheet_pressed(alice)
+	check(top_seen[0] != null, "opening the sheet presented the character view route")
+
 
 # --- Achievement points ----------------------------------------------------
 

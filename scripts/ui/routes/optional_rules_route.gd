@@ -56,7 +56,9 @@ func _build() -> void:
 	var heading := Label.new()
 	heading.text = title()
 	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	heading.add_theme_color_override("font_color", _palette.text)
+	heading.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	heading.custom_minimum_size = Vector2(1, 0)
+	heading.add_theme_color_override("font_color", _palette.accent)
 	heading.add_theme_font_size_override("font_size", 20)
 	box.add_child(heading)
 
@@ -89,6 +91,7 @@ func _build() -> void:
 	var done := Button.new()
 	done.text = _confirm_text
 	done.custom_minimum_size = Vector2(0, 44)
+	done.add_theme_stylebox_override("normal", Widgets.flat_style(_palette.surface_soft, _palette.accent, 6))
 	done.pressed.connect(func(): close(_changed if not _changed.is_empty() else null))
 	box.add_child(done)
 

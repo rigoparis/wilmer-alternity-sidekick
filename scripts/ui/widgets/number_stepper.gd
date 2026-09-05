@@ -24,7 +24,7 @@ var _minus: Button
 var _plus: Button
 var _palette: ThemePalette
 
-var _use_icons: bool = false
+var _use_icons: bool = true
 var _value: int = 0
 var _minimum: int = 0
 var _maximum: int = 0
@@ -46,7 +46,7 @@ func setup(
 	maximum: int,
 	step: int = 1,
 	label_width: int = 0,
-	use_icons: bool = false
+	use_icons: bool = true
 ) -> void:
 	_palette = palette
 	_minimum = minimum
@@ -122,16 +122,25 @@ func set_range(minimum: int, maximum: int) -> void:
 
 func _make_button(text: String, icon: Texture2D) -> Button:
 	var button := Button.new()
+	# Named, not identified by its label: the icon form carries no text at all,
+	# so anything looking for one end of the dial -- a test, a screenshot pass --
+	# has nothing to match on once the artwork replaces the glyph.
+	button.name = "MinusButton" if text == "-" else "PlusButton"
+	button.tooltip_text = "Decrease" if text == "-" else "Increase"
 	# 42px square: a touch target, not a desktop-sized spinner arrow.
 	button.custom_minimum_size = Vector2(42, 42)
 	if _use_icons:
+		button.flat = true
 		button.icon = icon
 		button.expand_icon = true
 		button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		button.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 		button.add_theme_color_override("icon_normal_color", _palette.text)
 		button.add_theme_color_override("icon_hover_color", _palette.accent)
-		button.add_theme_color_override("icon_disabled_color", Color(_palette.muted, 0.4))
+		button.add_theme_color_override("icon_pressed_color", _palette.accent)
+		button.add_theme_color_override("icon_disabled_color", Color(_palette.muted, 0.3))
+		for state in ["normal", "hover", "pressed", "focus", "disabled"]:
+			button.add_theme_stylebox_override(state, StyleBoxEmpty.new())
 	else:
 		button.text = text
 		button.add_theme_font_size_override("font_size", Widgets.FONT_SECTION_TITLE)

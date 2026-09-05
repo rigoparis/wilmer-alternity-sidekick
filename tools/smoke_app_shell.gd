@@ -182,6 +182,34 @@ func _test_tab_availability() -> void:
 	check_false(sheet._buttons.has("mutations"), "Mutations hides again when the species reverts")
 	check_ne(sheet._active_id, "mutations", "a tab that stopped applying is not left showing")
 
+	# Species is not the only thing that decides which tabs apply, and the two
+	# that are easy to forget do not touch META at all: Psionics appears for the
+	# Psionic Talents optional rule and for the Superior Talent perk, which
+	# arrive as OPTIONAL_RULES and PERKS_FLAWS. A tab bar that only listens for
+	# the sections a species change announces leaves both invisible until the
+	# character is closed and reopened.
+	check_false(sheet._buttons.has("psionics"), "Psionics hidden for an ordinary hero")
+
+	doc.apply([CharacterDoc.OPTIONAL_RULES], func(c):
+		rules.set_optional_rule(c, "psionic_talents", true))
+	await process_frame
+	check_true(sheet._buttons.has("psionics"), "the Psionic Talents rule reveals Psionics in place")
+
+	doc.apply([CharacterDoc.OPTIONAL_RULES], func(c):
+		rules.set_optional_rule(c, "psionic_talents", false))
+	await process_frame
+	check_false(sheet._buttons.has("psionics"), "turning the rule back off hides Psionics again")
+
+	doc.apply([CharacterDoc.PERKS_FLAWS], func(c):
+		rules.set_perk_selected(c, "superior_talent", 4))
+	await process_frame
+	check_true(sheet._buttons.has("psionics"), "the Superior Talent perk reveals Psionics in place")
+
+	doc.apply([CharacterDoc.PERKS_FLAWS], func(c):
+		rules.set_perk_selected(c, "superior_talent", 0))
+	await process_frame
+	check_false(sheet._buttons.has("psionics"), "removing the perk hides Psionics again")
+
 
 func _test_cybertech_edits() -> void:
 	var sheet = _sheet_screen()
@@ -216,9 +244,9 @@ func _test_cybertech_edits() -> void:
 	)
 
 
-func _first_toggle(node: Node) -> CheckButton:
+func _first_toggle(node: Node) -> BaseButton:
 	for child in node.get_children():
-		if child is CheckButton:
+		if child is CheckBox or child is CheckButton:
 			return child
 		var found := _first_toggle(child)
 		if found != null:

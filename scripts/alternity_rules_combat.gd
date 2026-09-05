@@ -512,12 +512,14 @@ const RECOVERY := {
 	"fatigue": {
 		"cadence": "hour",
 		"skill": "Resolve - physical resolve",
+		"skill_id": 136,
 		"by_degree": {"marginal": 0, "ordinary": 1, "good": 2, "amazing": 3},
 		"note": "Requires complete rest. One check per hour.",
 	},
 	"wound": {
 		"cadence": "week",
 		"skill": "Resolve - physical resolve",
+		"skill_id": 136,
 		"by_degree": {"marginal": 1, "ordinary": 2, "good": 3, "amazing": 4},
 		"note": "Requires rest. One check per week, or treatment with Medical Science.",
 	},

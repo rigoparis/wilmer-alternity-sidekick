@@ -41,6 +41,17 @@ func _ready() -> void:
 	_build_chrome()
 	visible = false
 	get_viewport().size_changed.connect(_relayout)
+	_update_theme()
+	var service := get_node_or_null("/root/ThemeService")
+	if service != null and service.has_signal("theme_changed"):
+		service.theme_changed.connect(_update_theme)
+
+
+func _update_theme() -> void:
+	if _frames == null:
+		return
+	if get_tree() != null and get_tree().root != null and get_tree().root.theme != null:
+		_frames.theme = get_tree().root.theme
 
 
 func _build_chrome() -> void:
@@ -73,6 +84,8 @@ func top_route() -> RouteScene:
 
 ## Add a route to the stack and show it.
 func present(route: RouteScene, presentation: int) -> void:
+	if _frames.theme == null:
+		_update_theme()
 	var frame := Control.new()
 	frame.name = "Frame%d" % (_entries.size() + 1)
 	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE

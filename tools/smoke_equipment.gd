@@ -47,4 +47,44 @@ func _init() -> void:
 	check_eq(String(clamped.get("item_id", "")), another_item_id, "clamped item item_id recorded")
 	check_eq(rules._as_int(clamped.get("quantity", 0)), 1, "negative quantity clamps to 1")
 
+	# Weapon Accuracy: Player's Handbook Chapter 11 p. 174 defines weapon accuracy
+	# as an optional rule. With the rule off (default), listed accuracy (-1 for laser rifle,
+	# +2 for flintlock pistol) is ignored. With the rule on, weapon accuracy modifies
+	# the attack situation die step.
+	var shooter := rules.default_character()
+	rules.ensure_character_shape(shooter)
+	rules.set_skill_rank(shooter, 31, 1) # Modern Ranged Weapons - Pistol
+	rules.set_skill_rank(shooter, 32, 1) # Modern Ranged Weapons - Rifle
+	rules.set_skill_rank(shooter, 37, 1) # Primitive Ranged Weapons - Flintlock
+	rules.equipment.add_equipment_to_character(shooter, "weapon_core_013", 1) # Rifle, laser (acc -1)
+	rules.equipment.add_equipment_to_character(shooter, "weapon_core_035", 1) # Pistol, flintlock (acc +2)
+
+	var forms_off: Array = rules.equipment.attack_forms_for_character(shooter)
+	var laser_off: Dictionary = {}
+	var flintlock_off: Dictionary = {}
+	for f in forms_off:
+		if f.get("name") == "Rifle, laser":
+			laser_off = f
+		elif f.get("name") == "Pistol, flintlock":
+			flintlock_off = f
+
+	check_true(not laser_off.is_empty(), "found laser rifle attack form")
+	check_true(not flintlock_off.is_empty(), "found flintlock pistol attack form")
+	check_eq(laser_off.get("base_die", ""), "+d0", "laser rifle base die is +d0 without weapon accuracy")
+	check_eq(flintlock_off.get("base_die", ""), "+d0", "flintlock pistol base die is +d0 without weapon accuracy")
+
+	rules.set_optional_rule(shooter, "weapon_accuracy", true)
+	var forms_on: Array = rules.equipment.attack_forms_for_character(shooter)
+	var laser_on: Dictionary = {}
+	var flintlock_on: Dictionary = {}
+	for f in forms_on:
+		if f.get("name") == "Rifle, laser":
+			laser_on = f
+		elif f.get("name") == "Pistol, flintlock":
+			flintlock_on = f
+
+	check_eq(laser_on.get("base_die", ""), "-d4", "laser rifle base die is -d4 (step -1) with weapon accuracy")
+	check_eq(flintlock_on.get("base_die", ""), "+d6", "flintlock pistol base die is +d6 (step +2) with weapon accuracy")
+
 	finish()
+

@@ -144,6 +144,22 @@ func _test_summary_cache() -> void:
 		"summary recomputes after an ability change"
 	)
 
+	# Damage is a mutation like any other, and the temptation to treat it as
+	# cheap is what this guards. Mortal and Fatigue damage add a step penalty per
+	# marked point (Player's Handbook Chapter 3 p. 54), and the action check
+	# carries that penalty in its step and its die -- so a summary that survived
+	# a damage-only change would report the step the hero had before they were
+	# hurt, which is the number they roll against.
+	var clean_step := AlternityNum.as_int(doc.summary().get("action_check", {}).get("step", 0))
+	doc.apply([Doc.DAMAGE], func(c):
+		var tracks: Dictionary = c.get("damage", {})
+		tracks["mortal"] = 1
+		c["damage"] = tracks)
+	check_eq(
+		AlternityNum.as_int(doc.summary().get("action_check", {}).get("step", 0)), clean_step + 1,
+		"a point of mortal damage moves the action check step the summary reports"
+	)
+
 
 ## The old cache was a single slot on AlternityRules keyed on character.hash(),
 ## so alternating between characters missed every time -- the case a GM viewing

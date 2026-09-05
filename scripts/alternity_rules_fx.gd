@@ -390,15 +390,15 @@ func _extract_ranks_from_text(text: String) -> Array:
 		var words = text_lower.substr(search_start, 100).split(" ", false)
 		for word in words:
 			var digit_str = ""
-			for char in word:
-				if char in "0123456789":
-					digit_str += char
+			for ch in word:
+				if ch in "0123456789":
+					digit_str += ch
 			if not digit_str.is_empty():
 				ranks.append(digit_str.to_int())
 				break
 			var has_letters = false
-			for char in word:
-				if char in "abcdefghijklmnopqrstuvwxyz":
+			for ch in word:
+				if ch in "abcdefghijklmnopqrstuvwxyz":
 					has_letters = true
 					break
 			if has_letters and not (word in ["and", "or", ",", ".", "&", "to"]):

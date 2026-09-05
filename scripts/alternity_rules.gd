@@ -1108,11 +1108,11 @@ func action_check(character: Dictionary) -> Dictionary:
 func dazed_penalty(character: Dictionary) -> int:
 	var penalty := 0
 	var dmg: Dictionary = character.get("damage", {})
-	# Core: Mortal and Fatigue damage always add +1 step penalty per marked point (PHB Chapter 8 p. 88)
+	# Core: Mortal and Fatigue damage always add +1 step penalty per marked point (PHB Chapter 3 p. 54; GMG Chapter 3 p. 54).
 	penalty += _as_int(dmg.get("mortal", 0))
 	penalty += _as_int(dmg.get("fatigue", 0))
 
-	# Optional Rule: Dazed (> 50% Stun or Wound adds +1 step each)
+	# Optional Rule: Dazed (> 50% Stun or Wound adds +1 step each; PHB Chapter 3 p. 51; GMG Chapter 3 p. 54).
 	if optional_rule_enabled(character, "dazed"):
 		var max_durability := durability(character)
 		if _as_int(dmg.get("stun", 0)) > int(floor(_as_int(max_durability.get("stun", 0)) / 2.0)):
@@ -1759,7 +1759,7 @@ func force_skill_rank(character: Dictionary, skill_id: int, rank: int) -> void:
 
 
 func _write_skill_rank(character: Dictionary, skill_id: int, rank: int, allow_jump: bool) -> void:
-	var selected_skills: Dictionary = character.get("selected_skills", {})
+	var selected: Dictionary = character.get("selected_skills", {})
 	var skill := get_skill_by_id(skill_id)
 	if skill.is_empty():
 		return
@@ -1776,10 +1776,10 @@ func _write_skill_rank(character: Dictionary, skill_id: int, rank: int, allow_ju
 			if not sold_list.has(skill_id):
 				sold_list.append(skill_id)
 				character["sold_species_skills"] = sold_list
-			selected_skills.erase(str(skill_id))
+			selected.erase(str(skill_id))
 			for specialty in specialty_skills_by_broad_id.get(skill_id, []):
-				selected_skills.erase(str(_as_int(specialty.get("id", -1))))
-			character["selected_skills"] = selected_skills
+				selected.erase(str(_as_int(specialty.get("id", -1))))
+			character["selected_skills"] = selected
 		# Already granted at rank 1; there is no higher rank for a broad.
 		return
 
@@ -1792,14 +1792,14 @@ func _write_skill_rank(character: Dictionary, skill_id: int, rank: int, allow_ju
 			if sold_list.has(skill_id):
 				sold_list.erase(skill_id)
 				character["sold_species_skills"] = sold_list
-				character["selected_skills"] = selected_skills
+				character["selected_skills"] = selected
 				return
 
 		var rank_cap := (
 			max_skill_rank_for_character(character) if allow_jump
 			else max_rank_for_skill(character, skill_id)
 		)
-		selected_skills[str(skill_id)] = 1 if is_broad else clampi(rank, 1, rank_cap)
+		selected[str(skill_id)] = 1 if is_broad else clampi(rank, 1, rank_cap)
 		if skill.get("type", "") == "specialty":
 			var broad_id := _as_int(skill.get("broad_id", -1))
 			if is_normally_free_species_skill(character, broad_id):
@@ -1808,13 +1808,13 @@ func _write_skill_rank(character: Dictionary, skill_id: int, rank: int, allow_ju
 					sold_list.erase(broad_id)
 					character["sold_species_skills"] = sold_list
 			elif not is_free_species_skill(character, broad_id):
-				selected_skills[str(broad_id)] = 1
+				selected[str(broad_id)] = 1
 	else:
-		selected_skills.erase(str(skill_id))
+		selected.erase(str(skill_id))
 		if is_broad:
 			for specialty in specialty_skills_by_broad_id.get(skill_id, []):
-				selected_skills.erase(str(_as_int(specialty.get("id", -1))))
-	character["selected_skills"] = selected_skills
+				selected.erase(str(_as_int(specialty.get("id", -1))))
+	character["selected_skills"] = selected
 
 
 func change_skill_rank(character: Dictionary, skill_id: int, delta: int) -> void:
@@ -2561,9 +2561,9 @@ func resolve_check(control_die: int, situation_roll: int, target_score: int, sit
 	if control_die == 1:
 		var parsed := DiceNotation.parse(situation_die_str)
 		var sides := _as_int(parsed.get("sides", 0))
-		var sign := _as_int(parsed.get("sign", 1), 1)
+		var sign_val := _as_int(parsed.get("sign", 1), 1)
 		# Automatic Success unless situation die is +d20 or higher (step >= 5)
-		if not (sign > 0 and sides >= 20):
+		if not (sign_val > 0 and sides >= 20):
 			is_auto_success = true
 
 	var degree := ""

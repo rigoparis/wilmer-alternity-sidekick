@@ -25,10 +25,13 @@ extends RefCounted
 
 ## A player became reachable. `is_reconnect` is true when the id matched an
 ## existing seat, which is the normal case for a campaign in progress.
+@warning_ignore("unused_signal")
 signal player_connected(player_id: String, is_reconnect: bool)
+@warning_ignore("unused_signal")
 signal player_disconnected(player_id: String)
 
 ## A completed roll arrived. `roll` is a serialized RollResult.
+@warning_ignore("unused_signal")
 signal roll_received(player_id: String, roll: Dictionary)
 
 ## A log event arrived, already carrying its host-assigned sequence number.
@@ -37,14 +40,17 @@ signal roll_received(player_id: String, roll: Dictionary)
 ## its own copy of the campaign. Rolls and chat also raise their specific signal,
 ## because most listeners care about one kind; anything that has to keep a log in
 ## step -- AP awards included -- listens here instead.
+@warning_ignore("unused_signal")
 signal event_received(event: Dictionary)
 
 ## Everything the host had that this peer did not, sent in one piece after a
 ## reconnect. Ordered oldest first.
+@warning_ignore("unused_signal")
 signal events_replayed(events: Array)
 
 ## A chat message arrived. `to_player_id` is empty for table-wide messages and
 ## set for a private line with the GM.
+@warning_ignore("unused_signal")
 signal chat_received(player_id: String, text: String, to_player_id: String)
 
 ## The fight changed: a round started, a check landed, a phase closed.
@@ -52,6 +58,7 @@ signal chat_received(player_id: String, text: String, to_player_id: String)
 ## Client side. The whole round arrives each time rather than a diff -- it is a
 ## small dictionary that changes a few times a round, and sending it whole means
 ## a player joining mid-fight needs no catch-up path at all.
+@warning_ignore("unused_signal")
 signal round_updated(round_data: Dictionary)
 
 ## A player rolled their action check for the round.
@@ -59,12 +66,14 @@ signal round_updated(round_data: Dictionary)
 ## Host side. Carries the degree, the character's own action check score and what
 ## the dice showed, because the score is what orders a phase and the roll is what
 ## a player wants to see in the log.
+@warning_ignore("unused_signal")
 signal action_check_received(player_id: String, result: Dictionary)
 
 ## A player declared a dodge for this round.
 ##
 ## Host side. Carries the degree it was rolled at, which is what the step penalty
 ## on every attack against them is worked out from -- see combat.dodge_step.
+@warning_ignore("unused_signal")
 signal defence_declared(player_id: String, defence: Dictionary)
 
 ## An attack landed on this device's character.
@@ -72,18 +81,21 @@ signal defence_declared(player_id: String, defence: Dictionary)
 ## Client side. Already rolled: the GM is the attacker and has decided both
 ## whether it hit and for how much. What is left is what this character's own
 ## armor and durability make of it.
+@warning_ignore("unused_signal")
 signal attack_received(attack: Dictionary)
 
 ## The target said what the attack did to them.
 ##
 ## Host side. Carries what got through, what the armor stopped, and whether they
 ## went down -- everything the GM needs without being handed the character.
+@warning_ignore("unused_signal")
 signal attack_resolved(player_id: String, attack: Dictionary)
 
 ## A player wants to attempt a skill and is waiting on a step ruling.
 ##
 ## Host side only. The check carries what is being attempted and the score to
 ## roll against; what it is missing is the GM's half of the step total.
+@warning_ignore("unused_signal")
 signal check_requested(player_id: String, check: Dictionary)
 
 ## The GM answered a request, or called for a check unprompted.
@@ -91,6 +103,7 @@ signal check_requested(player_id: String, check: Dictionary)
 ## Client side only. Both arrive here because they end in the same place -- a
 ## check with a known total step, ready for the tray -- and a screen that had to
 ## tell them apart would duplicate the roll path.
+@warning_ignore("unused_signal")
 signal check_ruled(check: Dictionary)
 
 ## A player pushed their character's current numbers.
@@ -99,9 +112,11 @@ signal check_ruled(check: Dictionary)
 ## device owns the character file and is its only writer; what crosses the wire
 ## is a read-only summary for the GM to look at, so the two devices can never be
 ## editing the same document.
+@warning_ignore("unused_signal")
 signal character_received(player_id: String, snapshot: Dictionary)
 
 ## Transport-level failure worth surfacing (host unreachable, port in use).
+@warning_ignore("unused_signal")
 signal transport_error(message: String)
 
 

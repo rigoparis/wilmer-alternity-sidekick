@@ -859,16 +859,16 @@ func _roll_mutation_formula(formula: String) -> int:
 	if clean.is_empty():
 		return 0
 	var sign_index := clean.find("+")
-	var sign := 1
+	var sign_val := 1
 	if sign_index < 0:
 		sign_index = clean.find("-")
-		sign = -1
+		sign_val = -1
 	if clean.begins_with("d"):
 		var die_length := sign_index - 1 if sign_index > 0 else clean.length() - 1
 		var die_text := clean.substr(1, die_length)
 		var die_size: int = max(1, AlternityNum.as_int(die_text, 1))
 		var modifier := 0
 		if sign_index > 0:
-			modifier = sign * AlternityNum.as_int(clean.substr(sign_index + 1), 0)
+			modifier = sign_val * AlternityNum.as_int(clean.substr(sign_index + 1), 0)
 		return max(0, randi_range(1, die_size) + modifier)
 	return max(0, AlternityNum.as_int(clean, 0))

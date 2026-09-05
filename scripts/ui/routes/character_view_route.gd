@@ -23,6 +23,7 @@ var _rules: AlternityRules
 var _doc: CharacterDoc
 var _heading: String = "Character"
 var _subtitle: String = ""
+var _tab: SheetTab
 
 
 ## props:
@@ -103,10 +104,10 @@ func _build() -> void:
 	# No router and no CheckRunner: this context cannot open a catalog or roll,
 	# which is what keeps a read-only view read-only.
 	var context := SheetContext.new(_doc, _rules, null, _palette, _is_wide())
-	var tab: SheetTab = SUMMARY_TAB.instantiate()
-	tab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	host.add_child(tab)
-	tab.bind(context)
+	_tab = SUMMARY_TAB.instantiate()
+	_tab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	host.add_child(_tab)
+	_tab.bind(context)
 
 	_build_close(column)
 
@@ -121,5 +122,19 @@ func _build_close(parent: Container) -> void:
 	parent.add_child(close_button)
 
 
+## Whether there is room for two columns of summary info.
+##
+## configure() runs before the router presents the route, so during the first
+## build there is no viewport to measure and asking for one is an error. The
+## sheet context is rebound in _ready, which is the first moment the answer is real.
 func _is_wide() -> bool:
+	if not is_inside_tree():
+		return false
 	return get_viewport_rect().size.x >= ModalHost.COMPACT_WIDTH
+
+
+func _ready() -> void:
+	if _tab != null and _doc != null and _rules != null:
+		var context := SheetContext.new(_doc, _rules, null, _palette, _is_wide())
+		_tab.bind(context)
+		_tab.refresh(true)

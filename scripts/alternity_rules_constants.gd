@@ -22,6 +22,10 @@ const ENERGY_RECOVERY_PER_HOUR := {
 ## feat check may be rolled instead. Source: Player's Handbook p. 228.
 const ENERGY_RECOVERY_SKILL_ID := 135
 
+## Resolve -- physical resolve. The skill natural recovery of fatigue and wound
+## damage is rolled against. Source: Gamemaster Guide p. 54.
+const PHYSICAL_RESOLVE_SKILL_ID := 136
+
 ## What a psionic action costs, whatever power is used.
 ##
 ## The cost is flat and does not vary by discipline or specialty: a specialty
@@ -217,31 +221,31 @@ const OPTIONAL_RULES := [
 		"id": "2a",
 		"name": "Optional Rule 2A",
 		"summary": "Alternate starting skill points",
-		"description": "New characters receive a starting Skill Point pool equal to 30 plus 3 times their Intelligence score (30 + 3 * INT). Human heroes receive 5 additional skill points at character creation (35 + 3 * INT). Source: Gamemaster Guide Chapter 4 p. 68.",
+		"description": "House rule originating from the legacy Alternity character manager / magazine patch. New characters have a number of skill points equal to 30 plus 3 times their INT score available to purchase skills during character creation. Human heroes receive a special bonus of 5 additional skill points (35 + 3 * INT). Not from the core rulebooks, which use Table P5 (INT * 5 - 5 for aliens, INT * 5 for humans).",
 	},
 	{
 		"id": "2b",
 		"name": "Optional Rule 2B",
 		"summary": "Alternate broad skill limit",
-		"description": "During initial skill purchase, a character may not learn more than six additional broad skills, not counting racial broad skills. This cap is modified directly by the hero's INT resistance modifier (6 + INT RM, plus 1 for Humans). Source: Gamemaster Guide Chapter 4 p. 68.",
+		"description": "House rule originating from the legacy Alternity character manager / magazine patch. During initial skill purchase, a character may not learn more than six additional broad skills, not counting racial broad skills. Modified by the hero's INT resistance modifier (6 + INT RM, plus 1 for Humans). Not from the core rulebooks, which use Table P5 (floor(INT / 2) + 1 for Humans).",
 	},
 	{
 		"id": "2c",
 		"name": "Optional Rule 2C",
 		"summary": "Flat specialty advancement cost",
-		"description": "The cost to purchase rank 2 or higher in a specialty skill is either the list price or list price -1 (if matching profession). Current ranks do not increase the cost of advancing that skill. Source: Gamemaster Guide Table G5 p. 31.",
+		"description": "House rule originating from the legacy Alternity character manager / magazine patch. The cost to purchase rank 2 or higher in a specialty skill is either the list price or list price -1 (if matching profession). Current ranks do not increase the cost of advancing that skill. Not from the core rulebooks, where specialty rank advancement scales with current rank (Table G5 in the Gamemaster Guide p. 31 was a cumulative reference table for creating advanced characters, not flat progression).",
 	},
 	{
 		"id": "dazed",
 		"name": "Optional Rule: Dazed",
 		"summary": "Step penalty for heavy Stun or Wound damage",
-		"description": "If your hero suffers enough Stun or Wound damage to use up more than half of those points (> 50%), he is dazed (+1 step penalty each). Mortal and Fatigue damage always add +1 step penalty per point. Source: Player's Handbook Chapter 8 p. 88.",
+		"description": "If your hero suffers enough Stun or Wound damage to use up more than half of those points (> 50%), he is dazed (+1 step penalty each). Mortal and Fatigue damage always add +1 step penalty per point. Source: Player's Handbook Chapter 3 p. 51; Gamemaster Guide Chapter 3 p. 54.",
 	},
 	{
 		"id": "psionic_talents",
 		"name": "Optional Rule: Psionic Talents",
 		"summary": "Allow non-Mindwalker heroes to purchase Psionics",
-		"description": "Permits characters of any profession to learn Psionic broad and specialty skills with a +1 SP cost surcharge above the listed price. Psionic energy pool is ceil(WIL * 0.5) (or full WIL for Fraal). Source: Player's Handbook Chapter 14.",
+		"description": "Permits characters of any profession to learn Psionic broad and specialty skills with a +1 SP cost surcharge above the listed price. Psionic energy pool is ceil(WIL * 0.5) (or full WIL for Fraal). Source: Player's Handbook Chapter 14 p. 226, 228; Gamemaster Guide Chapter 16 p. 220-221.",
 	},
 	{
 		"id": "monetary_awards_uncapped",
@@ -253,13 +257,19 @@ const OPTIONAL_RULES := [
 		"id": "age_effects",
 		"name": "Optional Rule: Age Categories",
 		"summary": "Apply age category ability modifiers",
-		"description": "A hero's age category adjusts their ability scores: an adolescent takes -1 STR, -1 INT and -1 WIL but gains +1 DEX, while an old hero loses STR, CON and DEX and gains WIL and PER. With this rule off, every hero in the campaign is treated as a Young Adult for all rules purposes and no age modifier applies -- players may still record an age for their character, it simply does not change their scores. Source: Gamemaster Guide Table G1 p. 21.",
+		"description": "A hero's age category adjusts their ability scores: an adolescent takes -1 STR, -1 INT and -1 WIL but gains +1 DEX, while an old hero loses STR, CON and DEX and gains WIL and PER. With this rule off, every hero in the campaign is treated as a Young Adult for all rules purposes and no age modifier applies -- players may still record an age for their character, it simply does not change their scores. Source: Gamemaster Guide Chapter 2 p. 20 and Table G1 p. 21.",
 	},
 	{
 		"id": "damage_upgrading",
 		"name": "Optional Rule: Upgrading Damage",
 		"summary": "A weapon that outclasses its target hits harder",
-		"description": "When a weapon's firepower exceeds the target's toughness, the quality of a hit is promoted -- one grade above and an Ordinary hit becomes Good and a Good hit becomes Amazing; two or more grades above and any hit is Amazing. The Gamemaster Guide is explicit that no standard rule exists for this and offers it as a guideline, which is why it is a toggle. Its counterpart, damage degradation when a weapon is too weak for its target, is core and always applies. Source: Gamemaster Guide p. 52, sidebar \"Upgrading Damage?\".",
+		"description": "When a weapon's firepower exceeds the target's toughness, the quality of a hit is promoted -- one grade above and an Ordinary hit becomes Good and a Good hit becomes Amazing; two or more grades above and any hit is Amazing. The Gamemaster Guide is explicit that no standard rule exists for this and offers it as a guideline, which is why it is a toggle. Its counterpart, damage degradation when a weapon is too weak for its target, is core and always applies. Source: Gamemaster Guide Chapter 3 p. 52, sidebar \"Upgrading Damage?\".",
+	},
+	{
+		"id": "weapon_accuracy",
+		"name": "Optional Rule: Weapon Accuracy",
+		"summary": "Weapon accuracy modifiers adjust attack situation die",
+		"description": "Applies the weapon's inherent accuracy rating as a step bonus or penalty to the attack check (e.g. laser rifle provides a -1 bonus, flintlock pistol carries a +2 penalty). When disabled, listed weapon accuracy is ignored. Source: Player's Handbook Chapter 11 p. 174.",
 	},
 ]
 

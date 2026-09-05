@@ -76,7 +76,7 @@ static func parse(text: String) -> Dictionary:
 
 	var match_result := _dice_regex.search(clean)
 	if match_result != null:
-		var sign := -1 if match_result.get_string(1) == "-" else 1
+		var sign_val := -1 if match_result.get_string(1) == "-" else 1
 		var count_text := match_result.get_string(2)
 		# "d6" means one die; "2d20" means two.
 		var count := 1 if count_text.is_empty() else AlternityNum.as_int(count_text, 1)
@@ -87,7 +87,7 @@ static func parse(text: String) -> Dictionary:
 			"count": count,
 			"sides": sides,
 			"modifier": modifier,
-			"sign": sign,
+			"sign": sign_val,
 			"damage_type": match_result.get_string(5).to_lower(),
 			"source": text,
 		}
@@ -148,12 +148,12 @@ static func bounds(term: Dictionary) -> Array:
 	var count: int = AlternityNum.as_int(term.get("count", 0))
 	var sides: int = AlternityNum.as_int(term.get("sides", 0))
 	var modifier: int = AlternityNum.as_int(term.get("modifier", 0))
-	var sign: int = AlternityNum.as_int(term.get("sign", 1), 1)
+	var sign_val: int = AlternityNum.as_int(term.get("sign", 1), 1)
 
 	# A zero-sided die ("+d0") is a real notation meaning "no die".
 	var lowest := count + modifier if sides > 0 else modifier
 	var highest := (count * sides) + modifier if sides > 0 else modifier
-	if sign < 0:
+	if sign_val < 0:
 		return [-highest, -lowest]
 	return [lowest, highest]
 
@@ -167,12 +167,12 @@ static func format(term: Dictionary) -> String:
 	var count: int = AlternityNum.as_int(term.get("count", 0))
 	var sides: int = AlternityNum.as_int(term.get("sides", 0))
 	var modifier: int = AlternityNum.as_int(term.get("modifier", 0))
-	var sign: int = AlternityNum.as_int(term.get("sign", 1), 1)
+	var sign_val: int = AlternityNum.as_int(term.get("sign", 1), 1)
 	var damage_type := String(term.get("damage_type", ""))
 
 	var out := ""
 	if count > 0:
-		if sign < 0:
+		if sign_val < 0:
 			out += "-"
 		if count > 1:
 			out += str(count)

@@ -264,7 +264,8 @@
 			"damage_upgrading": false,
 			"dazed": true,
 			"monetary_awards_uncapped": false,
-			"psionic_talents": false
+			"psionic_talents": false,
+			"weapon_accuracy": false
 		},
 		"player_name": "Fixture",
 		"profession_id": 5.0,
@@ -388,7 +389,7 @@
 					"type": "LI/O"
 				},
 				{
-					"base_die": "+d4",
+					"base_die": "+d0",
 					"clip_size": "6",
 					"damage": "d4+1w/d4+2w/d6m",
 					"equipped": false,

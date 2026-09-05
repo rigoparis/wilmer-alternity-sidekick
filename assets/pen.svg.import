@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cd76vn36xqo26"
-path="res://.godot/imported/check-square.svg-2817bb47c21dd249e64a48d45dfded1d.ctex"
+uid="uid://7e16u62wnsly"
+path="res://.godot/imported/pen.svg-c1b116c59c9758dc1a9812bcb20887d6.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/check-square.svg"
-dest_files=["res://.godot/imported/check-square.svg-2817bb47c21dd249e64a48d45dfded1d.ctex"]
+source_file="res://assets/pen.svg"
+dest_files=["res://.godot/imported/pen.svg-c1b116c59c9758dc1a9812bcb20887d6.ctex"]
 
 [params]
 

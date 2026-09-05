@@ -11,15 +11,103 @@ extends SheetTab
 ## changes mid-session -- so this is the tab that stays open during play.
 ##
 
+const DETAIL_ROUTE := preload("res://scenes/ui/routes/skill_detail_route.tscn")
 const ABILITIES := ["STR", "DEX", "CON", "INT", "WIL", "PER"]
 
 ## Damage tracks, in the order they are marked off.
 const TRACKS := ["stun", "wound", "mortal", "fatigue"]
 
+var _damage_trackers: Dictionary = {}
+var _recovery_host: Container
+var _last_resorts_tracker: DamageTrack
+var _last_resorts_actions_host: Container
+var _rendered_recovery_damage: Array = [-1, -1, -1]
+var _rendered_last_resorts_state: Array = [-1, -1, -1]
+
 
 func watched_sections() -> Array:
 	# Genuinely everything: this aggregates the entire character.
 	return CharacterDoc.ALL
+
+
+func unbind() -> void:
+	super.unbind()
+	_damage_trackers.clear()
+	_recovery_host = null
+	_last_resorts_tracker = null
+	_last_resorts_actions_host = null
+	_rendered_recovery_damage = [-1, -1, -1]
+	_rendered_last_resorts_state = [-1, -1, -1]
+
+
+func _rebuild() -> void:
+	_damage_trackers.clear()
+	_recovery_host = null
+	_last_resorts_tracker = null
+	_last_resorts_actions_host = null
+	_rendered_recovery_damage = [-1, -1, -1]
+	_rendered_last_resorts_state = [-1, -1, -1]
+	super._rebuild()
+
+
+func _on_document_changed(sections: PackedStringArray) -> void:
+	if not _touches_watched(sections):
+		return
+
+	if _can_update_damage_in_place(sections):
+		_update_damage_in_place()
+		return
+
+	super._on_document_changed(sections)
+
+
+func _can_update_damage_in_place(sections: PackedStringArray) -> bool:
+	if not is_visible_in_tree() or _needs_rebuild:
+		return false
+	if _damage_trackers.is_empty():
+		return false
+	for s in sections:
+		if s != String(CharacterDoc.DAMAGE) and s != String(CharacterDoc.SKILLS):
+			return false
+	return true
+
+
+func _update_damage_in_place() -> void:
+	if ctx == null or ctx.doc == null:
+		return
+	var raw := ctx.doc.raw()
+	var damage: Dictionary = raw.get("damage", {})
+
+	for track in TRACKS:
+		var tracker: DamageTrack = _damage_trackers.get(track)
+		if tracker != null and is_instance_valid(tracker):
+			var track_val := AlternityNum.as_int(damage.get(track, 0))
+			if tracker.value() != track_val:
+				tracker.set_value(track_val)
+
+	var recovery_state := [
+		AlternityNum.as_int(damage.get("fatigue", 0)),
+		AlternityNum.as_int(damage.get("wound", 0)),
+		AlternityNum.as_int(damage.get("mortal", 0))
+	]
+	if _recovery_host != null and is_instance_valid(_recovery_host):
+		if _rendered_recovery_damage != recovery_state:
+			_rendered_recovery_damage = recovery_state
+			_render_recovery(_recovery_host, damage)
+
+	var used_resorts := AlternityNum.as_int(raw.get("last_resorts_used", 0))
+	if _last_resorts_tracker != null and is_instance_valid(_last_resorts_tracker):
+		if _last_resorts_tracker.value() != used_resorts:
+			_last_resorts_tracker.set_value(used_resorts)
+
+	var rebought := AlternityNum.as_int(raw.get("last_resorts_rebought", 0))
+	var summary := ctx.doc.summary()
+	var sp_left := AlternityNum.as_int(summary.get("skill_points_remaining", 0))
+	var lr_state := [used_resorts, rebought, sp_left]
+	if _last_resorts_actions_host != null and is_instance_valid(_last_resorts_actions_host):
+		if _rendered_last_resorts_state != lr_state:
+			_rendered_last_resorts_state = lr_state
+			_render_last_resorts_actions(_last_resorts_actions_host, summary)
 
 
 func build(container: Container) -> void:
@@ -34,12 +122,9 @@ func build(container: Container) -> void:
 	var left: Container = split[0]
 	var right: Container = split[1]
 
-	_build_abilities(left, summary)
-	_build_action(left, summary)
-	_build_movement(left, summary)
+	_build_core_panel(left, summary)
 
 	_build_damage(right, summary)
-	_build_last_resorts(right, summary)
 	_build_combat(right, summary)
 
 	# Everything the hero actually has, spelled out here rather than linked to.
@@ -79,11 +164,26 @@ func _build_validations(container: Container, summary: Dictionary) -> void:
 ## you have forgotten the first. A fixed table keeps the six together in a block
 ## you take in at once, and has room for the untrained score and resistance
 ## modifier the old compact summary showed and this one had dropped.
-func _build_abilities(container: Container, summary: Dictionary) -> void:
+## Concentrated core attributes panel: Abilities, Action Check, Movement, and Last Resorts.
+func _build_core_panel(container: Container, summary: Dictionary) -> void:
+	var palette := ctx.palette
+	var box := Widgets.section(container, "Core Attributes", palette)
+
+	_build_abilities_content(box, summary)
+	Widgets.separator(box, palette)
+	_build_action_content(box, summary)
+	Widgets.separator(box, palette)
+	_build_movement_content(box, summary)
+	Widgets.separator(box, palette)
+	_build_last_resorts_content(box, summary)
+
+
+func _build_abilities_content(box: Container, summary: Dictionary) -> void:
 	var palette := ctx.palette
 	var rules: AlternityRules = ctx.rules
 	var raw := ctx.doc.raw()
-	var box := Widgets.section(container, "Abilities", palette)
+
+	Widgets.subheading(box, "Abilities", palette)
 
 	var effective: Dictionary = summary.get("effective_abilities", {})
 	var base: Dictionary = raw.get("abilities", {})
@@ -104,9 +204,6 @@ func _build_abilities(container: Container, summary: Dictionary) -> void:
 	for ability in ABILITIES:
 		var base_score := AlternityNum.as_int(base.get(ability, 0))
 		var score := AlternityNum.as_int(effective.get(ability, base_score))
-		# Flag that a score is raised without spelling out the arithmetic. The
-		# long form ("14  (13 +1)") was wide enough to wrap inside its column,
-		# which split one ability across three lines and broke the table.
 		var score_text := str(score)
 		if score != base_score:
 			score_text = "%d (%+d)" % [score, score - base_score]
@@ -122,26 +219,22 @@ func _build_abilities(container: Container, summary: Dictionary) -> void:
 				palette, false, HORIZONTAL_ALIGNMENT_RIGHT
 			),
 		]
-		# Numbers must never wrap: a wrapped cell pushes its row out of line with
-		# every other row in the table.
 		for cell in cells:
 			(cell as Label).autowrap_mode = TextServer.AUTOWRAP_OFF
 
 	Widgets.metric(box, "Ability points spent", str(AlternityNum.as_int(summary.get("ability_total", 0))), palette)
 
 
-func _build_action(container: Container, summary: Dictionary) -> void:
+func _build_action_content(box: Container, summary: Dictionary) -> void:
 	var palette := ctx.palette
 	var action: Dictionary = summary.get("action_check", {})
 	if action.is_empty():
 		return
 
-	var box := Widgets.section(container, "Action Check", palette)
+	Widgets.subheading(box, "Action Check", palette)
 	Widgets.metric(box, "Actions per round", str(AlternityNum.as_int(action.get("actions", 1), 1)), palette)
 	Widgets.metric(box, "Situation die", String(action.get("die", "")), palette)
 
-	# The four thresholds are one reading, so they go in a table that stays
-	# together rather than four cells stretched over the width of the window.
 	var grid := GridContainer.new()
 	grid.columns = 4
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -168,6 +261,7 @@ func _build_damage(container: Container, summary: Dictionary) -> void:
 
 	var box := Widgets.section(container, "Damage", palette)
 
+	_damage_trackers.clear()
 	for track in TRACKS:
 		var total := AlternityNum.as_int(durability.get(track, 0))
 		var used := AlternityNum.as_int(damage.get(track, 0))
@@ -184,41 +278,137 @@ func _build_damage(container: Container, summary: Dictionary) -> void:
 				c["damage"] = tracks
 				rules.clamp_trackers(c))
 			save_requested.emit())
+		_damage_trackers[track] = tracker
+
+	_recovery_host = VBoxContainer.new()
+	_recovery_host.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	box.add_child(_recovery_host)
+	_render_recovery(_recovery_host, damage)
 
 
-func _build_last_resorts(container: Container, summary: Dictionary) -> void:
-	var doc := ctx.doc
-	var palette := ctx.palette
-	var resorts: Dictionary = summary.get("last_resorts", {})
-	if resorts.is_empty():
+## Downtime recovery checks, between sessions or during rest.
+##
+## Source: Gamemaster Guide p. 54. The cadences are deliberately unlike each
+## other and that is the whole point: fatigue comes back hourly, wounds take
+## weeks, and mortal damage never heals on its own -- so it is offered as a note
+## rather than a button that cannot work.
+func _render_recovery(container: Container, damage: Dictionary) -> void:
+	for child in container.get_children():
+		container.remove_child(child)
+		child.queue_free()
+	var fatigue_used := AlternityNum.as_int(damage.get("fatigue", 0))
+	var wound_used := AlternityNum.as_int(damage.get("wound", 0))
+	var mortal_used := AlternityNum.as_int(damage.get("mortal", 0))
+
+	if fatigue_used <= 0 and wound_used <= 0 and mortal_used <= 0:
 		return
 
-	var maximum := AlternityNum.as_int(resorts.get("max", 0))
-	if maximum <= 0:
+	Widgets.separator(container, ctx.palette)
+	Widgets.muted_text(container, "Recovery", ctx.palette, Widgets.FONT_CAPTION)
+
+	var recovery: Dictionary = ctx.rules.combat.RECOVERY
+
+	if fatigue_used > 0:
+		_build_recovery_action(
+			container,
+			"fatigue",
+			"Rest 1 hour (Recover Fatigue)",
+			String(recovery.get("fatigue", {}).get("note", "Requires complete rest. One check per hour."))
+		)
+
+	if wound_used > 0:
+		_build_recovery_action(
+			container,
+			"wound",
+			"Rest 1 week (Recover Wound)",
+			String(recovery.get("wound", {}).get("note", "Requires rest. One check per week, or treatment with Medical Science."))
+		)
+
+	if mortal_used > 0:
+		var note := Widgets.muted_text(
+			container,
+			"Mortal damage: %s" % String(recovery.get("mortal", {}).get("note", "Does not heal naturally. Only surgery repairs it.")),
+			ctx.palette,
+			Widgets.FONT_CAPTION
+		)
+		note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		note.custom_minimum_size = Vector2(1, 0)
+
+
+func _build_recovery_action(
+	container: Container,
+	track: String,
+	button_text: String,
+	caption_text: String
+) -> void:
+	var row := VBoxContainer.new()
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_theme_constant_override("separation", Widgets.GAP_TIGHT)
+	container.add_child(row)
+
+	if ctx.can_roll():
+		var button := Button.new()
+		button.name = "Recover" + track.capitalize() + "Button"
+		button.text = button_text
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button.custom_minimum_size = Vector2(0, 36)
+		button.clip_text = true
+		button.pressed.connect(func(): _on_recovery_check(track))
+		row.add_child(button)
+
+	var label := Widgets.muted_text(row, caption_text, ctx.palette, Widgets.FONT_CAPTION)
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.custom_minimum_size = Vector2(1, 0)
+
+
+func _on_recovery_check(track: String) -> void:
+	if ctx == null or ctx.doc == null or ctx.rules == null or not ctx.can_roll():
+		return
+	var row: Dictionary = ctx.rules.combat.RECOVERY.get(track, {})
+	if row.is_empty():
+		return
+	var skill_id: int = AlternityNum.as_int(row.get("skill_id", AlternityRules.PHYSICAL_RESOLVE_SKILL_ID), AlternityRules.PHYSICAL_RESOLVE_SKILL_ID)
+	var skill: Dictionary = ctx.rules.get_skill_by_id(skill_id)
+	if skill.is_empty():
 		return
 
-	var box := Widgets.section(container, "Last Resorts", palette)
-	var used := AlternityNum.as_int(doc.raw().get("last_resorts_used", 0))
+	var cadence: String = String(row.get("cadence", ""))
+	var reason := "Recovery (%s, 1 %s rest)" % [track.capitalize(), cadence]
+	var check := SkillCheck.call_for(
+		ctx.rules.skill_label(skill),
+		0,
+		reason,
+		skill_id
+	)
+	var rolled = await ctx.checks.run_called(check, ctx.doc, skill)
+	if not is_instance_valid(self) or rolled == null:
+		return
+	var degree: String = (rolled as SkillCheck).degree()
+	var amount: int = ctx.rules.combat.recovery_amount(track, degree)
+	if amount <= 0:
+		return
 
-	# Same consumable-track shape as damage, so it gets the same boxes rather
-	# than the stepper it used to share with it.
-	var tracker := DamageTrack.new()
-	box.add_child(tracker)
-	tracker.setup(palette, "Spent", used, maximum)
-	tracker.value_changed.connect(func(value: int):
-		doc.apply([CharacterDoc.DAMAGE], func(c): c["last_resorts_used"] = value)
-		save_requested.emit())
+	var restored: int = AlternityNum.as_int(ctx.doc.apply([CharacterDoc.DAMAGE], func(c: Dictionary) -> int:
+		var tracks: Dictionary = c.get("damage", {})
+		var current: int = AlternityNum.as_int(tracks.get(track, 0))
+		var to_restore: int = mini(current, amount)
+		tracks[track] = maxi(0, current - to_restore)
+		c["damage"] = tracks
+		ctx.rules.clamp_trackers(c)
+		return to_restore
+	), 0)
 
-	Widgets.metric(box, "Recovery cost", "%d SP each" % AlternityNum.as_int(resorts.get("cost", 0)), palette)
+	if restored > 0:
+		save_requested.emit()
 
 
-func _build_movement(container: Container, summary: Dictionary) -> void:
+func _build_movement_content(box: Container, summary: Dictionary) -> void:
 	var palette := ctx.palette
 	var movement: Dictionary = summary.get("movement", {})
 	if movement.is_empty():
 		return
 
-	var box := Widgets.section(container, "Movement", palette)
+	Widgets.subheading(box, "Movement", palette)
 	for key in ["sprint", "run", "walk", "easy_swim", "fly"]:
 		if not movement.has(key):
 			continue
@@ -234,6 +424,99 @@ func _build_movement(container: Container, summary: Dictionary) -> void:
 			Widgets.metric(box, "Encumbrance penalty", "%+d steps" % penalty, palette)
 
 
+func _build_last_resorts_content(box: Container, summary: Dictionary) -> void:
+	var doc := ctx.doc
+	var palette := ctx.palette
+	var resorts: Dictionary = summary.get("last_resorts", {})
+	if resorts.is_empty():
+		return
+
+	var maximum := AlternityNum.as_int(resorts.get("max", 0))
+	if maximum <= 0:
+		return
+
+	Widgets.subheading(box, "Last Resorts", palette)
+	var used := AlternityNum.as_int(doc.raw().get("last_resorts_used", 0))
+	var cost := AlternityNum.as_int(resorts.get("cost", 0))
+	var rebought := AlternityNum.as_int(doc.raw().get("last_resorts_rebought", 0))
+	var sp_left := AlternityNum.as_int(summary.get("skill_points_remaining", 0))
+
+	var tracker := DamageTrack.new()
+	box.add_child(tracker)
+	tracker.setup(palette, "Spent", used, maximum)
+	tracker.value_changed.connect(func(value: int):
+		doc.apply([CharacterDoc.DAMAGE], func(c): c["last_resorts_used"] = value)
+		save_requested.emit())
+	_last_resorts_tracker = tracker
+
+	Widgets.metric(box, "Recovery cost", "%d SP each" % cost, palette)
+
+	_last_resorts_actions_host = VBoxContainer.new()
+	_last_resorts_actions_host.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	box.add_child(_last_resorts_actions_host)
+	_render_last_resorts_actions(_last_resorts_actions_host, summary)
+
+
+func _render_last_resorts_actions(host: Container, summary: Dictionary) -> void:
+	for child in host.get_children():
+		host.remove_child(child)
+		child.queue_free()
+
+	var doc := ctx.doc
+	var palette := ctx.palette
+	var resorts: Dictionary = summary.get("last_resorts", {})
+	var maximum := AlternityNum.as_int(resorts.get("max", 0))
+	var used := AlternityNum.as_int(doc.raw().get("last_resorts_used", 0))
+	var cost := AlternityNum.as_int(resorts.get("cost", 0))
+	var rebought := AlternityNum.as_int(doc.raw().get("last_resorts_rebought", 0))
+	var sp_left := AlternityNum.as_int(summary.get("skill_points_remaining", 0))
+
+	# Interactive Re-buy action row (SP deduction)
+	var action_row := HBoxContainer.new()
+	action_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	action_row.add_theme_constant_override("separation", Widgets.GAP_ROW)
+	host.add_child(action_row)
+
+	var buy_btn := Button.new()
+	buy_btn.text = "Re-buy Last Resort (%d SP)" % cost
+	buy_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	buy_btn.custom_minimum_size = Vector2(0, 36)
+	var can_rebuy := used > 0 and sp_left >= cost
+	buy_btn.disabled = not can_rebuy
+	if used <= 0:
+		buy_btn.tooltip_text = "No last resort points are currently spent."
+	elif sp_left < cost:
+		buy_btn.tooltip_text = "Not enough skill points remaining (costs %d SP, have %d SP)." % [cost, sp_left]
+	else:
+		buy_btn.tooltip_text = "Spend %d SP to recover 1 spent Last Resort point." % cost
+	buy_btn.pressed.connect(func():
+		doc.apply([CharacterDoc.DAMAGE, CharacterDoc.SKILLS], func(c: Dictionary):
+			var current_used := AlternityNum.as_int(c.get("last_resorts_used", 0))
+			var current_rebought := AlternityNum.as_int(c.get("last_resorts_rebought", 0))
+			c["last_resorts_used"] = maxi(0, current_used - 1)
+			c["last_resorts_rebought"] = current_rebought + 1
+		)
+		save_requested.emit())
+	action_row.add_child(buy_btn)
+
+	if rebought > 0:
+		var refund_btn := Button.new()
+		refund_btn.text = "Refund (+%d SP)" % cost
+		refund_btn.tooltip_text = "Undo 1 rebought Last Resort and refund %d SP." % cost
+		refund_btn.custom_minimum_size = Vector2(100, 36)
+		refund_btn.pressed.connect(func():
+			doc.apply([CharacterDoc.DAMAGE, CharacterDoc.SKILLS], func(c: Dictionary):
+				var current_used := AlternityNum.as_int(c.get("last_resorts_used", 0))
+				var current_rebought := AlternityNum.as_int(c.get("last_resorts_rebought", 0))
+				c["last_resorts_used"] = mini(maximum, current_used + 1)
+				c["last_resorts_rebought"] = maxi(0, current_rebought - 1)
+			)
+			save_requested.emit())
+		action_row.add_child(refund_btn)
+
+		Widgets.muted_text(host, "Rebought in play: %d (%d SP spent total)" % [rebought, rebought * cost], palette, Widgets.FONT_CAPTION)
+
+
 func _build_combat(container: Container, summary: Dictionary) -> void:
 	var palette := ctx.palette
 	var equipment: Dictionary = summary.get("equipment", {})
@@ -242,12 +525,11 @@ func _build_combat(container: Container, summary: Dictionary) -> void:
 
 	var attacks: Array = equipment.get("attack_forms", [])
 	if not attacks.is_empty():
-		var box := Widgets.section(container, "Attacks", palette)
+		var box := Widgets.section(container, "Attack Forms", palette)
 		for form in attacks:
 			if typeof(form) != TYPE_DICTIONARY:
 				continue
-			Widgets.text(box, String(form.get("name", "?")), palette, Widgets.FONT_DETAIL, palette.accent)
-			Widgets.muted_text(box, _attack_line(form), palette, Widgets.FONT_CAPTION)
+			_build_attack_card(box, form, palette)
 
 	var armor: Array = equipment.get("combat_armor", [])
 	if not armor.is_empty():
@@ -259,18 +541,90 @@ func _build_combat(container: Container, summary: Dictionary) -> void:
 			Widgets.muted_text(box, _armor_line(row), palette, Widgets.FONT_CAPTION)
 
 
-func _attack_line(form: Dictionary) -> String:
-	var parts: Array = []
-	var damage := String(form.get("damage", "")).strip_edges()
-	if not damage.is_empty():
-		parts.append(damage)
-	var score: Variant = form.get("score", form.get("skill_score", null))
-	if score != null:
-		parts.append("score %s" % str(score))
-	var range_text := String(form.get("range", "")).strip_edges()
-	if not range_text.is_empty():
-		parts.append(range_text)
-	return "  |  ".join(parts)
+func _build_attack_card(parent: Container, form: Dictionary, palette: ThemePalette) -> void:
+	var panel := PanelContainer.new()
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel.add_theme_stylebox_override("panel", Widgets.flat_style(palette.surface, palette.border, 6, true))
+	parent.add_child(panel)
+
+	var margin := MarginContainer.new()
+	for side in ["left", "right", "top", "bottom"]:
+		margin.add_theme_constant_override("margin_" + side, 8)
+	panel.add_child(margin)
+
+	var card := VBoxContainer.new()
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.add_theme_constant_override("separation", Widgets.GAP_TIGHT)
+	margin.add_child(card)
+
+	# Weapon / Attack Title
+	var title_lbl := Label.new()
+	title_lbl.text = String(form.get("name", "?"))
+	title_lbl.add_theme_color_override("font_color", palette.accent)
+	title_lbl.add_theme_font_size_override("font_size", Widgets.FONT_BODY)
+	card.add_child(title_lbl)
+
+	# Row 1: Score & Die
+	var r1 := HBoxContainer.new()
+	r1.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	r1.add_theme_constant_override("separation", Widgets.GAP_SECTION)
+	card.add_child(r1)
+
+	var score_val: Variant = form.get("score", form.get("skill_score", "-"))
+	_add_stat_cell(r1, "Score", str(score_val), palette, true)
+	_add_stat_cell(r1, "Die", String(form.get("base_die", form.get("die", "+d0"))), palette, true)
+
+	# Row 2: Damage O/G/A
+	var dmg_val: String = String(form.get("damage", "-")).strip_edges()
+	if dmg_val.is_empty():
+		dmg_val = "-"
+	_add_stat_cell(card, "Damage O/G/A", dmg_val, palette, false)
+
+	# Row 3: Type & Range
+	var r3 := HBoxContainer.new()
+	r3.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	r3.add_theme_constant_override("separation", Widgets.GAP_SECTION)
+	card.add_child(r3)
+
+	var type_val: String = String(form.get("type", "-")).strip_edges()
+	_add_stat_cell(r3, "Type", type_val if not type_val.is_empty() else "-", palette, true)
+	var range_val: String = String(form.get("range", "-")).strip_edges()
+	_add_stat_cell(r3, "Range", range_val if not range_val.is_empty() else "-", palette, true)
+
+	# Row 4: Hide, Clip, Mass
+	var r4 := HBoxContainer.new()
+	r4.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	r4.add_theme_constant_override("separation", Widgets.GAP_SECTION)
+	card.add_child(r4)
+
+	var hide_val: String = String(form.get("hide", "-")).strip_edges()
+	_add_stat_cell(r4, "Hide", hide_val if not hide_val.is_empty() else "-", palette, true)
+	var clip_val: String = String(form.get("clip_size", form.get("clip", "-"))).strip_edges()
+	_add_stat_cell(r4, "Clip", clip_val if not clip_val.is_empty() else "-", palette, true)
+	var mass_val: String = String(form.get("mass", "-")).strip_edges()
+	_add_stat_cell(r4, "Mass", mass_val if not mass_val.is_empty() else "-", palette, true)
+
+
+func _add_stat_cell(parent: Container, label_text: String, value_text: String, palette: ThemePalette, expand: bool) -> Container:
+	var cell := VBoxContainer.new()
+	if expand:
+		cell.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cell.add_theme_constant_override("separation", 2)
+	parent.add_child(cell)
+
+	var lbl := Label.new()
+	lbl.text = label_text
+	lbl.add_theme_color_override("font_color", palette.muted)
+	lbl.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
+	cell.add_child(lbl)
+
+	var val := Label.new()
+	val.text = value_text
+	val.add_theme_color_override("font_color", palette.text)
+	val.add_theme_font_size_override("font_size", Widgets.FONT_DETAIL)
+	cell.add_child(val)
+
+	return cell
 
 
 func _armor_line(row: Dictionary) -> String:
@@ -336,87 +690,126 @@ func _build_skill_rows(box: Container, rows: Array) -> void:
 	var palette := ctx.palette
 	var raw := ctx.doc.raw()
 
-	# Broads first, then their specialties, so the list reads the way the tree
-	# does rather than in whatever order the ids happened to land.
-	rows.sort_custom(func(a, b):
-		var a_broad: bool = a.get("type", "") == "broad"
-		var b_broad: bool = b.get("type", "") == "broad"
-		if a_broad != b_broad:
-			return a_broad
-		return String(a.get("name", "")) < String(b.get("name", "")))
+	var grid := GridContainer.new()
+	grid.columns = 4
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid.add_theme_constant_override("h_separation", Widgets.GAP_ROW)
+	grid.add_theme_constant_override("v_separation", Widgets.GAP_TIGHT)
+	box.add_child(grid)
 
+	for title in ["Rank", "Skill", "Score", "Die"]:
+		var hdr := Label.new()
+		hdr.text = title
+		hdr.add_theme_color_override("font_color", palette.muted)
+		hdr.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
+		if title == "Skill":
+			hdr.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		grid.add_child(hdr)
+
+	# Group broads and their specialties
+	var broad_map: Dictionary = {}
+	var standalone: Array = []
 	for skill in rows:
 		var is_broad: bool = skill.get("type", "") == "broad"
-		var score: Dictionary = skill.get("score", {})
-		var rank := AlternityNum.as_int(skill.get("rank", 0))
-
-		var name := String(rules.skill_label(skill))
-		if not is_broad:
-			name = "    " + name
-		var value := "rank %d  -  %d  %s" % [
-			rank,
-			AlternityNum.as_int(score.get("ordinary", 0)),
-			String(score.get("die", "")),
-		]
-		var row := Widgets.metric(box, name, value, palette)
+		var skill_id: int = AlternityNum.as_int(skill.get("id", -1))
 		if is_broad:
-			(row.get_child(0) as Label).add_theme_color_override("font_color", palette.accent)
+			if not broad_map.has(skill_id):
+				broad_map[skill_id] = {"broad": skill, "specialties": []}
+			else:
+				broad_map[skill_id]["broad"] = skill
+		else:
+			var broad_id: int = AlternityNum.as_int(skill.get("broad_id", -1))
+			if broad_id >= 0:
+				if not broad_map.has(broad_id):
+					var broad_def: Dictionary = rules.get_skill_by_id(broad_id)
+					if not broad_def.is_empty():
+						var broad_copy := broad_def.duplicate(true)
+						broad_copy["rank"] = rules.skill_rank(raw, broad_id)
+						broad_copy["score"] = rules.skill_score(raw, broad_def)
+						broad_copy["type"] = "broad"
+						broad_map[broad_id] = {"broad": broad_copy, "specialties": []}
+					else:
+						standalone.append(skill)
+						continue
+				broad_map[broad_id]["specialties"].append(skill)
+			else:
+				standalone.append(skill)
 
-		# The reference text, inline. skill_detail resolves it against this
-		# character, so the ranks shown are the ones actually reached.
-		var detail: Dictionary = rules.skill_detail(skill, raw)
+	var ability_order := {"STR": 0, "DEX": 1, "CON": 2, "INT": 3, "WIL": 4, "PER": 5}
+	var sorted_groups: Array = broad_map.values()
+	sorted_groups.sort_custom(func(a, b):
+		var broad_a: Dictionary = a.get("broad", {})
+		var broad_b: Dictionary = b.get("broad", {})
+		var stat_a: String = String(broad_a.get("stat", "STR"))
+		var stat_b: String = String(broad_b.get("stat", "STR"))
+		var order_a: int = ability_order.get(stat_a, 99)
+		var order_b: int = ability_order.get(stat_b, 99)
+		if order_a != order_b:
+			return order_a < order_b
+		return String(broad_a.get("name", "")) < String(broad_b.get("name", ""))
+	)
 
-		var complex := String(detail.get("complex_check", "")).strip_edges()
-		if not complex.is_empty():
-			Widgets.muted_text(box, complex, palette, Widgets.FONT_CAPTION)
+	for group in sorted_groups:
+		var broad: Dictionary = group.get("broad", {})
+		if not broad.is_empty():
+			_add_summary_skill_row(grid, broad, true, 0)
+		for spec in group.get("specialties", []):
+			_add_summary_skill_row(grid, spec, false, 1)
 
-		for note in detail.get("roll_notes", []):
-			if _is_general_rule(String(note)):
-				continue
-			Widgets.muted_text(box, "- %s" % String(note), palette, Widgets.FONT_CAPTION)
-
-		var benefits: Dictionary = detail.get("rank_benefits", {})
-		for benefit_rank_value in _sorted_ranks(benefits):
-			var benefit_rank := AlternityNum.as_int(benefit_rank_value)
-			# Benefits the hero has not reached yet still show, greyed: knowing
-			# what the next rank buys is half of why you read this.
-			var reached := rank >= benefit_rank
-			Widgets.text(
-				box,
-				"Rank %d: %s" % [benefit_rank, String(benefits.get(benefit_rank, benefits.get(str(benefit_rank), "")))],
-				palette, Widgets.FONT_CAPTION,
-				palette.text if reached else palette.muted
-			)
-
-
-## Notes that are true of every skill of their kind, rather than of this one.
-##
-## skill_detail prefixes each skill's roll notes with how its score and situation
-## die are derived. That is worth stating in a detail view opened for one skill;
-## repeated down a list of forty it is noise that buries the notes that actually
-## differ. Stated once at the head of the section instead.
-const GENERAL_RULE_PREFIXES := [
-	"Score is the linked ability score",
-	"Score is linked ability +",
-	"If only the parent broad skill is trained",
-]
-
-
-func _is_general_rule(note: String) -> bool:
-	for prefix in GENERAL_RULE_PREFIXES:
-		if note.begins_with(prefix):
-			return true
-	return false
+	for spec in standalone:
+		_add_summary_skill_row(grid, spec, false, 0)
 
 
-## Rank-benefit keys arrive as strings from JSON, so they are sorted as numbers
-## rather than lexically -- otherwise rank 12 files between rank 1 and rank 2.
-func _sorted_ranks(benefits: Dictionary) -> Array:
-	var ranks: Array = []
-	for key in benefits:
-		ranks.append(AlternityNum.as_int(key))
-	ranks.sort()
-	return ranks
+func _add_summary_skill_row(grid: GridContainer, skill: Dictionary, is_broad: bool, indent_level: int) -> void:
+	var rules: AlternityRules = ctx.rules
+	var palette := ctx.palette
+	var raw := ctx.doc.raw()
+	var skill_id: int = AlternityNum.as_int(skill.get("id", -1))
+	var rank: int = rules.skill_rank(raw, skill_id)
+	var score: Dictionary = rules.skill_score(raw, skill)
+
+	# 1. Rank
+	var rank_str := "Broad" if is_broad else str(rank)
+	var rank_lbl := Label.new()
+	rank_lbl.text = rank_str
+	rank_lbl.add_theme_color_override("font_color", palette.muted)
+	rank_lbl.add_theme_font_size_override("font_size", Widgets.FONT_DETAIL)
+	rank_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	grid.add_child(rank_lbl)
+
+	# 2. Skill Name
+	var name_btn := Button.new()
+	name_btn.flat = true
+	var skill_name := String(rules.skill_label(skill))
+	name_btn.text = ("    " + skill_name) if indent_level > 0 else skill_name
+	name_btn.tooltip_text = "View details for %s" % rules.skill_label(skill)
+	name_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	name_btn.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	name_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_btn.add_theme_color_override("font_color", palette.accent if is_broad else palette.text)
+	name_btn.add_theme_font_size_override("font_size", Widgets.FONT_DETAIL)
+	name_btn.pressed.connect(func(): _open_detail(skill))
+	grid.add_child(name_btn)
+
+	# 3. Score
+	var ord_val: int = AlternityNum.as_int(score.get("ordinary", 0))
+	var good_val: int = AlternityNum.as_int(score.get("good", 0))
+	var amaz_val: int = AlternityNum.as_int(score.get("amazing", 0))
+	var score_lbl := Label.new()
+	score_lbl.text = "O %d / G %d / A %d" % [ord_val, good_val, amaz_val]
+	score_lbl.add_theme_color_override("font_color", palette.text)
+	score_lbl.add_theme_font_size_override("font_size", Widgets.FONT_DETAIL)
+	score_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	grid.add_child(score_lbl)
+
+	# 4. Die
+	var die_str: String = String(score.get("die", "+d0"))
+	var die_lbl := Label.new()
+	die_lbl.text = die_str
+	die_lbl.add_theme_color_override("font_color", palette.muted)
+	die_lbl.add_theme_font_size_override("font_size", Widgets.FONT_DETAIL)
+	die_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	grid.add_child(die_lbl)
 
 
 func _build_fx(container: Container) -> void:
@@ -439,36 +832,167 @@ func _build_fx(container: Container) -> void:
 		Widgets.metric(box, "Reserved by permanent powers", "-%d" % drain, palette)
 		Widgets.metric(box, "Usable", str(maxi(0, pool - drain)), palette)
 
-	for skill in selected:
-		var skill_name := String(skill.get("name", ""))
-		var is_broad: bool = String(skill.get("type", "")) == "broad"
-		var score: Dictionary = rules.fx.fx_skill_score(raw, skill_name)
-		# A power whose school was sold off is still on the sheet but can no
-		# longer be cast. Printing "0 +d0" read as a legal but hopeless roll.
-		var reading := "rank %d  -  %d  %s" % [
-			AlternityNum.as_int(skill.get("rank", 0)),
-			AlternityNum.as_int(score.get("ordinary", 0)),
-			String(score.get("die", "")),
-		]
-		if not bool(score.get("usable", true)):
-			reading = "rank %d  -  not available" % AlternityNum.as_int(skill.get("rank", 0))
-		var row := Widgets.metric(
-			box,
-			skill_name if is_broad else "    " + skill_name,
-			reading,
-			palette
-		)
+	var grid := GridContainer.new()
+	grid.columns = 5
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid.add_theme_constant_override("h_separation", Widgets.GAP_ROW)
+	grid.add_theme_constant_override("v_separation", Widgets.GAP_TIGHT)
+	box.add_child(grid)
+
+	for title in ["Rank", "Power", "Score", "Die", "FX Cost"]:
+		var hdr := Label.new()
+		hdr.text = title
+		hdr.add_theme_color_override("font_color", palette.muted)
+		hdr.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
+		if title == "Power":
+			hdr.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		grid.add_child(hdr)
+
+	var groups := _group_fx_powers(selected)
+	for group in groups:
+		var broad: Dictionary = group.get("broad", {})
+		if not broad.is_empty():
+			_add_summary_fx_row(grid, broad, true, 0)
+		for spec in group.get("specialties", []):
+			_add_summary_fx_row(grid, spec, false, 1 if not broad.is_empty() else 0)
+
+	var perms := rules.fx.permanent_fx_effects_summary(raw)
+	if not perms.is_empty():
+		Widgets.separator(box, palette)
+		Widgets.subheading(box, "Always Active Effects", palette)
+		for effect in perms:
+			_build_permanent_effect(box, effect)
+
+
+func _add_summary_fx_row(grid: GridContainer, item: Dictionary, is_broad: bool, indent_level: int) -> void:
+	var rules: AlternityRules = ctx.rules
+	var palette := ctx.palette
+	var raw := ctx.doc.raw()
+	var item_name: String = String(item.get("name", ""))
+
+	# 1. Rank
+	var rank_str := "Broad" if is_broad else str(AlternityNum.as_int(item.get("rank", 0)))
+	var rank_lbl := Label.new()
+	rank_lbl.text = rank_str
+	rank_lbl.add_theme_color_override("font_color", palette.muted)
+	rank_lbl.add_theme_font_size_override("font_size", Widgets.FONT_DETAIL)
+	rank_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	grid.add_child(rank_lbl)
+
+	# 2. Power Name
+	var name_btn := Button.new()
+	name_btn.flat = true
+	name_btn.text = ("    " + item_name) if indent_level > 0 else item_name
+	name_btn.tooltip_text = "View details for %s" % item_name
+	name_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	name_btn.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	name_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_btn.add_theme_color_override("font_color", palette.accent if is_broad else palette.text)
+	name_btn.add_theme_font_size_override("font_size", Widgets.FONT_DETAIL)
+	name_btn.pressed.connect(func(): _open_detail(item))
+	grid.add_child(name_btn)
+
+	# 3. Score
+	var score: Dictionary = rules.fx.fx_skill_score(raw, item_name)
+	var usable: bool = bool(score.get("usable", true))
+	var score_lbl := Label.new()
+	if usable:
+		var ord_val: int = AlternityNum.as_int(score.get("ordinary", 0))
+		var good_val: int = AlternityNum.as_int(score.get("good", 0))
+		var amaz_val: int = AlternityNum.as_int(score.get("amazing", 0))
+		score_lbl.text = "O %d / G %d / A %d" % [ord_val, good_val, amaz_val]
+		score_lbl.add_theme_color_override("font_color", palette.text)
+	else:
+		score_lbl.text = "-"
+		score_lbl.add_theme_color_override("font_color", palette.muted)
+	score_lbl.add_theme_font_size_override("font_size", Widgets.FONT_DETAIL)
+	score_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	grid.add_child(score_lbl)
+
+	# 4. Die
+	var die_lbl := Label.new()
+	die_lbl.text = String(score.get("die", "+d0")) if usable else "-"
+	die_lbl.add_theme_color_override("font_color", palette.muted)
+	die_lbl.add_theme_font_size_override("font_size", Widgets.FONT_DETAIL)
+	die_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	grid.add_child(die_lbl)
+
+	# 5. FX Cost
+	var fx_cost_lbl := Label.new()
+	if is_broad:
+		fx_cost_lbl.text = "-"
+	else:
+		var is_perm: bool = rules.fx.is_fx_skill_permanent(raw, item_name)
+		if is_perm:
+			var perm_cost := AlternityNum.as_int(item.get("permanent_cost", 0))
+			fx_cost_lbl.text = "%d (Perm)" % perm_cost
+		else:
+			var act: Dictionary = rules.fx.fx_activation_cost(raw, item_name)
+			var base_pts := AlternityNum.as_int(act.get("points", 1))
+			var max_pts := AlternityNum.as_int(act.get("points_max", base_pts))
+			var surcharge := AlternityNum.as_int(act.get("untrained_surcharge", 0))
+			if max_pts > base_pts:
+				fx_cost_lbl.text = "%d-%d" % [base_pts + surcharge, max_pts + surcharge]
+			else:
+				fx_cost_lbl.text = str(AlternityNum.as_int(act.get("total", base_pts)))
+	fx_cost_lbl.add_theme_color_override("font_color", palette.muted)
+	fx_cost_lbl.add_theme_font_size_override("font_size", Widgets.FONT_DETAIL)
+	fx_cost_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	grid.add_child(fx_cost_lbl)
+
+
+func _group_fx_powers(rows: Array) -> Array:
+	var rules: AlternityRules = ctx.rules
+	var broad_map: Dictionary = {}
+	var standalone: Array = []
+
+	for item in rows:
+		var is_broad: bool = String(item.get("type", "")) == "broad"
+		var item_name: String = String(item.get("name", ""))
 		if is_broad:
-			(row.get_child(0) as Label).add_theme_color_override("font_color", palette.accent)
-		if rules.fx.is_fx_skill_permanent(raw, skill_name):
-			Widgets.muted_text(box, "    Always active", palette, Widgets.FONT_CAPTION)
+			if not broad_map.has(item_name):
+				broad_map[item_name] = {"broad": item, "specialties": []}
+			else:
+				broad_map[item_name]["broad"] = item
+		else:
+			var broad_name: String = String(item.get("broad_skill", ""))
+			if not broad_name.is_empty():
+				if not broad_map.has(broad_name):
+					var broad_def: Dictionary = rules.fx.get_broad_skill(broad_name)
+					if not broad_def.is_empty():
+						var broad_copy := broad_def.duplicate(true)
+						broad_copy["type"] = "broad"
+						broad_copy["rank"] = 1
+						broad_map[broad_name] = {"broad": broad_copy, "specialties": []}
+					else:
+						standalone.append(item)
+						continue
+				broad_map[broad_name]["specialties"].append(item)
+			else:
+				standalone.append(item)
 
-		var description := String(skill.get("description", "")).strip_edges()
-		if not description.is_empty():
-			Widgets.muted_text(box, description, palette, Widgets.FONT_CAPTION)
+	var sorted_groups: Array = broad_map.values()
+	sorted_groups.sort_custom(func(a, b):
+		var broad_a: Dictionary = a.get("broad", {})
+		var broad_b: Dictionary = b.get("broad", {})
+		return String(broad_a.get("name", "")) < String(broad_b.get("name", ""))
+	)
+	var result: Array = []
+	for group in sorted_groups:
+		result.append(group)
+	if not standalone.is_empty():
+		result.append({"broad": {}, "specialties": standalone})
+	return result
 
-	for effect in rules.fx.permanent_fx_effects_summary(raw):
-		_build_permanent_effect(box, effect)
+
+func _open_detail(skill: Dictionary) -> void:
+	if ctx.router == null:
+		return
+	await ctx.router.push(DETAIL_ROUTE, {
+		"palette": ctx.palette,
+		"data": skill,
+		"title": String(skill.get("name", ctx.rules.skill_label(skill))),
+	})
 
 
 ## One always-active power, named and described.

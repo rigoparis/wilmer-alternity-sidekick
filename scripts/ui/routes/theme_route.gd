@@ -43,7 +43,9 @@ func _build() -> void:
 	var heading := Label.new()
 	heading.text = title()
 	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	heading.add_theme_color_override("font_color", _palette.text)
+	heading.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	heading.custom_minimum_size = Vector2(1, 0)
+	heading.add_theme_color_override("font_color", _palette.accent)
 	heading.add_theme_font_size_override("font_size", Widgets.FONT_SECTION_TITLE)
 	box.add_child(heading)
 
@@ -52,18 +54,38 @@ func _build() -> void:
 	else:
 		var current: int = _service.current_theme_index
 		var names: Array = _service.theme_names
+		var buttons: Array[Button] = []
 		for i in names.size():
 			var button := Button.new()
 			button.text = String(names[i])
 			button.toggle_mode = true
-			button.button_pressed = i == current
+			var is_active: bool = (i == current)
+			button.button_pressed = is_active
 			button.custom_minimum_size = Vector2(0, 44)
+			button.add_theme_stylebox_override(
+				"normal",
+				Widgets.flat_style(_palette.surface_soft, _palette.accent if is_active else _palette.border, 6)
+			)
+			button.add_theme_color_override("font_color", _palette.accent if is_active else _palette.text)
 			var index: int = i
-			button.pressed.connect(func(): _service.set_theme(index))
+			button.pressed.connect(func():
+				_service.set_theme(index)
+				for b_idx in buttons.size():
+					var b := buttons[b_idx]
+					var active := (b_idx == index)
+					b.button_pressed = active
+					b.add_theme_stylebox_override(
+						"normal",
+						Widgets.flat_style(_palette.surface_soft, _palette.accent if active else _palette.border, 6)
+					)
+					b.add_theme_color_override("font_color", _palette.accent if active else _palette.text)
+			)
+			buttons.append(button)
 			box.add_child(button)
 
 	var done := Button.new()
 	done.text = "Close"
 	done.custom_minimum_size = Vector2(0, 44)
+	done.add_theme_stylebox_override("normal", Widgets.flat_style(_palette.surface_soft, _palette.border, 6))
 	done.pressed.connect(func(): close(null))
 	box.add_child(done)

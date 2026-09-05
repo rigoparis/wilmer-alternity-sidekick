@@ -44,6 +44,9 @@ signal action_check_wanted
 ## somebody deals with it.
 signal attack_arrived(attack: CombatAttack)
 
+## An attack on this device has been resolved (damage applied or parried).
+signal attack_resolved(attack: CombatAttack)
+
 ## The scene ended and this character's stun has cleared.
 ##
 ## Carries how much was cleared, so a screen can say what happened rather than a
@@ -96,6 +99,9 @@ var _checked_round: String = ""
 ## A queue rather than one attack: two enemies can fire in the same phase, and
 ## the second must not quietly replace the first.
 var incoming_attacks: Array = []
+
+## Checks the GM called for that nobody has resolved yet, oldest first.
+var incoming_checks: Array = []
 
 
 func _init(
@@ -216,7 +222,35 @@ func _on_replay(replayed: Array) -> void:
 
 
 func _on_check_ruled(data: Dictionary) -> void:
-	check_arrived.emit(SkillCheck.from_dict(data))
+	var check := SkillCheck.from_dict(data)
+	if check.origin == SkillCheck.ORIGIN_GM:
+		var my_id := transport.local_player_id() if transport != null else ""
+		if check.player_id.is_empty() or check.player_id == my_id:
+			var exists := false
+			for c in incoming_checks:
+				if (c as SkillCheck).check_id == check.check_id:
+					exists = true
+					break
+			if not exists:
+				incoming_checks.append(check)
+	check_arrived.emit(check)
+	changed.emit()
+
+
+## Dismiss a check called by the GM without rolling it.
+func dismiss_called_check(check: SkillCheck) -> void:
+	if check == null:
+		return
+	for i in incoming_checks.size():
+		if (incoming_checks[i] as SkillCheck).check_id == check.check_id:
+			incoming_checks.remove_at(i)
+			changed.emit()
+			return
+
+
+## Clear a called check that has been rolled.
+func resolve_called_check(check: SkillCheck) -> void:
+	dismiss_called_check(check)
 
 
 func _on_round_updated(data: Dictionary) -> void:
@@ -225,10 +259,12 @@ func _on_round_updated(data: Dictionary) -> void:
 		active_round = null
 		_checked_round = ""
 		round_changed.emit()
+		changed.emit()
 		return
 
 	active_round = ActionRound.from_dict(data)
 	round_changed.emit()
+	changed.emit()
 
 	# Ask for an action check only when this round is actually waiting on ours,
 	# and only once per round -- the GM resends the whole round on every change,
@@ -273,6 +309,7 @@ func apply_attack(attack: CombatAttack, absorbed: int, parried: bool = false) ->
 	if doc == null or rules == null or not attack.hits() or parried:
 		# A parry that beat the attack stops it outright: no primary damage, so
 		# there is nothing to apply and nothing to save.
+		changed.emit()
 		return {}
 
 	# Through apply() rather than around it: a lambda captures a local by value,
@@ -324,6 +361,7 @@ func report_attack(
 	})
 	if transport != null:
 		transport.send_attack_result(attack.to_dict())
+	attack_resolved.emit(attack)
 	changed.emit()
 
 
@@ -397,6 +435,16 @@ func is_dodging() -> bool:
 func send_action_check(check: SkillCheck) -> void:
 	if transport == null or check == null:
 		return
+	if active_round != null:
+		active_round.record_check(
+			transport.local_player_id(),
+			check.degree(),
+			check.ordinary,
+			AlternityNum.as_int(check.result.get("total", 0)),
+			bool(check.result.get("is_critical_failure", false))
+		)
+		round_changed.emit()
+		changed.emit()
 	transport.send_action_check({
 		"round_id": active_round.round_id if active_round != null else "",
 		"degree": check.degree(),
@@ -425,6 +473,17 @@ func _absorb(event: Dictionary) -> void:
 	var kind := String(event.get("kind", ""))
 	if kind == CampaignSession.EVENT_SCENE_END:
 		_end_the_scene()
+		return
+	if kind == CampaignSession.EVENT_AP_SET:
+		if transport != null and String(event.get("player_id", "")) == transport.local_player_id() and doc != null:
+			var payload_set: Dictionary = event.get("payload", {}) if typeof(event.get("payload")) == TYPE_DICTIONARY else {}
+			var new_ap := AlternityNum.as_int(payload_set.get("new_ap", 0))
+			doc.apply(CharacterDoc.ALL, func(character):
+				character["achievement_points"] = new_ap)
+			if store != null:
+				store.save(doc)
+			push_character()
+			ap_applied.emit(new_ap, "Total adjusted by GM")
 		return
 	if kind != CampaignSession.EVENT_AP_AWARD:
 		return

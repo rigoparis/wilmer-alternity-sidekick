@@ -25,6 +25,8 @@ const ICON_THEME := preload("res://assets/pallete.svg")
 const ICON_SHARE := preload("res://assets/share.svg")
 const ICON_SAVE := preload("res://assets/diskette.svg")
 const ICON_CLOSE := preload("res://assets/logout.svg")
+const ICON_ATTACK := preload("res://assets/attack.svg")
+const ICON_DICE := preload("res://assets/dice-d20.svg")
 
 const TAB_BASICS := preload("res://scenes/ui/tabs/tab_basics.tscn")
 const TAB_ACHIEVEMENTS := preload("res://scenes/ui/tabs/tab_achievements.tscn")
@@ -73,6 +75,20 @@ var _buttons: Dictionary = {}
 var _instances: Dictionary = {}
 var _active_id: String = ""
 
+enum BannerType { NONE, ATTACK, ACTION_CHECK, CALLED_CHECK, YOUR_TURN, NOTIFICATION }
+
+var _banner_container: MarginContainer
+var _banner_card: PanelContainer
+var _banner_icon: TextureRect
+var _banner_label: Label
+var _banner_roll_btn: Button
+var _banner_dismiss_btn: Button
+var _current_banner_type: BannerType = BannerType.NONE
+var _current_banner_check: SkillCheck = null
+var _current_banner_attack: CombatAttack = null
+var _notifications: Array[Dictionary] = []
+var _current_notification: Dictionary = {}
+
 ## Tab ids currently in the bar, so a rebuild only happens when the set changes.
 var _listed_ids: Array = []
 
@@ -86,10 +102,23 @@ func setup(ctx: SheetContext, store: CharacterStore) -> void:
 		_ctx.doc.changed.connect(_on_document_changed)
 		_ctx.doc.dirty_changed.connect(_on_dirty_changed)
 
+	if _ctx.table != null:
+		_ctx.table.check_arrived.connect(_on_table_check_arrived)
+		_ctx.table.attack_arrived.connect(_on_table_attack_arrived)
+		_ctx.table.attack_resolved.connect(_on_table_attack_resolved)
+		_ctx.table.ap_applied.connect(_on_table_ap_applied)
+		_ctx.table.scene_ended.connect(_on_table_scene_ended)
+		_ctx.table.trouble.connect(_on_table_trouble)
+		_ctx.table.round_changed.connect(_on_table_round_changed)
+		_ctx.table.action_check_wanted.connect(_on_table_action_check_wanted)
+		_ctx.table.changed.connect(_on_table_changed)
+
 	var available := _available_tabs()
 	if not available.is_empty():
 		_select_tab(String(available[0]["id"]))
 	_refresh_header()
+	_refresh_incoming_banner()
+	_refresh_tab_badges()
 
 
 ## Which tab is showing, so a rebuild can put you back on it.
@@ -115,6 +144,7 @@ func _build() -> void:
 	add_child(root_box)
 
 	_build_header(root_box)
+	_build_incoming_banner(root_box)
 	_build_tab_bar(root_box)
 
 	_content_scroll = ScrollContainer.new()
@@ -125,6 +155,7 @@ func _build() -> void:
 
 	var margin := MarginContainer.new()
 	margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	margin.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	for side in ["left", "right"]:
 		margin.add_theme_constant_override("margin_" + side, Widgets.PAD_PANEL)
 	_content_scroll.add_child(margin)
@@ -141,10 +172,12 @@ func _build() -> void:
 	if _ctx.is_wide_layout:
 		var row := HBoxContainer.new()
 		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.size_flags_vertical = Control.SIZE_EXPAND_FILL
 		margin.add_child(row)
 		row.add_child(_gutter())
 		var body := VBoxContainer.new()
 		body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 		body.size_flags_stretch_ratio = CONTENT_STRETCH
 		row.add_child(body)
 		row.add_child(_gutter())
@@ -157,6 +190,7 @@ func _build() -> void:
 	# wanted here, since every tab lives in it and only one is visible.
 	_content_host = VBoxContainer.new()
 	_content_host.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_content_host.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	centred.add_child(_content_host)
 
 
@@ -209,7 +243,8 @@ func _build_header(parent: Container) -> void:
 	# Wide keeps the single row it always had; compact gets its own row where the
 	# five buttons share the width evenly instead of competing with the name.
 	var actions := HBoxContainer.new()
-	actions.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	actions.size_flags_horizontal = Control.SIZE_EXPAND_FILL if not _ctx.is_wide_layout else Control.SIZE_SHRINK_END
+	actions.alignment = BoxContainer.ALIGNMENT_END
 	actions.add_theme_constant_override("separation", Widgets.GAP_ROW)
 	if _ctx.is_wide_layout:
 		title_row.add_child(actions)
@@ -251,12 +286,549 @@ func _build_header(parent: Container) -> void:
 		actions.add_child(button)
 
 
+func _build_incoming_banner(parent: Container) -> void:
+	_banner_container = MarginContainer.new()
+	_banner_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	for side in ["left", "right"]:
+		_banner_container.add_theme_constant_override("margin_" + side, Widgets.PAD_PANEL)
+	parent.add_child(_banner_container)
+
+	_banner_card = PanelContainer.new()
+	_banner_card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_banner_card.add_theme_stylebox_override("panel", Widgets.flat_style(_ctx.palette.surface_soft, _ctx.palette.accent, 8, true))
+	_banner_container.add_child(_banner_card)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", Widgets.PAD_PANEL)
+	margin.add_theme_constant_override("margin_right", Widgets.PAD_PANEL)
+	margin.add_theme_constant_override("margin_top", 8)
+	margin.add_theme_constant_override("margin_bottom", 8)
+	_banner_card.add_child(margin)
+
+	_banner_icon = TextureRect.new()
+	_banner_icon.custom_minimum_size = Vector2(24, 24)
+	_banner_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_banner_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_banner_icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_banner_icon.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+
+	_banner_label = Label.new()
+	_banner_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_banner_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_banner_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_banner_label.custom_minimum_size = Vector2(1, 0)
+	_banner_label.add_theme_color_override("font_color", _ctx.palette.text)
+	_banner_label.add_theme_font_size_override("font_size", Widgets.FONT_BODY)
+
+	_banner_roll_btn = Button.new()
+	_banner_roll_btn.text = "Roll Now"
+	_banner_roll_btn.custom_minimum_size = Vector2(0, 36)
+	_banner_roll_btn.pressed.connect(_on_banner_roll_pressed)
+
+	_banner_dismiss_btn = Button.new()
+	_banner_dismiss_btn.text = "Dismiss"
+	_banner_dismiss_btn.custom_minimum_size = Vector2(0, 36)
+	_banner_dismiss_btn.pressed.connect(_on_banner_dismiss_pressed)
+
+	if _ctx.is_wide_layout:
+		var row := HBoxContainer.new()
+		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_theme_constant_override("separation", Widgets.GAP_ROW)
+		margin.add_child(row)
+		row.add_child(_banner_icon)
+		row.add_child(_banner_label)
+		row.add_child(_banner_roll_btn)
+		row.add_child(_banner_dismiss_btn)
+	else:
+		var col := VBoxContainer.new()
+		col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		col.add_theme_constant_override("separation", Widgets.GAP_ROW)
+		margin.add_child(col)
+
+		var label_row := HBoxContainer.new()
+		label_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		label_row.add_theme_constant_override("separation", Widgets.GAP_ROW)
+		col.add_child(label_row)
+		label_row.add_child(_banner_icon)
+		label_row.add_child(_banner_label)
+
+		var btn_row := HBoxContainer.new()
+		btn_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		btn_row.alignment = BoxContainer.ALIGNMENT_END
+		btn_row.add_theme_constant_override("separation", Widgets.GAP_ROW)
+		col.add_child(btn_row)
+
+		_banner_roll_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_banner_dismiss_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		btn_row.add_child(_banner_roll_btn)
+		btn_row.add_child(_banner_dismiss_btn)
+
+	_refresh_incoming_banner()
+
+
+func _refresh_incoming_banner() -> void:
+	if _banner_container == null or not is_instance_valid(_banner_container):
+		return
+	if _ctx == null:
+		_banner_container.visible = false
+		_current_banner_type = BannerType.NONE
+		_current_banner_check = null
+		_current_banner_attack = null
+		_current_notification = {}
+		return
+
+	# Priority 1: Incoming Attack waiting on player armor/damage resolution
+	if _ctx.table != null and not _ctx.table.incoming_attacks.is_empty():
+		var attack := _ctx.table.incoming_attacks[0] as CombatAttack
+		if attack != null:
+			_current_banner_type = BannerType.ATTACK
+			_current_banner_attack = attack
+			_current_banner_check = null
+			_current_notification = {}
+			var hits: bool = attack.hits()
+			var border_color: Color = _ctx.palette.warning if hits else _ctx.palette.border
+			_banner_card.add_theme_stylebox_override("panel", Widgets.flat_style(_ctx.palette.surface_soft, border_color, 8, true))
+
+			_banner_roll_btn.remove_theme_stylebox_override("normal")
+			_banner_roll_btn.add_theme_stylebox_override("normal", Widgets.flat_style(_ctx.palette.surface, _ctx.palette.warning if hits else _ctx.palette.accent, 6))
+			_banner_roll_btn.add_theme_color_override("font_color", _ctx.palette.text)
+
+			_banner_dismiss_btn.remove_theme_stylebox_override("normal")
+			_banner_dismiss_btn.add_theme_stylebox_override("normal", Widgets.flat_style(_ctx.palette.surface, _ctx.palette.border, 6))
+			_banner_dismiss_btn.add_theme_color_override("font_color", _ctx.palette.text)
+
+			_banner_icon.texture = ICON_ATTACK
+			_banner_icon.modulate = border_color
+
+			if hits:
+				_banner_label.text = "Attack incoming: %s" % attack.describe()
+				_banner_roll_btn.text = "Resolve Armor"
+				_banner_dismiss_btn.text = "Table"
+			else:
+				_banner_label.text = "Incoming: %s" % attack.describe()
+				_banner_roll_btn.text = "Dismiss"
+				_banner_dismiss_btn.text = "Table"
+
+			_banner_roll_btn.visible = true
+			_banner_dismiss_btn.visible = true
+			_banner_container.visible = true
+			return
+
+	# Priority 2: Initiative / Action check owed for combat round
+	if _ctx.table != null and _ctx.table.owes_action_check():
+		_current_banner_type = BannerType.ACTION_CHECK
+		_current_banner_check = null
+		_current_banner_attack = null
+		_current_notification = {}
+		_banner_card.add_theme_stylebox_override("panel", Widgets.flat_style(_ctx.palette.surface_soft, _ctx.palette.accent, 8, true))
+
+		_banner_roll_btn.remove_theme_stylebox_override("normal")
+		_banner_roll_btn.add_theme_stylebox_override("normal", Widgets.flat_style(_ctx.palette.surface, _ctx.palette.accent, 6))
+		_banner_roll_btn.add_theme_color_override("font_color", _ctx.palette.text)
+
+		_banner_dismiss_btn.remove_theme_stylebox_override("normal")
+		_banner_dismiss_btn.add_theme_stylebox_override("normal", Widgets.flat_style(_ctx.palette.surface, _ctx.palette.border, 6))
+		_banner_dismiss_btn.add_theme_color_override("font_color", _ctx.palette.text)
+
+		_banner_icon.texture = ICON_DICE
+		_banner_icon.modulate = _ctx.palette.accent
+
+		var round_num := _ctx.table.active_round.number if _ctx.table.active_round != null else 1
+		_banner_label.text = "Round %d started! Roll initiative (Action Check) to act." % round_num
+		_banner_roll_btn.text = "Roll Initiative"
+		_banner_dismiss_btn.text = "Table"
+		_banner_roll_btn.visible = true
+		_banner_dismiss_btn.visible = true
+		_banner_container.visible = true
+		return
+
+	# Priority 3: GM called skill check
+	if _ctx.table != null and not _ctx.table.incoming_checks.is_empty():
+		var check := _ctx.table.incoming_checks[0] as SkillCheck
+		if check != null:
+			_current_banner_type = BannerType.CALLED_CHECK
+			_current_banner_check = check
+			_current_banner_attack = null
+			_current_notification = {}
+			_banner_card.add_theme_stylebox_override("panel", Widgets.flat_style(_ctx.palette.surface_soft, _ctx.palette.accent, 8, true))
+
+			_banner_roll_btn.remove_theme_stylebox_override("normal")
+			_banner_roll_btn.add_theme_stylebox_override("normal", Widgets.flat_style(_ctx.palette.surface, _ctx.palette.accent, 6))
+			_banner_roll_btn.add_theme_color_override("font_color", _ctx.palette.text)
+
+			_banner_dismiss_btn.remove_theme_stylebox_override("normal")
+			_banner_dismiss_btn.add_theme_stylebox_override("normal", Widgets.flat_style(_ctx.palette.surface, _ctx.palette.border, 6))
+			_banner_dismiss_btn.add_theme_color_override("font_color", _ctx.palette.text)
+
+			_banner_icon.texture = ICON_DICE
+			_banner_icon.modulate = _ctx.palette.accent
+
+			var step_text := "%+d step" % check.gm_step
+			var reason_text := "" if check.reason.is_empty() else " -- \"%s\"" % check.reason
+			_banner_label.text = "The GM called for: %s (Difficulty: %s%s)" % [
+				check.skill_label,
+				step_text,
+				reason_text
+			]
+			_banner_roll_btn.text = "Roll Now"
+			_banner_dismiss_btn.text = "Dismiss"
+			_banner_roll_btn.visible = true
+			_banner_dismiss_btn.visible = true
+			_banner_container.visible = true
+			return
+
+	# Priority 4: Player's turn to act in combat
+	if _ctx.table != null and _ctx.table.acting_now():
+		_current_banner_type = BannerType.YOUR_TURN
+		_current_banner_check = null
+		_current_banner_attack = null
+		_current_notification = {}
+		_banner_card.add_theme_stylebox_override("panel", Widgets.flat_style(_ctx.palette.surface_soft, _ctx.palette.accent, 8, true))
+
+		_banner_roll_btn.remove_theme_stylebox_override("normal")
+		_banner_roll_btn.add_theme_stylebox_override("normal", Widgets.flat_style(_ctx.palette.surface, _ctx.palette.accent, 6))
+		_banner_roll_btn.add_theme_color_override("font_color", _ctx.palette.text)
+
+		_banner_icon.texture = ICON_ATTACK
+		_banner_icon.modulate = _ctx.palette.accent
+
+		var round_info := ""
+		if _ctx.table.active_round != null:
+			var phase_str: String = _ctx.table.active_round.phase_name().capitalize()
+			round_info = "Round %d (%s Phase): " % [_ctx.table.active_round.number, phase_str]
+		_banner_label.text = "%sIt is your turn to act!" % round_info
+		_banner_roll_btn.text = "Open Table"
+		_banner_roll_btn.visible = true
+		_banner_dismiss_btn.visible = false
+		_banner_container.visible = true
+		return
+
+	# Priority 5: Character Changes (Damage taken, AP awarded, Stun cleared, Trouble)
+	if not _notifications.is_empty():
+		_current_notification = _notifications[0]
+		_current_banner_type = BannerType.NOTIFICATION
+		_current_banner_check = null
+		_current_banner_attack = null
+
+		var is_warning: bool = bool(_current_notification.get("is_warning", false))
+		var border_color: Color = _ctx.palette.warning if is_warning else _ctx.palette.accent
+		_banner_card.add_theme_stylebox_override("panel", Widgets.flat_style(_ctx.palette.surface_soft, border_color, 8, true))
+
+		_banner_roll_btn.remove_theme_stylebox_override("normal")
+		_banner_roll_btn.add_theme_stylebox_override("normal", Widgets.flat_style(_ctx.palette.surface, _ctx.palette.accent, 6))
+		_banner_roll_btn.add_theme_color_override("font_color", _ctx.palette.text)
+
+		_banner_dismiss_btn.remove_theme_stylebox_override("normal")
+		_banner_dismiss_btn.add_theme_stylebox_override("normal", Widgets.flat_style(_ctx.palette.surface, _ctx.palette.border, 6))
+		_banner_dismiss_btn.add_theme_color_override("font_color", _ctx.palette.text)
+
+		var notif_icon = _current_notification.get("icon")
+		_banner_icon.texture = notif_icon if notif_icon is Texture2D else ICON_DICE
+		_banner_icon.modulate = border_color
+
+		_banner_label.text = String(_current_notification.get("message", ""))
+		_banner_roll_btn.text = String(_current_notification.get("action_label", "View"))
+		_banner_dismiss_btn.text = "Dismiss"
+
+		_banner_roll_btn.visible = not String(_current_notification.get("target_tab", "")).is_empty()
+		_banner_dismiss_btn.visible = true
+		_banner_container.visible = true
+		return
+
+	# Nothing waiting
+	_banner_container.visible = false
+	_banner_icon.texture = null
+	_current_banner_type = BannerType.NONE
+	_current_banner_check = null
+	_current_banner_attack = null
+	_current_notification = {}
+
+
+func _on_banner_roll_pressed() -> void:
+	match _current_banner_type:
+		BannerType.ATTACK:
+			if _current_banner_attack != null:
+				if _current_banner_attack.hits():
+					await _resolve_attack_from_banner(_current_banner_attack)
+				else:
+					if _ctx != null and _ctx.table != null:
+						_ctx.table.apply_attack(_current_banner_attack, 0)
+						_ctx.table.report_attack(_current_banner_attack, 0, {})
+			_refresh_incoming_banner()
+			_refresh_tab_badges()
+
+		BannerType.ACTION_CHECK:
+			if _ctx != null and _ctx.table != null and _ctx.checks != null:
+				var rolled = await _ctx.checks.run_action_check(_ctx.doc)
+				if is_instance_valid(self) and rolled != null:
+					_ctx.table.send_action_check(rolled)
+			_refresh_incoming_banner()
+			_refresh_tab_badges()
+
+		BannerType.CALLED_CHECK:
+			if _current_banner_check != null and _ctx != null and _ctx.checks != null:
+				var check := _current_banner_check
+				var skill := _ctx.rules.get_skill_by_id(check.skill_id) if _ctx.rules != null else {}
+				var rolled = await _ctx.checks.run_called(check, _ctx.doc, skill)
+				if rolled != null and _ctx.table != null:
+					_ctx.table.resolve_called_check(check)
+			_refresh_incoming_banner()
+			_refresh_tab_badges()
+
+		BannerType.YOUR_TURN:
+			_select_tab("table")
+
+		BannerType.NOTIFICATION:
+			var target_tab := String(_current_notification.get("target_tab", ""))
+			_notifications.erase(_current_notification)
+			if not target_tab.is_empty():
+				_select_tab(target_tab)
+			_refresh_incoming_banner()
+			_refresh_tab_badges()
+
+
+func _on_banner_dismiss_pressed() -> void:
+	match _current_banner_type:
+		BannerType.ATTACK, BannerType.ACTION_CHECK:
+			_select_tab("table")
+
+		BannerType.CALLED_CHECK:
+			if _current_banner_check != null and _ctx != null and _ctx.table != null:
+				_ctx.table.dismiss_called_check(_current_banner_check)
+			_refresh_incoming_banner()
+			_refresh_tab_badges()
+
+		BannerType.YOUR_TURN:
+			pass
+
+		BannerType.NOTIFICATION:
+			_notifications.erase(_current_notification)
+			_refresh_incoming_banner()
+			_refresh_tab_badges()
+
+
+## Queue a notification banner for character changes (damage taken, awards, recovery, etc.)
+func notify_character_change(
+	icon: Texture2D,
+	message: String,
+	action_label: String = "",
+	target_tab: String = "",
+	is_warning: bool = false,
+	ap_amount: int = 0
+) -> void:
+	for notif in _notifications:
+		if String(notif.get("message", "")) == message:
+			return
+
+	_notifications.append({
+		"icon": icon,
+		"message": message,
+		"action_label": action_label if not action_label.is_empty() else "Dismiss",
+		"target_tab": target_tab,
+		"is_warning": is_warning,
+		"ap_amount": ap_amount,
+	})
+	_refresh_incoming_banner()
+	_refresh_tab_badges()
+
+
+func _resolve_attack_from_banner(attack: CombatAttack) -> void:
+	if _ctx == null or _ctx.table == null or _ctx.checks == null or _ctx.doc == null:
+		return
+
+	var absorbed := 0
+	for layer in _ctx.rules.combat.armor_layers(_ctx.doc.raw(), attack.impact_type):
+		var rolled: int = await _ctx.checks.roll_notation(
+			String(layer.get("notation", "")),
+			"%s absorbs" % String(layer.get("name", "Armor"))
+		)
+		if not is_instance_valid(self):
+			return
+		if rolled < 0:
+			return
+		absorbed = maxi(absorbed, rolled)
+
+	var knockout: Dictionary = _ctx.table.knockout_check_for(attack)
+	var outcome: Dictionary = _ctx.table.apply_attack(attack, absorbed)
+
+	var down := false
+	if bool(knockout.get("required", false)) and not bool(outcome.get("negated", false)):
+		down = not await _survives_knockout(knockout)
+		if not is_instance_valid(self):
+			return
+
+	_ctx.table.report_attack(attack, absorbed, outcome, down)
+	_save()
+	_refresh_header()
+	_refresh_incoming_banner()
+	_refresh_tab_badges()
+
+
+func _survives_knockout(knockout: Dictionary) -> bool:
+	if _ctx == null or _ctx.rules == null or _ctx.checks == null or _ctx.doc == null:
+		return true
+	var skill: Dictionary = _ctx.rules.get_skill_by_id(AlternityNum.as_int(knockout.get("skill_id", -1), -1))
+	if skill.is_empty():
+		return true
+	var check := SkillCheck.call_for(
+		_ctx.rules.skill_label(skill),
+		0,
+		String(knockout.get("reason", "")),
+		AlternityNum.as_int(knockout.get("skill_id", -1), -1)
+	)
+	var rolled = await _ctx.checks.run_called(check, _ctx.doc, skill)
+	if rolled == null:
+		return true
+	return (rolled as SkillCheck).is_success()
+
+
+func _refresh_tab_badges() -> void:
+	if _buttons.has("table"):
+		var btn: Button = _buttons["table"]
+		if _ctx == null or _ctx.table == null:
+			btn.text = "Table"
+		else:
+			var count: int = _ctx.table.incoming_checks.size() + _ctx.table.incoming_attacks.size()
+			if _ctx.table.owes_action_check():
+				count += 1
+			elif _ctx.table.acting_now():
+				count += 1
+			if count > 0:
+				btn.text = "Table (%d)" % count
+			else:
+				var has_table_notif := false
+				for notif in _notifications:
+					if String(notif.get("target_tab", "")) == "table":
+						has_table_notif = true
+						break
+				if has_table_notif:
+					btn.text = "Table (!)"
+				else:
+					btn.text = "Table"
+
+	if _buttons.has("achievements"):
+		var btn_ach: Button = _buttons["achievements"]
+		var pending_ap := 0
+		var has_ach_notif := false
+		for notif in _notifications:
+			if String(notif.get("target_tab", "")) == "achievements":
+				has_ach_notif = true
+				pending_ap += AlternityNum.as_int(notif.get("ap_amount", 0))
+		if pending_ap > 0:
+			btn_ach.text = "Achievements (+%d)" % pending_ap
+		elif has_ach_notif:
+			btn_ach.text = "Achievements (!)"
+		else:
+			btn_ach.text = "Achievements"
+
+	if _buttons.has("summary"):
+		var btn_sum: Button = _buttons["summary"]
+		var has_sum_notif := false
+		for notif in _notifications:
+			if String(notif.get("target_tab", "")) == "summary":
+				has_sum_notif = true
+				break
+		if has_sum_notif:
+			btn_sum.text = "Summary (!)"
+		else:
+			btn_sum.text = "Summary"
+
+
+func _on_table_check_arrived(_check: SkillCheck) -> void:
+	_refresh_incoming_banner()
+	_refresh_tab_badges()
+
+
+func _on_table_attack_arrived(_attack: CombatAttack) -> void:
+	_refresh_incoming_banner()
+	_refresh_tab_badges()
+
+
+func _on_table_attack_resolved(attack: CombatAttack) -> void:
+	if attack == null or not attack.hits():
+		return
+	var res := attack.result
+	var weapon := attack.weapon_name if not attack.weapon_name.is_empty() else "an attack"
+
+	if bool(res.get("parried", false)):
+		notify_character_change(ICON_ATTACK, "Parried %s's %s!" % [attack.attacker_name, weapon], "View Summary", "summary", false)
+		return
+
+	var primary := AlternityNum.as_int(res.get("primary_damage", 0))
+	var sec_stun := AlternityNum.as_int(res.get("secondary_stun", 0))
+	var sec_wound := AlternityNum.as_int(res.get("secondary_wound", 0))
+	var soaked := AlternityNum.as_int(res.get("absorbed", 0))
+
+	if bool(res.get("negated", false)) or (primary == 0 and sec_stun == 0 and sec_wound == 0):
+		if soaked > 0:
+			notify_character_change(ICON_ATTACK, "Armor soaked all %d damage from %s's %s." % [soaked, attack.attacker_name, weapon], "View Summary", "summary", false)
+		else:
+			notify_character_change(ICON_ATTACK, "No damage taken from %s's %s." % [attack.attacker_name, weapon], "View Summary", "summary", false)
+		return
+
+	var track := String(res.get("damage_type", attack.track_name())).capitalize()
+	var msg := "Took %d %s" % [primary, track]
+	if soaked > 0:
+		msg += " (%d soaked by armor)" % soaked
+	if sec_stun > 0:
+		msg += " and %d Stun" % sec_stun
+	if sec_wound > 0:
+		msg += " and %d Wound" % sec_wound
+	msg += " from %s's %s." % [attack.attacker_name, weapon]
+	if bool(res.get("knocked_out", false)):
+		msg += " Knocked Out!"
+	notify_character_change(ICON_ATTACK, msg, "View Summary", "summary", true)
+
+
+func _on_table_ap_applied(amount: int, reason: String) -> void:
+	var msg: String
+	if reason == "Total adjusted by GM":
+		msg = "The GM set your achievement points to %d." % amount
+	else:
+		var s := "" if amount == 1 else "s"
+		if reason.is_empty():
+			msg = "The GM awarded you %d achievement point%s! Added to your hero." % [amount, s]
+		else:
+			msg = "The GM awarded you %d achievement point%s -- \"%s\"! Added to your hero." % [amount, s, reason]
+	notify_character_change(ICON_DICE, msg, "View Achievements", "achievements", false, amount)
+
+
+func _on_table_scene_ended(stun_cleared: int) -> void:
+	var msg := "The scene ended -- %d Stun cleared. Anybody knocked out is awake!" % stun_cleared if stun_cleared > 0 else "The scene ended."
+	notify_character_change(ICON_DICE, msg, "View Summary", "summary", false)
+
+
+func _on_table_trouble(message: String) -> void:
+	notify_character_change(ICON_DICE, message, "Open Table", "table", true)
+
+
+func _on_table_round_changed() -> void:
+	_refresh_incoming_banner()
+	_refresh_tab_badges()
+
+
+func _on_table_action_check_wanted() -> void:
+	_refresh_incoming_banner()
+	_refresh_tab_badges()
+
+
+func _on_table_changed() -> void:
+	_refresh_incoming_banner()
+	_refresh_tab_badges()
+
+
 func _build_tab_bar(parent: Container) -> void:
+	var margin := MarginContainer.new()
+	margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	for side in ["left", "right"]:
+		margin.add_theme_constant_override("margin_" + side, Widgets.PAD_PANEL)
+	parent.add_child(margin)
+
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.custom_minimum_size = Vector2(0, 52)
-	parent.add_child(scroll)
+	margin.add_child(scroll)
 
 	_tab_bar = HBoxContainer.new()
 	_tab_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -293,6 +865,19 @@ func _available_tabs() -> Array:
 
 
 func _select_tab(id: String) -> void:
+	# Dismiss any pending notifications for this tab now that the player has opened it.
+	var remaining: Array[Dictionary] = []
+	var cleared_any := false
+	for notif in _notifications:
+		if String(notif.get("target_tab", "")) == id:
+			cleared_any = true
+		else:
+			remaining.append(notif)
+	if cleared_any:
+		_notifications = remaining
+		_refresh_incoming_banner()
+		_refresh_tab_badges()
+
 	if id == _active_id:
 		return
 	_active_id = id
@@ -313,6 +898,7 @@ func _select_tab(id: String) -> void:
 		var tab: SheetTab = definition["scene"].instantiate()
 		# Laid out by the host container, so no anchor preset here.
 		tab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		tab.size_flags_vertical = Control.SIZE_EXPAND_FILL
 		tab.save_requested.connect(_save)
 		_content_host.add_child(tab)
 		tab.bind(_ctx)
@@ -320,6 +906,12 @@ func _select_tab(id: String) -> void:
 
 	for tab_id in _instances:
 		_instances[tab_id].visible = tab_id == id
+
+	var active_tab = _instances.get(id)
+	if active_tab != null and active_tab.has_method("has_custom_scroll") and active_tab.has_custom_scroll():
+		_content_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	else:
+		_content_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 
 
 ## Whether a registry entry applies to the current character.
@@ -345,10 +937,27 @@ func _refresh_header() -> void:
 	_on_dirty_changed(_ctx.doc.is_dirty())
 
 
+## Sections that can never change which tabs apply.
+##
+## Named as an exclusion rather than an inclusion, because the cost of being
+## wrong runs one way. _refresh_tab_bar instantiates and frees every tab scene
+## to ask whether it applies, which is too expensive to run on each point of
+## damage during a fight -- but a list of the sections that *do* matter has to
+## be kept in step with every is_available_for in the app, and the two that are
+## easiest to miss are the ones nobody associates with a tab: the Psionic
+## Talents optional rule and the Superior Talent perk both reveal Psionics.
+## Leaving them out cost nothing visible; the tab simply never appeared until
+## the character was closed and reopened.
+const TAB_SET_UNAFFECTED_BY := [CharacterDoc.DAMAGE, CharacterDoc.NOTES]
+
+
 func _on_document_changed(sections: PackedStringArray) -> void:
 	if sections.has(String(CharacterDoc.META)):
 		_refresh_header()
-	_refresh_tab_bar()
+	for section in sections:
+		if not TAB_SET_UNAFFECTED_BY.has(StringName(section)):
+			_refresh_tab_bar()
+			return
 
 
 ## Rebuild the tab bar when the set of applicable tabs changes.

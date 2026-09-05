@@ -139,15 +139,15 @@ func _pad_button_styles(theme: Theme) -> void:
 ## LineEdit is not styled in every .tres, so synthesise a matching look from the
 ## palette where it is missing and pad it where it is present.
 func _build_line_edit_styles(theme: Theme) -> void:
-	var palette := ThemePalette.from_theme(theme)
+	var pal := ThemePalette.from_theme(theme)
 	for state in ["normal", "focus", "read_only"]:
 		var style: StyleBox
 		if theme.has_stylebox(state, "LineEdit"):
 			style = theme.get_stylebox(state, "LineEdit").duplicate()
 		else:
 			var flat := StyleBoxFlat.new()
-			flat.bg_color = palette.surface
-			flat.border_color = palette.accent if state == "focus" else palette.border
+			flat.bg_color = pal.surface
+			flat.border_color = pal.accent if state == "focus" else pal.border
 			flat.set_border_width_all(1)
 			flat.set_corner_radius_all(8)
 			style = flat
@@ -158,6 +158,12 @@ func _build_line_edit_styles(theme: Theme) -> void:
 			style.content_margin_top = 8
 			style.content_margin_bottom = 8
 		theme.set_stylebox(state, "LineEdit", style)
+
+	theme.set_color("font_color", "LineEdit", pal.text)
+	theme.set_color("font_placeholder_color", "LineEdit", pal.muted)
+	theme.set_color("caret_color", "LineEdit", pal.text)
+	theme.set_color("clear_button_color", "LineEdit", pal.muted)
+	theme.set_color("clear_button_color_pressed", "LineEdit", pal.accent)
 
 
 func _load_config() -> void:

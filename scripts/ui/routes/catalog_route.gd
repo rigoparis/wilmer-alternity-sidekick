@@ -60,7 +60,7 @@ func title() -> String:
 func _build() -> void:
 	var panel := PanelContainer.new()
 	panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	panel.add_theme_stylebox_override("panel", Widgets.flat_style(_palette.surface, _palette.border, 8))
+	panel.add_theme_stylebox_override("panel", Widgets.flat_style(_palette.surface, _palette.border, 8, true))
 	add_child(panel)
 
 	var margin := MarginContainer.new()
@@ -76,7 +76,7 @@ func _build() -> void:
 	var heading := Label.new()
 	heading.text = _heading
 	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	heading.add_theme_color_override("font_color", _palette.text)
+	heading.add_theme_color_override("font_color", _palette.accent)
 	heading.add_theme_font_size_override("font_size", 20)
 	box.add_child(heading)
 
@@ -90,7 +90,7 @@ func _build() -> void:
 
 	var search := SearchField.new()
 	box.add_child(search)
-	search.setup(_palette, "Search...")
+	search.setup(_palette, "Search catalog")
 	search.query_changed.connect(func(query: String):
 		_query = query
 		_refresh_list())
@@ -122,12 +122,14 @@ func _build() -> void:
 	cancel.text = "Cancel"
 	cancel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	cancel.custom_minimum_size = Vector2(0, 44)
+	cancel.add_theme_stylebox_override("normal", Widgets.flat_style(_palette.surface_soft, _palette.border, 6))
 	cancel.pressed.connect(func(): close(null))
 	actions.add_child(cancel)
 
 	_confirm = Button.new()
 	_confirm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_confirm.custom_minimum_size = Vector2(0, 44)
+	_confirm.add_theme_stylebox_override("normal", Widgets.flat_style(_palette.surface_soft, _palette.accent, 6))
 	_confirm.pressed.connect(func(): close(_selected_ids()))
 	actions.add_child(_confirm)
 

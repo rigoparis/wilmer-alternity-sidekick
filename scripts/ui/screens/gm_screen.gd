@@ -393,7 +393,7 @@ func _combat_row(line: String, player_id: String) -> void:
 	# How many actions they have this round, and the dial that changes it.
 	# Nothing in the app can know everything that costs an action -- reloading,
 	# being restrained, an argument with the GM -- so the GM sets the number.
-	controls.add_child(_dial_button("-", player_id, -1, _fight.actions_of(player_id) <= 0))
+	controls.add_child(_dial_button(preload("res://assets/minus-square.svg"), player_id, -1, _fight.actions_of(player_id) <= 0))
 
 	var count := Label.new()
 	count.text = "%d" % _fight.actions_of(player_id)
@@ -404,7 +404,7 @@ func _combat_row(line: String, player_id: String) -> void:
 	count.add_theme_font_size_override("font_size", Widgets.FONT_DETAIL)
 	controls.add_child(count)
 
-	controls.add_child(_dial_button("+", player_id, 1))
+	controls.add_child(_dial_button(preload("res://assets/add-square.svg"), player_id, 1))
 
 	var actions_label := Label.new()
 	actions_label.text = "actions"
@@ -431,15 +431,22 @@ func _combat_row(line: String, player_id: String) -> void:
 
 
 ## One end of the actions dial.
-##
-## Not built through _small_button: that one lets a button be narrower than its
-## own text, which on a single character trims it to nothing at all.
-func _dial_button(label: String, player_id: String, delta: int, is_disabled: bool = false) -> Button:
+func _dial_button(icon: Texture2D, player_id: String, delta: int, is_disabled: bool = false) -> Button:
 	var button := Button.new()
-	button.text = label
-	button.custom_minimum_size = Vector2(34, 32)
+	button.flat = true
+	button.icon = icon
+	button.expand_icon = true
+	button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	button.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	button.custom_minimum_size = Vector2(34, 34)
 	button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	button.disabled = is_disabled
+	button.add_theme_color_override("icon_normal_color", _palette.text)
+	button.add_theme_color_override("icon_hover_color", _palette.accent)
+	button.add_theme_color_override("icon_pressed_color", _palette.accent)
+	button.add_theme_color_override("icon_disabled_color", Color(_palette.muted, 0.3))
+	for state in ["normal", "hover", "pressed", "focus", "disabled"]:
+		button.add_theme_stylebox_override(state, StyleBoxEmpty.new())
 	button.pressed.connect(_on_actions_pressed.bind(player_id, delta))
 	return button
 
@@ -715,10 +722,15 @@ func _on_blast_pressed() -> void:
 
 	var standing: Array = []
 	for entry in _fight.standing():
+		var dodge_deg := String(entry.get("dodge", ""))
+		var is_dodging_success: bool = false
+		if _rules != null and not dodge_deg.is_empty():
+			is_dodging_success = _rules.combat.dodge_step(dodge_deg) > 0
 		standing.append({
 			"id": String(entry.get("id", "")),
 			"name": String(entry.get("name", "Someone")),
-			"dodging": not String(entry.get("dodge", "")).is_empty(),
+			"dodging": is_dodging_success,
+			"dodge_degree": dodge_deg,
 		})
 
 	var blast = await _router.push(COMBAT_BLAST_ROUTE, {

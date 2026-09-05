@@ -51,7 +51,7 @@ func title() -> String:
 func _build(detail) -> void:
 	var panel := PanelContainer.new()
 	panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	panel.add_theme_stylebox_override("panel", Widgets.flat_style(_palette.surface, _palette.border, 8))
+	panel.add_theme_stylebox_override("panel", Widgets.flat_style(_palette.surface, _palette.border, 8, true))
 	add_child(panel)
 
 	var margin := MarginContainer.new()
@@ -81,7 +81,7 @@ func _build(detail) -> void:
 	heading.text = _title
 	heading.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	heading.custom_minimum_size = Vector2(1, 0)
-	heading.add_theme_color_override("font_color", _palette.text)
+	heading.add_theme_color_override("font_color", _palette.accent)
 	heading.add_theme_font_size_override("font_size", 20)
 	box.add_child(heading)
 
@@ -103,6 +103,7 @@ func _build(detail) -> void:
 	var close := Button.new()
 	close.text = "Close"
 	close.custom_minimum_size = Vector2(0, 44)
+	close.add_theme_stylebox_override("normal", Widgets.flat_style(_palette.surface_soft, _palette.border, 6))
 	close.pressed.connect(func(): close_route())
 	box.add_child(close)
 

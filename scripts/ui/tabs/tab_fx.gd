@@ -20,18 +20,146 @@ extends SheetTab
 const DETAIL_ROUTE := preload("res://scenes/ui/routes/skill_detail_route.tscn")
 
 
+var _pool_host: Container
+var _tracker_host: Container
+var _selected_host: Container
+var _picker: FxPicker
+var _editing_powers: bool = false
+
+
+## Declares custom scroll handling only on wide (desktop) layouts so the outer sheet
+## can scroll naturally on mobile devices without inner scroll traps.
+func has_custom_scroll() -> bool:
+	return ctx != null and ctx.is_wide_layout
+
+
 func watched_sections() -> Array:
 	# FX draws on Will and Constitution, and the setting decides which broads
 	# exist at all.
 	return [CharacterDoc.FX, CharacterDoc.ABILITIES, CharacterDoc.SKILLS, CharacterDoc.META]
 
 
-func build(container: Container) -> void:
-	_build_pool(container)
-	if not ctx.rules.fx.is_fx_talent(ctx.doc.raw()):
+func unbind() -> void:
+	super.unbind()
+	_pool_host = null
+	_tracker_host = null
+	_selected_host = null
+	_picker = null
+	_editing_powers = false
+
+
+## Rebuild in-place when internal hosts are valid to preserve the catalog's
+## active category tab, search filter, and scroll position.
+func _rebuild() -> void:
+	var is_talent := ctx.rules.fx.is_fx_talent(ctx.doc.raw())
+	if _pool_host != null and is_instance_valid(_pool_host) \
+			and _selected_host != null and is_instance_valid(_selected_host) and is_talent:
+		_render_pool(_pool_host)
+		if _tracker_host != null and is_instance_valid(_tracker_host):
+			_render_tracker(_tracker_host)
+		if _editing_powers:
+			if _picker != null and is_instance_valid(_picker):
+				_picker.refresh_skills()
+			else:
+				if ctx.is_wide_layout:
+					_render_powers_panel_desktop(_selected_host)
+				else:
+					_render_powers_panel_mobile(_selected_host)
+		else:
+			if ctx.is_wide_layout:
+				_render_powers_panel_desktop(_selected_host)
+			else:
+				_render_powers_panel_mobile(_selected_host)
 		return
-	_build_energy_tracker(container)
-	_build_picker(container)
+	super._rebuild()
+
+
+func build(container: Container) -> void:
+	_pool_host = null
+	_tracker_host = null
+	_selected_host = null
+	_picker = null
+
+	if not ctx.rules.fx.is_fx_talent(ctx.doc.raw()):
+		_build_pool(container)
+		return
+
+	if ctx.is_wide_layout:
+		_build_wide_layout(container)
+	else:
+		_build_compact_layout(container)
+
+
+func _build_wide_layout(container: Container) -> void:
+	# 2-column layout: Left column = FX + FX Energy; Right column = Selected Powers / Catalog
+	var columns_row := HBoxContainer.new()
+	columns_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	columns_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	columns_row.add_theme_constant_override("separation", Widgets.GAP_SECTION)
+	container.add_child(columns_row)
+
+	# Left column: FX Pool card on top, FX Energy tracker card below it
+	var left := VBoxContainer.new()
+	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	left.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	left.size_flags_stretch_ratio = 1.0
+	left.add_theme_constant_override("separation", Widgets.GAP_SECTION)
+	columns_row.add_child(left)
+
+	_pool_host = VBoxContainer.new()
+	_pool_host.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	left.add_child(_pool_host)
+	_render_pool(_pool_host)
+
+	_tracker_host = VBoxContainer.new()
+	_tracker_host.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	left.add_child(_tracker_host)
+	_render_tracker(_tracker_host)
+
+	# Right column: Selected Powers (or Catalog on Edit)
+	var right := VBoxContainer.new()
+	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	right.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	right.size_flags_stretch_ratio = 1.0
+	columns_row.add_child(right)
+
+	_selected_host = VBoxContainer.new()
+	_selected_host.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_selected_host.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	right.add_child(_selected_host)
+	_render_powers_panel_desktop(_selected_host)
+
+
+func _build_compact_layout(container: Container) -> void:
+	# Mobile: panels on a single page scroll without inner scroll containers
+	_pool_host = VBoxContainer.new()
+	_pool_host.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	container.add_child(_pool_host)
+	_render_pool(_pool_host)
+
+	_tracker_host = VBoxContainer.new()
+	_tracker_host.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	container.add_child(_tracker_host)
+	_render_tracker(_tracker_host)
+
+	_selected_host = VBoxContainer.new()
+	_selected_host.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	container.add_child(_selected_host)
+	_render_powers_panel_mobile(_selected_host)
+
+
+func _render_pool(host: Container) -> void:
+	for child in host.get_children():
+		host.remove_child(child)
+		child.queue_free()
+	_build_pool(host)
+
+
+func _render_tracker(host: Container) -> void:
+	for child in host.get_children():
+		host.remove_child(child)
+		child.queue_free()
+	_build_energy_tracker(host)
 
 
 func _build_pool(container: Container) -> void:
@@ -60,7 +188,7 @@ func _build_pool(container: Container) -> void:
 	var pool: int = rules.fx.energy_pool(doc.raw())
 	var stepper := NumberStepper.new()
 	box.add_child(stepper)
-	stepper.setup(palette, "Starting FX energy pool", pool, 0, 99)
+	stepper.setup(palette, "Starting FX energy pool", pool, 0, 99, 1, 0, true)
 	stepper.value_changed.connect(func(value: int):
 		doc.apply([CharacterDoc.FX], func(c): rules.fx.set_energy_pool(c, value))
 		save_requested.emit())
@@ -173,12 +301,6 @@ func _build_primary_group_picker(parent: Container) -> void:
 	if owned.is_empty():
 		return
 
-	var label := Label.new()
-	label.text = "Primary school"
-	label.add_theme_color_override("font_color", palette.muted)
-	label.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
-	parent.add_child(label)
-
 	var current := rules.fx.primary_broad_group(raw)
 
 	# Once named, it is fixed: it is the hero's tradition, not a purchase to
@@ -193,6 +315,12 @@ func _build_primary_group_picker(parent: Container) -> void:
 			palette, Widgets.FONT_CAPTION
 		)
 		return
+
+	var label := Label.new()
+	label.text = "Primary school"
+	label.add_theme_color_override("font_color", palette.muted)
+	label.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
+	parent.add_child(label)
 
 	var picker := OptionButton.new()
 	picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -268,14 +396,273 @@ func _build_scale_picker(parent: Container) -> void:
 	)
 
 
+func _set_editing_powers(editing: bool) -> void:
+	_editing_powers = editing
+	if _selected_host != null and is_instance_valid(_selected_host):
+		if ctx.is_wide_layout:
+			_render_powers_panel_desktop(_selected_host)
+		else:
+			_render_powers_panel_mobile(_selected_host)
+
+
+func _render_powers_panel_desktop(host: Container) -> void:
+	for child in host.get_children():
+		host.remove_child(child)
+		child.queue_free()
+
+	_picker = null
+	var rows := ctx.rules.fx.selected_fx_skills(ctx.doc.raw())
+	var fx_enabled: bool = ctx.rules.fx.is_fx_talent(ctx.doc.raw())
+
+	var toggle_btn := Widgets.edit_toggle_button(_editing_powers, ctx.palette)
+	toggle_btn.disabled = not fx_enabled
+	toggle_btn.pressed.connect(func(): _set_editing_powers(not _editing_powers))
+
+	var title := "Powers Catalog" if _editing_powers else "Selected Powers (%d)" % rows.size()
+	var box := Widgets.section_with_action(host, title, toggle_btn, ctx.palette)
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	Widgets.expand_section(box)
+
+	if _editing_powers:
+		_picker = FxPicker.new()
+		_picker.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		box.add_child(_picker)
+		_picker.setup(ctx)
+		_picker.change_requested.connect(func(): save_requested.emit())
+		_picker.detail_requested.connect(_open_detail)
+		return
+
+	# View Mode: Selected Powers table
+	if rows.is_empty():
+		Widgets.muted_text(box, "No powers selected yet.", ctx.palette, Widgets.FONT_CAPTION)
+		Widgets.muted_text(box, "Click 'Edit' above to open the powers catalog.", ctx.palette, Widgets.FONT_CAPTION)
+		return
+
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.custom_minimum_size = Vector2(0, 200)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	box.add_child(scroll)
+
+	var margin := MarginContainer.new()
+	margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	margin.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	margin.add_theme_constant_override("margin_right", 14)
+	scroll.add_child(margin)
+
+	_populate_selected_powers_table(margin, rows)
+
+
+func _render_powers_panel_mobile(host: Container) -> void:
+	for child in host.get_children():
+		host.remove_child(child)
+		child.queue_free()
+
+	_picker = null
+	var rows := ctx.rules.fx.selected_fx_skills(ctx.doc.raw())
+	var fx_enabled: bool = ctx.rules.fx.is_fx_talent(ctx.doc.raw())
+
+	var toggle_btn := Widgets.edit_toggle_button(_editing_powers, ctx.palette)
+	toggle_btn.disabled = not fx_enabled
+	toggle_btn.pressed.connect(func(): _set_editing_powers(not _editing_powers))
+
+	var title := "Powers Catalog" if _editing_powers else "Selected Powers (%d)" % rows.size()
+	var box := Widgets.section_with_action(host, title, toggle_btn, ctx.palette)
+
+	if _editing_powers:
+		_picker = FxPicker.new()
+		box.add_child(_picker)
+		_picker.setup(ctx)
+		_picker.change_requested.connect(func(): save_requested.emit())
+		_picker.detail_requested.connect(_open_detail)
+		return
+
+	if rows.is_empty():
+		Widgets.muted_text(box, "No powers selected yet.", ctx.palette, Widgets.FONT_CAPTION)
+	else:
+		_populate_selected_powers_table(box, rows)
+
+
+func _populate_selected_powers_table(container: Container, rows: Array) -> void:
+	var palette := ctx.palette
+
+	var grid := GridContainer.new()
+	grid.columns = 6
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid.add_theme_constant_override("h_separation", Widgets.GAP_ROW)
+	grid.add_theme_constant_override("v_separation", Widgets.GAP_TIGHT)
+	container.add_child(grid)
+
+	for title in ["Cost", "Rank", "Power", "Score", "Die", "FX Cost"]:
+		var hdr := Label.new()
+		hdr.text = title
+		hdr.add_theme_color_override("font_color", palette.muted)
+		hdr.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
+		if title == "Power":
+			hdr.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		grid.add_child(hdr)
+
+	var groups := _group_selected_powers(rows)
+	for group in groups:
+		var broad: Dictionary = group.get("broad", {})
+		if not broad.is_empty():
+			_add_power_grid_row(grid, broad, true, 0)
+		for spec in group.get("specialties", []):
+			_add_power_grid_row(grid, spec, false, 1 if not broad.is_empty() else 0)
+
+
+func _add_power_grid_row(grid: GridContainer, item: Dictionary, is_broad: bool, indent_level: int) -> void:
+	var rules: AlternityRules = ctx.rules
+	var palette := ctx.palette
+	var raw := ctx.doc.raw()
+	var item_name: String = String(item.get("name", ""))
+
+	# 1. Cost
+	var total_cost := 0
+	if is_broad:
+		total_cost = rules.fx.fx_skill_cost_for_rank(raw, item_name, 1)
+		if total_cost <= 0:
+			total_cost = AlternityNum.as_int(item.get("cost", 0))
+	else:
+		total_cost = rules.fx.fx_skill_total_cost(raw, item_name)
+	var cost_str := "Free" if total_cost <= 0 else "%d SP" % total_cost
+
+	var cost_lbl := Label.new()
+	cost_lbl.text = cost_str
+	cost_lbl.add_theme_color_override("font_color", palette.muted)
+	cost_lbl.add_theme_font_size_override("font_size", Widgets.FONT_DETAIL)
+	cost_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	grid.add_child(cost_lbl)
+
+	# 2. Rank
+	var rank_str := "Broad" if is_broad else str(AlternityNum.as_int(item.get("rank", 0)))
+	var rank_lbl := Label.new()
+	rank_lbl.text = rank_str
+	rank_lbl.add_theme_color_override("font_color", palette.muted)
+	rank_lbl.add_theme_font_size_override("font_size", Widgets.FONT_DETAIL)
+	rank_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	grid.add_child(rank_lbl)
+
+	# 3. Power Name
+	var name_btn := Button.new()
+	name_btn.flat = true
+	name_btn.text = ("    " + item_name) if indent_level > 0 else item_name
+	name_btn.tooltip_text = "View details for %s" % item_name
+	name_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	name_btn.clip_text = true
+	name_btn.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	name_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_btn.add_theme_color_override("font_color", palette.accent if is_broad else palette.text)
+	name_btn.add_theme_font_size_override("font_size", Widgets.FONT_DETAIL)
+	name_btn.pressed.connect(func(): _open_detail(item))
+	grid.add_child(name_btn)
+
+	# 4. Score
+	var score: Dictionary = rules.fx.fx_skill_score(raw, item_name)
+	var usable: bool = bool(score.get("usable", true))
+	var score_lbl := Label.new()
+	if usable:
+		var ord_val: int = AlternityNum.as_int(score.get("ordinary", 0))
+		var good_val: int = AlternityNum.as_int(score.get("good", 0))
+		var amaz_val: int = AlternityNum.as_int(score.get("amazing", 0))
+		score_lbl.text = "O %d / G %d / A %d" % [ord_val, good_val, amaz_val]
+		score_lbl.add_theme_color_override("font_color", palette.text)
+	else:
+		score_lbl.text = "-"
+		score_lbl.add_theme_color_override("font_color", palette.muted)
+	score_lbl.add_theme_font_size_override("font_size", Widgets.FONT_DETAIL)
+	score_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	grid.add_child(score_lbl)
+
+	# 5. Die
+	var die_lbl := Label.new()
+	die_lbl.text = String(score.get("die", "+d0")) if usable else "-"
+	die_lbl.add_theme_color_override("font_color", palette.muted)
+	die_lbl.add_theme_font_size_override("font_size", Widgets.FONT_DETAIL)
+	die_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	grid.add_child(die_lbl)
+
+	# 6. FX Cost
+	var fx_cost_lbl := Label.new()
+	if is_broad:
+		fx_cost_lbl.text = "-"
+	else:
+		var is_perm: bool = rules.fx.is_fx_skill_permanent(raw, item_name)
+		if is_perm:
+			var perm_cost := AlternityNum.as_int(item.get("permanent_cost", 0))
+			fx_cost_lbl.text = "%d (Perm)" % perm_cost
+		else:
+			var act: Dictionary = rules.fx.fx_activation_cost(raw, item_name)
+			var base_pts := AlternityNum.as_int(act.get("points", 1))
+			var max_pts := AlternityNum.as_int(act.get("points_max", base_pts))
+			var surcharge := AlternityNum.as_int(act.get("untrained_surcharge", 0))
+			if max_pts > base_pts:
+				fx_cost_lbl.text = "%d-%d" % [base_pts + surcharge, max_pts + surcharge]
+			else:
+				fx_cost_lbl.text = str(AlternityNum.as_int(act.get("total", base_pts)))
+	fx_cost_lbl.add_theme_color_override("font_color", palette.muted)
+	fx_cost_lbl.add_theme_font_size_override("font_size", Widgets.FONT_DETAIL)
+	fx_cost_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	grid.add_child(fx_cost_lbl)
+
+
+func _group_selected_powers(rows: Array) -> Array:
+	var rules: AlternityRules = ctx.rules
+	var broad_map: Dictionary = {}
+	var standalone: Array = []
+
+	for item in rows:
+		var is_broad: bool = String(item.get("type", "")) == "broad"
+		var item_name: String = String(item.get("name", ""))
+		if is_broad:
+			if not broad_map.has(item_name):
+				broad_map[item_name] = {"broad": item, "specialties": []}
+			else:
+				broad_map[item_name]["broad"] = item
+		else:
+			var broad_name: String = String(item.get("broad_skill", ""))
+			if not broad_name.is_empty():
+				if not broad_map.has(broad_name):
+					var broad_def: Dictionary = rules.fx.get_broad_skill(broad_name)
+					if not broad_def.is_empty():
+						var broad_copy := broad_def.duplicate(true)
+						broad_copy["type"] = "broad"
+						broad_copy["rank"] = 1
+						broad_map[broad_name] = {"broad": broad_copy, "specialties": []}
+					else:
+						standalone.append(item)
+						continue
+				broad_map[broad_name]["specialties"].append(item)
+			else:
+				standalone.append(item)
+
+	var sorted_groups: Array = broad_map.values()
+	sorted_groups.sort_custom(func(a, b):
+		var broad_a: Dictionary = a.get("broad", {})
+		var broad_b: Dictionary = b.get("broad", {})
+		return String(broad_a.get("name", "")) < String(broad_b.get("name", ""))
+	)
+	var result: Array = []
+	for group in sorted_groups:
+		result.append(group)
+	if not standalone.is_empty():
+		result.append({"broad": {}, "specialties": standalone})
+	return result
+
+
 func _build_picker(container: Container) -> void:
 	var box := Widgets.section(container, "Powers", ctx.palette)
+	if ctx.is_wide_layout:
+		Widgets.expand_section(box)
 
-	var picker := FxPicker.new()
-	box.add_child(picker)
-	picker.setup(ctx)
-	picker.change_requested.connect(func(): save_requested.emit())
-	picker.detail_requested.connect(_open_detail)
+	_picker = FxPicker.new()
+	if ctx.is_wide_layout:
+		_picker.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	box.add_child(_picker)
+	_picker.setup(ctx)
+	_picker.change_requested.connect(func(): save_requested.emit())
+	_picker.detail_requested.connect(_open_detail)
 
 
 func _open_detail(skill: Dictionary) -> void:

@@ -68,7 +68,7 @@ func title() -> String:
 func _build() -> void:
 	var panel := PanelContainer.new()
 	panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	panel.add_theme_stylebox_override("panel", Widgets.flat_style(_palette.surface, _palette.border, 8))
+	panel.add_theme_stylebox_override("panel", Widgets.flat_style(_palette.surface, _palette.border, 8, true))
 	add_child(panel)
 
 	var margin := MarginContainer.new()
@@ -112,6 +112,7 @@ func _build() -> void:
 	cancel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	cancel.custom_minimum_size = Vector2(0, 42)
 	cancel.clip_text = true
+	cancel.add_theme_stylebox_override("normal", Widgets.flat_style(_palette.surface_soft, _palette.border, 6))
 	cancel.pressed.connect(func(): close(null))
 	actions.add_child(cancel)
 
@@ -182,13 +183,11 @@ func _build_weapon(parent: Container) -> void:
 	_picker.add_theme_constant_override("separation", Widgets.GAP_TIGHT)
 	section.add_child(_picker)
 
-	var search := LineEdit.new()
+	var search := SearchField.new()
 	search.name = "WeaponSearch"
-	search.placeholder_text = "Search weapons"
-	search.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	search.custom_minimum_size = Vector2(0, 40)
-	search.text_changed.connect(_refresh_weapons)
 	_picker.add_child(search)
+	search.setup(_palette, "Search weapons")
+	search.query_changed.connect(_refresh_weapons)
 
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -317,16 +316,9 @@ func _render_modifiers() -> void:
 
 	for row in _rules.attack_modifiers_for(scope):
 		var id := String(row.get("id", ""))
-		var toggle := CheckButton.new()
-		toggle.text = "%s (%+d)" % [String(row.get("name", "")), AlternityNum.as_int(row.get("step", 0))]
-		toggle.button_pressed = _chosen.has(id)
-		toggle.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		toggle.clip_text = true
-		toggle.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-		toggle.add_theme_color_override("font_color", _palette.text)
-		toggle.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
+		var label := "%s (%+d)" % [String(row.get("name", "")), AlternityNum.as_int(row.get("step", 0))]
+		var toggle := Widgets.toggle_row(grid, label, _chosen.has(id), _palette, true, true)
 		toggle.toggled.connect(_on_modifier_toggled.bind(id))
-		grid.add_child(toggle)
 
 
 func _on_band_pressed(band: String) -> void:
@@ -365,29 +357,20 @@ func _is_melee() -> bool:
 func _build_awareness(parent: Container) -> void:
 	var section := Widgets.section(parent, "Can they see it coming", _palette)
 
-	var unseen := CheckButton.new()
-	unseen.text = "They cannot see the attacker"
-	unseen.add_theme_color_override("font_color", _palette.text)
+	var unseen := Widgets.toggle_row(section, "They cannot see the attacker", not _sees_attacker, _palette)
 	unseen.toggled.connect(func(on: bool):
 		_sees_attacker = not on
 		_refresh())
-	section.add_child(unseen)
 
-	var rear := CheckButton.new()
-	rear.text = "From behind"
-	rear.add_theme_color_override("font_color", _palette.text)
+	var rear := Widgets.toggle_row(section, "From behind", _from_rear, _palette)
 	rear.toggled.connect(func(on: bool):
 		_from_rear = on
 		_refresh())
-	section.add_child(rear)
 
-	var held := CheckButton.new()
-	held.text = "Pinned"
-	held.add_theme_color_override("font_color", _palette.text)
+	var held := Widgets.toggle_row(section, "Pinned", _pinned, _palette)
 	held.toggled.connect(func(on: bool):
 		_pinned = on
 		_refresh())
-	section.add_child(held)
 
 	var note := Widgets.muted_text(
 		section,

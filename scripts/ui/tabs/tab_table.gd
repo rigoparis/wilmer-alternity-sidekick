@@ -27,9 +27,10 @@ const SKILL_DODGE := 21
 const PARRY_SKILLS := [11, 15]
 
 var _status: Label
+var _checks_body: VBoxContainer
 var _combat_body: VBoxContainer
 var _chat_field: LineEdit
-var _private_toggle: CheckButton
+var _private_toggle: CheckBox
 var _feed_list: VBoxContainer
 var _feed_empty: Label
 var _last_award: String = ""
@@ -63,8 +64,10 @@ func build(container: Container) -> void:
 		table.round_changed.connect(_on_round_changed)
 		table.action_check_wanted.connect(_on_action_check_wanted)
 		table.attack_arrived.connect(_on_attack_arrived)
+		table.check_arrived.connect(_on_check_arrived)
 
 	_build_status(container, table)
+	_build_called_checks(container, table)
 	_build_combat(container, table)
 	_build_chat(container, table)
 	_build_feed(container, table)
@@ -102,6 +105,118 @@ func _status_text(table: TableSession) -> String:
 	if table.is_connected_to_table():
 		return "At the table."
 	return "Not connected. Your character is still yours to edit; nothing reaches the GM until you rejoin."
+
+
+## Checks requested by the GM.
+func _build_called_checks(container: Container, table: TableSession) -> void:
+	var section := Widgets.section(container, "Checks from GM", ctx.palette)
+	_checks_body = VBoxContainer.new()
+	_checks_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_checks_body.add_theme_constant_override("separation", Widgets.GAP_ROW)
+	section.add_child(_checks_body)
+	_render_called_checks(table)
+
+
+func _render_called_checks(table: TableSession) -> void:
+	if _checks_body == null or not is_instance_valid(_checks_body):
+		return
+	for child in _checks_body.get_children():
+		_checks_body.remove_child(child)
+		child.queue_free()
+
+	if table == null or table.incoming_checks.is_empty():
+		Widgets.muted_text(_checks_body, "No checks requested right now.", ctx.palette, Widgets.FONT_CAPTION)
+		return
+
+	for item in table.incoming_checks:
+		var check: SkillCheck = item as SkillCheck
+		if check == null:
+			continue
+		var card := PanelContainer.new()
+		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		card.add_theme_stylebox_override("panel", Widgets.flat_style(ctx.palette.surface_soft, ctx.palette.accent, 6))
+		_checks_body.add_child(card)
+
+		var margin := MarginContainer.new()
+		for side in ["left", "right", "top", "bottom"]:
+			margin.add_theme_constant_override("margin_" + side, Widgets.PAD_PANEL)
+		card.add_child(margin)
+
+		var col := VBoxContainer.new()
+		col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		col.add_theme_constant_override("separation", Widgets.GAP_TIGHT)
+		margin.add_child(col)
+
+		var skill: Dictionary = ctx.rules.get_skill_by_id(check.skill_id) if ctx.rules != null else {}
+		var score: Dictionary = ctx.rules.skill_score(ctx.doc.raw(), skill) if (ctx.doc != null and not skill.is_empty()) else {}
+		var header_row := HBoxContainer.new()
+		header_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		header_row.add_theme_constant_override("separation", Widgets.GAP_ROW)
+		col.add_child(header_row)
+
+		var icon := TextureRect.new()
+		icon.texture = preload("res://assets/dice-d20.svg")
+		icon.custom_minimum_size = Vector2(20, 20)
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		icon.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		icon.modulate = ctx.palette.accent
+		header_row.add_child(icon)
+
+		var title_text := check.skill_label if not check.skill_label.is_empty() else "Skill Check"
+		var heading := Widgets.text(header_row, title_text, ctx.palette, Widgets.FONT_SUBHEADING, ctx.palette.accent)
+		heading.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		heading.custom_minimum_size = Vector2(1, 0)
+
+		var step_desc := "Difficulty: %+d step" % check.gm_step
+		if not check.reason.is_empty():
+			step_desc += " (%s)" % check.reason
+		var detail := Widgets.text(col, step_desc, ctx.palette, Widgets.FONT_DETAIL)
+		detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		detail.custom_minimum_size = Vector2(1, 0)
+
+		if not score.is_empty():
+			var ord: int = AlternityNum.as_int(score.get("ordinary", 0))
+			var gd: int = AlternityNum.as_int(score.get("good", 0))
+			var am: int = AlternityNum.as_int(score.get("amazing", 0))
+			var mod: int = AlternityNum.as_int(score.get("step", 0))
+			var score_text := "Score: %d / %d / %d   (Your modifiers: %+d step)" % [ord, gd, am, mod]
+			var score_label := Widgets.muted_text(col, score_text, ctx.palette, Widgets.FONT_CAPTION)
+			score_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			score_label.custom_minimum_size = Vector2(1, 0)
+
+		var actions := HBoxContainer.new()
+		actions.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		actions.add_theme_constant_override("separation", Widgets.GAP_ROW)
+		col.add_child(actions)
+
+		var roll_btn := Button.new()
+		roll_btn.text = "Roll Now"
+		roll_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		roll_btn.custom_minimum_size = Vector2(0, 38)
+		roll_btn.add_theme_stylebox_override("normal", Widgets.flat_style(ctx.palette.surface, ctx.palette.accent, 6))
+		roll_btn.pressed.connect(func(): _on_roll_called_check(check))
+		actions.add_child(roll_btn)
+
+		var dismiss_btn := Button.new()
+		dismiss_btn.text = "Dismiss"
+		dismiss_btn.custom_minimum_size = Vector2(80, 38)
+		dismiss_btn.pressed.connect(func():
+			table.dismiss_called_check(check)
+			_render_called_checks(table))
+		actions.add_child(dismiss_btn)
+
+
+func _on_roll_called_check(check: SkillCheck) -> void:
+	if ctx == null or ctx.checks == null or ctx.doc == null:
+		return
+	var skill: Dictionary = ctx.rules.get_skill_by_id(check.skill_id) if ctx.rules != null else {}
+	var rolled = await ctx.checks.run_called(check, ctx.doc, skill)
+	if rolled != null and ctx.table != null:
+		ctx.table.resolve_called_check(check)
+	if ctx.table != null:
+		_render_called_checks(ctx.table)
 
 
 ## The fight, from this player's side.
@@ -429,13 +544,34 @@ func _survives_the_hit(knockout: Dictionary) -> bool:
 ## "Dodge" would hide both halves of it.
 func _render_dodge(table: TableSession, fight: ActionRound, mine: Dictionary) -> void:
 	if table.is_dodging():
-		var already := Widgets.text(
-			_combat_body,
-			"You are dodging (%s). It covers every attack until the round ends." % fight.dodge_of(String(mine.get("id", ""))),
-			ctx.palette,
-			Widgets.FONT_DETAIL,
-			ctx.palette.accent
-		)
+		var deg := fight.dodge_of(String(mine.get("id", "")))
+		var step: int = 0
+		if ctx.rules != null:
+			step = ctx.rules.combat.dodge_step(deg)
+		var msg := ""
+		var col: Color = ctx.palette.accent
+		match deg.to_lower():
+			"amazing", "good", "ordinary":
+				msg = "You are dodging (%s: +%d step to attacks against you). It covers every attack until the round ends." % [deg, step]
+				col = ctx.palette.accent
+			"critical failure":
+				var later_penalty := 1
+				if ctx.rules != null:
+					later_penalty = ctx.rules.combat.DODGE_LATER_PENALTY
+				msg = "Your dodge critically failed (%s: -2 steps bonus to attackers!). Later actions this round have +%d step." % [
+					deg, later_penalty
+				]
+				col = ctx.palette.warning
+			_:
+				# Failure / Marginal
+				var later_penalty := 1
+				if ctx.rules != null:
+					later_penalty = ctx.rules.combat.DODGE_LATER_PENALTY
+				msg = "Your dodge failed (%s: +0 step defense). It provides no protection against attacks. Later actions this round have +%d step." % [
+					deg, later_penalty
+				]
+				col = ctx.palette.muted
+		var already := Widgets.text(_combat_body, msg, ctx.palette, Widgets.FONT_DETAIL, col)
 		already.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		already.custom_minimum_size = Vector2(1, 0)
 		return
@@ -539,10 +675,7 @@ func _build_chat(container: Container, table: TableSession) -> void:
 	_chat_field.text_submitted.connect(func(_text: String): _send(table))
 	section.add_child(_chat_field)
 
-	_private_toggle = CheckButton.new()
-	_private_toggle.text = "Only the GM sees this"
-	_private_toggle.add_theme_color_override("font_color", ctx.palette.text)
-	section.add_child(_private_toggle)
+	_private_toggle = Widgets.toggle_row(section, "Only the GM sees this", false, ctx.palette)
 
 	var send := Button.new()
 	send.name = "SendChatButton"
@@ -604,8 +737,14 @@ func _on_table_changed() -> void:
 	# Only the parts that move. A full rebuild would take the cursor out of the
 	# message box every time anybody at the table said anything.
 	_render_feed(ctx.table)
+	_render_called_checks(ctx.table)
 	if _status != null and is_instance_valid(_status):
 		_status.text = _status_text(ctx.table)
+
+
+func _on_check_arrived(_check: SkillCheck) -> void:
+	if ctx != null and ctx.table != null:
+		_render_called_checks(ctx.table)
 
 
 func _on_ap_applied(amount: int, reason: String) -> void:
