@@ -101,6 +101,45 @@ func push(scene: PackedScene, props: Dictionary = {}, presentation: int = Presen
 	return result
 
 
+## Present a route without awaiting its close, returning the instantiated RouteScene.
+func present_modal(scene: PackedScene, props: Dictionary = {}, presentation: int = Presentation.AUTO) -> RouteScene:
+	if _host == null:
+		push_error("UiRouter has no ModalHost; call set_host() first")
+		return null
+	if scene == null:
+		push_error("UiRouter.present_modal called with a null scene")
+		return null
+
+	var route := scene.instantiate()
+	if not (route is RouteScene):
+		push_error("UiRouter.present_modal expects a RouteScene, got %s" % route.get_class())
+		route.free()
+		return null
+
+	route.configure(props)
+
+	var resolved := presentation
+	if resolved == Presentation.AUTO:
+		resolved = route.preferred_presentation()
+	if resolved == Presentation.AUTO:
+		resolved = Presentation.PAGE
+
+	_host.present(route, resolved)
+	stack_changed.emit(depth())
+	return route
+
+
+## Dismiss a modal route previously presented with present_modal.
+func dismiss_modal(route: RouteScene) -> void:
+	if route == null or _host == null:
+		return
+	if _host.top_route() == route:
+		_host.dismiss_top()
+	elif is_instance_valid(route):
+		route.queue_free()
+	stack_changed.emit(depth())
+
+
 ## Close the top route, as if it had cancelled.
 ##
 ## Returns false when there was nothing to close, which is what lets the back

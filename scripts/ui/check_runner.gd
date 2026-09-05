@@ -28,6 +28,7 @@ const RULING_PATIENCE := 20.0
 
 const TRAY_ROUTE := preload("res://scenes/ui/routes/dice_tray_route.tscn")
 const CHECK_STEP_ROUTE := preload("res://scenes/ui/routes/check_step_route.tscn")
+const CHECK_WAITING_ROUTE := preload("res://scenes/ui/routes/check_waiting_route.tscn")
 
 var _rules: AlternityRules
 var _router: UiRouter
@@ -140,6 +141,29 @@ func run_action_check(doc: CharacterDoc):
 	return await _throw(check, doc)
 
 
+## Roll this character's requisition check for equipment in Dark*Matter.
+##
+## Rolled against Administration-bureaucracy (or Will feat check if untrained),
+## with step modifiers for availability, urgency, and necessity.
+func run_requisition_check(doc: CharacterDoc, options: Dictionary = {}):
+	if doc == null or _rules == null:
+		return null
+	var score: Dictionary = _rules.requisition_check_score(doc.raw(), options)
+
+	var check := SkillCheck.new(_local_player_id(), SkillCheck.ORIGIN_GM)
+	check.skill_id = AlternityRulesConstants.REQUISITION_SKILL_ID
+	check.skill_label = "Requisition check"
+	check.ordinary = AlternityNum.as_int(score.get("ordinary", 10))
+	check.good = AlternityNum.as_int(score.get("good", 5))
+	check.amazing = AlternityNum.as_int(score.get("amazing", 2))
+	check.player_step = AlternityNum.as_int(score.get("step", 0))
+
+	if not check.is_rollable():
+		return null
+	return await _throw(check, doc)
+
+
+
 ## Throw a piece of dice notation on the tray and hand back the total.
 ##
 ## Not a check: armor and damage are numbers, with no score to beat and no degree
@@ -168,22 +192,49 @@ func roll_notation(notation: String, label: String) -> int:
 func _await_ruling(check: SkillCheck) -> bool:
 	_transport.request_check(check.to_dict())
 
+	var waiting_route: RouteScene = null
+	var user_cancelled := false
+
+	if _router != null:
+		waiting_route = _router.present_modal(CHECK_WAITING_ROUTE, {
+			"palette": _palette,
+			"check": check.to_dict(),
+			"title": "Waiting for GM...",
+		}, UiRouter.Presentation.DIALOG)
+		if waiting_route != null and waiting_route.has_signal("request_cancelled"):
+			waiting_route.connect("request_cancelled", func(): user_cancelled = true)
+
 	var waited := 0.0
 	var tree := Engine.get_main_loop() as SceneTree
+	var ruling_received: SkillCheck = null
+
 	while waited < RULING_PATIENCE:
+		if user_cancelled:
+			break
+
 		if _rulings.has(check.check_id):
-			var answer: SkillCheck = _rulings[check.check_id]
+			ruling_received = _rulings[check.check_id]
 			_rulings.erase(check.check_id)
-			if answer.state == SkillCheck.STATE_CANCELLED:
-				return false
-			check.gm_step = answer.gm_step
-			check.reason = answer.reason
-			check.state = SkillCheck.STATE_READY
-			return true
+			break
+
 		if tree == null:
 			break
 		await tree.process_frame
 		waited += tree.root.get_process_delta_time()
+
+	if waiting_route != null and _router != null:
+		_router.dismiss_modal(waiting_route)
+
+	if user_cancelled:
+		return false
+
+	if ruling_received != null:
+		if ruling_received.state == SkillCheck.STATE_CANCELLED:
+			return false
+		check.gm_step = ruling_received.gm_step
+		check.reason = ruling_received.reason
+		check.state = SkillCheck.STATE_READY
+		return true
 
 	# The GM did not answer. Rather than hang, let the player set it and get on
 	# with the game -- a table can always argue about the number afterwards.

@@ -691,19 +691,21 @@ func _build_skill_rows(box: Container, rows: Array) -> void:
 	var raw := ctx.doc.raw()
 
 	var grid := GridContainer.new()
-	grid.columns = 4
+	grid.columns = 5
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	grid.add_theme_constant_override("h_separation", Widgets.GAP_ROW)
 	grid.add_theme_constant_override("v_separation", Widgets.GAP_TIGHT)
 	box.add_child(grid)
 
-	for title in ["Rank", "Skill", "Score", "Die"]:
+	for title in ["Rank", "Skill", "Score", "Die", "Roll"]:
 		var hdr := Label.new()
 		hdr.text = title
 		hdr.add_theme_color_override("font_color", palette.muted)
 		hdr.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
 		if title == "Skill":
 			hdr.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		elif title == "Roll":
+			hdr.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		grid.add_child(hdr)
 
 	# Group broads and their specialties
@@ -777,19 +779,38 @@ func _add_summary_skill_row(grid: GridContainer, skill: Dictionary, is_broad: bo
 	rank_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	grid.add_child(rank_lbl)
 
-	# 2. Skill Name
+	# 2. Skill Name & Info button
+	var skill_cell := HBoxContainer.new()
+	skill_cell.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	skill_cell.add_theme_constant_override("separation", Widgets.GAP_TIGHT)
+	grid.add_child(skill_cell)
+
 	var name_btn := Button.new()
 	name_btn.flat = true
 	var skill_name := String(rules.skill_label(skill))
 	name_btn.text = ("    " + skill_name) if indent_level > 0 else skill_name
-	name_btn.tooltip_text = "View details for %s" % rules.skill_label(skill)
+	name_btn.tooltip_text = "View details for %s" % skill_name
 	name_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	name_btn.clip_text = true
 	name_btn.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	name_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_btn.add_theme_color_override("font_color", palette.accent if is_broad else palette.text)
 	name_btn.add_theme_font_size_override("font_size", Widgets.FONT_DETAIL)
 	name_btn.pressed.connect(func(): _open_detail(skill))
-	grid.add_child(name_btn)
+	skill_cell.add_child(name_btn)
+
+	var info_btn := Button.new()
+	info_btn.flat = true
+	info_btn.icon = preload("res://assets/question-square.svg")
+	info_btn.tooltip_text = "View details for %s" % skill_name
+	info_btn.custom_minimum_size = Vector2(24, 24)
+	info_btn.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	info_btn.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
+	info_btn.add_theme_color_override("icon_normal_color", Color(palette.muted, 0.7))
+	info_btn.add_theme_color_override("icon_hover_color", palette.accent)
+	info_btn.add_theme_color_override("icon_pressed_color", palette.accent)
+	info_btn.pressed.connect(func(): _open_detail(skill))
+	skill_cell.add_child(info_btn)
 
 	# 3. Score
 	var ord_val: int = AlternityNum.as_int(score.get("ordinary", 0))
@@ -810,6 +831,20 @@ func _add_summary_skill_row(grid: GridContainer, skill: Dictionary, is_broad: bo
 	die_lbl.add_theme_font_size_override("font_size", Widgets.FONT_DETAIL)
 	die_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	grid.add_child(die_lbl)
+
+	# 5. Roll Button
+	var roll_btn := Button.new()
+	roll_btn.name = "RollButton_" + str(skill_id)
+	roll_btn.icon = preload("res://assets/dice-d20.svg")
+	roll_btn.tooltip_text = "Roll %s" % skill_name
+	roll_btn.custom_minimum_size = Vector2(34, 28)
+	roll_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	roll_btn.add_theme_stylebox_override("normal", Widgets.flat_style(palette.surface_soft, palette.accent, 4))
+	roll_btn.add_theme_stylebox_override("hover", Widgets.flat_style(palette.surface_soft.lightened(0.1), palette.accent, 4))
+	roll_btn.add_theme_stylebox_override("pressed", Widgets.flat_style(palette.accent, Color(0, 0, 0, 0), 4))
+	roll_btn.disabled = not ctx.can_roll()
+	roll_btn.pressed.connect(func(): _roll_skill(skill))
+	grid.add_child(roll_btn)
 
 
 func _build_fx(container: Container) -> void:
@@ -879,18 +914,37 @@ func _add_summary_fx_row(grid: GridContainer, item: Dictionary, is_broad: bool, 
 	rank_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	grid.add_child(rank_lbl)
 
-	# 2. Power Name
+	# 2. Power Name & Info button
+	var power_cell := HBoxContainer.new()
+	power_cell.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	power_cell.add_theme_constant_override("separation", Widgets.GAP_TIGHT)
+	grid.add_child(power_cell)
+
 	var name_btn := Button.new()
 	name_btn.flat = true
 	name_btn.text = ("    " + item_name) if indent_level > 0 else item_name
 	name_btn.tooltip_text = "View details for %s" % item_name
 	name_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	name_btn.clip_text = true
 	name_btn.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	name_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_btn.add_theme_color_override("font_color", palette.accent if is_broad else palette.text)
 	name_btn.add_theme_font_size_override("font_size", Widgets.FONT_DETAIL)
 	name_btn.pressed.connect(func(): _open_detail(item))
-	grid.add_child(name_btn)
+	power_cell.add_child(name_btn)
+
+	var info_btn := Button.new()
+	info_btn.flat = true
+	info_btn.icon = preload("res://assets/question-square.svg")
+	info_btn.tooltip_text = "View details for %s" % item_name
+	info_btn.custom_minimum_size = Vector2(24, 24)
+	info_btn.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	info_btn.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
+	info_btn.add_theme_color_override("icon_normal_color", Color(palette.muted, 0.7))
+	info_btn.add_theme_color_override("icon_hover_color", palette.accent)
+	info_btn.add_theme_color_override("icon_pressed_color", palette.accent)
+	info_btn.pressed.connect(func(): _open_detail(item))
+	power_cell.add_child(info_btn)
 
 	# 3. Score
 	var score: Dictionary = rules.fx.fx_skill_score(raw, item_name)
@@ -985,14 +1039,38 @@ func _group_fx_powers(rows: Array) -> Array:
 	return result
 
 
-func _open_detail(skill: Dictionary) -> void:
-	if ctx.router == null:
+func _roll_skill(skill: Dictionary) -> void:
+	if ctx == null or ctx.checks == null or ctx.doc == null:
 		return
-	await ctx.router.push(DETAIL_ROUTE, {
+	await ctx.checks.run(ctx.doc, skill)
+
+
+func _open_detail(skill: Dictionary) -> void:
+	if ctx == null or ctx.router == null:
+		return
+	var rules: AlternityRules = ctx.rules
+	var raw := ctx.doc.raw() if ctx.doc != null else {}
+	var detail: Dictionary
+	var title_text: String
+	var is_core_skill: bool = skill.has("broad_id") or String(skill.get("type", "")) == "broad"
+	if rules != null and is_core_skill:
+		detail = rules.skill_detail(skill, raw)
+		title_text = String(detail.get("name", rules.skill_label(skill)))
+	else:
+		detail = skill
+		title_text = String(skill.get("name", rules.skill_label(skill) if rules != null else ""))
+
+	var answer = await ctx.router.push(DETAIL_ROUTE, {
 		"palette": ctx.palette,
-		"data": skill,
-		"title": String(skill.get("name", ctx.rules.skill_label(skill))),
+		"data": detail,
+		"title": title_text,
+		"skill": skill,
+		"can_roll": ctx.can_roll() and is_core_skill,
 	})
+	if not is_instance_valid(self):
+		return
+	if typeof(answer) == TYPE_DICTIONARY and bool(answer.get("roll", false)):
+		await _roll_skill(answer.get("skill", skill))
 
 
 ## One always-active power, named and described.

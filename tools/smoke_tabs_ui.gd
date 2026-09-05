@@ -22,6 +22,7 @@ const TAB_SUMMARY := preload("res://scenes/ui/tabs/tab_summary.tscn")
 const TAB_FX := preload("res://scenes/ui/tabs/tab_fx.tscn")
 const TAB_SKILLS := preload("res://scenes/ui/tabs/tab_skills.tscn")
 const TAB_PSIONICS := preload("res://scenes/ui/tabs/tab_psionics.tscn")
+const TAB_EQUIPMENT := preload("res://scenes/ui/tabs/tab_equipment.tscn")
 const OPTIONAL_RULES_ROUTE := preload("res://scenes/ui/routes/optional_rules_route.tscn")
 const SkillPickerScript := preload("res://scripts/ui/widgets/skill_picker.gd")
 
@@ -48,6 +49,8 @@ func _run() -> void:
 	await _test_psionics_tab()
 	await _test_fx_tab()
 	await _test_summary_attack_forms_and_tables()
+	await _test_dark_matter_basics_career_packages()
+	await _test_dark_matter_equipment_requisition()
 
 	finish()
 
@@ -363,6 +366,15 @@ func _labels_in(node: Node) -> Array:
 	return out
 
 
+func _buttons_in(node: Node) -> Array:
+	var out: Array = []
+	for child in node.get_children():
+		if child is Button:
+			out.append(child)
+		out.append_array(_buttons_in(child))
+	return out
+
+
 func _any_label_contains(labels: Array, needle: String) -> bool:
 	if needle.is_empty():
 		return false
@@ -560,8 +572,86 @@ func _test_summary_attack_forms_and_tables() -> void:
 	# Skills and FX reference tables
 	check_true(_any_label_contains(labels, "Athletics"), "Summary skills table has Athletics")
 	check_true(_any_label_contains(labels, "Climb"), "Summary skills table has Climb")
+	check_true(_any_label_contains(labels, "Roll"), "Summary skills table has Roll header")
 	check_true(_any_label_contains(labels, "Necromancy"), "Summary FX table has Necromancy")
 	check_true(_any_label_contains(labels, "Animate dead"), "Summary FX table has Animate dead")
 	check_true(_any_label_contains(labels, "FX Cost"), "Summary FX table has FX Cost header")
 
+	var buttons := _buttons_in(tab)
+	var has_skill_roll_btn := false
+	var has_skill_info_btn := false
+	var has_fx_info_btn := false
+	for btn in buttons:
+		if btn is Button:
+			var b := btn as Button
+			if b.tooltip_text.begins_with("Roll "):
+				has_skill_roll_btn = true
+			elif b.tooltip_text.begins_with("View details for Athletics"):
+				has_skill_info_btn = true
+			elif b.tooltip_text.begins_with("View details for Necromancy"):
+				has_fx_info_btn = true
+	check_true(has_skill_roll_btn, "Summary skills table has roll button")
+	check_true(has_skill_info_btn, "Summary skills table has skill info button")
+	check_true(has_fx_info_btn, "Summary FX table has power info button")
 	tab.queue_free()
+
+
+func _test_dark_matter_basics_career_packages() -> void:
+	var doc_dm := Doc.new(_rules)
+	doc_dm.apply(CharacterDoc.ALL, func(c):
+		c["setting"] = "Dark*Matter"
+		c["species_id"] = 0 # Human
+		c["profession_id"] = 0 # Combat Spec
+	)
+
+	var tab_dm = _mount(TAB_BASICS, doc_dm, false)
+	await process_frame
+	var labels_dm := _labels_in(tab_dm)
+	check_true(_any_label_contains(labels_dm, "Career Package"), "Basics tab shows Career Package in Dark*Matter")
+
+	# Gated: Core hero must not see Career Package
+	var doc_core := Doc.new(_rules)
+	doc_core.apply(CharacterDoc.ALL, func(c):
+		c["setting"] = "Core"
+		c["species_id"] = 0
+		c["profession_id"] = 0
+	)
+	var tab_core = _mount(TAB_BASICS, doc_core, false)
+	await process_frame
+	var labels_core := _labels_in(tab_core)
+	check_false(_any_label_contains(labels_core, "Career Package"), "Basics tab hides Career Package in Core")
+
+	tab_dm.queue_free()
+	tab_core.queue_free()
+
+
+func _test_dark_matter_equipment_requisition() -> void:
+	var doc_dm := Doc.new(_rules)
+	doc_dm.apply(CharacterDoc.ALL, func(c):
+		c["setting"] = "Dark*Matter"
+		c["species_id"] = 0
+		c["profession_id"] = 0
+	)
+
+	var tab_dm = _mount(TAB_EQUIPMENT, doc_dm, false)
+	await process_frame
+	var labels_dm := _labels_in(tab_dm)
+	check_true(_any_label_contains(labels_dm, "Requisition"), "Equipment tab shows Requisition in Dark*Matter")
+	check_true(_any_label_contains(labels_dm, "Item Availability"), "Requisition shows Item Availability")
+	check_true(_any_label_contains(labels_dm, "Target score"), "Requisition shows calculated target score")
+
+	# Gated: Core hero must not see Requisition
+	var doc_core := Doc.new(_rules)
+	doc_core.apply(CharacterDoc.ALL, func(c):
+		c["setting"] = "Core"
+		c["species_id"] = 0
+		c["profession_id"] = 0
+	)
+	var tab_core = _mount(TAB_EQUIPMENT, doc_core, false)
+	await process_frame
+	var labels_core := _labels_in(tab_core)
+	check_false(_any_label_contains(labels_core, "Requisition"), "Equipment tab hides Requisition in Core")
+
+	tab_dm.queue_free()
+	tab_core.queue_free()
+

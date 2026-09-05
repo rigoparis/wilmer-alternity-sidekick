@@ -18,6 +18,7 @@ extends SheetTab
 
 ## Only offered when this device is actually at a table.
 const CAMPAIGN_SECTION := &"meta"
+const SKILL_PICK_ROUTE := preload("res://scenes/ui/routes/skill_pick_route.tscn")
 
 ## Acrobatics - Dodge. Usable untrained, so there is always something to roll.
 const SKILL_DODGE := 21
@@ -115,6 +116,16 @@ func _build_called_checks(container: Container, table: TableSession) -> void:
 	_checks_body.add_theme_constant_override("separation", Widgets.GAP_ROW)
 	section.add_child(_checks_body)
 	_render_called_checks(table)
+
+	var init_btn := Button.new()
+	init_btn.name = "InitiateCheckButton"
+	init_btn.text = "Initiate a check..."
+	init_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	init_btn.custom_minimum_size = Vector2(0, 38)
+	init_btn.tooltip_text = "Ask the GM to set steps for a check on one of your skills"
+	init_btn.disabled = not ctx.can_roll()
+	init_btn.pressed.connect(_on_initiate_check_pressed)
+	section.add_child(init_btn)
 
 
 func _render_called_checks(table: TableSession) -> void:
@@ -217,6 +228,19 @@ func _on_roll_called_check(check: SkillCheck) -> void:
 		ctx.table.resolve_called_check(check)
 	if ctx.table != null:
 		_render_called_checks(ctx.table)
+
+
+func _on_initiate_check_pressed() -> void:
+	if ctx == null or ctx.router == null or ctx.checks == null or ctx.doc == null:
+		return
+	var skill = await ctx.router.push(SKILL_PICK_ROUTE, {
+		"palette": ctx.palette,
+		"rules": ctx.rules,
+		"title": "What do you want to roll?",
+	})
+	if not is_instance_valid(self) or typeof(skill) != TYPE_DICTIONARY or skill.is_empty():
+		return
+	await ctx.checks.run(ctx.doc, skill)
 
 
 ## The fight, from this player's side.

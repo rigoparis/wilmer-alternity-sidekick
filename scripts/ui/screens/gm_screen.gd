@@ -1037,11 +1037,15 @@ func _render_status() -> void:
 		return
 
 	var connected: Array = _transport.connected_players()
-	_status.text = "Table open  -  %s" % (
-		"nobody connected yet" if connected.is_empty()
-		else "%d %s connected" % [connected.size(), "player" if connected.size() == 1 else "players"]
-	)
-	_status.add_theme_color_override("font_color", _palette.accent)
+	var base_text := "nobody connected yet" if connected.is_empty() else "%d %s connected" % [
+		connected.size(), "player" if connected.size() == 1 else "players"
+	]
+	if not _pending_checks.is_empty():
+		_status.text = "Table open  -  %s  -  %d WAITING FOR RULING" % [base_text, _pending_checks.size()]
+		_status.add_theme_color_override("font_color", _palette.warning)
+	else:
+		_status.text = "Table open  -  %s" % base_text
+		_status.add_theme_color_override("font_color", _palette.accent)
 
 
 func _render_checks() -> void:
@@ -1059,7 +1063,7 @@ func _render_checks() -> void:
 func _build_pending_check(check: SkillCheck) -> void:
 	var panel := PanelContainer.new()
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.add_theme_stylebox_override("panel", Widgets.flat_style(_palette.surface_soft, _palette.accent, 6))
+	panel.add_theme_stylebox_override("panel", Widgets.flat_style(_palette.surface_soft, _palette.warning, 6))
 	_checks_list.add_child(panel)
 
 	var margin := MarginContainer.new()
@@ -1073,7 +1077,7 @@ func _build_pending_check(check: SkillCheck) -> void:
 	margin.add_child(box)
 
 	var who := String(_session.seat_for(check.player_id).get("player_name", "Someone"))
-	var heading := Widgets.text(box, "%s wants to roll %s" % [who, check.skill_label], _palette, Widgets.FONT_BODY)
+	var heading := Widgets.text(box, "%s is waiting to roll %s" % [who, check.skill_label], _palette, Widgets.FONT_BODY, _palette.warning)
 	heading.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	heading.custom_minimum_size = Vector2(1, 0)
 
@@ -1441,6 +1445,7 @@ func _on_check_requested(_player_id: String, data: Dictionary) -> void:
 	var check := SkillCheck.from_dict(data)
 	_pending_checks.append(check)
 	_render_checks()
+	_render_status()
 
 
 func _drop_pending(check: SkillCheck) -> void:
@@ -1459,6 +1464,7 @@ func _on_rule_pressed(check: SkillCheck, step: int, reason: String = "") -> void
 	if _transport != null:
 		_transport.send_ruling(check.to_dict(), check.player_id)
 	_render_checks()
+	_render_status()
 	_render_shortcuts()
 
 
@@ -1483,6 +1489,7 @@ func _on_refuse_check_pressed(check: SkillCheck) -> void:
 	if _transport != null:
 		_transport.send_ruling(check.to_dict(), check.player_id)
 	_render_checks()
+	_render_status()
 
 
 ## Call for a check on a skill from the shortcut row.
