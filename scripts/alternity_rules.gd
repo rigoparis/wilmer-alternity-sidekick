@@ -335,6 +335,7 @@ func default_character() -> Dictionary:
 			"2b": false,
 			"2c": false,
 		},
+		"supplements": _default_supplements(),
 		"damage": {
 			"stun": 0,
 			"wound": 0,
@@ -442,6 +443,15 @@ func ensure_character_shape(character: Dictionary) -> Dictionary:
 		var rule_id := String(rule.get("id", ""))
 		if not character["optional_rules"].has(rule_id):
 			character["optional_rules"][rule_id] = false
+	if not character.has("supplements") or typeof(character["supplements"]) != TYPE_DICTIONARY:
+		character["supplements"] = {}
+	# Each supplement's own default, not false. A character saved before the field
+	# existed has no opinion about Beyond Science, and reading that silence as "off"
+	# would take nineteen of their twenty-one FX schools away on next load.
+	for supplement in SUPPLEMENTS:
+		var supplement_id := String(supplement.get("id", ""))
+		if not character["supplements"].has(supplement_id):
+			character["supplements"][supplement_id] = bool(supplement.get("default", false))
 	if not character.has("species_id"):
 		character["species_id"] = 0
 	if not character.has("profession_id"):
@@ -538,6 +548,12 @@ func combat_spec_bonus_specialties(_character: Dictionary = {}) -> Array:
 ## the check does not fail loudly, it just quietly offers Dark Matter content in
 ## a Core campaign.
 func is_entry_available(character: Dictionary, entry: Dictionary) -> bool:
+	# Both gates, and an entry may carry either or neither. A supplement entry is
+	# available in any setting the table plays, so long as the book is on the
+	# table; a setting entry is available in that setting whatever books are out.
+	var supplement := String(entry.get("supplement", "")).strip_edges()
+	if not supplement.is_empty() and not supplement_enabled(character, supplement):
+		return false
 	var required := String(entry.get("setting", "")).strip_edges()
 	if required.is_empty():
 		return true
@@ -632,6 +648,30 @@ func species_roll_notes_for_character(character: Dictionary) -> Array:
 func optional_rule_enabled(character: Dictionary, rule_id: String) -> bool:
 	var optional_rules: Dictionary = character.get("optional_rules", {})
 	return bool(optional_rules.get(rule_id, false))
+
+
+## What a character starts with when nobody has said otherwise.
+func _default_supplements() -> Dictionary:
+	var out: Dictionary = {}
+	for supplement in SUPPLEMENTS:
+		out[String(supplement.get("id", ""))] = bool(supplement.get("default", false))
+	return out
+
+
+func supplement_enabled(character: Dictionary, supplement_id: String) -> bool:
+	var supplements: Dictionary = character.get("supplements", {})
+	if supplements.has(supplement_id):
+		return bool(supplements[supplement_id])
+	for supplement in SUPPLEMENTS:
+		if String(supplement.get("id", "")) == supplement_id:
+			return bool(supplement.get("default", false))
+	return false
+
+
+func set_supplement(character: Dictionary, supplement_id: String, enabled: bool) -> void:
+	var supplements: Dictionary = character.get("supplements", {})
+	supplements[supplement_id] = enabled
+	character["supplements"] = supplements
 
 
 func set_optional_rule(character: Dictionary, rule_id: String, enabled: bool) -> void:
@@ -2177,8 +2217,113 @@ func validate(character: Dictionary) -> Array:
 	_validate_fx(character, messages)
 	_validate_mutations(character, messages)
 	_validate_cybertech(character, messages)
+	_validate_dark_matter(character, messages)
 
 	return messages
+
+
+## Whether this character is played in Dark*Matter.
+##
+## One reading, here rather than in each module, because the stored value has
+## varied -- "Dark*Matter" and "Dark Matter" both appear in saved files -- and a
+## check written afresh each time is a check that will eventually be written
+## strictly and silently stop matching half of them.
+func is_dark_matter(character: Dictionary) -> bool:
+	return is_setting_available(character, "Dark*Matter")
+
+
+## What Dark*Matter forbids that the core rules allow.
+##
+## Everything here is a restriction, never a permission, and every one of them is
+## gated on the setting -- a Core hero must reach the end of this function with
+## nothing added. Dark*Matter is contemporary Earth: the point of these rules is
+## that the strange thing in the room is the strange thing, not the party.
+func _validate_dark_matter(character: Dictionary, messages: Array) -> void:
+	if not is_dark_matter(character):
+		return
+
+	# "In standard Dark*Matter contemporary campaigns, players are strictly
+	# limited to playing Human heroes." The core alien species -- fraal, mechalus,
+	# sesheyan, t'sa, weren -- are not available.
+	var species := get_species_by_id(_as_int(character.get("species_id", 0)))
+	var species_name := String(species.get("name", ""))
+	if not species_name.is_empty() and species_name != "Human":
+		messages.append(
+			"Dark*Matter heroes are Human; %s is not a playable species in this setting. Source: Dark Matter Campaign Setting, Chapter 3: Heroes of Dark Matter."
+			% species_name
+		)
+
+	# "No Mindwalker Career: Humans cannot select the dedicated Mindwalker
+	# career. They must purchase the Psionic Awareness perk to become a Psionic
+	# Talent." A Mindwalker is therefore not a career a Dark*Matter hero can hold,
+	# which is also why every psionic hero in the setting is a talent and why the
+	# talent caps above always apply.
+	if is_mindwalker_profession(character):
+		messages.append(
+			"Dark*Matter has no Mindwalker career; a psionic hero takes the Psionic Awareness perk and is a talent instead. Source: Dark Matter Campaign Setting, Chapter 3: Heroes of Dark Matter."
+		)
+
+	_validate_dark_matter_fx(character, messages)
+
+
+## The FX rules Dark*Matter substitutes for the Beyond Science ones.
+##
+## The setting has no Adept profession either, so magic and faith work the same
+## way psionics do: a perk buys you in, and what you buy in to is a talent. The
+## consequence is that every FX hero in Dark*Matter is under the talent caps,
+## where in Core a full Adept is not.
+func _validate_dark_matter_fx(character: Dictionary, messages: Array) -> void:
+	var held: Array = []
+	for broad in fx.get_broad_skills():
+		if typeof(broad) != TYPE_DICTIONARY:
+			continue
+		var broad_name := String(broad.get("name", ""))
+		if fx.is_fx_skill_selected(character, broad_name):
+			held.append(broad_name)
+	if held.is_empty():
+		return
+
+	var gateway := ""
+	for perk_id in DARK_MATTER_FX_PERKS:
+		if is_perk_selected(character, String(perk_id)):
+			gateway = String(perk_id)
+			break
+	if gateway.is_empty():
+		messages.append(
+			"Dark*Matter has no Adept profession; FX requires the Faith or Arcane Magic perk. Source: Dark Matter Campaign Setting, Chapter 3: Heroes of Dark Matter."
+		)
+
+	# One specialty may reach rank 6 and every other is held to rank 3. Counted
+	# rather than checked per skill, because the rule is about the set: two
+	# specialties at rank 6 is legal for neither of them individually.
+	var above_the_line: Array = []
+	var over_the_cap: Array = []
+	# Walked from the hero's own selections rather than the catalog: the same
+	# spell appears under more than one school, so a catalog sweep counted one
+	# rank-6 specialty three times and reported a hero who had broken a rule they
+	# had not broken.
+	var selected: Dictionary = character.get("fx", {}).get("selected_skills", {})
+	for key in selected.keys():
+		var name := String(key)
+		if fx.get_specialty_skill(name).is_empty():
+			continue
+		var rank := fx.fx_skill_rank(character, name)
+		if rank > DARK_MATTER_FX_TALENT_TOP_RANK:
+			over_the_cap.append("%s at rank %d" % [name, rank])
+		elif rank > DARK_MATTER_FX_TALENT_OTHER_RANK:
+			above_the_line.append("%s at rank %d" % [name, rank])
+
+	for entry in over_the_cap:
+		messages.append(
+			"A Dark*Matter FX talent may not exceed rank %d in any specialty, and has %s. Source: Dark Matter Campaign Setting, Chapter 3: Heroes of Dark Matter."
+			% [DARK_MATTER_FX_TALENT_TOP_RANK, entry]
+		)
+
+	if above_the_line.size() > 1:
+		messages.append(
+			"A Dark*Matter FX talent may raise one specialty above rank %d, and has %d (%s). Source: Dark Matter Campaign Setting, Chapter 3: Heroes of Dark Matter."
+			% [DARK_MATTER_FX_TALENT_OTHER_RANK, above_the_line.size(), ", ".join(above_the_line)]
+		)
 
 
 func _validate_abilities(character: Dictionary, messages: Array) -> void:
@@ -2222,6 +2367,15 @@ func _validate_skills(character: Dictionary, messages: Array) -> void:
 				var broad_id := _as_int(skill.get("broad_id", -1))
 				if skill.get("type", "") == "specialty" and broad_id != 525 and broad_id != 901:
 					messages.append("Fraal Psionic Talents (non-Mindwalkers) must select all specialty skills from the Telepathy discipline. Source: Player's Handbook p. 22.")
+					break
+	elif is_dark_matter(character):
+		# Dark*Matter reaches psionics through a perk rather than a career or an
+		# optional rule: there is no Mindwalker to be, so Psionic Awareness is the
+		# only door in and every psionic hero in the setting is a talent.
+		if not is_perk_selected(character, "psionic_awareness"):
+			for key in selected.keys():
+				if is_psionic_skill(get_skill_by_id(_as_int(key))):
+					messages.append("Dark*Matter psionics require the Psionic Awareness perk; a hero without it is not a talent. Source: Dark Matter Campaign Setting, Chapter 3: Heroes of Dark Matter.")
 					break
 	elif String(species_info.get("name", "")) != "Fraal" and not is_mindwalker_profession(character) and not optional_rule_enabled(character, "psionic_talents"):
 		for key in selected.keys():

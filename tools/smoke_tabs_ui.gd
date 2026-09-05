@@ -388,15 +388,24 @@ func _test_optional_rules_route() -> void:
 	check_eq(route._confirm_text, "Create Hero", "the confirm label is configurable")
 	check_true(route.get_child_count() > 0, "the route renders the rule list")
 
+	# Nothing touched, nothing reported: the caller invalidates the whole sheet on
+	# any result, so an empty one has to be null rather than a pair of empty maps.
+	check_eq(route._result(), null, "an untouched screen reports no change")
+
 	# Toggling records only the net change, so a rule flipped twice applies
 	# nothing.
 	route._changed["2a"] = true
-	check_eq(route._changed.size(), 1, "a change is recorded")
+	route._changed_supplements["dataware"] = true
+	var result: Dictionary = route._result()
+	check_eq(result.get("rules", {}).size(), 1, "a rule change is recorded")
+	check_eq(result.get("supplements", {}).size(), 1, "a supplement change is recorded separately")
 
-	var applied: Dictionary = route._changed.duplicate()
-	for rule_id in applied:
-		_rules.set_optional_rule(doc.raw(), String(rule_id), bool(applied[rule_id]))
+	for rule_id in result["rules"]:
+		_rules.set_optional_rule(doc.raw(), String(rule_id), bool(result["rules"][rule_id]))
+	for supplement_id in result["supplements"]:
+		_rules.set_supplement(doc.raw(), String(supplement_id), bool(result["supplements"][supplement_id]))
 	check_true(_rules.optional_rule_enabled(doc.raw(), "2a"), "the chosen rule reaches the character")
+	check_true(_rules.supplement_enabled(doc.raw(), "dataware"), "the chosen supplement reaches the character")
 
 	route.queue_free()
 

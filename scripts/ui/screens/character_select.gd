@@ -247,8 +247,12 @@ func _on_create_pressed() -> void:
 		if not is_instance_valid(self):
 			return
 		if typeof(chosen) == TYPE_DICTIONARY and not chosen.is_empty():
-			for rule_id in chosen:
-				_rules.set_optional_rule(doc.raw(), String(rule_id), bool(chosen[rule_id]))
+			var rule_changes: Dictionary = chosen.get("rules", {})
+			for rule_id in rule_changes:
+				_rules.set_optional_rule(doc.raw(), String(rule_id), bool(rule_changes[rule_id]))
+			var supplement_changes: Dictionary = chosen.get("supplements", {})
+			for supplement_id in supplement_changes:
+				_rules.set_supplement(doc.raw(), String(supplement_id), bool(supplement_changes[supplement_id]))
 
 	# Saved immediately so the hero appears in the list even if the person backs
 	# out before editing anything.

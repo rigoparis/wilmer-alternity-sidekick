@@ -97,7 +97,11 @@
 
 		},
 		"sold_species_skills": [],
-		"species_id": 0.0
+		"species_id": 0.0,
+		"supplements": {
+			"beyond_science": true,
+			"dataware": false
+		}
 	},
 	"summary": {
 		"ability_target": 60,

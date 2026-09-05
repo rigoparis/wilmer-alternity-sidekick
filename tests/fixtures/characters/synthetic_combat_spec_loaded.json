@@ -9,8 +9,9 @@
 	},
 	"achievement_level": 5,
 	"achievement_points": 30,
-	"achievement_points_available": 30,
+	"achievement_points_available": 0,
 	"achievement_points_spent_other": 0,
+	"age_category": "young_adult",
 	"career": "Marine",
 	"combat_spec_bonus_specialty": 31,
 	"cybertech": {
@@ -48,6 +49,7 @@
 	},
 	"fx": {
 		"energy_pool": 0,
+		"energy_used": 0,
 		"is_fx_talent": false,
 		"permanent_skills": {
 
@@ -56,6 +58,8 @@
 
 		}
 	},
+	"fx_campaign_scale": "heroic",
+	"heightened_ability_stat": "",
 	"hero_name": "Loaded Combat Spec",
 	"last_resorts_rebought": 0,
 	"last_resorts_used": 0,
@@ -83,14 +87,22 @@
 		"2a": false,
 		"2b": false,
 		"2c": false,
-		"dazed": false
+		"age_effects": false,
+		"damage_upgrading": false,
+		"dazed": false,
+		"monetary_awards_uncapped": false,
+		"psionic_talents": false,
+		"weapon_accuracy": false
 	},
 	"player_name": "Fixture",
 	"profession_id": 0,
+	"psionic_energy_used": 0,
 	"selected_achievements": [
 		{
 			"achievement_id": "action_check_increase",
+			"ap_cost": 0,
 			"cost": 4,
+			"gm_given": false,
 			"level": 5,
 			"line_id": "ach_0001",
 			"notes": "",
@@ -111,6 +123,14 @@
 		"31": 3
 	},
 	"setting": "Core",
+	"skill_ranks_at_level": {
+		"1": 2,
+		"31": 3
+	},
 	"sold_species_skills": [],
-	"species_id": 0
+	"species_id": 0,
+	"supplements": {
+		"beyond_science": true,
+		"dataware": false
+	}
 }

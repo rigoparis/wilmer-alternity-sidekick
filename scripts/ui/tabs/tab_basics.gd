@@ -26,10 +26,15 @@ const ABILITY_NAMES := {
 }
 
 ## Value stored on the character, and the label shown for it.
+##
+## A disabled entry is still listed rather than hidden, and still selectable if a
+## saved character already holds it: a setting that vanishes from the picker
+## takes the hero's answer with it, and the next save writes back whatever
+## happened to be at index 0.
 const SETTINGS := [
 	{"value": "Core", "label": "Core", "enabled": true},
+	{"value": "Dark*Matter", "label": "Dark*Matter", "enabled": true},
 	{"value": "Star*Drive", "label": "Star*Drive (Planned)", "enabled": false},
-	{"value": "Dark*Matter", "label": "Dark*Matter (In Progress)", "enabled": false},
 ]
 
 
@@ -204,7 +209,7 @@ func _build_setting_picker(parent: Container) -> void:
 
 	Widgets.muted_text(
 		parent,
-		"Core is currently supported. Dark*Matter is in active development, and Star*Drive is planned for a future update.",
+		"The setting decides which content this hero may take. Dark*Matter is contemporary Earth: Human heroes only, no Mindwalker or Adept career, and psionics and FX reached through a perk instead. Star*Drive is planned for a future update.",
 		palette,
 		Widgets.FONT_CAPTION
 	)

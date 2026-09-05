@@ -7,14 +7,22 @@ extends RouteScene
 ## it as a centred overlay with 12px side margins, which is what forced the
 ## scroll-margin workarounds.
 ##
-## Closes with the set of rules that changed, or null if nothing did, so the
-## caller only invalidates the sheet when something actually moved.
+## Closes with {"rules": {id: bool}, "supplements": {id: bool}} carrying only what
+## changed, or null if nothing did, so the caller only invalidates the sheet when
+## something actually moved.
+##
+## Rules and supplements sit on the same screen because a GM settles them in the
+## same breath -- "we are using the dazed rule and we have Beyond Science on the
+## table" -- but they are different questions and the screen says so. A rule
+## changes how something already in the app works; a supplement decides whether a
+## whole book's worth of content exists at all.
 ##
 
 var _palette: ThemePalette
 var _rules: AlternityRules
 var _character: Dictionary = {}
 var _changed: Dictionary = {}
+var _changed_supplements: Dictionary = {}
 var _confirm_text: String = "Done"
 
 
@@ -84,6 +92,12 @@ func _build() -> void:
 	list.add_theme_constant_override("separation", Widgets.GAP_SECTION)
 	scroll_margin.add_child(list)
 
+	_build_supplements(list)
+
+	var rules_heading := Widgets.text(list, "Optional rules", _palette, Widgets.FONT_SECTION_TITLE, _palette.accent)
+	rules_heading.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	rules_heading.custom_minimum_size = Vector2(1, 0)
+
 	var enabled: Dictionary = _character.get("optional_rules", {})
 	for rule in AlternityRules.OPTIONAL_RULES:
 		_build_rule(list, rule, bool(enabled.get(String(rule.get("id", "")), false)))
@@ -92,8 +106,48 @@ func _build() -> void:
 	done.text = _confirm_text
 	done.custom_minimum_size = Vector2(0, 44)
 	done.add_theme_stylebox_override("normal", Widgets.flat_style(_palette.surface_soft, _palette.accent, 6))
-	done.pressed.connect(func(): close(_changed if not _changed.is_empty() else null))
+	done.pressed.connect(func(): close(_result()))
 	box.add_child(done)
+
+
+func _result():
+	if _changed.is_empty() and _changed_supplements.is_empty():
+		return null
+	return {"rules": _changed, "supplements": _changed_supplements}
+
+
+## The books on the table, above the rules, because they are the larger question.
+##
+## A supplement decides whether content exists; an optional rule decides how
+## existing content behaves. Turning Beyond Science off removes nineteen FX
+## schools from the catalog, which is a much bigger thing to do by accident than
+## any single toggle below it.
+func _build_supplements(parent: Container) -> void:
+	var heading := Widgets.text(parent, "Books in play", _palette, Widgets.FONT_SECTION_TITLE, _palette.accent)
+	heading.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	heading.custom_minimum_size = Vector2(1, 0)
+
+	for supplement in AlternityRules.SUPPLEMENTS:
+		var supplement_id := String(supplement.get("id", ""))
+		var enabled: bool = (
+			_rules.supplement_enabled(_character, supplement_id) if _rules != null
+			else bool(supplement.get("default", false))
+		)
+		var block := Widgets.section(parent, String(supplement.get("name", supplement_id)), _palette)
+		Widgets.muted_text(block, String(supplement.get("summary", "")), _palette, Widgets.FONT_CAPTION)
+		Widgets.text(block, String(supplement.get("description", "")), _palette, Widgets.FONT_CAPTION)
+
+		var toggle := Widgets.toggle_row(block, _supplement_state_label(enabled), enabled, _palette)
+		toggle.toggled.connect(func(pressed: bool):
+			toggle.text = _supplement_state_label(pressed)
+			if pressed == enabled:
+				_changed_supplements.erase(supplement_id)
+			else:
+				_changed_supplements[supplement_id] = pressed)
+
+
+func _supplement_state_label(enabled: bool) -> String:
+	return "On the table" if enabled else "Not in play"
 
 
 func _build_rule(parent: Container, rule: Dictionary, enabled: bool) -> void:

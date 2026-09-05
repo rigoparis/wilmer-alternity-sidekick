@@ -43,12 +43,13 @@ const ACHIEVEMENTS := &"achievements"
 const MUTATIONS := &"mutations"
 const DAMAGE := &"damage"
 const OPTIONAL_RULES := &"optional_rules"
+const SUPPLEMENTS := &"supplements"
 const NOTES := &"notes"
 
 ## Every section, for mutations whose blast radius is broad or unknown.
 const ALL: Array[StringName] = [
 	META, ABILITIES, SKILLS, PERKS_FLAWS, EQUIPMENT, CYBERTECH,
-	FX, ACHIEVEMENTS, MUTATIONS, DAMAGE, OPTIONAL_RULES, NOTES,
+	FX, ACHIEVEMENTS, MUTATIONS, DAMAGE, OPTIONAL_RULES, SUPPLEMENTS, NOTES,
 ]
 
 var _rules

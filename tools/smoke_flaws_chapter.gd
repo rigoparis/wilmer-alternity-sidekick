@@ -83,7 +83,8 @@ func _init() -> void:
 	for fid in fx_flaw_ids:
 		var flaw: Dictionary = rules.get_flaw_by_id(fid)
 		check_eq(flaw.is_empty(), false, "FX flaw '%s' exists" % fid)
-		check_eq(flaw.get("setting"), "Beyond Science", "flaw '%s' requires Beyond Science setting" % fid)
+		# A supplement, not a setting: the book can be on the table in any campaign.
+		check_eq(flaw.get("supplement"), "beyond_science", "flaw '%s' comes from Beyond Science" % fid)
 
 	check_eq(rules.get_flaw_by_id("fixed_fx_recovery").get("bonus_options"), [3], "fixed fx recovery is +3 SP")
 	check_eq(rules.get_flaw_by_id("inhibited_fx_recovery").get("bonus_options"), [1, 3, 5], "inhibited fx recovery is +1/3/5 SP")
@@ -100,7 +101,7 @@ func _init() -> void:
 	for fid in robot_flaw_ids:
 		var flaw: Dictionary = rules.get_flaw_by_id(fid)
 		check_eq(flaw.is_empty(), false, "robot flaw '%s' exists" % fid)
-		check_eq(flaw.get("setting"), "Dataware", "flaw '%s' requires Dataware setting" % fid)
+		check_eq(flaw.get("supplement"), "dataware", "flaw '%s' comes from Dataware" % fid)
 
 	check_eq(rules.get_flaw_by_id("asimov_circuits").get("bonus_options"), [3], "asimov circuits is +3 SP")
 	check_eq(rules.get_flaw_by_id("command_circuitry").get("bonus_options"), [4], "command circuitry is +4 SP")
@@ -117,7 +118,10 @@ func _init() -> void:
 	print("--- 5. Testing Setting Gating and is_entry_available ---")
 	var core_char := {"setting": "Core"}
 	var dm_char := {"setting": "Dark Matter"}
-	var dw_char := {"setting": "Dataware"}
+	# A robot hero is a Core hero at a table that owns Dataware. The old shape for
+	# this was {"setting": "Dataware"}, which is not a setting anybody can pick and
+	# is exactly why none of these flaws had ever been reachable in the app.
+	var dw_char := {"setting": "Core", "supplements": {"dataware": true}}
 
 	check_eq(rules.is_entry_available(core_char, rules.get_flaw_by_id("bad_luck")), true, "Core character can select Bad Luck")
 	check_eq(rules.is_entry_available(core_char, rules.get_flaw_by_id("abductee")), false, "Core character CANNOT select Dark Matter Abductee")
@@ -126,7 +130,8 @@ func _init() -> void:
 	check_eq(rules.is_entry_available(dm_char, rules.get_flaw_by_id("bad_luck")), true, "Dark Matter character can select Bad Luck")
 	check_eq(rules.is_entry_available(dm_char, rules.get_flaw_by_id("abductee")), true, "Dark Matter character can select Abductee")
 
-	check_eq(rules.is_entry_available(dw_char, rules.get_flaw_by_id("asimov_circuits")), true, "Dataware character can select Asimov Circuits")
+	check_eq(rules.is_entry_available(dw_char, rules.get_flaw_by_id("asimov_circuits")), true, "a table with Dataware can select Asimov Circuits")
+	check_eq(rules.is_entry_available(dw_char, rules.get_flaw_by_id("abductee")), false, "and owning Dataware does not hand it Dark Matter content")
 
 	print("--- 6. Testing Flaw Mechanical Effects and Calculations ---")
 	var hero := {

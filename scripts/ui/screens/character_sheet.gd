@@ -1013,12 +1013,16 @@ func _open_optional_rules() -> void:
 	if not is_instance_valid(self) or typeof(changed) != TYPE_DICTIONARY or changed.is_empty():
 		return
 
-	# Optional rules move skill budgets and ability limits, so this invalidates
-	# the whole sheet rather than one section.
+	# Optional rules move skill budgets and ability limits, and a supplement moves
+	# whole catalogs, so this invalidates the whole sheet rather than one section.
 	var rules: AlternityRules = _ctx.rules
+	var rule_changes: Dictionary = changed.get("rules", {})
+	var supplement_changes: Dictionary = changed.get("supplements", {})
 	_ctx.doc.apply(CharacterDoc.ALL, func(c):
-		for rule_id in changed:
-			rules.set_optional_rule(c, String(rule_id), bool(changed[rule_id])))
+		for rule_id in rule_changes:
+			rules.set_optional_rule(c, String(rule_id), bool(rule_changes[rule_id]))
+		for supplement_id in supplement_changes:
+			rules.set_supplement(c, String(supplement_id), bool(supplement_changes[supplement_id])))
 	_save()
 
 

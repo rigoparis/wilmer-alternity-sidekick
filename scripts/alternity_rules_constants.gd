@@ -26,6 +26,37 @@ const ENERGY_RECOVERY_SKILL_ID := 135
 ## damage is rolled against. Source: Gamemaster Guide p. 54.
 const PHYSICAL_RESOLVE_SKILL_ID := 136
 
+## What an FX talent begins with in Dark*Matter, and how far it can ever go.
+##
+## Flat, not derived: "All FX characters start with an FX energy pool of 5
+## points... up to a maximum lifetime pool of 10 points." Elsewhere the starting
+## pool is a number the player records and the ceiling is twice it, which lands
+## on the same 5-and-10 only by coincidence -- so a Dark*Matter hero who recorded
+## something else would otherwise be quietly playing a different game.
+## Source: Dark Matter Campaign Setting, Chapter 3: Heroes of Dark Matter.
+const DARK_MATTER_FX_STARTING_POOL := 5
+
+## How high a Dark*Matter FX talent may take their spells and miracles.
+##
+## "An FX talent can purchase any number of specialties, but their ranks are
+## strictly capped at rank 6 in one specialty skill and rank 3 in all others."
+## The shape is unlike the psionic caps above, which limit how many powers may be
+## held; this limits only how far each may be taken.
+## Source: Dark Matter Campaign Setting, Chapter 3: Heroes of Dark Matter.
+const DARK_MATTER_FX_TALENT_TOP_RANK := 6
+const DARK_MATTER_FX_TALENT_OTHER_RANK := 3
+
+## The perks that make somebody an FX talent in Dark*Matter.
+##
+## The setting has no Adept profession, so one of these is the only way in.
+## Source: Dark Matter Campaign Setting, Chapter 3: Heroes of Dark Matter.
+const DARK_MATTER_FX_PERKS := ["faith", "arcane_magic"]
+
+## What a talent pays above the listed cost for an FX or psionic skill.
+##
+## Source: Dark Matter Campaign Setting, Chapter 3: Heroes of Dark Matter.
+const DARK_MATTER_TALENT_SURCHARGE := 1
+
 ## What a psionic action costs, whatever power is used.
 ##
 ## The cost is flat and does not vary by discipline or specialty: a specialty
@@ -270,6 +301,45 @@ const OPTIONAL_RULES := [
 		"name": "Optional Rule: Weapon Accuracy",
 		"summary": "Weapon accuracy modifiers adjust attack situation die",
 		"description": "Applies the weapon's inherent accuracy rating as a step bonus or penalty to the attack check (e.g. laser rifle provides a -1 bonus, flintlock pistol carries a +2 penalty). When disabled, listed weapon accuracy is ignored. Source: Player's Handbook Chapter 11 p. 174.",
+	},
+]
+
+
+## The supplement books a campaign has in play, beyond the core two.
+##
+## Distinct from the campaign setting, and the distinction is load-bearing. A
+## setting is one-of -- a hero plays in Core, or Star*Drive, or Dark*Matter -- and
+## it says what world they are in. A supplement is a book the table happens to
+## own, any number of them, in any setting: Beyond Science is the FX rules, and
+## Dataware is the robot rules, and either can sit on the table of a Core game or
+## a Dark*Matter one.
+##
+## They were originally tagged in the same "setting" field as the settings
+## themselves, which made them permanently unreachable: nothing can select
+## "Dataware" as its setting, so the twenty robot perks in that book had never
+## been visible to anybody. Nothing errored -- the catalog simply never offered
+## them.
+##
+## `default` is what a character that has never heard of the field gets, and the
+## two defaults are chosen so that turning this on changes nothing anybody could
+## see. Beyond Science is on because its FX catalog -- nineteen of the app's
+## twenty-one schools and faiths -- has always been offered ungated, and defaulting
+## it off would take every hero's powers away. Dataware is off because none of its
+## content has ever appeared, so leaving it off is the state everyone is already in.
+const SUPPLEMENTS := [
+	{
+		"id": "beyond_science",
+		"name": "Beyond Science: A Guide to FX",
+		"summary": "The FX rules: arcane schools, faiths, and the perks and flaws that go with them",
+		"default": true,
+		"description": "The full FX framework -- nineteen broad schools and faiths from Alienism to Voodoo, their spells and miracles, and eight FX perks and five FX flaws. Without it a hero has no FX at all beyond what their setting supplies directly. Dark*Matter replaces this framework with its own, so a Dark*Matter hero uses the Dark*Matter rules whether or not this is on. Source: Beyond Science: A Guide to FX.",
+	},
+	{
+		"id": "dataware",
+		"name": "Dataware",
+		"summary": "Robot and artificial-intelligence heroes",
+		"default": false,
+		"description": "Perks and flaws for playing a robot or an artificial intelligence -- adaptive programming, composite structure, Asimov circuits, incomplete coding. Only useful at a table where somebody is playing a machine. Source: Dataware Chapter 6; Tables D21 and D22.",
 	},
 ]
 
@@ -1521,6 +1591,16 @@ const PERK_DEFINITIONS := [
 
 	# Dark Matter Perks (Dark Matter Campaign Setting Chapter 3 p. 60-61, Table D2)
 	{
+		"id": "arcane_magic",
+		"name": "Arcane Magic",
+		"cost_options": [5],
+		"ability": "INT",
+		"activation": "Active",
+		"setting": "Dark Matter",
+		"summary": "The hero is an arcane FX talent and may buy a school of magic and its spells. Dark*Matter has no Adept profession, so this perk is the only way into arcane FX; a talent pays 1 skill point above the listed cost for every FX skill.",
+		"source": "Dark Matter Campaign Setting, Chapter 3: Heroes of Dark Matter.",
+	},
+	{
 		"id": "gearhead",
 		"name": "Gearhead",
 		"cost_options": [4],
@@ -1598,7 +1678,7 @@ const PERK_DEFINITIONS := [
 		"cost_options": [5],
 		"ability": "Special",
 		"activation": "Active",
-		"setting": "Beyond Science",
+		"supplement": "beyond_science",
 		"summary": "Allows an FX hero to select combat specialty skills from Modern Ranged Weapons or Melee Weapons without taking the broad skill.",
 		"source": "Beyond Science: A Guide to FX p. 6; Table F1.",
 	},
@@ -1608,7 +1688,7 @@ const PERK_DEFINITIONS := [
 		"cost_options": [4],
 		"ability": "WIL",
 		"activation": "Active",
-		"setting": "Beyond Science",
+		"supplement": "beyond_science",
 		"summary": "Reduces the FX energy point cost of all FX powers by 1 (minimum 1 FX point).",
 		"source": "Beyond Science: A Guide to FX p. 6; Table F1.",
 	},
@@ -1618,7 +1698,7 @@ const PERK_DEFINITIONS := [
 		"cost_options": [4],
 		"ability": "WIL",
 		"activation": "Active",
-		"setting": "Beyond Science",
+		"supplement": "beyond_science",
 		"summary": "Doubles the duration of all maintained or sustained FX powers.",
 		"source": "Beyond Science: A Guide to FX p. 6; Table F1.",
 	},
@@ -1628,7 +1708,7 @@ const PERK_DEFINITIONS := [
 		"cost_options": [4],
 		"ability": "WIL",
 		"activation": "Active",
-		"setting": "Beyond Science",
+		"supplement": "beyond_science",
 		"summary": "FX energy recovers at twice the normal rate: recovery checks every 30 minutes, or 4 hours of rest for full pool.",
 		"source": "Beyond Science: A Guide to FX p. 6; Table F1.",
 	},
@@ -1638,7 +1718,7 @@ const PERK_DEFINITIONS := [
 		"cost_options": [3, 6, 9],
 		"ability": "WIL",
 		"activation": "Active",
-		"setting": "Beyond Science",
+		"supplement": "beyond_science",
 		"summary": "Grants a +2 step bonus to resistance modifier against 1 (3 SP), 2 (6 SP), or 3 (9 SP) types of FX.",
 		"source": "Beyond Science: A Guide to FX p. 6; Table F1.",
 	},
@@ -1648,7 +1728,7 @@ const PERK_DEFINITIONS := [
 		"cost_options": [4],
 		"ability": "WIL",
 		"activation": "Active",
-		"setting": "Beyond Science",
+		"supplement": "beyond_science",
 		"summary": "Increases the area of effect of all area-affecting FX powers by 50%.",
 		"source": "Beyond Science: A Guide to FX p. 6; Table F1.",
 	},
@@ -1658,7 +1738,7 @@ const PERK_DEFINITIONS := [
 		"cost_options": [4],
 		"ability": "WIL",
 		"activation": "Active",
-		"setting": "Beyond Science",
+		"supplement": "beyond_science",
 		"summary": "Increases the range of all ranged FX powers by 50%.",
 		"source": "Beyond Science: A Guide to FX p. 6; Table F1.",
 	},
@@ -1668,7 +1748,7 @@ const PERK_DEFINITIONS := [
 		"cost_options": [3, 6, 9],
 		"ability": "WIL",
 		"activation": "Active",
-		"setting": "Beyond Science",
+		"supplement": "beyond_science",
 		"summary": "Increases the hero's FX energy pool by +2 (3 SP), +4 (6 SP), or +6 (9 SP) points.",
 		"source": "Beyond Science: A Guide to FX p. 6; Table F1.",
 	},
@@ -1680,7 +1760,7 @@ const PERK_DEFINITIONS := [
 		"cost_options": [4],
 		"ability": "INT",
 		"activation": "Active",
-		"setting": "Dataware",
+		"supplement": "dataware",
 		"summary": "The robot can learn non-robotics skills at standard costs without cross-career penalties.",
 		"source": "Dataware p. 78; Table D21.",
 	},
@@ -1690,7 +1770,7 @@ const PERK_DEFINITIONS := [
 		"cost_options": [3],
 		"ability": "CON",
 		"activation": "Active",
-		"setting": "Dataware",
+		"supplement": "dataware",
 		"summary": "Lightweight composite internal frame reduces chassis weight by 25% without sacrificing durability.",
 		"source": "Dataware p. 78; Table D21.",
 	},
@@ -1700,7 +1780,7 @@ const PERK_DEFINITIONS := [
 		"cost_options": [4],
 		"ability": "CON",
 		"activation": "Active",
-		"setting": "Dataware",
+		"supplement": "dataware",
 		"summary": "Internal components are sealed against vacuum, radiation, corrosive atmospheres, and extreme temperatures.",
 		"source": "Dataware p. 78; Table D21.",
 	},
@@ -1710,7 +1790,7 @@ const PERK_DEFINITIONS := [
 		"cost_options": [4],
 		"ability": "CON",
 		"activation": "Active",
-		"setting": "Dataware",
+		"supplement": "dataware",
 		"summary": "Reinforced heavy chassis adds +2 to wound and stun durability ratings.",
 		"source": "Dataware p. 78; Table D21.",
 	},
@@ -1720,7 +1800,7 @@ const PERK_DEFINITIONS := [
 		"cost_options": [2],
 		"ability": "DEX",
 		"activation": "Active",
-		"setting": "Dataware",
+		"supplement": "dataware",
 		"summary": "One weapon, tool, or sensor array is concealed within internal compartments (+2 step penalty for others to detect). Incompatible with Unarmored.",
 		"source": "Dataware p. 78; Table D21.",
 	},
@@ -1730,7 +1810,7 @@ const PERK_DEFINITIONS := [
 		"cost_options": [3],
 		"ability": "INT",
 		"activation": "Active",
-		"setting": "Dataware",
+		"supplement": "dataware",
 		"summary": "Quick-swap modular sockets allow equipment and tools to be swapped in minutes rather than hours.",
 		"source": "Dataware p. 78; Table D21.",
 	},
@@ -1740,7 +1820,7 @@ const PERK_DEFINITIONS := [
 		"cost_options": [4],
 		"ability": "INT",
 		"activation": "Active",
-		"setting": "Dataware",
+		"supplement": "dataware",
 		"summary": "Overclocked processors grant a -1 step bonus to initiative rolls and reaction checks.",
 		"source": "Dataware p. 78; Table D21.",
 	},
@@ -1750,7 +1830,7 @@ const PERK_DEFINITIONS := [
 		"cost_options": [4],
 		"ability": "CON",
 		"activation": "Active",
-		"setting": "Dataware",
+		"supplement": "dataware",
 		"summary": "Adds +1 point of natural armor protection against ordinary damage types.",
 		"source": "Dataware p. 78; Table D21.",
 	},
@@ -1760,7 +1840,7 @@ const PERK_DEFINITIONS := [
 		"cost_options": [4],
 		"ability": "CON",
 		"activation": "Active",
-		"setting": "Dataware",
+		"supplement": "dataware",
 		"summary": "Internal nano-repair systems automatically restore 1 stun or wound point per hour of low-power rest.",
 		"source": "Dataware p. 78; Table D21.",
 	},
@@ -2030,7 +2110,7 @@ const FLAW_DEFINITIONS := [
 		"name": "Fixed FX Recovery",
 		"bonus_options": [3],
 		"ability": "WIL",
-		"setting": "Beyond Science",
+		"supplement": "beyond_science",
 		"summary": "The hero cannot regain FX energy on an hourly basis. Instead, all FX energy points return once per day at a specific chosen time.",
 		"source": "Beyond Science: A Guide to FX p. 6; Table F2.",
 	},
@@ -2039,7 +2119,7 @@ const FLAW_DEFINITIONS := [
 		"name": "Inhibited FX Recovery",
 		"bonus_options": [1, 3, 5],
 		"ability": "WIL",
-		"setting": "Beyond Science",
+		"supplement": "beyond_science",
 		"summary": "Sensitive to a material within 100 meters (1 SP rare, 3 SP uncommon, 5 SP common), preventing all FX energy recovery while in its presence.",
 		"source": "Beyond Science: A Guide to FX p. 6; Table F2.",
 	},
@@ -2048,7 +2128,7 @@ const FLAW_DEFINITIONS := [
 		"name": "FX Require Recharging",
 		"bonus_options": [5],
 		"ability": "WIL",
-		"setting": "Beyond Science",
+		"supplement": "beyond_science",
 		"summary": "FX energy does not recover naturally. Only a specific daily ritual, event, or power source (taking 1 minute to 1 hour) restores the FX energy pool.",
 		"source": "Beyond Science: A Guide to FX p. 6; Table F2.",
 	},
@@ -2057,7 +2137,7 @@ const FLAW_DEFINITIONS := [
 		"name": "FX Susceptibility",
 		"bonus_options": [3, 6, 9],
 		"ability": "WIL",
-		"setting": "Beyond Science",
+		"supplement": "beyond_science",
 		"summary": "Vulnerable to FX powers. Grants a -2 step penalty to resistance modifier against 1 (3 SP), 2 (6 SP), or 3 (9 SP) types of FX (Arcane Magic, Faith, Super Power).",
 		"source": "Beyond Science: A Guide to FX p. 7; Table F2.",
 	},
@@ -2066,7 +2146,7 @@ const FLAW_DEFINITIONS := [
 		"name": "Slow FX Energy Recovery",
 		"bonus_options": [5],
 		"ability": "WIL",
-		"setting": "Beyond Science",
+		"supplement": "beyond_science",
 		"summary": "FX energy recovers at half normal rate: recovery rolls occur every 2 hours instead of 1 hour, and 16 hours of rest are required for full pool recovery.",
 		"source": "Beyond Science: A Guide to FX p. 7; Table F2.",
 	},
@@ -2077,7 +2157,7 @@ const FLAW_DEFINITIONS := [
 		"name": "Asimov Circuits",
 		"bonus_options": [3],
 		"ability": "WIL",
-		"setting": "Dataware",
+		"supplement": "dataware",
 		"summary": "The robot must prioritize the survival of its creator species and cannot use lethal force or permit villains of that species to come to harm through inaction.",
 		"source": "Dataware p. 79; Table D22.",
 	},
@@ -2086,7 +2166,7 @@ const FLAW_DEFINITIONS := [
 		"name": "Command Circuitry",
 		"bonus_options": [4],
 		"ability": "WIL",
-		"setting": "Dataware",
+		"supplement": "dataware",
 		"summary": "Anyone with a comm link, operating frequency, and passcodes can issue orders the robot cannot disobey unless self-destructive.",
 		"source": "Dataware p. 79; Table D22.",
 	},
@@ -2095,7 +2175,7 @@ const FLAW_DEFINITIONS := [
 		"name": "Doublespeak",
 		"bonus_options": [2],
 		"ability": "PER",
-		"setting": "Dataware",
+		"supplement": "dataware",
 		"summary": "The robot repeats words or phrases in speech, taking a +1 step penalty to all Personality skill checks and feats. On Critical Failure, stutters or repeats last action.",
 		"source": "Dataware p. 79; Table D22.",
 	},
@@ -2104,7 +2184,7 @@ const FLAW_DEFINITIONS := [
 		"name": "Honesty",
 		"bonus_options": [2],
 		"ability": "PER",
-		"setting": "Dataware",
+		"supplement": "dataware",
 		"summary": "The robot cannot lie and is compelled to state embarrassing truths on failed Personality checks. A Will feat is required to lie; Critical Failure causes a processor overload knockout.",
 		"source": "Dataware p. 79; Table D22.",
 	},
@@ -2113,7 +2193,7 @@ const FLAW_DEFINITIONS := [
 		"name": "Incomplete Coding",
 		"bonus_options": [2, 4],
 		"ability": "INT",
-		"setting": "Dataware",
+		"supplement": "dataware",
 		"summary": "Faulty code. 2 SP: Marginal results lose action for clarification, Critical Failure enters loop until Will check or repair. 4 SP: Marginal executes wrong harmless action, Critical Failure executes wrong harmful action.",
 		"source": "Dataware p. 79-80; Table D22.",
 	},
@@ -2122,7 +2202,7 @@ const FLAW_DEFINITIONS := [
 		"name": "Inferior Tech",
 		"bonus_options": [4],
 		"ability": "CON",
-		"setting": "Dataware",
+		"supplement": "dataware",
 		"summary": "The robot has a fatigue rating like biological heroes. A Critical Failure on any STR, DEX, or CON skill check inflicts 1 fatigue point.",
 		"source": "Dataware p. 80; Table D22.",
 	},
@@ -2131,7 +2211,7 @@ const FLAW_DEFINITIONS := [
 		"name": "Memory Lapse",
 		"bonus_options": [5],
 		"ability": "INT",
-		"setting": "Dataware",
+		"supplement": "dataware",
 		"summary": "Faulty memory processors impose a +1 step penalty to all Intelligence-based skill checks.",
 		"source": "Dataware p. 80; Table D22.",
 	},
@@ -2140,7 +2220,7 @@ const FLAW_DEFINITIONS := [
 		"name": "Overheat",
 		"bonus_options": [6],
 		"ability": "CON",
-		"setting": "Dataware",
+		"supplement": "dataware",
 		"summary": "Conditions that would cause human fatigue require a Stamina-endurance check; failure causes processor overheating and emergency shutdown knockout.",
 		"source": "Dataware p. 80; Table D22.",
 	},
@@ -2149,7 +2229,7 @@ const FLAW_DEFINITIONS := [
 		"name": "Secret Orders",
 		"bonus_options": [3],
 		"ability": "WIL",
-		"setting": "Dataware",
+		"supplement": "dataware",
 		"summary": "Hidden hardcoded instructions override all other commands (including Asimov circuits and command bolts) when triggered.",
 		"source": "Dataware p. 80; Table D22.",
 	},
@@ -2158,7 +2238,7 @@ const FLAW_DEFINITIONS := [
 		"name": "Short Circuit",
 		"bonus_options": [4],
 		"ability": "INT",
-		"setting": "Dataware",
+		"supplement": "dataware",
 		"summary": "A core processor short circuit inflicts 2 stun damage on any Critical Failure, and drains battery power at 1.5x normal rate.",
 		"source": "Dataware p. 80; Table D22.",
 	},
@@ -2167,7 +2247,7 @@ const FLAW_DEFINITIONS := [
 		"name": "Unarmored",
 		"bonus_options": [2],
 		"ability": "CON",
-		"setting": "Dataware",
+		"supplement": "dataware",
 		"summary": "Chassis is uncovered with no protective casing. Suffers full combat damage, hazard step penalties, and cannot take the Hidden System perk.",
 		"source": "Dataware p. 81; Table D22.",
 	},

@@ -59,8 +59,7 @@ func get_broad_skills() -> Array:
 func get_broad_skills_for_character(character: Dictionary) -> Array:
 	var result: Array = []
 	for broad in get_broad_skills():
-		var req_setting := String(broad.get("setting", ""))
-		if req_setting.is_empty() or _get_parent().is_setting_available(character, req_setting):
+		if _get_parent().is_entry_available(character, broad):
 			result.append(broad)
 	return result
 
@@ -70,8 +69,7 @@ func get_specialty_skills_for_broad(broad_name: String) -> Array:
 func get_specialty_skills_for_broad_and_character(broad_name: String, character: Dictionary) -> Array:
 	var result: Array = []
 	for spec in get_specialty_skills_for_broad(broad_name):
-		var req_setting := String(spec.get("setting", ""))
-		if req_setting.is_empty() or _get_parent().is_setting_available(character, req_setting):
+		if _get_parent().is_entry_available(character, spec):
 			result.append(spec)
 	return result
 
@@ -329,20 +327,38 @@ func needs_primary_broad_group(character: Dictionary) -> bool:
 func fx_skill_cost(character: Dictionary, skill_name: String) -> int:
 	var broad = get_broad_skill(skill_name)
 	if not broad.is_empty():
-		return AlternityNum.as_int(broad.get("cost", 0))
+		# Through cost_for_rank rather than off the catalog, so a school is priced
+		# in one place and a talent's surcharge cannot be skipped by asking a
+		# different question about the same skill.
+		return fx_skill_cost_for_rank(character, skill_name, 1)
 	var specialty = get_specialty_skill(skill_name)
 	if not specialty.is_empty():
 		var rank = fx_skill_rank(character, skill_name)
 		return fx_skill_cost_for_rank(character, skill_name, rank + 1)
 	return 0
 
+## What a Dark*Matter FX talent pays above the listed price.
+##
+## "FX Talents must pay 1 point more than the listed cost for all FX broad and
+## specialty skills." It is the same shape as the psionic talent surcharge and
+## for the same reason: in Dark*Matter nobody has the profession that would make
+## them a full practitioner, so everybody is a talent and everybody pays it.
+##
+## Zero outside Dark*Matter, where an Adept buys at list.
+func _talent_surcharge(character: Dictionary) -> int:
+	if not _get_parent().is_dark_matter(character):
+		return 0
+	return AlternityRules.DARK_MATTER_TALENT_SURCHARGE
+
+
 func fx_skill_cost_for_rank(character: Dictionary, skill_name: String, rank: int) -> int:
+	var surcharge := _talent_surcharge(character)
 	var broad = get_broad_skill(skill_name)
 	if not broad.is_empty():
-		return AlternityNum.as_int(broad.get("cost", 0)) if rank == 1 else 0
+		return AlternityNum.as_int(broad.get("cost", 0)) + surcharge if rank == 1 else 0
 	var specialty = get_specialty_skill(skill_name)
 	if not specialty.is_empty():
-		var base_cost = AlternityNum.as_int(specialty.get("cost", 0))
+		var base_cost = AlternityNum.as_int(specialty.get("cost", 0)) + surcharge
 		var primary_group := primary_broad_group(character)
 		var skill_broad = String(specialty.get("broad_skill", ""))
 		if not primary_group.is_empty() and skill_broad != primary_group:
@@ -358,7 +374,7 @@ func fx_skill_total_cost(character: Dictionary, skill_name: String) -> int:
 		return 0
 	var broad = get_broad_skill(skill_name)
 	if not broad.is_empty():
-		return AlternityNum.as_int(broad.get("cost", 0))
+		return fx_skill_cost_for_rank(character, skill_name, 1)
 	var specialty = get_specialty_skill(skill_name)
 	if not specialty.is_empty():
 		var total := 0

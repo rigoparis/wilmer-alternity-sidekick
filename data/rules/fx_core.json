@@ -8,7 +8,8 @@
       "meta": "",
       "name": "Alienism",
       "rank_benefits": {},
-      "source": "Beyond Science: A Guide to FX, pgs. 36-37"
+      "source": "Beyond Science: A Guide to FX, pgs. 36-37",
+      "supplement": "beyond_science"
     },
     "Body Alteration": {
       "ability": "WIL/CON",
@@ -18,7 +19,8 @@
       "meta": "",
       "name": "Body Alteration",
       "rank_benefits": {},
-      "source": "Beyond Science: A Guide to FX, pg. 58"
+      "source": "Beyond Science: A Guide to FX, pg. 58",
+      "supplement": "beyond_science"
     },
     "Brick": {
       "ability": "CON/WIL",
@@ -28,7 +30,8 @@
       "meta": "",
       "name": "Brick",
       "rank_benefits": {},
-      "source": "Beyond Science: A Guide to FX, pg. 61"
+      "source": "Beyond Science: A Guide to FX, pg. 61",
+      "supplement": "beyond_science"
     },
     "Chi": {
       "ability": "WIL/STR",
@@ -38,7 +41,8 @@
       "meta": "",
       "name": "Chi",
       "rank_benefits": {},
-      "source": "Beyond Science: A Guide to FX, pg. 63"
+      "source": "Beyond Science: A Guide to FX, pg. 63",
+      "supplement": "beyond_science"
     },
     "Diabolism": {
       "ability": "PER/WIL",
@@ -48,7 +52,8 @@
       "meta": "Cost: 12 skill points / Governing Abilities: Intelligence, Will",
       "name": "Diabolism",
       "rank_benefits": {},
-      "source": "Beyond Science: A Guide to FX, pg. 22"
+      "source": "Beyond Science: A Guide to FX, pg. 22",
+      "supplement": "beyond_science"
     },
     "Druidism": {
       "ability": "INT/WIL",
@@ -57,7 +62,8 @@
       "description": "The druidic faith is a belief that the earth is the mother and source of all life. The faith reveres the earth and other natural things, observing and maintaining the circle of life, death, and rebirth. The miracles of Druidism require a combination of understanding how the pathways of natural energy work and sufficient will to manipulate those pathways to result in physical changes.",
       "meta": "",
       "name": "Druidism",
-      "rank_benefits": {}
+      "rank_benefits": {},
+      "supplement": "beyond_science"
     },
     "Energy": {
       "ability": "WIL/CON",
@@ -67,7 +73,8 @@
       "meta": "",
       "name": "Energy",
       "rank_benefits": {},
-      "source": "Beyond Science: A Guide to FX, pg. 64"
+      "source": "Beyond Science: A Guide to FX, pg. 64",
+      "supplement": "beyond_science"
     },
     "Hatire": {
       "ability": "WIL/PER",
@@ -77,7 +84,8 @@
       "meta": "",
       "name": "Hatire",
       "rank_benefits": {},
-      "source": "Beyond Science: A Guide to FX, pg. 43-44"
+      "source": "Beyond Science: A Guide to FX, pg. 43-44",
+      "supplement": "beyond_science"
     },
     "Hemomancy": {
       "ability": "INT/CON",
@@ -87,7 +95,8 @@
       "meta": "Cost: 12 skill points / Governing Abilities: Intelligence, Constitution",
       "name": "Hemomancy",
       "rank_benefits": {},
-      "source": "Beyond Science: A Guide to FX, pg. 25"
+      "source": "Beyond Science: A Guide to FX, pg. 25",
+      "supplement": "beyond_science"
     },
     "Hermeticism": {
       "ability": "INT/WIL",
@@ -97,7 +106,8 @@
       "meta": "Cost: 11 skill points / Governing Abilities: Intelligence, Will",
       "name": "Hermeticism",
       "rank_benefits": {},
-      "source": "Beyond Science: A Guide to FX, pg. 27"
+      "source": "Beyond Science: A Guide to FX, pg. 27",
+      "supplement": "beyond_science"
     },
     "Illusion": {
       "ability": "WIL/INT",
@@ -107,7 +117,8 @@
       "meta": "Cost: 9 skill points / Governing Abilities: Intelligence, Personality",
       "name": "Illusion",
       "rank_benefits": {},
-      "source": "Beyond Science: A Guide to FX, pg. 29"
+      "source": "Beyond Science: A Guide to FX, pg. 29",
+      "supplement": "beyond_science"
     },
     "Mesmerism": {
       "ability": "WIL/PER",
@@ -117,7 +128,8 @@
       "meta": "Cost: 10 skill points / Governing Abilities: Intelligence, Personality",
       "name": "Mesmerism",
       "rank_benefits": {},
-      "source": "Beyond Science: A Guide to FX, pg. 31"
+      "source": "Beyond Science: A Guide to FX, pg. 31",
+      "supplement": "beyond_science"
     },
     "Metaconscious": {
       "ability": "INT/WIL",
@@ -127,7 +139,8 @@
       "meta": "",
       "name": "Metaconscious",
       "rank_benefits": {},
-      "source": "Beyond Science: A Guide to FX, pg. 66"
+      "source": "Beyond Science: A Guide to FX, pg. 66",
+      "supplement": "beyond_science"
     },
     "Monotheism": {
       "ability": "PER/WIL",
@@ -137,7 +150,8 @@
       "meta": "Cost: 10 skill points / Governing Abilities: Will, Personality",
       "name": "Monotheism",
       "rank_benefits": {},
-      "source": "Beyond Science: A Guide to FX, pg. 45"
+      "source": "Beyond Science: A Guide to FX, pg. 45",
+      "supplement": "beyond_science"
     },
     "Movement": {
       "ability": "WIL/CON",
@@ -147,7 +161,8 @@
       "meta": "",
       "name": "Movement",
       "rank_benefits": {},
-      "source": "Beyond Science: A Guide to FX, pg. 67-68"
+      "source": "Beyond Science: A Guide to FX, pg. 67-68",
+      "supplement": "beyond_science"
     },
     "Necromancy": {
       "ability": "INT/CON",
@@ -157,7 +172,8 @@
       "meta": "Cost: 12 skill points / Governing Abilities: Intelligence, Will",
       "name": "Necromancy",
       "rank_benefits": {},
-      "source": "Beyond Science: A Guide to FX, pg. 33"
+      "source": "Beyond Science: A Guide to FX, pg. 33",
+      "supplement": "beyond_science"
     },
     "Pyromancy": {
       "ability": "WIL/CON",
@@ -167,7 +183,8 @@
       "meta": "Cost: 11 skill points / Governing Abilities: Intelligence, Will",
       "name": "Pyromancy",
       "rank_benefits": {},
-      "source": "Beyond Science: A Guide to FX, pg. 35"
+      "source": "Beyond Science: A Guide to FX, pg. 35",
+      "supplement": "beyond_science"
     },
     "Shamanism": {
       "ability": "WIL/PER",
@@ -177,7 +194,8 @@
       "meta": "Cost: 10 skill points / Governing Abilities: Will, Intelligence",
       "name": "Shamanism",
       "rank_benefits": {},
-      "source": "Beyond Science: A Guide to FX, pg. 46"
+      "source": "Beyond Science: A Guide to FX, pg. 46",
+      "supplement": "beyond_science"
     },
     "Taoism": {
       "ability": "WIL/PER",
@@ -187,7 +205,8 @@
       "meta": "Cost: 13 skill points / Governing Abilities: Will, Personality",
       "name": "Taoism",
       "rank_benefits": {},
-      "source": "Beyond Science: A Guide to FX, pg. 50"
+      "source": "Beyond Science: A Guide to FX, pg. 50",
+      "supplement": "beyond_science"
     },
     "Voodoo": {
       "ability": "WIL/PER",
@@ -197,7 +216,8 @@
       "meta": "Cost: 12 skill points / Governing Abilities: Will, Personality",
       "name": "Voodoo",
       "rank_benefits": {},
-      "source": "Beyond Science: A Guide to FX, pg. 53"
+      "source": "Beyond Science: A Guide to FX, pg. 53",
+      "supplement": "beyond_science"
     },
     "Incantation": {
       "ability": "PER/WIL",
@@ -225,7 +245,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 46",
       "untrained": true,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Animate dead": {
       "ability": "INT",
@@ -241,7 +262,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 33",
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Aura": {
       "ability": "PER",
@@ -258,7 +280,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 45",
       "untrained": true,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Ayza's juju": {
       "ability": "PER",
@@ -270,7 +293,8 @@
       "name": "Ayza's juju",
       "rank_benefits": {},
       "untrained": true,
-      "fx_cost": 2
+      "fx_cost": 2,
+      "supplement": "beyond_science"
     },
     "Bend space": {
       "ability": "INT",
@@ -290,7 +314,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 37-38",
       "untrained": false,
-      "fx_cost": 2
+      "fx_cost": 2,
+      "supplement": "beyond_science"
     },
     "Binding": {
       "ability": "PER",
@@ -307,7 +332,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 22",
       "untrained": false,
-      "fx_cost": 2
+      "fx_cost": 2,
+      "supplement": "beyond_science"
     },
     "Black warding": {
       "ability": "WIL",
@@ -324,7 +350,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 16",
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Blessing": {
       "ability": "WIL",
@@ -341,7 +368,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 45",
       "untrained": true,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Blood debt": {
       "ability": "INT",
@@ -358,7 +386,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 25",
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Bloodlust": {
       "ability": "INT",
@@ -375,7 +404,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 25",
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Body Armor": {
       "ability": "CON",
@@ -393,7 +423,8 @@
       "source": "Beyond Science: A Guide to FX, pg. 62",
       "permanent_cost": 3,
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Body and soul": {
       "ability": "WIL",
@@ -410,7 +441,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 44-45",
       "untrained": true,
-      "fx_cost": 2
+      "fx_cost": 2,
+      "supplement": "beyond_science"
     },
     "Call the sky father": {
       "ability": "INT",
@@ -426,7 +458,8 @@
         "8": "At rank 8, duration and radius double again."
       },
       "untrained": true,
-      "fx_cost": 2
+      "fx_cost": 2,
+      "supplement": "beyond_science"
     },
     "Child of the earth mother": {
       "ability": "WIL",
@@ -439,7 +472,8 @@
       "rank_benefits": {},
       "source": "Beyond Science: A Guide to FX, pg. 41",
       "untrained": true,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Circle of the thousand broken angles": {
       "ability": "WIL",
@@ -457,7 +491,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 38",
       "untrained": true,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Clamor": {
       "ability": "WIL",
@@ -474,7 +509,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 29",
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Cloak of the phoenix": {
       "ability": "CON",
@@ -491,7 +527,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 34",
       "untrained": false,
-      "fx_cost": 2
+      "fx_cost": 2,
+      "supplement": "beyond_science"
     },
     "Command": {
       "ability": "PER",
@@ -508,7 +545,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 23",
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Conceal": {
       "ability": "INT",
@@ -525,7 +563,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 30",
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Confidence": {
       "ability": "WIL",
@@ -542,7 +581,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 51",
       "untrained": true,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Confuse": {
       "ability": "WIL",
@@ -559,7 +599,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 31",
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Cure": {
       "ability": "WIL",
@@ -574,7 +615,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 45",
       "untrained": true,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Daedalus improved": {
       "ability": "INT",
@@ -591,7 +633,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 27",
       "untrained": false,
-      "fx_cost": 2
+      "fx_cost": 2,
+      "supplement": "beyond_science"
     },
     "Danger Sense": {
       "ability": "WIL",
@@ -608,7 +651,8 @@
       "source": "Beyond Science: A Guide to FX, pg. 63",
       "permanent_cost": 3,
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Demon ward": {
       "ability": "WIL",
@@ -625,7 +669,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 45",
       "untrained": true,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Dirge of the null-mind": {
       "ability": "WIL",
@@ -643,7 +688,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 38",
       "untrained": true,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Disrupt technology": {
       "ability": "WIL",
@@ -656,7 +702,8 @@
       "rank_benefits": {},
       "source": "Beyond Science: A Guide to FX, pg. 44",
       "untrained": true,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Dominate": {
       "ability": "WIL",
@@ -673,7 +720,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 31",
       "untrained": false,
-      "fx_cost": 2
+      "fx_cost": 2,
+      "supplement": "beyond_science"
     },
     "Dreamwalking": {
       "ability": "WIL",
@@ -690,7 +738,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 46",
       "untrained": true,
-      "fx_cost": 2
+      "fx_cost": 2,
+      "supplement": "beyond_science"
     },
     "Embryonic breathing": {
       "ability": "WIL",
@@ -706,7 +755,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 51",
       "untrained": true,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Emotion": {
       "ability": "PER",
@@ -723,7 +773,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 32",
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Encourage": {
       "ability": "PER",
@@ -740,7 +791,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 32",
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Energy Blast": {
       "ability": "WIL",
@@ -758,7 +810,8 @@
       "source": "Beyond Science: A Guide to FX, pg. 64",
       "permanent_cost": 3,
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Energy Control": {
       "ability": "WIL",
@@ -773,7 +826,8 @@
       },
       "permanent_cost": 3,
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Energy Field": {
       "ability": "WIL",
@@ -792,7 +846,8 @@
       "source": "Beyond Science: A Guide to FX, pgs. 65-66",
       "permanent_cost": 6,
       "untrained": false,
-      "fx_cost": 2
+      "fx_cost": 2,
+      "supplement": "beyond_science"
     },
     "Energy Resistance": {
       "ability": "CON",
@@ -810,7 +865,8 @@
       "source": "Beyond Science: A Guide to FX, pg. 66",
       "permanent_cost": 3,
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Energy Sheath/Form": {
       "ability": "WIL",
@@ -828,7 +884,8 @@
       "permanent_cost": 3,
       "untrained": false,
       "fx_cost": 1,
-      "fx_cost_max": 3
+      "fx_cost_max": 3,
+      "supplement": "beyond_science"
     },
     "Energy drain": {
       "ability": "CON",
@@ -845,7 +902,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 33",
       "untrained": false,
-      "fx_cost": 2
+      "fx_cost": 2,
+      "supplement": "beyond_science"
     },
     "Energy spiral": {
       "ability": "PER",
@@ -862,7 +920,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 52",
       "untrained": true,
-      "fx_cost": 2
+      "fx_cost": 2,
+      "supplement": "beyond_science"
     },
     "Erzuli's fetish": {
       "ability": "WIL",
@@ -879,7 +938,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 54",
       "untrained": true,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Everyman": {
       "ability": "INT",
@@ -896,7 +956,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 30",
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Exorcism": {
       "ability": "WIL",
@@ -913,7 +974,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 45",
       "untrained": true,
-      "fx_cost": 2
+      "fx_cost": 2,
+      "supplement": "beyond_science"
     },
     "Extra limb": {
       "ability": "WIL",
@@ -929,7 +991,8 @@
       "source": "Beyond Science: A Guide to FX, pg. 58",
       "permanent_cost": 3,
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Eyes of the dark ones": {
       "ability": "WIL",
@@ -942,7 +1005,8 @@
       "rank_benefits": {},
       "source": "Beyond Science: A Guide to FX, pg. 39",
       "untrained": true,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Fiery bolt": {
       "ability": "WIL",
@@ -959,7 +1023,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 34",
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Fire wall": {
       "ability": "WIL",
@@ -973,7 +1038,8 @@
         "4": "At rank 4, increased Area: At ranks 4, 8, and 12, the area of the fiery wall increases by 10 square meters."
       },
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Flame gauntlet": {
       "ability": "CON",
@@ -987,7 +1053,8 @@
         "4": "At rank 4, increased Damage: At ranks 4, 8, and 12, the damage inflicted by the flame gauntlet increases by 1 point in each category."
       },
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Flying": {
       "ability": "WIL",
@@ -1005,7 +1072,8 @@
       "source": "Beyond Science: A Guide to FX, pg. 68",
       "permanent_cost": 3,
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Focus": {
       "ability": "WIL",
@@ -1021,7 +1089,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 63",
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Forgetfulness": {
       "ability": "WIL",
@@ -1038,7 +1107,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 32",
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Fortitude": {
       "ability": "CON",
@@ -1055,7 +1125,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 34",
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Fusillade": {
       "ability": "CON",
@@ -1070,7 +1141,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 68",
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Genius": {
       "ability": "INT",
@@ -1090,7 +1162,8 @@
       "source": "Beyond Science: A Guide to FX, pg. 66",
       "permanent_cost": 3,
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Ghost dance": {
       "ability": "PER",
@@ -1107,7 +1180,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 46-47",
       "untrained": true,
-      "fx_cost": 2
+      "fx_cost": 2,
+      "supplement": "beyond_science"
     },
     "Gibbering larvae": {
       "ability": "INT",
@@ -1127,7 +1201,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 38-39",
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Glamour": {
       "ability": "INT",
@@ -1144,7 +1219,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 28",
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Gris-gris": {
       "ability": "WIL",
@@ -1161,7 +1237,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 54",
       "untrained": true,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Growing": {
       "ability": "CON",
@@ -1178,7 +1255,8 @@
       "source": "Beyond Science: A Guide to FX, pg. 59",
       "permanent_cost": 3,
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Guidance": {
       "ability": "PER",
@@ -1193,7 +1271,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 45",
       "untrained": true,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Guide my hand": {
       "ability": "WIL",
@@ -1206,7 +1285,8 @@
       "rank_benefits": {},
       "source": "Beyond Science: A Guide to FX, pg. 47",
       "untrained": true,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Haunt": {
       "ability": "INT",
@@ -1223,7 +1303,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 33",
       "untrained": false,
-      "fx_cost": 2
+      "fx_cost": 2,
+      "supplement": "beyond_science"
     },
     "Healing": {
       "ability": "WIL",
@@ -1240,7 +1321,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 63",
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Heart of the Cosimir": {
       "ability": "WIL",
@@ -1253,7 +1335,8 @@
       "rank_benefits": {},
       "source": "Beyond Science: A Guide to FX, pg. 44",
       "untrained": true,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Hellfire": {
       "ability": "WIL",
@@ -1270,7 +1353,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 16",
       "untrained": false,
-      "fx_cost": 2
+      "fx_cost": 2,
+      "supplement": "beyond_science"
     },
     "Helpful possession": {
       "ability": "WIL",
@@ -1287,7 +1371,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 55",
       "untrained": true,
-      "fx_cost": 2
+      "fx_cost": 2,
+      "supplement": "beyond_science"
     },
     "Homunculus": {
       "ability": "INT",
@@ -1304,7 +1389,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 27",
       "untrained": false,
-      "fx_cost": 2
+      "fx_cost": 2,
+      "supplement": "beyond_science"
     },
     "Hunger": {
       "ability": "INT",
@@ -1321,7 +1407,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 26",
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Hunter's stare": {
       "ability": "WIL",
@@ -1334,7 +1421,8 @@
       "rank_benefits": {},
       "source": "Beyond Science: A Guide to FX, pg. 47",
       "untrained": true,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Hyper Learning": {
       "ability": "INT",
@@ -1351,7 +1439,8 @@
         "9": "At rank 9, gains two more additional ranks."
       },
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Hypnotize": {
       "ability": "PER",
@@ -1368,7 +1457,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 32",
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Immolation": {
       "ability": "WIL",
@@ -1385,7 +1475,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 35",
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Impact Conversion": {
       "ability": "CON",
@@ -1403,7 +1494,8 @@
       "source": "Beyond Science: A Guide to FX, pg. 61",
       "permanent_cost": 6,
       "untrained": false,
-      "fx_cost": 2
+      "fx_cost": 2,
+      "supplement": "beyond_science"
     },
     "Incendiary seal": {
       "ability": "WIL",
@@ -1420,7 +1512,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 35",
       "untrained": false,
-      "fx_cost": 2
+      "fx_cost": 2,
+      "supplement": "beyond_science"
     },
     "Interior alchemy": {
       "ability": "PER",
@@ -1437,7 +1530,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 52",
       "untrained": true,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Invisibility": {
       "ability": "WIL",
@@ -1454,7 +1548,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 59",
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Invulnerability": {
       "ability": "CON",
@@ -1471,7 +1566,8 @@
       "source": "Beyond Science: A Guide to FX, pgs. 61-62",
       "permanent_cost": 3,
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Kinship of beasts": {
       "ability": "WIL",
@@ -1487,7 +1583,8 @@
         "8": "At rank 8, four times as many..."
       },
       "untrained": true,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Knit wounds": {
       "ability": "INT",
@@ -1504,7 +1601,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 34",
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Legba rides": {
       "ability": "PER",
@@ -1521,7 +1619,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 55",
       "untrained": true,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Life Support": {
       "ability": "CON",
@@ -1539,7 +1638,8 @@
       "source": "Beyond Science: A Guide to FX, pg. 62",
       "permanent_cost": 3,
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Life endures": {
       "ability": "INT",
@@ -1554,7 +1654,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 41",
       "untrained": true,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Life siphon": {
       "ability": "INT",
@@ -1571,7 +1672,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 39",
       "untrained": false,
-      "fx_cost": 2
+      "fx_cost": 2,
+      "supplement": "beyond_science"
     },
     "Lifeblood": {
       "ability": "CON",
@@ -1588,7 +1690,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 26",
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Ligature": {
       "ability": "INT",
@@ -1605,7 +1708,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 28",
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Lightning Speed": {
       "ability": "CON",
@@ -1624,7 +1728,8 @@
       "source": "Beyond Science: A Guide to FX, pg. 68",
       "permanent_cost": 3,
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Loa of healing": {
       "ability": "WIL",
@@ -1640,7 +1745,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 55",
       "untrained": true,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Mighty Leap": {
       "ability": "STR",
@@ -1658,7 +1764,8 @@
       "source": "Beyond Science: A Guide to FX, pgs. 63-64",
       "permanent_cost": 3,
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Mindshatter": {
       "ability": "WIL",
@@ -1675,7 +1782,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 33",
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Moving pictures": {
       "ability": "WIL",
@@ -1692,7 +1800,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 30",
       "untrained": false,
-      "fx_cost": 2
+      "fx_cost": 2,
+      "supplement": "beyond_science"
     },
     "Mummy's curse": {
       "ability": "CON",
@@ -1709,7 +1818,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 34",
       "untrained": false,
-      "fx_cost": 2
+      "fx_cost": 2,
+      "supplement": "beyond_science"
     },
     "Negate the spirit": {
       "ability": "WIL",
@@ -1726,7 +1836,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 56",
       "untrained": true,
-      "fx_cost": 2
+      "fx_cost": 2,
+      "supplement": "beyond_science"
     },
     "Not doing": {
       "ability": "WIL",
@@ -1743,7 +1854,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 52",
       "untrained": true,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Peace": {
       "ability": "PER",
@@ -1757,7 +1869,8 @@
         "4": "At rank 4, increased Area: At ranks 4, 8, and 12, the radius of the peaceful aura expands."
       },
       "untrained": true,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Permeation": {
       "ability": "WIL",
@@ -1774,7 +1887,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 53",
       "untrained": true,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Phasing": {
       "ability": "WIL",
@@ -1792,7 +1906,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 59",
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Power Climb": {
       "ability": "STR",
@@ -1810,7 +1925,8 @@
       "source": "Beyond Science: A Guide to FX, pg. 84 / 64",
       "permanent_cost": 3,
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Power Strike": {
       "ability": "WIL",
@@ -1827,7 +1943,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 64",
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Power Swimming": {
       "ability": "CON",
@@ -1846,7 +1963,8 @@
       "source": "Beyond Science: A Guide to FX, pg. 68-69",
       "permanent_cost": 3,
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Programmed response": {
       "ability": "INT",
@@ -1863,7 +1981,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 30",
       "untrained": false,
-      "fx_cost": 2
+      "fx_cost": 2,
+      "supplement": "beyond_science"
     },
     "Reciprocating": {
       "ability": "CON",
@@ -1880,7 +1999,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 20",
       "untrained": false,
-      "fx_cost": 2
+      "fx_cost": 2,
+      "supplement": "beyond_science"
     },
     "Rend the weave": {
       "ability": "WIL",
@@ -1897,7 +2017,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 23",
       "untrained": false,
-      "fx_cost": 2
+      "fx_cost": 2,
+      "supplement": "beyond_science"
     },
     "Reward of toil": {
       "ability": "WIL",
@@ -1910,7 +2031,8 @@
       "rank_benefits": {},
       "source": "Beyond Science: A Guide to FX, pg. 44",
       "untrained": true,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Righteous wrath": {
       "ability": "PER",
@@ -1924,7 +2046,8 @@
         "4": "At rank 4, increased Damage: At ranks 4 and 8, the priest inflicts additional damage against technological foes."
       },
       "untrained": true,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Runs cold": {
       "ability": "INT",
@@ -1941,7 +2064,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 26",
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Shapechanging": {
       "ability": "WIL",
@@ -1958,7 +2082,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 28",
       "untrained": false,
-      "fx_cost": 2
+      "fx_cost": 2,
+      "supplement": "beyond_science"
     },
     "Shapeshifting": {
       "ability": "WIL",
@@ -1975,7 +2100,8 @@
       "source": "Beyond Science: A Guide to FX, pg. 59",
       "permanent_cost": 3,
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Shrinking": {
       "ability": "CON",
@@ -1991,7 +2117,8 @@
       },
       "permanent_cost": 3,
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Signs and portents": {
       "ability": "PER",
@@ -2008,7 +2135,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 45",
       "untrained": true,
-      "fx_cost": 2
+      "fx_cost": 2,
+      "supplement": "beyond_science"
     },
     "Sleep of Morpheus": {
       "ability": "INT",
@@ -2025,7 +2153,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 29",
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Speak with dead": {
       "ability": "INT",
@@ -2042,7 +2171,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 34",
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Spirit of the beast": {
       "ability": "WIL",
@@ -2055,7 +2185,8 @@
       "rank_benefits": {},
       "source": "Beyond Science: A Guide to FX, pg. 47",
       "untrained": true,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Spiritwrack": {
       "ability": "PER",
@@ -2072,7 +2203,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 23",
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Static image": {
       "ability": "WIL",
@@ -2089,7 +2221,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 30",
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Steal the soul": {
       "ability": "CON",
@@ -2106,7 +2239,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 34",
       "untrained": false,
-      "fx_cost": 3
+      "fx_cost": 3,
+      "supplement": "beyond_science"
     },
     "Stigmata": {
       "ability": "CON",
@@ -2123,7 +2257,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 26",
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Storm of flames": {
       "ability": "WIL",
@@ -2140,7 +2275,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 36",
       "untrained": false,
-      "fx_cost": 3
+      "fx_cost": 3,
+      "supplement": "beyond_science"
     },
     "Stretching": {
       "ability": "CON",
@@ -2158,7 +2294,8 @@
       "source": "Beyond Science: A Guide to FX, pg. 59",
       "permanent_cost": 3,
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Summoning": {
       "ability": "PER",
@@ -2176,7 +2313,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 24",
       "untrained": false,
-      "fx_cost": 2
+      "fx_cost": 2,
+      "supplement": "beyond_science"
     },
     "Super Constitution": {
       "ability": "WIL",
@@ -2194,7 +2332,8 @@
       "source": "Beyond Science: A Guide to FX, pg. 62",
       "permanent_cost": 3,
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Super Dexterity": {
       "ability": "WIL",
@@ -2212,7 +2351,8 @@
       "source": "Beyond Science: A Guide to FX, pg. 69",
       "permanent_cost": 3,
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Super Intelligence": {
       "ability": "WIL",
@@ -2230,7 +2370,8 @@
       "source": "Beyond Science: A Guide to FX, pg. 67",
       "permanent_cost": 3,
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Super Personality": {
       "ability": "INT",
@@ -2249,7 +2390,8 @@
       "source": "Beyond Science: A Guide to FX, pg. 67",
       "permanent_cost": 3,
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Super Strength": {
       "ability": "WIL",
@@ -2267,7 +2409,8 @@
       "source": "Beyond Science: A Guide to FX, pgs. 62-63",
       "permanent_cost": 3,
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Super Will": {
       "ability": "WIL",
@@ -2285,7 +2428,8 @@
       "source": "Beyond Science: A Guide to FX, pg. 67",
       "permanent_cost": 3,
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Superior Senses": {
       "ability": "WIL",
@@ -2302,7 +2446,8 @@
       },
       "permanent_cost": 3,
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Surge of greenery": {
       "ability": "WIL",
@@ -2315,7 +2460,8 @@
       "rank_benefits": {},
       "source": "Beyond Science: A Guide to FX, pg. 41",
       "untrained": true,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Swords into plowshares": {
       "ability": "PER",
@@ -2328,7 +2474,8 @@
       "rank_benefits": {},
       "source": "Beyond Science: A Guide to FX, pg. 45",
       "untrained": true,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Talisman": {
       "ability": "PER",
@@ -2345,7 +2492,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 53",
       "untrained": true,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Teleportation": {
       "ability": "WIL",
@@ -2363,7 +2511,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 69",
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Thicker than water": {
       "ability": "INT",
@@ -2380,7 +2529,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 20",
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Tongue of the damned": {
       "ability": "PER",
@@ -2397,7 +2547,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 24",
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Tongue of the infinite stars": {
       "ability": "INT",
@@ -2414,7 +2565,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 39",
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Trance visions": {
       "ability": "PER",
@@ -2427,7 +2579,8 @@
       "rank_benefits": {},
       "source": "Beyond Science: A Guide to FX, pg. 47",
       "untrained": true,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Transmutation": {
       "ability": "INT",
@@ -2445,7 +2598,8 @@
       "source": "Beyond Science: A Guide to FX, pg. 29",
       "untrained": false,
       "fx_cost": 1,
-      "fx_cost_max": 2
+      "fx_cost_max": 2,
+      "supplement": "beyond_science"
     },
     "Venom spirit": {
       "ability": "WIL",
@@ -2458,7 +2612,8 @@
       "rank_benefits": {},
       "source": "Beyond Science: A Guide to FX, pg. 47",
       "untrained": true,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Vision": {
       "ability": "PER",
@@ -2473,7 +2628,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pg. 45",
       "untrained": true,
-      "fx_cost": 2
+      "fx_cost": 2,
+      "supplement": "beyond_science"
     },
     "Voices in the grass and sky": {
       "ability": "INT",
@@ -2486,7 +2642,8 @@
       "rank_benefits": {},
       "source": "Beyond Science: A Guide to FX, pg. 41-42",
       "untrained": true,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Wallcrawling": {
       "ability": "WIL",
@@ -2505,7 +2662,8 @@
       "source": "Beyond Science: A Guide to FX, pg. 69",
       "permanent_cost": 3,
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Wield the ley line": {
       "ability": "INT",
@@ -2521,7 +2679,8 @@
         "9": "At rank 9, 12,500 kilograms."
       },
       "untrained": true,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Befriend": {
       "ability": "PER",
@@ -2538,7 +2697,8 @@
       },
       "source": "Beyond Science: A Guide to FX, pgs. 28-30",
       "untrained": false,
-      "fx_cost": 1
+      "fx_cost": 1,
+      "supplement": "beyond_science"
     },
     "Battle spirits": {
       "ability": "PER",

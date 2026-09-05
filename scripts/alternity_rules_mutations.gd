@@ -261,9 +261,8 @@ func can_add_mutation_advantage(character: Dictionary, mutation: Dictionary) -> 
 	var mutation_id := String(mutation.get("id", ""))
 	if mutation_id.is_empty() or get_mutation_advantage_by_id(mutation_id).is_empty():
 		return {"allowed": false, "reason": "Unknown mutation."}
-	var mutation_setting := String(mutation.get("setting", ""))
-	if not mutation_setting.is_empty() and not _get_parent().is_setting_available(character, mutation_setting):
-		return {"allowed": false, "reason": "Requires %s setting." % mutation_setting}
+	if not _get_parent().is_entry_available(character, mutation):
+		return {"allowed": false, "reason": "Requires the %s setting." % String(mutation.get("setting", "Dark*Matter"))}
 	var tier := String(mutation.get("tier", "Ordinary"))
 	if tier == "Amazing" and _is_dark_matter(character):
 		return {"allowed": false, "reason": "Amazing mutations are prohibited in the Dark*Matter setting. Source: Dark*Matter Campaign Setting p. 74."}
@@ -291,9 +290,8 @@ func can_add_mutation_drawback(character: Dictionary, drawback: Dictionary) -> D
 	var drawback_id := String(drawback.get("id", ""))
 	if drawback_id.is_empty() or get_mutation_drawback_by_id(drawback_id).is_empty():
 		return {"allowed": false, "reason": "Unknown drawback."}
-	var drawback_setting := String(drawback.get("setting", ""))
-	if not drawback_setting.is_empty() and not _get_parent().is_setting_available(character, drawback_setting):
-		return {"allowed": false, "reason": "Requires %s setting." % drawback_setting}
+	if not _get_parent().is_entry_available(character, drawback):
+		return {"allowed": false, "reason": "Requires the %s setting." % String(drawback.get("setting", "Dark*Matter"))}
 	var tier := String(drawback.get("tier", "Slight"))
 	if tier == "Extreme" and _is_dark_matter(character):
 		return {"allowed": false, "reason": "Extreme drawbacks are prohibited in the Dark*Matter setting. Source: Dark*Matter Campaign Setting p. 74."}
@@ -814,8 +812,7 @@ func _random_mutation_from_tier(character: Dictionary, catalog: Array, tier: Str
 			continue
 		var mutation: Dictionary = mutation_value
 		var mutation_id := String(mutation.get("id", ""))
-		var mutation_setting := String(mutation.get("setting", ""))
-		if not mutation_setting.is_empty() and not _get_parent().is_setting_available(character, mutation_setting):
+		if not _get_parent().is_entry_available(character, mutation):
 			continue
 		if String(mutation.get("tier", "")) == tier and not excluded.has(mutation_id):
 			candidates.append(mutation)

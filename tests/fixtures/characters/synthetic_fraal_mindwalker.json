@@ -11,6 +11,7 @@
 	"achievement_points": 0,
 	"achievement_points_available": 0,
 	"achievement_points_spent_other": 0,
+	"age_category": "young_adult",
 	"career": "",
 	"cybertech": {
 		"cykosis": 0,
@@ -30,6 +31,7 @@
 	},
 	"fx": {
 		"energy_pool": 0,
+		"energy_used": 0,
 		"is_fx_talent": false,
 		"permanent_skills": {
 
@@ -38,6 +40,8 @@
 
 		}
 	},
+	"fx_campaign_scale": "heroic",
+	"heightened_ability_stat": "",
 	"hero_name": "Fraal Mindwalker",
 	"last_resorts_rebought": 0,
 	"last_resorts_used": 0,
@@ -66,10 +70,16 @@
 		"2a": false,
 		"2b": false,
 		"2c": false,
-		"dazed": false
+		"age_effects": false,
+		"damage_upgrading": false,
+		"dazed": false,
+		"monetary_awards_uncapped": false,
+		"psionic_talents": false,
+		"weapon_accuracy": false
 	},
 	"player_name": "Fixture",
 	"profession_id": 6,
+	"psionic_energy_used": 0,
 	"selected_achievements": [],
 	"selected_flaws": {
 
@@ -81,6 +91,13 @@
 		"900": 1
 	},
 	"setting": "Core",
+	"skill_ranks_at_level": {
+
+	},
 	"sold_species_skills": [],
-	"species_id": 1
+	"species_id": 1,
+	"supplements": {
+		"beyond_science": true,
+		"dataware": false
+	}
 }

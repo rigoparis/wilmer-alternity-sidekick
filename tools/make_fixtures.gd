@@ -54,6 +54,14 @@ func _sorted_ids(by_id: Dictionary) -> Array:
 	return keys
 
 
+## The lowest-sorting id this character is actually allowed to select.
+func _first_available_id(by_id: Dictionary, character: Dictionary) -> String:
+	for key in _sorted_ids(by_id):
+		if _rules.is_entry_available(character, by_id[key]):
+			return String(key)
+	return ""
+
+
 func _make_default() -> Dictionary:
 	return _base("Default Hero", 0, 0)
 
@@ -70,13 +78,18 @@ func _make_combat_spec() -> Dictionary:
 	_rules.set_skill_rank(c, 1, 2)
 	c["combat_spec_bonus_specialty"] = 31
 
-	var perk_ids := _sorted_ids(_rules.perks_by_id)
-	var perk: Dictionary = _rules.perks_by_id[perk_ids[0]]
-	_rules.set_perk_selected(c, String(perk_ids[0]), _rules._as_int(perk.get("cost_options", [1])[0]))
+	# The first perk and flaw this hero could actually buy, not the first in the
+	# catalog. Sorting alone picked whatever id happened to sort first, which as
+	# soon as the Dataware robot perks landed meant a fixture carrying a perk no
+	# Core hero can take -- and its cost still counted against the budget the
+	# goldens assert.
+	var perk_id := _first_available_id(_rules.perks_by_id, c)
+	var perk: Dictionary = _rules.perks_by_id[perk_id]
+	_rules.set_perk_selected(c, perk_id, _rules._as_int(perk.get("cost_options", [1])[0]))
 
-	var flaw_ids := _sorted_ids(_rules.flaws_by_id)
-	var flaw: Dictionary = _rules.flaws_by_id[flaw_ids[0]]
-	_rules.set_flaw_selected(c, String(flaw_ids[0]), _rules._as_int(flaw.get("bonus_options", [1])[0]))
+	var flaw_id := _first_available_id(_rules.flaws_by_id, c)
+	var flaw: Dictionary = _rules.flaws_by_id[flaw_id]
+	_rules.set_flaw_selected(c, flaw_id, _rules._as_int(flaw.get("bonus_options", [1])[0]))
 
 	# One armour and one weapon, so equipment_summary has both to aggregate.
 	_rules.equipment.add_equipment_to_character(c, "armor_core_001", 1)
