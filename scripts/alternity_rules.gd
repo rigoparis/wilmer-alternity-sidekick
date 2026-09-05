@@ -2242,14 +2242,24 @@ func _validate_dark_matter(character: Dictionary, messages: Array) -> void:
 	if not is_dark_matter(character):
 		return
 
-	# "In standard Dark*Matter contemporary campaigns, players are strictly
-	# limited to playing Human heroes." The core alien species -- fraal, mechalus,
-	# sesheyan, t'sa, weren -- are not available.
+	# Human by default, non-human by the Gamemaster's leave -- not a ban.
+	#
+	# "Human beings inhabit most of the globe, so by sheer weight of numbers, it's
+	# up to humans to defend themselves. At the Gamemaster's option, non-human
+	# heroes may be allowed to players" (p. 51), and Chapter 10 names who those
+	# are: Greys, kinori, mothmen, sandmen and sasquatch (p. 257). None of them is
+	# a far-future Alternity species, which is the point -- a Weren in a
+	# conspiracy game is not a rules problem, it is a setting one, so this says so
+	# once and leaves the ruling to the table.
 	var species := get_species_by_id(_as_int(character.get("species_id", 0)))
 	var species_name := String(species.get("name", ""))
-	if not species_name.is_empty() and species_name != "Human":
+	if (
+		not species_name.is_empty()
+		and species_name != "Human"
+		and not optional_rule_enabled(character, "dm_alien_heroes")
+	):
 		messages.append(
-			"Dark*Matter heroes are Human; %s is not a playable species in this setting. Source: Dark Matter Campaign Setting, Chapter 3: Heroes of Dark Matter."
+			"Dark*Matter assumes Human heroes; %s belongs to the far-future setting. Non-human heroes are a Gamemaster's option -- turn on Alien Heroes to stop this note. Source: Dark Matter Campaign Setting p. 51; Chapter 10: Campaign Options p. 257."
 			% species_name
 		)
 

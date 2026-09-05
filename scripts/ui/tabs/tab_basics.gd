@@ -209,7 +209,7 @@ func _build_setting_picker(parent: Container) -> void:
 
 	Widgets.muted_text(
 		parent,
-		"The setting decides which content this hero may take. Dark*Matter is contemporary Earth: Human heroes only, no Mindwalker or Adept career, and psionics and FX reached through a perk instead. Star*Drive is planned for a future update.",
+		"The setting decides which content this hero may take. Dark*Matter is contemporary Earth: it assumes Human heroes, has no Mindwalker or Adept career, and reaches psionics and FX through a perk instead. Star*Drive is planned for a future update.",
 		palette,
 		Widgets.FONT_CAPTION
 	)

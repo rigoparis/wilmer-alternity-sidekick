@@ -37,6 +37,7 @@ func _init() -> void:
 	_test_fx_comes_through_a_perk()
 	_test_fx_talent_rank_caps()
 	_test_talent_surcharges()
+	_test_the_new_skills()
 	_test_core_is_untouched()
 
 	finish()
@@ -68,20 +69,41 @@ func _test_the_setting_is_recognised() -> void:
 	check_false(_rules.is_dark_matter(_hero("Star*Drive")), "neither is Star*Drive")
 
 
-## "Players are strictly limited to playing Human heroes."
+## Human by default, non-human at the Gamemaster's option -- and not a ban.
+##
+## The books do not forbid a non-human hero; they assume one is not there and
+## hand the decision to the table (p. 51, and Chapter 10 p. 257). So this is a
+## note the GM can switch off, not a rule the sheet enforces, and the difference
+## matters: an error would have made a legal character look illegal.
 func _test_humans_only() -> void:
+	var phrase := "belongs to the far-future setting"
+
 	check_false(
-		_complains_about(_hero("Dark*Matter", SPECIES_HUMAN), "not a playable species"),
+		_complains_about(_hero("Dark*Matter", SPECIES_HUMAN), phrase),
 		"a Human is at home in Dark*Matter"
 	)
 	check_true(
-		_complains_about(_hero("Dark*Matter", SPECIES_WEREN), "not a playable species"),
-		"a Weren is not"
+		_complains_about(_hero("Dark*Matter", SPECIES_WEREN), phrase),
+		"a Weren is questioned"
 	)
 	check_true(
-		_complains_about(_hero("Dark*Matter", 1), "not a playable species"),
-		"and neither is a Fraal, whatever the core rules allow them"
+		_complains_about(_hero("Dark*Matter", 1), phrase),
+		"and so is a Fraal, whatever the core rules allow them"
 	)
+
+	# The Gamemaster's option, which is what makes it a note rather than a ban.
+	var allowed := _hero("Dark*Matter", SPECIES_WEREN)
+	_rules.set_optional_rule(allowed, "dm_alien_heroes", true)
+	check_false(
+		_complains_about(allowed, phrase),
+		"and the note goes away once the GM allows alien heroes"
+	)
+
+	# Human is unremarkable either way; turning the rule on must not start
+	# saying something about a hero it has nothing to say about.
+	var human := _hero("Dark*Matter", SPECIES_HUMAN)
+	_rules.set_optional_rule(human, "dm_alien_heroes", true)
+	check_false(_complains_about(human, phrase), "a Human is still unremarkable with it on")
 
 
 ## "Humans cannot select the dedicated Mindwalker career."
@@ -241,6 +263,63 @@ func _test_talent_surcharges() -> void:
 	)
 
 
+## The skills Dark*Matter brings, and where they must not turn up.
+##
+## Two of them hang under broads every campaign already has -- Cryptography under
+## Investigate, Forgery under Creativity -- which is the case a gate on the broad
+## alone would miss entirely.
+func _test_the_new_skills() -> void:
+	var core := _hero("Core")
+	var dark := _hero("Dark*Matter")
+
+	var expected := {
+		"Lore": "broad",
+		"Conspiracy Theories": "specialty",
+		"Fringe Science": "specialty",
+		"Occult Lore": "specialty",
+		"Psychic Lore": "specialty",
+		"UFO Lore": "specialty",
+		"Cryptography": "specialty",
+		"Research": "specialty",
+		"Forgery": "specialty",
+		"Linguistics": "specialty",
+		"Xenoengineering": "specialty",
+	}
+	for name in expected:
+		var skill := _skill_named(String(name))
+		if not check(not skill.is_empty(), "%s ships" % name):
+			continue
+		check_eq(String(skill.get("type", "")), String(expected[name]), "%s is a %s" % [name, expected[name]])
+		check_false(_rules.is_entry_available(core, skill), "%s is hidden in Core" % name)
+		check_true(_rules.is_entry_available(dark, skill), "%s is offered in Dark*Matter" % name)
+
+	# The costs the setting lists, so a hero is not quietly charged the wrong price.
+	check_eq(AlternityNum.as_int(_skill_named("Lore").get("base_price", 0)), 6, "Lore costs 6")
+	check_eq(AlternityNum.as_int(_skill_named("Cryptography").get("base_price", 0)), 4, "Cryptography costs 4")
+	check_eq(AlternityNum.as_int(_skill_named("Research").get("base_price", 0)), 3, "Research costs 3")
+	check_eq(AlternityNum.as_int(_skill_named("Xenoengineering").get("base_price", 0)), 5, "Xenoengineering costs 5")
+
+	# Four of them cannot be attempted by somebody who has never learned them.
+	for name in ["Cryptography", "Forgery", "Linguistics", "Xenoengineering"]:
+		check_false(bool(_skill_named(String(name)).get("untrained", true)), "%s cannot be used untrained" % name)
+
+	# The specialties that hang under an ungated broad, which is the leak worth
+	# naming: Investigate and Creativity are in every campaign.
+	check_eq(AlternityNum.as_int(_skill_named("Cryptography").get("broad_id", -1)), 130, "Cryptography sits under Investigate")
+	check_eq(AlternityNum.as_int(_skill_named("Forgery").get("broad_id", -1)), 128, "Forgery sits under Creativity")
+	check_true(
+		_rules.is_entry_available(core, _rules.get_skill_by_id(130)),
+		"and Investigate itself is still a Core skill, so the broad cannot be what hides them"
+	)
+
+
+func _skill_named(name: String) -> Dictionary:
+	for skill in _rules.skills:
+		if String(skill.get("name", "")) == name:
+			return skill
+	return {}
+
+
 ## The gate, checked from the other side.
 ##
 ## An ordinary Core hero must produce none of this setting's messages. If any of
@@ -250,7 +329,7 @@ func _test_core_is_untouched() -> void:
 	for setting in ["Core", "Star*Drive"]:
 		var hero := _hero(setting, SPECIES_WEREN, PROFESSION_MINDWALKER)
 		for phrase in [
-			"not a playable species",
+			"belongs to the far-future setting",
 			"no Mindwalker career",
 			"require the Psionic Awareness perk",
 			"Faith or Arcane Magic perk",

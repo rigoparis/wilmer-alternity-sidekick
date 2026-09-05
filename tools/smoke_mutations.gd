@@ -112,9 +112,18 @@ func _init() -> void:
 		rules.mutations.selected_mutation_advantages(random_character).is_empty(),
 		"random rolling selects advantages"
 	)
-	check_false(
-		rules.mutations.selected_mutation_drawbacks(random_character).is_empty(),
-		"random rolling selects drawbacks"
+	# Conditional, because the roll decides whether there is anything to spend.
+	# Some origins come up with zero drawback points, and then there is no
+	# distribution to choose and nothing to pick -- so asserting drawbacks
+	# unconditionally made this suite fail once in every few dozen runs, on the
+	# dice rather than on the code. What the code actually promises is that
+	# drawback points, when there are any, get spent.
+	var drawback_points := rules._as_int(
+		random_character.get("mutations", {}).get("drawback_points", 0)
+	)
+	check_true(
+		drawback_points <= 0 or not rules.mutations.selected_mutation_drawbacks(random_character).is_empty(),
+		"random rolling spends the drawback points it rolled (%d)" % drawback_points
 	)
 
 	finish()

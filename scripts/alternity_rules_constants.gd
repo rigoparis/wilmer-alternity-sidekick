@@ -297,6 +297,12 @@ const OPTIONAL_RULES := [
 		"description": "When a weapon's firepower exceeds the target's toughness, the quality of a hit is promoted -- one grade above and an Ordinary hit becomes Good and a Good hit becomes Amazing; two or more grades above and any hit is Amazing. The Gamemaster Guide is explicit that no standard rule exists for this and offers it as a guideline, which is why it is a toggle. Its counterpart, damage degradation when a weapon is too weak for its target, is core and always applies. Source: Gamemaster Guide Chapter 3 p. 52, sidebar \"Upgrading Damage?\".",
 	},
 	{
+		"id": "dm_alien_heroes",
+		"name": "Optional Rule: Alien Heroes",
+		"summary": "Dark*Matter campaigns may allow non-human heroes",
+		"description": "Dark*Matter assumes human heroes -- \"Human beings inhabit most of the globe, so by sheer weight of numbers, it's up to humans to defend themselves\" -- and offers non-humans as a Gamemaster's option: Greys, kinori, mothmen, sandmen and sasquatch. Those five species are not yet in the app, so today this rule only stops the sheet from questioning a non-human hero. It has no effect outside Dark*Matter. Source: Dark Matter Campaign Setting p. 51; Chapter 10: Campaign Options p. 257.",
+	},
+	{
 		"id": "weapon_accuracy",
 		"name": "Optional Rule: Weapon Accuracy",
 		"summary": "Weapon accuracy modifiers adjust attack situation die",
@@ -637,6 +643,9 @@ const MOVEMENT_RATES_TABLE := {
 
 
 const BROAD_SKILL_SUMMARIES := {
+	# Dark*Matter. Source: Dark Matter Campaign Setting, Chapter 3: Heroes of
+	# Dark Matter.
+	165: "Collect the academic, conspiratorial and supernatural knowledge a Dark*Matter hero needs -- what is known, what is rumoured, and who says otherwise.",
 	0: "Operate armor effectively and reduce armor-related action check and Dexterity resistance penalties.",
 	3: "Handle athletic feats of strength such as climbing, jumping, and throwing.",
 	8: "Use heavy personal and crew-served weapons, including direct-fire and indirect-fire weapons.",
@@ -684,6 +693,19 @@ const BROAD_SKILL_SUMMARIES := {
 }
 
 const SPECIALTY_SUMMARIES := {
+	# Dark*Matter. Source: Dark Matter Campaign Setting, Chapter 3: Heroes of
+	# Dark Matter.
+	166: "Know the major cabals -- Illuminati, Templars, Freemasons -- and how their claimed histories fit together. At rank 4 the hero may once per adventure put a connection together with no research and no tools, at a +3 step penalty.",
+	167: "Know the bizarre edges of physical science: cryptozoology, cold fusion, anomalies the journals will not print.",
+	168: "Know traditional demonology, witchcraft and ritual history, and recognise the real thing among the theatre.",
+	169: "Know the documented history of psychics, ESP phenomena and mindwalking, and what has actually been demonstrated.",
+	170: "Know abduction accounts, saucer sightings and what has been recorded of Grey behaviour.",
+	171: "Encode and decode ciphers. It cannot be attempted by somebody who has never learned it.",
+	172: "Find what is already written down, in archives, libraries and digital records.",
+	173: "Produce false documentation, and make it survive inspection. At rank 4 the hero gains a -1 step bonus to forge and anyone checking the result takes +1 step, improving to 2 steps at rank 8 and 3 at rank 12. It cannot be attempted untrained.",
+	174: "Work between languages rather than in one. At rank 4 the hero picks a language family they already hold a member of at rank 3 and can translate anything in it at a +1 step penalty. It cannot be attempted untrained.",
+	175: "Examine and repair extraterrestrial technology. Alien tech carries a +3 step penalty plus 1 more per Progress Level above the campaign's own, which a successful check reduces by 1, 2 or 3 steps; a critical failure ruins the device. It cannot be attempted untrained.",
+
 	1: "Specialized operation of standard combat armor, including reducing armor penalties and shield parries.",
 	2: "Specialized operation of powered armor; this skill cannot be used untrained.",
 	4: "Climb walls, mountains, lines, and similar obstacles.",
@@ -868,6 +890,25 @@ const COMPLEX_SKILL_NOTES := {
 }
 
 const RANK_BENEFIT_NOTES := {
+	# Dark*Matter skills. Source: Dark Matter Campaign Setting, Chapter 3: Heroes
+	# of Dark Matter.
+	166: {
+		4: "Seeing the Puzzle: once per adventure the hero may attempt a Conspiracy Theories check at a +3 step penalty with no research time and no tools. On a success the Gamemaster hands them a connection they had no way of making. Source: Dark Matter Campaign Setting, Chapter 3: Heroes of Dark Matter.",
+	},
+	173: {
+		4: "Increased Skill: a -1 step bonus to create false documentation, and anyone trying to identify the forgery takes a +1 step penalty. Source: Dark Matter Campaign Setting, Chapter 3: Heroes of Dark Matter.",
+		8: "The forgery bonus and the penalty to spot it both improve to 2 steps. Source: Dark Matter Campaign Setting, Chapter 3: Heroes of Dark Matter.",
+		12: "The forgery bonus and the penalty to spot it both improve to 3 steps. Source: Dark Matter Campaign Setting, Chapter 3: Heroes of Dark Matter.",
+	},
+	174: {
+		4: "Translate Documents: the hero picks a language family they already hold one member of at rank 3, and can translate any document in it at a +1 step penalty. Source: Dark Matter Campaign Setting, Chapter 3: Heroes of Dark Matter.",
+		8: "Either a second language family, or the first family's +1 step penalty is dropped. Source: Dark Matter Campaign Setting, Chapter 3: Heroes of Dark Matter.",
+		12: "A permanent -1 step bonus to translating the family, spoken or written. Source: Dark Matter Campaign Setting, Chapter 3: Heroes of Dark Matter.",
+	},
+	175: {
+		6: "Improved Familiarity: the alien tech penalty is reduced by 1 step automatically. Source: Dark Matter Campaign Setting, Chapter 3: Heroes of Dark Matter.",
+		12: "The automatic reduction improves to 2 steps. It never becomes a bonus. Source: Dark Matter Campaign Setting, Chapter 3: Heroes of Dark Matter.",
+	},
 	1: {
 		1: "Armor penalties for the appropriate armor type are reduced by 1 additional step beyond the broad skill reduction. Source: Player's Handbook p. 66.",
 		2: "Stun damage suffered while wearing the appropriate armor type is reduced by 1 point. Source: Player's Handbook p. 66.",

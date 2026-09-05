@@ -132,6 +132,11 @@ func _test_costs_and_training() -> void:
 			continue
 		if _rules.is_psionic_skill(skill):
 			continue
+		# This sweep audits one chapter of one book, so a skill that belongs to a
+		# setting is out of its scope by definition -- Dark*Matter's Lore tree is
+		# not missing from the Player's Handbook, it was never in it.
+		if not String(skill.get("setting", "")).strip_edges().is_empty():
+			continue
 		var name := String(skill.get("name", ""))
 		check_true(
 			WIL_SKILLS.has(name) or bool(skill.get("custom_name", false)),

@@ -257,7 +257,8 @@
 		"2a": true,
 		"2b": false,
 		"2c": true,
-		"dazed": true
+		"dazed": true,
+		"dm_alien_heroes": false
 	},
 	"player_name": "Fixture",
 	"profession_id": 5.0,

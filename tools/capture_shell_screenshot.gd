@@ -227,6 +227,29 @@ func _capture(width: int, height: int, label: String) -> void:
 					_save(shell, "%s_tab_fx_editing" % label)
 					inst._set_editing_powers(false)
 
+			# The same hero again in Dark*Matter, because the setting is not a
+			# label -- it changes which species the sheet questions, which skills
+			# the catalog offers, and what psionics and FX ask of you. A shot of
+			# the picker alone would prove only that the option exists.
+			doc.apply(CharacterDoc.ALL, func(c): c["setting"] = "Dark*Matter")
+			for _i in 12:
+				await process_frame
+			for id in ["basics", "skills", "summary"]:
+				sheet._select_tab(id)
+				for _i in 12:
+					await process_frame
+				_save(shell, "%s_dm_tab_%s" % [label, id])
+				var dm_inst = sheet._instances.get(id)
+				if id == "skills" and dm_inst != null and dm_inst.has_method("_set_editing_skills"):
+					dm_inst._set_editing_skills(true)
+					for _i in 12:
+						await process_frame
+					_save(shell, "%s_dm_tab_skills_editing" % label)
+					dm_inst._set_editing_skills(false)
+			doc.apply(CharacterDoc.ALL, func(c): c["setting"] = "Core")
+			for _i in 6:
+				await process_frame
+
 	# The campaign list and the GM screen, which are the multiplayer feature's
 	# single-device half and have the same reasons to be looked at as the sheet.
 	shell._show_campaigns()

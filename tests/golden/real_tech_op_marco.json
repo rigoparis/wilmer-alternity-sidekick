@@ -263,6 +263,7 @@
 			"age_effects": false,
 			"damage_upgrading": false,
 			"dazed": true,
+			"dm_alien_heroes": false,
 			"monetary_awards_uncapped": false,
 			"psionic_talents": false,
 			"weapon_accuracy": false

@@ -23,6 +23,7 @@ const TAB_FX := preload("res://scenes/ui/tabs/tab_fx.tscn")
 const TAB_SKILLS := preload("res://scenes/ui/tabs/tab_skills.tscn")
 const TAB_PSIONICS := preload("res://scenes/ui/tabs/tab_psionics.tscn")
 const OPTIONAL_RULES_ROUTE := preload("res://scenes/ui/routes/optional_rules_route.tscn")
+const SkillPickerScript := preload("res://scripts/ui/widgets/skill_picker.gd")
 
 var _rules: AlternityRules
 
@@ -437,6 +438,30 @@ func _test_skills_tab() -> void:
 
 	tab.queue_free()
 
+	# A setting-gated specialty must not be offered under an ungated broad.
+	#
+	# The picker checks the broad, and every broad Dark*Matter hangs a skill under
+	# -- Investigate, Creativity, Knowledge -- is a skill every campaign has. So a
+	# check on the broad alone lets the specialty through, and a Core hero is
+	# quietly offered Cryptography.
+	var picker = SkillPickerScript.new()
+	root.add_child(picker)
+	picker.setup(Context.new(doc, _rules, null, ThemePalette.new(), true), 0)
+	await process_frame
+
+	var investigate: Dictionary = _rules.get_skill_by_id(130)
+	var core_names := _specialty_names(picker, investigate)
+	check_true(core_names.has("Interrogate"), "a Core hero sees Investigate's core specialties")
+	check_false(core_names.has("Cryptography"), "and is not offered the Dark*Matter one")
+
+	doc.apply(CharacterDoc.ALL, func(c): c["setting"] = "Dark*Matter")
+	var dark_names := _specialty_names(picker, investigate)
+	check_true(dark_names.has("Cryptography"), "a Dark*Matter hero is offered Cryptography")
+	check_true(dark_names.has("Interrogate"), "and keeps the core ones")
+	picker.queue_free()
+
+	doc.apply(CharacterDoc.ALL, func(c): c["setting"] = "Core")
+
 	# Mount compact (mobile) layout
 	var tab_mobile = _mount(TAB_SKILLS, doc, false)
 	await process_frame
@@ -444,6 +469,13 @@ func _test_skills_tab() -> void:
 	labels = _labels_in(tab_mobile)
 	check_true(_any_label_contains(labels, "Selected Skills"), "Compact layout has Selected Skills accordion")
 	tab_mobile.queue_free()
+
+
+func _specialty_names(picker, broad: Dictionary) -> Array:
+	var names: Array = []
+	for specialty in picker._specialties(broad):
+		names.append(String(specialty.get("name", "")))
+	return names
 
 
 func _test_psionics_tab() -> void:

@@ -225,10 +225,21 @@ func _matches(broad: Dictionary) -> bool:
 	return false
 
 
+## The specialties under a broad that this character may actually take.
+##
+## Filtered, not just listed. The broad above is checked, but a setting can gate
+## a single specialty under an ungated broad -- Dark*Matter puts Cryptography
+## under Investigate and Forgery under Creativity, both of which every campaign
+## has -- so leaving this unfiltered offered Dark*Matter skills in a Core game.
+## Nothing errors when that happens; the skill is simply there to buy.
 func _specialties(broad: Dictionary) -> Array:
 	var rules: AlternityRules = _ctx.rules
+	var raw := _ctx.doc.raw()
 	var broad_id := AlternityNum.as_int(broad.get("id", -1), -1)
-	var out: Array = rules.specialty_skills_by_broad_id.get(broad_id, [])
+	var out: Array = []
+	for specialty in rules.specialty_skills_by_broad_id.get(broad_id, []):
+		if rules.is_entry_available(raw, specialty):
+			out.append(specialty)
 	return out
 
 
