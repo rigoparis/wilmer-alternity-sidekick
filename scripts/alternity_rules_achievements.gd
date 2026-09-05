@@ -229,6 +229,10 @@ func achievement_granted_perks(character: Dictionary) -> Array:
 ## has no parallel "spendable AP" pool: the points come straight off the hero's
 ## unbanked track. Source: Beyond Science ch. 1 p. 8.
 func fx_energy_pool_ap_cost(character: Dictionary) -> int:
+	# Dark*Matter prices its own, and cheaper than the scale it belongs to: the
+	# setting is a realistic campaign, which the generic rules would charge 15.
+	if _get_parent().is_dark_matter(character):
+		return AlternityRules.DARK_MATTER_FX_POOL_AP_COST
 	var scale: Dictionary = _get_parent().fx_campaign_scale_entry(character)
 	return AlternityNum.as_int(scale.get("ap_per_point", 10), 10)
 

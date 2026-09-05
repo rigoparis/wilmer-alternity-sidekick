@@ -36,6 +36,26 @@ const PHYSICAL_RESOLVE_SKILL_ID := 136
 ## Source: Dark Matter Campaign Setting, Chapter 3: Heroes of Dark Matter.
 const DARK_MATTER_FX_STARTING_POOL := 5
 
+## What a point of FX energy pool costs a Dark*Matter hero.
+##
+## Ten, where the generic rules would charge a realistic campaign fifteen -- the
+## setting prices its own. "This pool can be increased by spending achievement
+## points, at a rate of 10 achievement points for 1 FX energy point."
+## Source: Dark Matter Campaign Setting Part 2: Arcana p. 75.
+const DARK_MATTER_FX_POOL_AP_COST := 10
+
+## What a Dark*Matter talent may add to their psionic energy, and from when.
+##
+## "Only 1 additional point can be purchased at any given level, and a maximum of
+## 3 additional points can be purchased over the hero's lifetime", beginning at
+## 6th level. The book does not say whether an unspent level's allowance carries
+## forward, so nothing here enforces the per-level half of it: that is the
+## Gamemaster's call, and guessing would either block a legal purchase or wave
+## through an illegal one with equal confidence.
+## Source: Dark Matter Campaign Setting Part 1: Player Rules p. 59.
+const DARK_MATTER_PEP_PURCHASE_MAX := 3
+const DARK_MATTER_PEP_PURCHASE_MIN_LEVEL := 6
+
 ## How high a Dark*Matter FX talent may take their spells and miracles.
 ##
 ## "An FX talent can purchase any number of specialties, but their ranks are

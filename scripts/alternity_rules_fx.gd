@@ -32,7 +32,21 @@ func set_fx_talent(character: Dictionary, enabled: bool) -> void:
 	_normalize_fx(character)
 	character["fx"]["is_fx_talent"] = enabled
 
+## The pool the hero started with, before anything they have bought.
+##
+## Flat in Dark*Matter, and not the player's to set: "Each FX talent starts with
+## an FX energy pool of 5 points" (Part 2: Arcana p. 75). Elsewhere it is a number
+## the player records, because the generic rules tie it to campaign scale -- 5
+## realistic, 10 heroic, 15 superheroic. Dark*Matter is a realistic campaign and
+## reprints the 5 as its own rule, so a hero who happened to have recorded 10
+## would otherwise be playing a heroic game inside a modern one.
+##
+## The ceiling falls out of this rather than being stated twice: the pool may
+## never pass twice its starting value, and twice five is the ten the setting
+## names.
 func energy_pool(character: Dictionary) -> int:
+	if _get_parent().is_dark_matter(character):
+		return AlternityRules.DARK_MATTER_FX_STARTING_POOL
 	return AlternityNum.as_int(character.get("fx", {}).get("energy_pool", 0))
 
 func set_energy_pool(character: Dictionary, amount: int) -> void:

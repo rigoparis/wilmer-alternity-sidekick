@@ -42,6 +42,8 @@ func _init() -> void:
 	_test_enochian()
 	_test_setting_repriced_schools()
 	_test_lore_is_a_free_agent_skill()
+	_test_fx_energy_pool()
+	_test_psionic_energy_purchases()
 	_test_core_is_untouched()
 
 	finish()
@@ -491,6 +493,78 @@ func _test_lore_is_a_free_agent_skill() -> void:
 	var combat_spec := _hero("Dark*Matter", SPECIES_HUMAN, PROFESSION_COMBAT_SPEC)
 	check_eq(_rules.skill_cost(free_agent, lore), 5, "a Free Agent pays 5 for it")
 	check_eq(_rules.skill_cost(combat_spec, lore), 6, "and anybody else pays the listed 6")
+
+
+## "Each FX talent starts with an FX energy pool of 5 points."
+##
+## Flat, and not the player's to set. The ceiling of 10 is not a second rule --
+## the pool may never pass twice its starting value, and twice five is ten.
+func _test_fx_energy_pool() -> void:
+	var dark := _dm_caster(_first_fx_broad_name())
+	# Recorded as something else entirely: the setting still says five.
+	_rules.fx.set_energy_pool(dark, 15)
+	check_eq(
+		_rules.fx.energy_pool(dark), AlternityRules.DARK_MATTER_FX_STARTING_POOL,
+		"a Dark*Matter hero starts with 5 whatever the file says"
+	)
+	check_eq(
+		_rules.achievements.fx_energy_pool_increase_limit(dark), 5,
+		"and may buy five more, for the ten the setting names"
+	)
+	# Recorded as a realistic campaign, which is what Dark*Matter is -- and what
+	# the generic rules charge 15 a point for. The setting's own price of 10 has
+	# to win over that, so the scale is set explicitly here: left at the default
+	# heroic, which is also 10, this check would pass with the override deleted.
+	_rules.set_fx_campaign_scale(dark, "realistic")
+	check_eq(
+		_rules.achievements.fx_energy_pool_ap_cost(dark), AlternityRules.DARK_MATTER_FX_POOL_AP_COST,
+		"at the setting's 10 achievement points each, not the 15 its scale would charge"
+	)
+
+	# Core keeps the recorded pool and the price its campaign scale sets. A
+	# realistic Core campaign pays 15 for the same point Dark*Matter sells for 10.
+	var core := _hero("Core")
+	_rules.fx.set_fx_talent(core, true)
+	_rules.fx.set_energy_pool(core, 15)
+	check_eq(_rules.fx.energy_pool(core), 15, "a Core hero keeps the pool they recorded")
+	_rules.set_fx_campaign_scale(core, "realistic")
+	check_eq(_rules.achievements.fx_energy_pool_ap_cost(core), 15, "and a realistic Core campaign pays 15 a point")
+
+
+## Psionic energy bought with achievement points: from 6th level, three in a life.
+func _test_psionic_energy_purchases() -> void:
+	var phrase_level := "may not be bought before"
+	var phrase_cap := "at most 3 psionic energy points"
+
+	var novice := _hero("Dark*Matter")
+	_rules.set_perk_selected(novice, "psionic_awareness", 3)
+	check_false(_complains_about(novice, phrase_level), "a hero who has bought none is not questioned")
+
+	novice["psionic_energy_bought"] = 1
+	check_true(_complains_about(novice, phrase_level), "buying one at 1st level is refused")
+
+	# Enough achievement points to reach 6th level.
+	var veteran := _hero("Dark*Matter")
+	_rules.set_perk_selected(veteran, "psionic_awareness", 3)
+	veteran["achievement_points"] = _points_for_level(AlternityRules.DARK_MATTER_PEP_PURCHASE_MIN_LEVEL)
+	veteran["psionic_energy_bought"] = 3
+	check_false(_complains_about(veteran, phrase_level), "at 6th level it is allowed")
+	check_false(_complains_about(veteran, phrase_cap), "and three is the allowance, not one over it")
+
+	veteran["psionic_energy_bought"] = 4
+	check_true(_complains_about(veteran, phrase_cap), "a fourth is refused")
+
+	# The pool actually grows by what was bought, which is the point of buying it.
+	veteran["psionic_energy_bought"] = 3
+	veteran["abilities"]["WIL"] = 12
+	check_eq(_rules.psionic_energy_points(veteran), 6 + 3, "and the pool is half Will plus what was bought")
+
+
+func _points_for_level(level: int) -> int:
+	for points in range(0, 4000):
+		if _rules.achievements.achievement_level_for_points(points) >= level:
+			return points
+	return 0
 
 
 ## The gate, checked from the other side.

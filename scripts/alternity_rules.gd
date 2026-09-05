@@ -2320,6 +2320,35 @@ func _validate_dark_matter(character: Dictionary, messages: Array) -> void:
 		)
 
 	_validate_dark_matter_fx(character, messages)
+	_validate_dark_matter_psionic_energy(character, messages)
+
+
+## What a Dark*Matter talent may add to their psionic energy pool.
+##
+## Bought with achievement points from 6th level, three in a lifetime. The
+## per-level half of the rule -- one point at any given level -- is deliberately
+## not enforced: the book does not say whether an unspent level's allowance
+## carries forward, and a hero who reached 9th level having bought none has
+## either three waiting or one, depending on a reading nobody has written down.
+## Source: Dark Matter Campaign Setting Part 1: Player Rules p. 59.
+func _validate_dark_matter_psionic_energy(character: Dictionary, messages: Array) -> void:
+	var bought := _as_int(character.get("psionic_energy_bought", 0))
+	if bought <= 0:
+		return
+
+	var level := achievements.achievement_level_for_points(
+		_as_int(character.get("achievement_points", 0))
+	)
+	if level < DARK_MATTER_PEP_PURCHASE_MIN_LEVEL:
+		messages.append(
+			"Psionic energy may not be bought before %dth level, and this hero is %d. Source: Dark Matter Campaign Setting Part 1: Player Rules p. 59."
+			% [DARK_MATTER_PEP_PURCHASE_MIN_LEVEL, level]
+		)
+	if bought > DARK_MATTER_PEP_PURCHASE_MAX:
+		messages.append(
+			"A Dark*Matter talent may buy at most %d psionic energy points in a lifetime, and this hero has %d. Source: Dark Matter Campaign Setting Part 1: Player Rules p. 59."
+			% [DARK_MATTER_PEP_PURCHASE_MAX, bought]
+		)
 
 
 ## The FX rules Dark*Matter substitutes for the Beyond Science ones.
