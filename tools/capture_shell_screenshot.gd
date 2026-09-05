@@ -246,7 +246,25 @@ func _capture(width: int, height: int, label: String) -> void:
 						await process_frame
 					_save(shell, "%s_dm_tab_skills_editing" % label)
 					dm_inst._set_editing_skills(false)
-			doc.apply(CharacterDoc.ALL, func(c): c["setting"] = "Core")
+			# And once more as a Grey, with Alien Heroes turned on: the species is
+			# the part of Dark*Matter with the most on screen -- ability bands,
+			# free skills, a psionic pool a human talent does not get -- and a
+			# shot of the picker offering the name proves none of it.
+			doc.apply(CharacterDoc.ALL, func(c):
+				shell.rules.set_optional_rule(c, "dm_alien_heroes", true)
+				c["species_id"] = 7)
+			for _i in 12:
+				await process_frame
+			for id in ["basics", "summary"]:
+				sheet._select_tab(id)
+				for _i in 12:
+					await process_frame
+				_save(shell, "%s_dm_grey_%s" % [label, id])
+
+			doc.apply(CharacterDoc.ALL, func(c):
+				shell.rules.set_optional_rule(c, "dm_alien_heroes", false)
+				c["species_id"] = 0
+				c["setting"] = "Core")
 			for _i in 6:
 				await process_frame
 

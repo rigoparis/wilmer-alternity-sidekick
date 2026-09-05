@@ -180,14 +180,19 @@ func _test_free_broad_skills() -> void:
 			free_ids.append(AlternityNum.as_int(id))
 		check_true(free_ids.has(awareness_id), "%s begins with Awareness" % species_name)
 
-		var fraal := species_name == "Fraal"
+		# Keyed on the species' own psionic flag rather than on the name Fraal.
+		# Dark*Matter's Greys have the same heritage and the same free skills, and
+		# a third such species would otherwise mean editing this line again --
+		# which is the moment somebody edits it to match the data instead of
+		# asking whether the data is right.
+		var psionic := bool(species.get("psionic", false))
 		check_eq(
-			free_ids.has(SKILL_RESOLVE), fraal,
-			"%s %s Resolve" % [species_name, "begins with" if fraal else "does not begin with"]
+			free_ids.has(SKILL_RESOLVE), psionic,
+			"%s %s Resolve" % [species_name, "begins with" if psionic else "does not begin with"]
 		)
 		check_eq(
-			free_ids.has(SKILL_TELEPATHY), fraal,
-			"%s %s Telepathy" % [species_name, "begins with" if fraal else "does not begin with"]
+			free_ids.has(SKILL_TELEPATHY), psionic,
+			"%s %s Telepathy" % [species_name, "begins with" if psionic else "does not begin with"]
 		)
 
 

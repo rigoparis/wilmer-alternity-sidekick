@@ -38,6 +38,8 @@ func _init() -> void:
 	_test_fx_talent_rank_caps()
 	_test_talent_surcharges()
 	_test_the_new_skills()
+	_test_alien_heroes()
+	_test_enochian()
 	_test_core_is_untouched()
 
 	finish()
@@ -318,6 +320,135 @@ func _skill_named(name: String) -> Dictionary:
 		if String(skill.get("name", "")) == name:
 			return skill
 	return {}
+
+
+## The five species Chapter 10 offers, and the two gates in front of them.
+##
+## "At the Gamemaster's option, other species -- including Greys, kinori,
+## mothmen, sandmen, or sasquatch -- may be available to play as heroes."
+## (Dark Matter Campaign Setting Chapter 10 p. 257.) So they need the setting and
+## the Alien Heroes rule both, and a Core campaign must never see them.
+const DM_SPECIES := ["Grey", "Kinori", "Mothman", "Sandman", "Sasquatch"]
+
+
+func _test_alien_heroes() -> void:
+	for name in DM_SPECIES:
+		check_true(not _species_named(String(name)).is_empty(), "%s ships" % name)
+
+	# Core: not offered, whatever the optional rule says, because the rule is
+	# about Dark*Matter's own species and Core has never heard of them.
+	var core := _hero("Core")
+	_rules.set_optional_rule(core, "dm_alien_heroes", true)
+	for name in DM_SPECIES:
+		check_false(_offers_species(core, String(name)), "%s stays out of Core" % name)
+
+	# Dark*Matter without the rule: still not offered.
+	var closed := _hero("Dark*Matter")
+	for name in DM_SPECIES:
+		check_false(_offers_species(closed, String(name)), "%s waits on the GM in Dark*Matter" % name)
+	check_true(_offers_species(closed, "Human"), "and Human is offered regardless")
+
+	# Dark*Matter with the rule: all five.
+	var open_table := _hero("Dark*Matter")
+	_rules.set_optional_rule(open_table, "dm_alien_heroes", true)
+	for name in DM_SPECIES:
+		check_true(_offers_species(open_table, String(name)), "%s is offered once the GM allows it" % name)
+
+	# A hero already built as one keeps it even if the rule is switched back off.
+	# A picker that drops the saved answer writes back index 0 on the next save,
+	# so the hero silently becomes a Human.
+	var built := _hero("Dark*Matter", AlternityNum.as_int(_species_named("Sasquatch").get("id", -1)))
+	check_true(_offers_species(built, "Sasquatch"), "a hero already built as one keeps their species")
+
+	# The numbers that make them different from each other.
+	check_eq(_limits("Sandman", "WIL"), [2, 12], "a sandman may have a Will of 2, lower than any other species")
+	check_eq(_limits("Sasquatch", "STR"), [9, 16], "a sasquatch is never weak")
+	check_eq(_limits("Grey", "CON"), [4, 10], "a Grey is never robust")
+	check_eq(_limits("Mothman", "WIL"), [9, 15], "a mothman is never weak-willed")
+	check_eq(_limits("Kinori", "DEX"), [9, 14], "a kinori is never clumsy")
+
+	check_eq(float(_species_named("Sasquatch").get("durability_multiplier", 1.0)), 1.5, "a sasquatch is tougher than its CON")
+	check_true(bool(_species_named("Mothman").get("can_fly", false)), "a mothman flies")
+	for name in ["Grey", "Kinori", "Sandman", "Sasquatch"]:
+		check_false(bool(_species_named(String(name)).get("can_fly", false)), "%s does not fly" % name)
+
+	# None of the five gets the human creation bonus.
+	for name in DM_SPECIES:
+		var sp := _species_named(String(name))
+		check_eq(AlternityNum.as_int(sp.get("skill_points", -1)), 0, "%s gets no bonus skill points" % name)
+		check_eq(AlternityNum.as_int(sp.get("broad_skills", -1)), 0, "%s gets no bonus broad skill" % name)
+
+	# Greys are psionic on the Fraal pattern: a talent draws full Will where a
+	# human talent draws half, and a Mindwalker draws Will and a half.
+	var grey := _species_named("Grey")
+	check_true(bool(grey.get("psionic", false)), "a Grey is inherently psionic")
+	# Compared as numbers: JSON hands these back as floats, so has(901) misses.
+	var grey_free: Array = []
+	for value in grey.get("free_skill_ids", []):
+		grey_free.append(AlternityNum.as_int(value))
+	check_true(grey_free.has(901), "and begins with Telepathy")
+
+	var grey_talent := _hero("Dark*Matter", AlternityNum.as_int(grey.get("id", -1)))
+	grey_talent["abilities"]["WIL"] = 12
+	var human_talent := _hero("Dark*Matter", SPECIES_HUMAN)
+	human_talent["abilities"]["WIL"] = 12
+	_rules.set_perk_selected(human_talent, "psionic_awareness", 3)
+	check_eq(_rules.psionic_energy_points(grey_talent), 12, "a Grey talent draws their full Will")
+	check_eq(_rules.psionic_energy_points(human_talent), 6, "where a human talent draws half")
+
+
+## Enochian, the one arcane school cast entirely on Will.
+func _test_enochian() -> void:
+	var school := _rules.fx.get_broad_skill("Enochian")
+	if not check(not school.is_empty(), "the Enochian school ships"):
+		return
+	check_eq(String(school.get("ability", "")), "WIL/WIL", "Enochian is cast on Will alone")
+	check_eq(AlternityNum.as_int(school.get("cost", 0)), 9, "and costs 9")
+	check_eq(String(school.get("category", "")), "Arcane Magic", "and is arcane, not a faith")
+
+	check_false(_rules.is_entry_available(_hero("Core"), school), "it is hidden in Core")
+	check_true(_rules.is_entry_available(_hero("Dark*Matter"), school), "and offered in Dark*Matter")
+
+	var spells: Array = _rules.fx.get_specialty_skills_for_broad("Enochian")
+	check_eq(spells.size(), 7, "the school has seven spells")
+	var by_name: Dictionary = {}
+	for spell in spells:
+		by_name[String(spell.get("name", ""))] = spell
+		check_eq(String(spell.get("ability", "")), "WIL", "%s is cast on Will" % spell.get("name", "?"))
+
+	check_eq(AlternityNum.as_int(by_name.get("Lumen", {}).get("cost", 0)), 2, "Lumen costs 2")
+	check_eq(AlternityNum.as_int(by_name.get("White salamander", {}).get("cost", 0)), 4, "White salamander costs 4")
+	check_eq(AlternityNum.as_int(by_name.get("White salamander", {}).get("fx_cost", 0)), 2, "and burns 2 FX energy where the rest burn 1")
+	check_eq(AlternityNum.as_int(by_name.get("Halo", {}).get("fx_cost", 0)), 1, "Halo burns 1")
+
+	# Six of the seven cannot be attempted by somebody who never learned them.
+	var untrained_count := 0
+	for spell in spells:
+		if bool(spell.get("untrained", false)):
+			untrained_count += 1
+	check_eq(untrained_count, 1, "only White salamander may be cast untrained")
+
+
+func _species_named(name: String) -> Dictionary:
+	for entry in _rules.species:
+		if String(entry.get("name", "")) == name:
+			return entry
+	return {}
+
+
+func _offers_species(character: Dictionary, name: String) -> bool:
+	for entry in _rules.available_species(character):
+		if String(entry.get("name", "")) == name:
+			return true
+	return false
+
+
+func _limits(species_name: String, ability: String) -> Array:
+	var raw: Array = _species_named(species_name).get("ability_limits", {}).get(ability, [])
+	var out: Array = []
+	for value in raw:
+		out.append(AlternityNum.as_int(value))
+	return out
 
 
 ## The gate, checked from the other side.

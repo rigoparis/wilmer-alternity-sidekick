@@ -16,7 +16,7 @@ const RulesScript := preload("res://scripts/alternity_rules.gd")
 ## The three pillars, and which broad skills belong to each.
 const PILLARS := {
 	"Arcane Magic": [
-		"Diabolism", "Hemomancy", "Hermeticism", "Illusion",
+		"Diabolism", "Enochian", "Hemomancy", "Hermeticism", "Illusion",
 		"Mesmerism", "Necromancy", "Pyromancy",
 	],
 	"Faith": [
@@ -87,7 +87,11 @@ func _specialties() -> Array:
 	return out
 
 
-## Twenty-one broad skills, in three pillars, each naming its own.
+## Every broad skill in the catalog, in three pillars, each naming its own.
+##
+## An inventory rather than a reading of one book -- Incantation and Enochian are
+## Dark*Matter's and are counted here too, because the point of the check is that
+## a school cannot appear or disappear without somebody saying so.
 func _test_pillars() -> void:
 	var counted := 0
 	for pillar in PILLARS:
@@ -104,8 +108,8 @@ func _test_pillars() -> void:
 				AlternityNum.as_int(broad.get("cost", 0)) > 0,
 				"%s has a skill point price" % broad_name
 			)
-	check_eq(counted, 21, "the manual names 21 broad skills")
-	check_eq(_rules.fx.get_broad_skills().size(), 21, "and the catalog holds exactly those")
+	check_eq(counted, 22, "the catalog names 22 broad skills")
+	check_eq(_rules.fx.get_broad_skills().size(), 22, "and the catalog holds exactly those")
 
 
 ## Broad skill prices, from the three tables.

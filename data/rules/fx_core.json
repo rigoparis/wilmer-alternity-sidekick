@@ -229,6 +229,17 @@
       "rank_benefits": {},
       "setting": "Dark*Matter",
       "source": "Dark•Matter, pg. 80"
+    },
+    "Enochian": {
+      "ability": "WIL/WIL",
+      "category": "Arcane Magic",
+      "cost": 9,
+      "description": "Enochian magic reaches the celestial and angelic dimensions rather than the infernal ones Diabolism calls on, and its workings are protective and invocatory: warding a place, calling for aid, unmaking what somebody else has bound. Alone among the arcane schools it is governed by Will and nothing else -- every spell under it is cast on Will, so the school is a pure Will discipline where Diabolism leans on Personality and Hermeticism on Intelligence.",
+      "meta": "",
+      "name": "Enochian",
+      "rank_benefits": {},
+      "setting": "Dark*Matter",
+      "source": "Dark Matter Campaign Setting, Chapter 4: Arcana, pp. 52-53, 55."
     }
   },
   "specialty_skills": {
@@ -2755,6 +2766,123 @@
       "source": "Dark•Matter, pg. 81",
       "untrained": true,
       "fx_cost": 1
+    },
+    "Eye of fate": {
+      "ability": "WIL",
+      "broad_skill": "Enochian",
+      "category": "Arcane Magic",
+      "cost": 3,
+      "description": "Reads the shape of what is coming, and lets the arcanist hold a moment back against it.",
+      "meta": "Cost: 3 skill points / Untrained use not allowed / 1 FX energy point",
+      "name": "Eye of fate",
+      "rank_benefits": {
+        "4": "Stored last resort points: the arcanist may store one or more last resort points for a scene, and each stored point shifts a later check by up to two degrees of success rather than one -- three, for a Free Agent."
+      },
+      "untrained": false,
+      "fx_cost": 1,
+      "setting": "Dark*Matter",
+      "source": "Dark Matter Campaign Setting, Chapter 4: Arcana, pp. 52-53, 55."
+    },
+    "Grace": {
+      "ability": "WIL",
+      "broad_skill": "Enochian",
+      "category": "Arcane Magic",
+      "cost": 3,
+      "description": "A borrowed steadiness that settles over the subject and holds for as long as the arcanist's rank sustains it.",
+      "meta": "Cost: 3 skill points / Untrained use not allowed / 1 FX energy point",
+      "name": "Grace",
+      "rank_benefits": {
+        "4": "Duration increases to 10 minutes.",
+        "8": "Duration increases to 15 minutes.",
+        "12": "Duration increases to 20 minutes."
+      },
+      "untrained": false,
+      "fx_cost": 1,
+      "setting": "Dark*Matter",
+      "source": "Dark Matter Campaign Setting, Chapter 4: Arcana, pp. 52-53, 55."
+    },
+    "Halo": {
+      "ability": "WIL",
+      "broad_skill": "Enochian",
+      "category": "Arcane Magic",
+      "cost": 3,
+      "description": "A ring of sacred warding light that turns blows aside and, at higher ranks, burns what it was raised against.",
+      "meta": "Cost: 3 skill points / Untrained use not allowed / 1 FX energy point",
+      "name": "Halo",
+      "rank_benefits": {
+        "6": "The warding improves to +4 (LI) and +5 (HI).",
+        "12": "The halo burns tainted things -- demons, diabolists, the undead -- on contact, for d6s a touch or d6w per round of sustained contact, which no armor reduces or prevents."
+      },
+      "untrained": false,
+      "fx_cost": 1,
+      "setting": "Dark*Matter",
+      "source": "Dark Matter Campaign Setting, Chapter 4: Arcana, pp. 52-53, 55."
+    },
+    "Lumen": {
+      "ability": "WIL",
+      "broad_skill": "Enochian",
+      "category": "Arcane Magic",
+      "cost": 2,
+      "description": "Light, called out of nothing, as much or as little as the arcanist can hold.",
+      "meta": "Cost: 2 skill points / Untrained use not allowed / 1 FX energy point",
+      "name": "Lumen",
+      "rank_benefits": {
+        "6": "The light may be raised to Amazing intensity -- bright sunlight -- which blinds anything sensitive to it."
+      },
+      "untrained": false,
+      "fx_cost": 1,
+      "setting": "Dark*Matter",
+      "source": "Dark Matter Campaign Setting, Chapter 4: Arcana, pp. 52-53, 55."
+    },
+    "Peaceful shroud": {
+      "ability": "WIL",
+      "broad_skill": "Enochian",
+      "category": "Arcane Magic",
+      "cost": 3,
+      "description": "A stillness laid over a wounded subject that holds the pain far enough off to keep working.",
+      "meta": "Cost: 3 skill points / Untrained use not allowed / 1 FX energy point",
+      "name": "Peaceful shroud",
+      "rank_benefits": {
+        "4": "Negates 1 additional step of damage penalty.",
+        "8": "Negates 2 steps of damage penalty.",
+        "12": "Negates 3 steps of damage penalty."
+      },
+      "untrained": false,
+      "fx_cost": 1,
+      "setting": "Dark*Matter",
+      "source": "Dark Matter Campaign Setting, Chapter 4: Arcana, pp. 52-53, 55."
+    },
+    "Unravel enchantment": {
+      "ability": "WIL",
+      "broad_skill": "Enochian",
+      "category": "Arcane Magic",
+      "cost": 2,
+      "description": "Takes apart a working somebody else has bound, thread by thread.",
+      "meta": "Cost: 2 skill points / Untrained use not allowed / 1 FX energy point",
+      "name": "Unravel enchantment",
+      "rank_benefits": {},
+      "untrained": false,
+      "fx_cost": 1,
+      "setting": "Dark*Matter",
+      "source": "Dark Matter Campaign Setting, Chapter 4: Arcana, pp. 52-53, 55."
+    },
+    "White salamander": {
+      "ability": "WIL",
+      "broad_skill": "Enochian",
+      "category": "Arcane Magic",
+      "cost": 4,
+      "description": "Calls a salamander of white fire into the world and holds it there.",
+      "meta": "Cost: 4 skill points / May be used untrained / 2 FX energy points",
+      "name": "White salamander",
+      "rank_benefits": {
+        "4": "The summoning lasts 1 minute longer.",
+        "8": "The summoning lasts 2 minutes longer.",
+        "12": "The summoning lasts 3 minutes longer."
+      },
+      "untrained": true,
+      "fx_cost": 2,
+      "setting": "Dark*Matter",
+      "source": "Dark Matter Campaign Setting, Chapter 4: Arcana, pp. 52-53, 55."
     }
   }
 }

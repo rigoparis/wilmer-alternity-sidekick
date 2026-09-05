@@ -110,7 +110,8 @@
         "Fraal Mindwalkers use WIL x 1.5 for psionic energy points instead of WIL x 1. Source: Player's Handbook p. 23.",
         "Telepathy is one of every fraal hero's free broad skills. Source: Player's Handbook p. 23 and Table P4."
       ],
-      "description": "A frail, long-lived, telepathic species who arrived in human space long before humans reached the stars, and who are now found among them as advisors, healers and scholars. Fraal are physically weak -- their STR, DEX and CON are capped well below human maximums -- but are the strongest minds available to a player, with high INT, WIL and PER floors as well as ceilings. Every fraal is psionic and begins with Telepathy as a free broad skill, and fraal draw on a larger psionic energy pool than other species."
+      "description": "A frail, long-lived, telepathic species who arrived in human space long before humans reached the stars, and who are now found among them as advisors, healers and scholars. Fraal are physically weak -- their STR, DEX and CON are capped well below human maximums -- but are the strongest minds available to a player, with high INT, WIL and PER floors as well as ceilings. Every fraal is psionic and begins with Telepathy as a free broad skill, and fraal draw on a larger psionic energy pool than other species.",
+      "psi_talent_full_will": true
     },
     {
       "id": 2,
@@ -374,6 +375,280 @@
       ],
       "notes": [],
       "description": "A human whose genome has been altered -- by radiation, engineering, disease or inheritance -- trading stability for capability. Mutants use the human ability range and gain no fixed racial benefits. Instead they receive mutation points, spent on advantages drawn from the mutation tables and offset by drawbacks, so no two mutant heroes have the same abilities. The Mutations tab handles rolling and spending them."
+    },
+    {
+      "id": 7,
+      "name": "Grey",
+      "source": "core",
+      "setting": "Dark Matter",
+      "psionic": true,
+      "psi_talent_full_will": true,
+      "psi_multiplier": 1.5,
+      "can_glide": false,
+      "can_fly": false,
+      "skill_points": 0,
+      "broad_skills": 0,
+      "action_step": 0,
+      "durability_multiplier": 1,
+      "ability_limits": {
+        "STR": [
+          4,
+          11
+        ],
+        "DEX": [
+          4,
+          14
+        ],
+        "CON": [
+          4,
+          10
+        ],
+        "INT": [
+          9,
+          15
+        ],
+        "WIL": [
+          9,
+          16
+        ],
+        "PER": [
+          4,
+          15
+        ]
+      },
+      "free_skill_ids": [
+        43,
+        69,
+        125,
+        134,
+        155,
+        901
+      ],
+      "notes": [
+        "Grey Psionic Heritage: begins with the Telepathy broad skill. A Grey talent, or a Diplomat with Mindwalker as a secondary profession, has psionic energy equal to their full Will score rather than half; a Grey Mindwalker has Will x 1.5.",
+        "Grey Divided Loyalty: begins play with the Divided Loyalty flaw, and the skill points it grants.",
+        "Grey Hidden Identity: enjoys the 3-point Hidden Identity perk for free, unless they have established an active false human identity."
+      ],
+      "description": "Small, grey-skinned and enormous-eyed, the abductors of a thousand accounts -- and, at the Gamemaster's option, heroes in their own right. Greys are physically slight, with the lowest Constitution ceiling of any playable species, but the sharpest minds: their Intelligence, Will and Personality all start above the human floor and reach past its ceiling. They are inherently psionic, beginning with Telepathy and drawing a deeper energy pool than a human talent ever could. What they cannot escape is where they came from: every Grey owes a loyalty elsewhere, and every Grey has a reason not to be on any records."
+    },
+    {
+      "id": 8,
+      "name": "Kinori",
+      "source": "core",
+      "setting": "Dark Matter",
+      "psionic": false,
+      "can_glide": false,
+      "can_fly": false,
+      "psi_multiplier": 1,
+      "skill_points": 0,
+      "broad_skills": 0,
+      "action_step": 0,
+      "durability_multiplier": 1,
+      "ability_limits": {
+        "STR": [
+          4,
+          11
+        ],
+        "DEX": [
+          9,
+          14
+        ],
+        "CON": [
+          5,
+          11
+        ],
+        "INT": [
+          8,
+          14
+        ],
+        "WIL": [
+          5,
+          12
+        ],
+        "PER": [
+          5,
+          12
+        ]
+      },
+      "free_skill_ids": [
+        3,
+        15,
+        52,
+        69,
+        125,
+        155
+      ],
+      "notes": [
+        "Kinori Natural Armor: thick saurian skin gives d4 (LI) / d4 (HI) / d4 (En) protection without wearing anything.",
+        "Kinori Allegiance: a kinori loyal to their own kind begins play with the Divided Loyalty flaw; a renegade begins with the 2-point Powerful Enemy (kinori) flaw instead."
+      ],
+      "description": "A saurian species living quietly alongside humanity, quick and clever and armoured in their own skin. Kinori have the highest Dexterity floor of any playable species -- none of them is clumsy -- and a mind that starts well above human average, but they are neither strong nor especially hardy. Their hide is armour they cannot take off, which is worth more in a world where carrying a battle vest gets you noticed. Every kinori owes somebody something: loyalty to their own kind, or the enmity of it."
+    },
+    {
+      "id": 9,
+      "name": "Mothman",
+      "source": "core",
+      "setting": "Dark Matter",
+      "psionic": false,
+      "can_glide": true,
+      "can_fly": true,
+      "psi_multiplier": 1,
+      "skill_points": 0,
+      "broad_skills": 0,
+      "action_step": 0,
+      "durability_multiplier": 1,
+      "ability_limits": {
+        "STR": [
+          6,
+          12
+        ],
+        "DEX": [
+          6,
+          14
+        ],
+        "CON": [
+          5,
+          11
+        ],
+        "INT": [
+          4,
+          11
+        ],
+        "WIL": [
+          9,
+          15
+        ],
+        "PER": [
+          4,
+          11
+        ]
+      },
+      "free_skill_ids": [
+        3,
+        18,
+        52,
+        69,
+        125,
+        155
+      ],
+      "notes": [
+        "Mothman Talons: a successful Unarmed Attack does d4s / d6w / d6+1w (LI/O).",
+        "Mothman Wings: can fly or glide at the species combat movement rate.",
+        "Mothman Light Sensitivity: vulnerable to bright flash and illumination hazards.",
+        "Mothman Primitive: begins play with the 4-point Primitive flaw, and the skill points it grants."
+      ],
+      "description": "Winged, insectoid and red-eyed, seen at the edge of disasters and blamed for them. Mothmen have the strongest wills of any playable species and the weakest heads for machinery, and they are the only playable species that can fly. They fight with talons rather than tools, which suits them, because almost nothing built after the industrial age suits them at all. Bright light hurts them, which is why nobody gets a clear photograph."
+    },
+    {
+      "id": 10,
+      "name": "Sandman",
+      "source": "core",
+      "setting": "Dark Matter",
+      "psionic": false,
+      "can_glide": false,
+      "can_fly": false,
+      "psi_multiplier": 1,
+      "skill_points": 0,
+      "broad_skills": 0,
+      "action_step": 0,
+      "durability_multiplier": 1,
+      "ability_limits": {
+        "STR": [
+          5,
+          15
+        ],
+        "DEX": [
+          4,
+          14
+        ],
+        "CON": [
+          6,
+          16
+        ],
+        "INT": [
+          5,
+          15
+        ],
+        "WIL": [
+          2,
+          12
+        ],
+        "PER": [
+          3,
+          13
+        ]
+      },
+      "free_skill_ids": [
+        3,
+        43,
+        52,
+        61,
+        69,
+        125,
+        155
+      ],
+      "notes": [
+        "Sandman Engineered Body: may begin play with cybernetic implants up to Progress Level 6, paying a flat 10 skill points at creation for the privilege.",
+        "Sandman Toxin Resistance: a -4 step bonus to every Constitution feat check made to resist toxins, poisons and biological agents.",
+        "Sandman Fusion: retains the ability to fuse with inorganic objects and reshape its own body parts.",
+        "Sandman Powerful Enemy: begins play with the 4-point Powerful Enemy (etoile and sandmen) flaw, and the skill points it grants."
+      ],
+      "description": "Nanite-infused soldiers built by the Etoile, with the highest Constitution ceiling of any playable species and a body that answers to them rather than to biology -- they fuse with matter and reshape their own limbs, and poison barely registers. What was engineered out of them is will: a sandman may start with a Will of 2, lower than any other species can fall, and no sandman is ever quite free of the people who made them. They may come to the table already wired with Progress Level 6 hardware, at a flat and painful price in skill points."
+    },
+    {
+      "id": 11,
+      "name": "Sasquatch",
+      "source": "core",
+      "setting": "Dark Matter",
+      "psionic": false,
+      "can_glide": false,
+      "can_fly": false,
+      "psi_multiplier": 1,
+      "skill_points": 0,
+      "broad_skills": 0,
+      "action_step": 0,
+      "durability_multiplier": 1.5,
+      "ability_limits": {
+        "STR": [
+          9,
+          16
+        ],
+        "DEX": [
+          5,
+          11
+        ],
+        "CON": [
+          9,
+          15
+        ],
+        "INT": [
+          4,
+          12
+        ],
+        "WIL": [
+          4,
+          14
+        ],
+        "PER": [
+          4,
+          12
+        ]
+      },
+      "free_skill_ids": [
+        3,
+        15,
+        52,
+        69,
+        125,
+        155
+      ],
+      "notes": [
+        "Sasquatch Superior Durability: CON x 1.5 for durability scores.",
+        "Sasquatch Claws: a successful Unarmed Attack does d4w / d4+2w / 2d4m (LI/O).",
+        "Sasquatch Camouflage: a -1 step bonus to Stealth-hide, and a +1 step penalty to anyone taking a ranged attack against them.",
+        "Sasquatch Primitive: begins play with the 4-point Primitive flaw, and the skill points it grants."
+      ],
+      "description": "The wilderness survivor everybody has heard of and nobody can produce. A sasquatch matches the Weren for raw strength and beats every other playable species for it, is tougher than its Constitution alone suggests, and disappears into terrain that should not hide anything that size. The cost is the same one the Weren pays: a sasquatch is a creature of the woods, not of the century it finds itself in."
     }
   ],
   "skills": [

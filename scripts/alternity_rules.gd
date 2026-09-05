@@ -560,6 +560,39 @@ func is_entry_available(character: Dictionary, entry: Dictionary) -> bool:
 	return is_setting_available(character, required)
 
 
+## The species this character may be built as.
+##
+## Two gates, not one. A species can belong to a setting like any other catalog
+## entry, and Dark*Matter's five -- Greys, kinori, mothmen, sandmen, sasquatch --
+## additionally wait on the Alien Heroes optional rule, because the books offer
+## them at the Gamemaster's option rather than as standard kit ("At the
+## Gamemaster's option, other species... may be available to play as heroes",
+## Dark Matter Campaign Setting Chapter 10 p. 257).
+##
+## The species already chosen is always included, whatever the gates say. A
+## picker that drops the saved answer does not merely hide it -- the next save
+## writes back whatever landed at index 0, so a hero silently changes species.
+func available_species(character: Dictionary) -> Array:
+	var chosen := _as_int(character.get("species_id", -1), -1)
+	var out: Array = []
+	for entry in species:
+		if typeof(entry) != TYPE_DICTIONARY:
+			continue
+		if _as_int(entry.get("id", -1), -1) == chosen:
+			out.append(entry)
+			continue
+		if not is_entry_available(character, entry):
+			continue
+		if (
+			not String(entry.get("setting", "")).strip_edges().is_empty()
+			and is_dark_matter(character)
+			and not optional_rule_enabled(character, "dm_alien_heroes")
+		):
+			continue
+		out.append(entry)
+	return out
+
+
 ## Filter a catalog to the entries this character's setting permits.
 func available_entries(character: Dictionary, entries: Array) -> Array:
 	var out: Array = []
@@ -1333,6 +1366,13 @@ func is_mindwalker_profession(character: Dictionary) -> bool:
 func is_psionic_character(character: Dictionary) -> bool:
 	if is_mindwalker_profession(character):
 		return true
+	# In Dark*Matter the perk is what makes somebody a talent, and a talent has a
+	# pool before they have any powers -- otherwise they could never afford the
+	# first one. Gated on the setting because the core Psionic Awareness perk is
+	# a different thing entirely: it lets a hero notice psionics being used
+	# nearby, and grants no energy at all (Player's Handbook p. 106).
+	if is_dark_matter(character) and is_perk_selected(character, "psionic_awareness"):
+		return true
 	return has_psionic_skill(character)
 
 
@@ -1353,7 +1393,13 @@ func psionic_energy_points(character: Dictionary) -> int:
 	if not is_psionic_character(character):
 		return 0
 	var will := _as_int(effective_abilities(character).get("WIL", 10))
-	var is_fraal := _as_int(character.get("species_id", 0)) == 1 or String(get_species_by_id(_as_int(character.get("species_id", 0))).get("name", "")) == "Fraal"
+	# Read off the species rather than checked by name. Fraal were the only
+	# species with this pattern when it was written, so it was spelled "is this
+	# the Fraal"; Dark*Matter's Greys have exactly the same one, and a second
+	# name in the condition would have been the start of a list.
+	var species_record := get_species_by_id(_as_int(character.get("species_id", 0)))
+	var talent_draws_full_will: bool = bool(species_record.get("psi_talent_full_will", false))
+	var psi_multiplier: float = float(species_record.get("psi_multiplier", 1.0))
 	var is_mw := is_mindwalker_profession(character)
 	var prof_id := _as_int(character.get("profession_id", 0))
 	var is_primary_mindwalker := prof_id == 6 or (is_mw and String(get_profession_by_id(prof_id).get("code", "")) == "M")
@@ -1372,8 +1418,8 @@ func psionic_energy_points(character: Dictionary) -> int:
 	# such characters). A fraal who selects the Mindwalker profession has psionic
 	# energy points equal to his Will score x 1.5." (Player's Handbook p. 22.)
 	var base: int = 0
-	if is_fraal:
-		base = int(will * 1.5) if is_primary_mindwalker else will
+	if talent_draws_full_will:
+		base = int(will * psi_multiplier) if is_primary_mindwalker else will
 	elif is_primary_mindwalker:
 		base = will
 	else:

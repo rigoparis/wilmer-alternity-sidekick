@@ -204,8 +204,10 @@ func _test_free_skills() -> void:
 		for id in species.get("free_skill_ids", []):
 			free_ids.append(AlternityNum.as_int(id))
 		check_true(free_ids.has(knowledge_id), "%s begins with Knowledge" % species_name)
-		if species_name == "Mechalus":
-			check_true(free_ids.has(cs_id), "a mechalus begins with Computer Science")
+		# Two species are born to machines, for opposite reasons: the mechalus by
+		# heritage, the sandman because the Etoile built them around one.
+		if species_name == "Mechalus" or species_name == "Sandman":
+			check_true(free_ids.has(cs_id), "%s begins with Computer Science" % species_name)
 		else:
 			check_false(
 				free_ids.has(cs_id),

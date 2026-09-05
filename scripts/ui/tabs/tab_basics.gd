@@ -234,10 +234,10 @@ func _build_origin(container: Container) -> void:
 	var palette := ctx.palette
 	var box := Widgets.section(container, "Origin", palette)
 
-	var species_entries: Array = []
-	for entry in rules.species:
-		if typeof(entry) == TYPE_DICTIONARY:
-			species_entries.append(entry)
+	# Through the rules layer, not off rules.species: a species can be gated by
+	# setting and by optional rule, and a picker that listed the catalog raw
+	# offered Dark*Matter's Greys to a Core hero without erroring.
+	var species_entries: Array = rules.available_species(doc.raw())
 	_id_picker(
 		box, "Species", species_entries, doc.get_species_id(),
 		func(id: int): doc.set_species_id(id)
