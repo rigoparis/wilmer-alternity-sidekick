@@ -220,6 +220,8 @@ func _test_summary_tab() -> void:
 	var doc := Doc.new(_rules)
 	doc.set_species_id(_rules.mutations.mutant_species_id())
 	doc.apply(CharacterDoc.ALL, func(c):
+		_rules.mutations.set_mutation_origin(c, "engineered")
+		_rules.mutations.set_mutation_uniqueness(c, "engineered_community")
 		_rules.mutations.set_mutation_points(c, 3, 2)
 		_rules.mutations.add_mutation_advantage(c, "improved_str")
 		_rules.mutations.add_mutation_drawback(c, "slow_reflexes"))
@@ -227,6 +229,36 @@ func _test_summary_tab() -> void:
 	var tab = _mount(TAB_SUMMARY, doc)
 	await process_frame
 	check_true(tab.get_child_count() > 0, "Summary renders after mutation selections")
+
+	var labels := _labels_in(tab)
+	check_true(_any_label_contains(labels, "Mutations"), "Summary displays Mutations section")
+	check_true(_any_label_contains(labels, "Engineered mutation(s)"), "Summary shows mutation origin")
+	check_true(_any_label_contains(labels, "Belongs to mutant community"), "Summary shows mutation uniqueness")
+	check_true(_any_label_contains(labels, "Advantage points"), "Summary shows advantage points label")
+	check_true(_any_label_contains(labels, "Drawback points"), "Summary shows drawback points label")
+	check_true(_any_label_contains(labels, "Advantages"), "Summary displays Advantages subsection")
+	check_true(_any_label_contains(labels, "Drawbacks"), "Summary displays Drawbacks subsection")
+	check_true(_any_label_contains(labels, "Improved STR"), "Summary lists Improved STR")
+	check_true(_any_label_contains(labels, "Slow Reflexes"), "Summary lists Slow Reflexes")
+
+	# Check that points are correctly formatted (e.g. "1 pt", NOT "0 points")
+	check_false(_any_label_contains(labels, "0 points"), "No 0-point bug for mutations")
+	check_true(_any_label_contains(labels, "Ordinary • 1 pt • STR"), "Advantage badge shows Tier, Points, and Related Ability")
+	check_true(_any_label_contains(labels, "untrained check at 1/2 the related ability score"), "Advantages subsection displays untrained check rules")
+	check_true(_any_label_contains(labels, "Table P51"), "Drawbacks subsection displays Table P51 ability rule")
+
+	# Verify that mutation detail adapts cleanly to SkillDetail
+	var adv := _rules.mutations.get_mutation_advantage_by_id("improved_str")
+	var detail_data := {
+		"name": String(adv.get("name", "")),
+		"meta": "Tier: Ordinary • 1 point • Related Ability: STR",
+		"summary": String(adv.get("summary", "")),
+		"sources": [String(adv.get("reference", ""))],
+	}
+	var detail := SkillDetail.from_data(detail_data)
+	check_eq(detail.title, "Improved STR", "detail title is mutation name")
+	check_true(detail.subtitle.contains("Ordinary"), "detail subtitle has tier")
+	check_true(detail.find_section("Source").get("body", "").contains("Player's Handbook"), "detail captures reference source")
 
 	# The damage trackers are the interactive part, so they must survive a
 	# character whose durability came from mutations.

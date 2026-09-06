@@ -90,6 +90,16 @@ func _build() -> void:
 	)
 	score.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 
+	if not _check.step_breakdown.is_empty():
+		var bd_items: Array = []
+		for item in _check.step_breakdown:
+			var item_step: int = AlternityNum.as_int(item.get("step", 0))
+			bd_items.append("%s (%+d)" % [String(item.get("source", "")), item_step])
+		var bd_label := Widgets.muted_text(box, "Carried modifiers: " + ", ".join(bd_items), _palette, Widgets.FONT_CAPTION)
+		bd_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		bd_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		bd_label.custom_minimum_size = Vector2(1, 0)
+
 	if not _note.is_empty():
 		var note := Widgets.muted_text(box, _note, _palette, Widgets.FONT_CAPTION)
 		note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

@@ -69,6 +69,9 @@ var amazing: int = 0
 ## Steps the character already carries, from skill_score().
 var player_step: int = 0
 
+## Itemized source of player steps (e.g. broad penalty, species, wounds, encumbrance).
+var step_breakdown: Array = []
+
 ## Steps the GM has added. Positive is harder.
 var gm_step: int = 0
 
@@ -104,6 +107,7 @@ static func request(from_player: String, skill: Dictionary, score: Dictionary, l
 	check.good = AlternityNum.as_int(score.get("good", 0))
 	check.amazing = AlternityNum.as_int(score.get("amazing", 0))
 	check.player_step = AlternityNum.as_int(score.get("step", 0))
+	check.step_breakdown = score.get("step_breakdown", []).duplicate(true)
 	return check
 
 
@@ -144,6 +148,7 @@ func accept(score: Dictionary) -> bool:
 	good = AlternityNum.as_int(score.get("good", 0))
 	amazing = AlternityNum.as_int(score.get("amazing", 0))
 	player_step = AlternityNum.as_int(score.get("step", 0))
+	step_breakdown = score.get("step_breakdown", []).duplicate(true)
 	return true
 
 
@@ -198,6 +203,7 @@ func to_dict() -> Dictionary:
 		"good": good,
 		"amazing": amazing,
 		"player_step": player_step,
+		"step_breakdown": step_breakdown.duplicate(true),
 		"gm_step": gm_step,
 		"total_step": total_step(),
 		"reason": reason,
@@ -218,6 +224,8 @@ static func from_dict(data: Dictionary) -> SkillCheck:
 	check.good = AlternityNum.as_int(data.get("good", 0))
 	check.amazing = AlternityNum.as_int(data.get("amazing", 0))
 	check.player_step = AlternityNum.as_int(data.get("player_step", 0))
+	var bd = data.get("step_breakdown", [])
+	check.step_breakdown = bd.duplicate(true) if typeof(bd) == TYPE_ARRAY else []
 	check.gm_step = AlternityNum.as_int(data.get("gm_step", 0))
 	check.reason = String(data.get("reason", ""))
 	check.created_at = AlternityNum.as_int(data.get("created_at", 0))

@@ -564,6 +564,7 @@ func _on_roll_for_pressed(player_id: String) -> void:
 	stand_in.good = AlternityNum.as_int(score.get("good", 0))
 	stand_in.amazing = AlternityNum.as_int(score.get("amazing", 0))
 	stand_in.player_step = AlternityNum.as_int(score.get("step", 0))
+	stand_in.step_breakdown = score.get("step_breakdown", []).duplicate(true)
 
 	var outcome = await _router.push(DICE_TRAY_ROUTE, {
 		"palette": _palette,

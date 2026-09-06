@@ -42,6 +42,10 @@ func _run() -> void:
 func _check_data() -> Dictionary:
 	var check = Check.request("player-1", {"id": 1}, {
 		"ordinary": 12, "good": 6, "amazing": 3, "step": 1,
+		"step_breakdown": [
+			{"source": "Athletics (Broad)", "step": 1, "detail": "Unskilled penalty"},
+			{"source": "Armor Weight", "step": 1, "detail": "Encumbrance penalty"},
+		],
 	}, "Athletics - Climb")
 	check.rule(2, "the ledge is wet")
 	return check.to_dict()

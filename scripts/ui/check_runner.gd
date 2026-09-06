@@ -135,6 +135,7 @@ func run_action_check(doc: CharacterDoc):
 	# Everything the character brings to acting quickly -- species, cybertech,
 	# armor, and how hurt they are -- is already netted into this by the rules.
 	check.player_step = AlternityNum.as_int(score.get("step", 0))
+	check.step_breakdown = score.get("step_breakdown", []).duplicate(true)
 
 	if not check.is_rollable():
 		return null
@@ -193,7 +194,7 @@ func _await_ruling(check: SkillCheck) -> bool:
 	_transport.request_check(check.to_dict())
 
 	var waiting_route: RouteScene = null
-	var user_cancelled := false
+	var cancel_box: Array[bool] = [false]
 
 	if _router != null:
 		waiting_route = _router.present_modal(CHECK_WAITING_ROUTE, {
@@ -202,14 +203,14 @@ func _await_ruling(check: SkillCheck) -> bool:
 			"title": "Waiting for GM...",
 		}, UiRouter.Presentation.DIALOG)
 		if waiting_route != null and waiting_route.has_signal("request_cancelled"):
-			waiting_route.connect("request_cancelled", func(): user_cancelled = true)
+			waiting_route.connect("request_cancelled", func(): cancel_box[0] = true)
 
 	var waited := 0.0
 	var tree := Engine.get_main_loop() as SceneTree
 	var ruling_received: SkillCheck = null
 
 	while waited < RULING_PATIENCE:
-		if user_cancelled:
+		if cancel_box[0]:
 			break
 
 		if _rulings.has(check.check_id):
@@ -225,7 +226,7 @@ func _await_ruling(check: SkillCheck) -> bool:
 	if waiting_route != null and _router != null:
 		_router.dismiss_modal(waiting_route)
 
-	if user_cancelled:
+	if cancel_box[0]:
 		return false
 
 	if ruling_received != null:

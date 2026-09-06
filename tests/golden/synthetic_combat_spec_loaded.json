@@ -200,7 +200,8 @@
 			"good": 7,
 			"marginal": 15,
 			"ordinary": 14,
-			"step": 0
+			"step": 0,
+			"step_breakdown": []
 		},
 		"additional_broad_skill_limit": 5,
 		"additional_broad_skills_remaining": 3,

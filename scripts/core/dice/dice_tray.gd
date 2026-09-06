@@ -48,7 +48,7 @@ const LAYER_FLOOR := 3
 const TRAY_HALF := 4.5
 const WALL_HEIGHT := 5.0
 const WALL_THICKNESS := 0.5
-const DIE_RADIUS := 0.5
+const DIE_RADIUS := 0.65
 
 ## How still a die must be to count as stopped, and for how long. Both matter:
 ## a die at the top of a bounce is momentarily slow.
@@ -70,7 +70,7 @@ const MAX_ATTEMPTS := 4
 ## static geometry is how the first version launched its dice through the floor:
 ## the solver resolves the penetration by ejecting them, and it does not care
 ## which way.
-const DROP_HEIGHT := 3.0
+const DROP_HEIGHT := 3.2
 
 var _rng := RandomNumberGenerator.new()
 var _shapes: Array = []
@@ -80,6 +80,11 @@ var _elapsed: float = 0.0
 var _attempt: int = 0
 var _rolling: bool = false
 var _palette: ThemePalette
+
+## Launch aim parameters: simulated hand entry point and aim target in 3D.
+var _aim_hand: Vector3 = Vector3(3.6, 3.2, 1.2)
+var _aim_target: Vector3 = Vector3(0.0, 0.5, 0.0)
+var _aim_force_tier: int = 2 # 1 = Soft, 2 = Medium, 3 = Hard, 4 = Max
 
 ## Whether the last throw ran out of time rather than coming to rest.
 ##
@@ -156,30 +161,74 @@ func _throw_attempt() -> void:
 	set_physics_process(true)
 
 
+## Configure the simulated hand launch vector.
+## hand_3d: where the dice originate (at the tray rim / side or bottom).
+## target_3d: where the throw is aimed inside the tray.
+## force_tier: 1 (Soft), 2 (Medium), 3 (Hard), 4 (Max).
+func set_aim(hand_3d: Vector3, target_3d: Vector3, force_tier: int = 2) -> void:
+	_aim_hand = hand_3d
+	_aim_target = target_3d
+	_aim_force_tier = clampi(force_tier, 1, 4)
+
+
 ## Randomise the launch, not the outcome.
 ##
-## This is the only place randomness enters a physical roll. The dice then
-## collide with each other and the walls, and the faces they end on are read.
-## Nothing downstream re-rolls or re-simulates -- see AGENTS.md.
+## Spawns dice clustered at the hand entry point and launches them along the
+## vector toward the target point with speed determined by force tier.
 func _launch(body: RigidBody3D, index: int) -> void:
-	var spread := TRAY_HALF * 0.45
-	# Dice are laid across the tray so they do not start stacked, then jittered on
-	# every axis. A single die that always left from the same point would still
-	# tumble, but it would explore far less of the tray on the way down.
-	var lane := 0.0 if _shapes.size() < 2 else lerpf(-spread, spread, float(index) / float(_shapes.size() - 1))
-	body.position = Vector3(
-		lane + _rng.randf_range(-spread * 0.4, spread * 0.4),
-		DROP_HEIGHT + _rng.randf_range(-0.4, 0.4),
-		_rng.randf_range(-spread, spread)
-	)
+	# Clustered hand spawn with slight jitter so dice don't overlap before first step
+	var count := maxi(1, _shapes.size())
+	var cluster_offset := Vector3.ZERO
+	if count > 1:
+		var angle := (TAU * float(index)) / float(count)
+		cluster_offset = Vector3(cos(angle), _rng.randf_range(-0.15, 0.15), sin(angle)) * (DIE_RADIUS * 0.9)
+
+	var spawn_pos := _aim_hand + cluster_offset
+	# Clamp inside tray walls with margin
+	var bound := TRAY_HALF - DIE_RADIUS - 0.2
+	spawn_pos.x = clampf(spawn_pos.x, -bound, bound)
+	spawn_pos.z = clampf(spawn_pos.z, -bound, bound)
+	spawn_pos.y = clampf(spawn_pos.y, DIE_RADIUS + 1.0, WALL_HEIGHT - 0.5)
+	body.position = spawn_pos
+
 	body.rotation = Vector3(
 		_rng.randf_range(0.0, TAU), _rng.randf_range(0.0, TAU), _rng.randf_range(0.0, TAU)
 	)
+
+	# Compute throw velocity toward target
+	var delta := _aim_target - _aim_hand
+	delta.y = 0.0
+	var dir := delta.normalized() if delta.length() > 0.05 else Vector3(-1, 0, -0.5).normalized()
+
+	# Speed by force tier
+	var base_speed := 12.0
+	match _aim_force_tier:
+		1: base_speed = 7.5
+		2: base_speed = 12.5
+		3: base_speed = 18.0
+		4: base_speed = 24.0
+
+	var speed := base_speed * _rng.randf_range(0.92, 1.08)
+	var horiz_vel := dir * speed
+	# Downward launch arc toward the tray floor
+	var vert_vel := _rng.randf_range(-4.0, -1.5)
+
+	# Individual die velocity jitter
+	var jitter_x := _rng.randf_range(-0.8, 0.8)
+	var jitter_z := _rng.randf_range(-0.8, 0.8)
+
 	body.linear_velocity = Vector3(
-		_rng.randf_range(-3.5, 3.5), _rng.randf_range(-6.0, -2.0), _rng.randf_range(-3.5, 3.5)
+		horiz_vel.x + jitter_x,
+		vert_vel,
+		horiz_vel.z + jitter_z
 	)
+
+	# Tumbling spin based on force
+	var spin_mag := lerpf(12.0, 32.0, float(_aim_force_tier) / 4.0)
 	body.angular_velocity = Vector3(
-		_rng.randf_range(-16.0, 16.0), _rng.randf_range(-16.0, 16.0), _rng.randf_range(-16.0, 16.0)
+		_rng.randf_range(-spin_mag, spin_mag),
+		_rng.randf_range(-spin_mag, spin_mag),
+		_rng.randf_range(-spin_mag, spin_mag)
 	)
 
 
