@@ -245,13 +245,16 @@ func _build_advancement(container: Container) -> void:
 			palette, false
 		)
 
-	# The GM awards these between adventures, so it is an input.
-	var stepper := NumberStepper.new()
-	box.add_child(stepper)
-	stepper.setup(palette, "Achievement points earned", points, 0, 999)
-	stepper.value_changed.connect(func(value: int):
-		doc.apply(CharacterDoc.ALL, func(c): rules.achievements.set_achievement_points(c, value))
-		save_requested.emit())
+	var is_at_table: bool = ctx != null and ctx.table != null and ctx.table.is_connected_to_table()
+	if not is_at_table:
+		var stepper := NumberStepper.new()
+		box.add_child(stepper)
+		stepper.setup(palette, "Achievement points earned", points, 0, 999)
+		stepper.value_changed.connect(func(value: int):
+			doc.apply(CharacterDoc.ALL, func(c): rules.achievements.set_achievement_points(c, value))
+			save_requested.emit())
+	else:
+		Widgets.muted_text(box, "Achievement points are awarded and set by the GM at the table.", palette, Widgets.FONT_CAPTION)
 
 
 ## Age category, and what it is currently doing to the hero.
@@ -512,7 +515,43 @@ func _build_abilities(container: Container) -> void:
 	var palette := ctx.palette
 	var box := Widgets.section(container, "Abilities", palette)
 
-	Widgets.metric(box, "Points spent", str(rules.ability_total(doc.raw())), palette)
+	var spent: int = rules.ability_total(doc.raw())
+	var target: int = rules.ability_point_total(doc.raw())
+	var is_at_table: bool = ctx != null and ctx.table != null and ctx.table.is_connected_to_table()
+
+	var header_row := HBoxContainer.new()
+	header_row.add_theme_constant_override("separation", 6)
+	header_row.alignment = BoxContainer.ALIGNMENT_BEGIN
+	box.add_child(header_row)
+
+	var cost_label := Label.new()
+	cost_label.text = "Cost %d /" % spent if not is_at_table else "Cost %d / %d" % [spent, target]
+	cost_label.add_theme_font_size_override("font_size", 18)
+	cost_label.add_theme_color_override(
+		"font_color",
+		palette.warning if spent != target else palette.accent
+	)
+	cost_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	header_row.add_child(cost_label)
+
+	if not is_at_table:
+		var target_spin := SpinBox.new()
+		target_spin.min_value = 1
+		target_spin.max_value = 999
+		target_spin.value = target
+		target_spin.custom_minimum_size = Vector2(80, 0)
+		target_spin.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		target_spin.value_changed.connect(func(val: float):
+			var new_target := int(val)
+			if new_target != rules.ability_point_total(doc.raw()):
+				doc.apply(CharacterDoc.ALL, func(c: Dictionary):
+					c["custom_ability_target"] = new_target
+				)
+				save_requested.emit()
+		)
+		header_row.add_child(target_spin)
+	else:
+		Widgets.muted_text(header_row, "(set by GM)", palette, Widgets.FONT_CAPTION)
 
 	for ability in ABILITIES:
 		_build_ability_row(box, ability)

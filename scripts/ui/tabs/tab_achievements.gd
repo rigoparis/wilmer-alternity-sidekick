@@ -67,14 +67,16 @@ func _build_progress(container: Container) -> void:
 
 	Widgets.separator(box, palette)
 
-	# The GM awards points between adventures, so this is an input rather than a
-	# derived value. It is also on Basics, next to the level it drives.
-	var stepper := NumberStepper.new()
-	box.add_child(stepper)
-	stepper.setup(palette, "Achievement points earned", points, 0, 999)
-	stepper.value_changed.connect(func(value: int):
-		doc.apply(CharacterDoc.ALL, func(c): rules.achievements.set_achievement_points(c, value))
-		save_requested.emit())
+	var is_at_table: bool = ctx != null and ctx.table != null and ctx.table.is_connected_to_table()
+	if not is_at_table:
+		var stepper := NumberStepper.new()
+		box.add_child(stepper)
+		stepper.setup(palette, "Achievement points earned", points, 0, 999)
+		stepper.value_changed.connect(func(value: int):
+			doc.apply(CharacterDoc.ALL, func(c): rules.achievements.set_achievement_points(c, value))
+			save_requested.emit())
+	else:
+		Widgets.muted_text(box, "Achievement points are awarded and set by the GM at the table.", palette, Widgets.FONT_CAPTION)
 
 
 func _build_purchased(container: Container) -> void:

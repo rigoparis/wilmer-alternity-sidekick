@@ -222,7 +222,10 @@ func _build_abilities_content(box: Container, summary: Dictionary) -> void:
 		for cell in cells:
 			(cell as Label).autowrap_mode = TextServer.AUTOWRAP_OFF
 
-	Widgets.metric(box, "Ability points spent", str(AlternityNum.as_int(summary.get("ability_total", 0))), palette)
+	var ability_spent := AlternityNum.as_int(summary.get("ability_total", 0))
+	var ability_target := AlternityNum.as_int(summary.get("ability_target", 60))
+	var ability_text := "%d / %d" % [ability_spent, ability_target] if ability_spent != ability_target else str(ability_spent)
+	Widgets.metric(box, "Ability points spent", ability_text, palette)
 
 
 func _build_action_content(box: Container, summary: Dictionary) -> void:

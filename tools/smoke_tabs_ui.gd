@@ -51,6 +51,7 @@ func _run() -> void:
 	await _test_summary_attack_forms_and_tables()
 	await _test_dark_matter_basics_career_packages()
 	await _test_dark_matter_equipment_requisition()
+	await _test_custom_ability_target_spinbox()
 
 	finish()
 
@@ -686,4 +687,43 @@ func _test_dark_matter_equipment_requisition() -> void:
 
 	tab_dm.queue_free()
 	tab_core.queue_free()
+
+
+func _spinboxes_in(node: Node) -> Array:
+	var out: Array = []
+	for child in node.get_children():
+		if child is SpinBox:
+			out.append(child)
+		out.append_array(_spinboxes_in(child))
+	return out
+
+
+func _test_custom_ability_target_spinbox() -> void:
+	var doc := Doc.new(_rules)
+	doc.set_species_id(0)
+	doc.set_profession_id(0)
+
+	var tab = _mount(TAB_BASICS, doc, false)
+	await process_frame
+
+	var spins := _spinboxes_in(tab)
+	check_true(spins.size() > 0, "found SpinBox for custom ability target in offline mode")
+	if not spins.is_empty():
+		var spin: SpinBox = spins[0]
+		check_eq(int(spin.value), 60, "default ability target is 60")
+		spin.value = 65
+		spin.value_changed.emit(65.0)
+		await process_frame
+		check_eq(
+			AlternityNum.as_int(doc.raw().get("custom_ability_target", 0)),
+			65,
+			"SpinBox updates custom_ability_target on character doc"
+		)
+		check_eq(
+			_rules.ability_point_total(doc.raw()),
+			65,
+			"rules.ability_point_total reflects customized target"
+		)
+
+	tab.queue_free()
 
