@@ -537,7 +537,34 @@ func fx_skill_score(character: Dictionary, skill_name: String) -> Dictionary:
 	var good := int(floor(ordinary / 2.0))
 	var amazing := int(floor(good / 2.0))
 	var step := 1 if (is_broad or via_broad) else 0
-	step += _get_parent().dazed_penalty(character)
+	var dazed: int = _get_parent().dazed_penalty(character)
+	step += dazed
+
+	# Build a step_breakdown the same way skill_score() does, so the dice
+	# tray and the GM step-setting modal can display it.
+	var step_breakdown: Array = []
+	if is_broad:
+		step_breakdown.append({"source": "Broad FX Skill", "step": 1, "detail": "Broad FX skills suffer a +1 step penalty (+d4). Source: Beyond Science p. 5."})
+	elif via_broad:
+		step_breakdown.append({"source": "Covered by Broad Skill", "step": 1, "detail": "Untrained power covered by the broad skill (+1 step penalty). Source: Beyond Science p. 5."})
+	if dazed != 0:
+		step_breakdown.append({"source": "Damage / Dazed Condition", "step": dazed, "detail": "Penalty from marked Mortal/Fatigue damage or Dazed state."})
+
+	# For non-permanent specialty powers, check whether the hero has enough FX
+	# energy to activate them. Flag the score unusable rather than silently
+	# letting a player roll a power they physically cannot fire.
+	if not is_broad:
+		var is_perm: bool = is_fx_skill_permanent(character, skill_name)
+		if not is_perm:
+			var act: Dictionary = fx_activation_cost(character, skill_name)
+			var cost: int = AlternityNum.as_int(act.get("total", 1))
+			var pool: Dictionary = fx_energy(character)
+			var available: int = AlternityNum.as_int(pool.get("available", 0))
+			if available < cost:
+				return _fx_unusable(
+					"%s requires %d FX energy point%s to activate, but only %d %s available. Rest to recover FX energy. Source: Beyond Science: A Guide to FX p. 5."
+					% [skill_name, cost, "s" if cost != 1 else "", available, "are" if available != 1 else "is"]
+				)
 
 	return {
 		"marginal": ordinary + 1,
@@ -546,6 +573,7 @@ func fx_skill_score(character: Dictionary, skill_name: String) -> Dictionary:
 		"amazing": amazing,
 		"base": ability_score,
 		"step": step,
+		"step_breakdown": step_breakdown,
 		"usable": true,
 		"via_broad": via_broad,
 		"die": _get_parent().action_step_die(step)

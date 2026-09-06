@@ -438,8 +438,6 @@ func _build_last_resorts_content(box: Container, summary: Dictionary) -> void:
 	Widgets.subheading(box, "Last Resorts", palette)
 	var used := AlternityNum.as_int(doc.raw().get("last_resorts_used", 0))
 	var cost := AlternityNum.as_int(resorts.get("cost", 0))
-	var rebought := AlternityNum.as_int(doc.raw().get("last_resorts_rebought", 0))
-	var sp_left := AlternityNum.as_int(summary.get("skill_points_remaining", 0))
 
 	var tracker := DamageTrack.new()
 	box.add_child(tracker)
@@ -693,11 +691,11 @@ func _build_skill_rows(box: Container, rows: Array) -> void:
 	var grid := GridContainer.new()
 	grid.columns = 5
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	grid.add_theme_constant_override("h_separation", Widgets.GAP_ROW)
-	grid.add_theme_constant_override("v_separation", Widgets.GAP_TIGHT)
+	grid.add_theme_constant_override("h_separation", Widgets.GAP_TIGHT)
+	grid.add_theme_constant_override("v_separation", Widgets.GAP_SECTION)
 	box.add_child(grid)
 
-	for title in ["Rank", "Skill", "Score", "Die", "Roll"]:
+	for title in ["Rank", "Skill", "O / G / A", "Die", "Roll"]:
 		var hdr := Label.new()
 		hdr.text = title
 		hdr.add_theme_color_override("font_color", palette.muted)
@@ -706,6 +704,8 @@ func _build_skill_rows(box: Container, rows: Array) -> void:
 			hdr.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		elif title == "Roll":
 			hdr.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		elif title == "O / G / A":
+			hdr.tooltip_text = "Ordinary / Good / Amazing"
 		grid.add_child(hdr)
 
 	# Group broads and their specialties
@@ -769,6 +769,8 @@ func _add_summary_skill_row(grid: GridContainer, skill: Dictionary, is_broad: bo
 	var skill_id: int = AlternityNum.as_int(skill.get("id", -1))
 	var rank: int = rules.skill_rank(raw, skill_id)
 	var score: Dictionary = rules.skill_score(raw, skill)
+	var full_label := String(rules.skill_label(skill))
+	var skill_name := String(skill.get("name", full_label)) if indent_level > 0 else full_label
 
 	# 1. Rank
 	var rank_str := "Broad" if is_broad else str(rank)
@@ -787,37 +789,44 @@ func _add_summary_skill_row(grid: GridContainer, skill: Dictionary, is_broad: bo
 
 	var name_btn := Button.new()
 	name_btn.flat = true
-	var skill_name := String(rules.skill_label(skill))
 	name_btn.text = ("    " + skill_name) if indent_level > 0 else skill_name
-	name_btn.tooltip_text = "View details for %s" % skill_name
+	name_btn.tooltip_text = "View details for %s" % full_label
 	name_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	name_btn.clip_text = true
 	name_btn.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	name_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_btn.custom_minimum_size = Vector2(1, 0)
 	name_btn.add_theme_color_override("font_color", palette.accent if is_broad else palette.text)
+	name_btn.add_theme_color_override("font_hover_color", palette.accent)
 	name_btn.add_theme_font_size_override("font_size", Widgets.FONT_DETAIL)
 	name_btn.pressed.connect(func(): _open_detail(skill))
 	skill_cell.add_child(name_btn)
 
 	var info_btn := Button.new()
-	info_btn.flat = true
 	info_btn.icon = preload("res://assets/question-square.svg")
-	info_btn.tooltip_text = "View details for %s" % skill_name
-	info_btn.custom_minimum_size = Vector2(24, 24)
+	info_btn.expand_icon = true
+	info_btn.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	info_btn.tooltip_text = "View details for %s" % full_label
+	info_btn.custom_minimum_size = Vector2(22, 22)
+	info_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	info_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	info_btn.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	info_btn.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
-	info_btn.add_theme_color_override("icon_normal_color", Color(palette.muted, 0.7))
+	info_btn.add_theme_color_override("icon_normal_color", palette.text)
 	info_btn.add_theme_color_override("icon_hover_color", palette.accent)
 	info_btn.add_theme_color_override("icon_pressed_color", palette.accent)
+	info_btn.add_theme_stylebox_override("normal", Widgets.flat_style(palette.surface_soft, Color(0, 0, 0, 0), 3))
+	info_btn.add_theme_stylebox_override("hover", Widgets.flat_style(palette.surface_soft.lightened(0.1), palette.accent, 3))
+	info_btn.add_theme_stylebox_override("pressed", Widgets.flat_style(palette.accent, Color(0, 0, 0, 0), 3))
 	info_btn.pressed.connect(func(): _open_detail(skill))
 	skill_cell.add_child(info_btn)
 
-	# 3. Score
+	# 3. Score (O / G / A)
 	var ord_val: int = AlternityNum.as_int(score.get("ordinary", 0))
 	var good_val: int = AlternityNum.as_int(score.get("good", 0))
 	var amaz_val: int = AlternityNum.as_int(score.get("amazing", 0))
 	var score_lbl := Label.new()
-	score_lbl.text = "O %d / G %d / A %d" % [ord_val, good_val, amaz_val]
+	score_lbl.text = "%d / %d / %d" % [ord_val, good_val, amaz_val]
 	score_lbl.add_theme_color_override("font_color", palette.text)
 	score_lbl.add_theme_font_size_override("font_size", Widgets.FONT_DETAIL)
 	score_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -836,12 +845,21 @@ func _add_summary_skill_row(grid: GridContainer, skill: Dictionary, is_broad: bo
 	var roll_btn := Button.new()
 	roll_btn.name = "RollButton_" + str(skill_id)
 	roll_btn.icon = preload("res://assets/dice-d20.svg")
-	roll_btn.tooltip_text = "Roll %s" % skill_name
+	roll_btn.expand_icon = true
+	roll_btn.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	roll_btn.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	roll_btn.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
+	roll_btn.tooltip_text = "Roll %s" % full_label
 	roll_btn.custom_minimum_size = Vector2(34, 28)
 	roll_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	roll_btn.add_theme_stylebox_override("normal", Widgets.flat_style(palette.surface_soft, palette.accent, 4))
 	roll_btn.add_theme_stylebox_override("hover", Widgets.flat_style(palette.surface_soft.lightened(0.1), palette.accent, 4))
 	roll_btn.add_theme_stylebox_override("pressed", Widgets.flat_style(palette.accent, Color(0, 0, 0, 0), 4))
+	roll_btn.add_theme_stylebox_override("disabled", Widgets.flat_style(palette.surface, Color(palette.muted, 0.25), 4))
+	roll_btn.add_theme_color_override("icon_normal_color", palette.text)
+	roll_btn.add_theme_color_override("icon_hover_color", palette.text)
+	roll_btn.add_theme_color_override("icon_pressed_color", palette.text)
+	roll_btn.add_theme_color_override("icon_disabled_color", Color(palette.muted, 0.35))
 	roll_btn.disabled = not ctx.can_roll()
 	roll_btn.pressed.connect(func(): _roll_skill(skill))
 	grid.add_child(roll_btn)
@@ -868,19 +886,23 @@ func _build_fx(container: Container) -> void:
 		Widgets.metric(box, "Usable", str(maxi(0, pool - drain)), palette)
 
 	var grid := GridContainer.new()
-	grid.columns = 5
+	grid.columns = 6
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	grid.add_theme_constant_override("h_separation", Widgets.GAP_ROW)
-	grid.add_theme_constant_override("v_separation", Widgets.GAP_TIGHT)
+	grid.add_theme_constant_override("h_separation", Widgets.GAP_TIGHT)
+	grid.add_theme_constant_override("v_separation", Widgets.GAP_SECTION)
 	box.add_child(grid)
 
-	for title in ["Rank", "Power", "Score", "Die", "FX Cost"]:
+	for title in ["Rank", "Power", "O / G / A", "Die", "FX Cost", "Roll"]:
 		var hdr := Label.new()
 		hdr.text = title
 		hdr.add_theme_color_override("font_color", palette.muted)
 		hdr.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
 		if title == "Power":
 			hdr.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		elif title == "O / G / A":
+			hdr.tooltip_text = "Ordinary / Good / Amazing"
+		elif title == "Roll":
+			hdr.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		grid.add_child(hdr)
 
 	var groups := _group_fx_powers(selected)
@@ -928,25 +950,33 @@ func _add_summary_fx_row(grid: GridContainer, item: Dictionary, is_broad: bool, 
 	name_btn.clip_text = true
 	name_btn.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	name_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_btn.custom_minimum_size = Vector2(1, 0)
 	name_btn.add_theme_color_override("font_color", palette.accent if is_broad else palette.text)
+	name_btn.add_theme_color_override("font_hover_color", palette.accent)
 	name_btn.add_theme_font_size_override("font_size", Widgets.FONT_DETAIL)
 	name_btn.pressed.connect(func(): _open_detail(item))
 	power_cell.add_child(name_btn)
 
 	var info_btn := Button.new()
-	info_btn.flat = true
 	info_btn.icon = preload("res://assets/question-square.svg")
+	info_btn.expand_icon = true
+	info_btn.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	info_btn.tooltip_text = "View details for %s" % item_name
-	info_btn.custom_minimum_size = Vector2(24, 24)
+	info_btn.custom_minimum_size = Vector2(22, 22)
+	info_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	info_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	info_btn.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	info_btn.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
-	info_btn.add_theme_color_override("icon_normal_color", Color(palette.muted, 0.7))
+	info_btn.add_theme_color_override("icon_normal_color", palette.text)
 	info_btn.add_theme_color_override("icon_hover_color", palette.accent)
 	info_btn.add_theme_color_override("icon_pressed_color", palette.accent)
+	info_btn.add_theme_stylebox_override("normal", Widgets.flat_style(palette.surface_soft, Color(0, 0, 0, 0), 3))
+	info_btn.add_theme_stylebox_override("hover", Widgets.flat_style(palette.surface_soft.lightened(0.1), palette.accent, 3))
+	info_btn.add_theme_stylebox_override("pressed", Widgets.flat_style(palette.accent, Color(0, 0, 0, 0), 3))
 	info_btn.pressed.connect(func(): _open_detail(item))
 	power_cell.add_child(info_btn)
 
-	# 3. Score
+	# 3. Score (O / G / A)
 	var score: Dictionary = rules.fx.fx_skill_score(raw, item_name)
 	var usable: bool = bool(score.get("usable", true))
 	var score_lbl := Label.new()
@@ -954,7 +984,7 @@ func _add_summary_fx_row(grid: GridContainer, item: Dictionary, is_broad: bool, 
 		var ord_val: int = AlternityNum.as_int(score.get("ordinary", 0))
 		var good_val: int = AlternityNum.as_int(score.get("good", 0))
 		var amaz_val: int = AlternityNum.as_int(score.get("amazing", 0))
-		score_lbl.text = "O %d / G %d / A %d" % [ord_val, good_val, amaz_val]
+		score_lbl.text = "%d / %d / %d" % [ord_val, good_val, amaz_val]
 		score_lbl.add_theme_color_override("font_color", palette.text)
 	else:
 		score_lbl.text = "-"
@@ -993,6 +1023,32 @@ func _add_summary_fx_row(grid: GridContainer, item: Dictionary, is_broad: bool, 
 	fx_cost_lbl.add_theme_font_size_override("font_size", Widgets.FONT_DETAIL)
 	fx_cost_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	grid.add_child(fx_cost_lbl)
+
+	# 6. Roll Button
+	# Broad-skill rows have no standalone roll — the player rolls the specialty.
+	# Permanent powers are always active and never need a check.
+	var is_perm_for_roll: bool = (not is_broad) and rules.fx.is_fx_skill_permanent(raw, item_name)
+	var roll_btn := Button.new()
+	roll_btn.name = "RollButton_FX_" + item_name.replace(" ", "_")
+	roll_btn.icon = preload("res://assets/dice-d20.svg")
+	roll_btn.expand_icon = true
+	roll_btn.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	roll_btn.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	roll_btn.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
+	roll_btn.tooltip_text = "Always active — no roll needed." if is_perm_for_roll else ("Roll %s" % item_name)
+	roll_btn.custom_minimum_size = Vector2(34, 28)
+	roll_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	roll_btn.add_theme_stylebox_override("normal", Widgets.flat_style(palette.surface_soft, palette.accent, 4))
+	roll_btn.add_theme_stylebox_override("hover", Widgets.flat_style(palette.surface_soft.lightened(0.1), palette.accent, 4))
+	roll_btn.add_theme_stylebox_override("pressed", Widgets.flat_style(palette.accent, Color(0, 0, 0, 0), 4))
+	roll_btn.add_theme_stylebox_override("disabled", Widgets.flat_style(palette.surface, Color(palette.muted, 0.25), 4))
+	roll_btn.add_theme_color_override("icon_normal_color", palette.text)
+	roll_btn.add_theme_color_override("icon_hover_color", palette.text)
+	roll_btn.add_theme_color_override("icon_pressed_color", palette.text)
+	roll_btn.add_theme_color_override("icon_disabled_color", Color(palette.muted, 0.35))
+	roll_btn.disabled = is_broad or is_perm_for_roll or not ctx.can_roll() or not usable
+	roll_btn.pressed.connect(func(): _roll_skill(item))
+	grid.add_child(roll_btn)
 
 
 func _group_fx_powers(rows: Array) -> Array:
@@ -1053,6 +1109,13 @@ func _open_detail(skill: Dictionary) -> void:
 	var detail: Dictionary
 	var title_text: String
 	var is_core_skill: bool = skill.has("broad_id") or String(skill.get("type", "")) == "broad"
+	var is_fx: bool = rules != null and rules.is_fx_skill(skill)
+	# A rollable FX skill is a specialty (not a broad-school banner) that is not
+	# permanently active. Broad FX rows open for reference only.
+	var is_fx_broad: bool = is_fx and String(skill.get("type", "")) == "broad"
+	var is_fx_perm: bool = is_fx and not is_fx_broad and rules.fx.is_fx_skill_permanent(raw, String(skill.get("name", "")))
+	var is_rollable_skill: bool = is_core_skill or (is_fx and not is_fx_broad and not is_fx_perm)
+
 	if rules != null and is_core_skill:
 		detail = rules.skill_detail(skill, raw)
 		title_text = String(detail.get("name", rules.skill_label(skill)))
@@ -1065,7 +1128,7 @@ func _open_detail(skill: Dictionary) -> void:
 		"data": detail,
 		"title": title_text,
 		"skill": skill,
-		"can_roll": ctx.can_roll() and is_core_skill,
+		"can_roll": ctx.can_roll() and is_rollable_skill,
 	})
 	if not is_instance_valid(self):
 		return
@@ -1085,13 +1148,13 @@ func _build_permanent_effect(box: Container, effect: Variant) -> void:
 		Widgets.muted_text(box, str(effect), palette, Widgets.FONT_CAPTION)
 		return
 	var entry: Dictionary = effect
-	var name := String(entry.get("name", "")).strip_edges()
+	var effect_name := String(entry.get("name", "")).strip_edges()
 	var description := String(entry.get("description", "")).strip_edges()
-	if name.is_empty() and description.is_empty():
+	if effect_name.is_empty() and description.is_empty():
 		return
 	Widgets.muted_text(
 		box,
-		"%s: %s" % [name, description] if not description.is_empty() else name,
+		"%s: %s" % [effect_name, description] if not description.is_empty() else effect_name,
 		palette, Widgets.FONT_CAPTION
 	)
 
@@ -1164,16 +1227,191 @@ func _build_mutations(container: Container) -> void:
 	var palette := ctx.palette
 	var raw := ctx.doc.raw()
 
+	var is_mutant := rules.mutations.mutations_enabled(raw)
 	var advantages: Array = rules.mutations.selected_mutation_advantages(raw)
 	var drawbacks: Array = rules.mutations.selected_mutation_drawbacks(raw)
-	if advantages.is_empty() and drawbacks.is_empty():
+	if not is_mutant and advantages.is_empty() and drawbacks.is_empty():
 		return
 
 	var box := Widgets.section(container, "Mutations", palette)
-	for mutation in advantages:
-		_build_option_entry(box, mutation, "cost", "points")
-	for drawback in drawbacks:
-		_build_option_entry(box, drawback, "value", "points granted")
+
+	# 1. Mutant Overview (Origin, Uniqueness & Point budgets)
+	if is_mutant:
+		var mut_data: Dictionary = raw.get("mutations", {})
+		var origin_id := String(mut_data.get("origin", ""))
+		var uniqueness_id := String(mut_data.get("uniqueness", ""))
+		var origin_data: Dictionary = rules.mutations.get_mutation_origin_by_id(origin_id)
+		var uniqueness_data: Dictionary = rules.mutations.get_mutation_uniqueness_by_id(origin_id, uniqueness_id)
+
+		var origin_name := String(origin_data.get("name", origin_id)).strip_edges()
+		var uniq_name := String(uniqueness_data.get("name", uniqueness_id)).strip_edges()
+		if not origin_name.is_empty() or not uniq_name.is_empty():
+			var origin_desc: String
+			if not origin_name.is_empty() and not uniq_name.is_empty():
+				origin_desc = "%s — %s" % [origin_name, uniq_name]
+			elif not origin_name.is_empty():
+				origin_desc = origin_name
+			else:
+				origin_desc = uniq_name
+			Widgets.metric(box, "Origin", origin_desc, palette)
+
+		var adv_used: int = rules.mutations.mutation_advantage_points_used(raw)
+		var adv_total: int = AlternityNum.as_int(mut_data.get("advantage_points", 0))
+		var adv_dist: String = rules.mutations.mutation_distribution_label(raw, "advantage")
+		var adv_text := "%d / %d points" % [adv_used, adv_total]
+		if not adv_dist.is_empty():
+			adv_text += " (%s)" % adv_dist
+		Widgets.metric(box, "Advantage points", adv_text, palette)
+
+		var draw_used: int = rules.mutations.mutation_drawback_points_used(raw)
+		var draw_total: int = AlternityNum.as_int(mut_data.get("drawback_points", 0))
+		var draw_dist: String = rules.mutations.mutation_distribution_label(raw, "drawback")
+		var draw_text := "%d / %d points" % [draw_used, draw_total]
+		if not draw_dist.is_empty():
+			draw_text += " (%s)" % draw_dist
+		Widgets.metric(box, "Drawback points", draw_text, palette)
+
+		Widgets.separator(box, palette)
+
+	# 2. Advantages
+	Widgets.subheading(box, "Advantages", palette)
+	Widgets.muted_text(
+		box,
+		"Mutation powers requiring a check use the listed skill, or an untrained "
+		+ "check at 1/2 the related ability score with a +d4 situation die.",
+		palette, Widgets.FONT_CAPTION
+	)
+	if advantages.is_empty():
+		Widgets.muted_text(box, "None selected.", palette, Widgets.FONT_DETAIL)
+	else:
+		for mutation in advantages:
+			_build_mutation_entry(box, mutation, true)
+
+	# 3. Drawbacks
+	Widgets.separator(box, palette)
+	Widgets.subheading(box, "Drawbacks", palette)
+	Widgets.muted_text(
+		box,
+		"Drawbacks reducing ability scores or causing weakness affect the "
+		+ "related ability from Table P51 (STR→INT, DEX→STR, CON→DEX, INT→PER, WIL→CON, PER→WIL).",
+		palette, Widgets.FONT_CAPTION
+	)
+	if drawbacks.is_empty():
+		Widgets.muted_text(box, "None selected.", palette, Widgets.FONT_DETAIL)
+	else:
+		for drawback in drawbacks:
+			_build_mutation_entry(box, drawback, false)
+
+
+func _build_mutation_entry(box: Container, entry: Dictionary, is_advantage: bool) -> void:
+	var palette := ctx.palette
+
+	var item_box := VBoxContainer.new()
+	item_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	item_box.add_theme_constant_override("separation", Widgets.GAP_TIGHT)
+	box.add_child(item_box)
+
+	var header := HBoxContainer.new()
+	header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.add_theme_constant_override("separation", Widgets.GAP_ROW)
+	item_box.add_child(header)
+
+	var label_text := String(entry.get("name", "Unknown"))
+	if bool(entry.get("gm_given", false)):
+		label_text += " (GM)"
+
+	var name_label := Label.new()
+	name_label.text = label_text
+	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	name_label.custom_minimum_size = Vector2(1, 0)
+	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_label.add_theme_color_override("font_color", palette.accent if is_advantage else palette.text)
+	name_label.add_theme_font_size_override("font_size", Widgets.FONT_BODY)
+	header.add_child(name_label)
+
+	var right_cell := HBoxContainer.new()
+	right_cell.size_flags_horizontal = Control.SIZE_SHRINK_END
+	right_cell.add_theme_constant_override("separation", Widgets.GAP_TIGHT)
+	header.add_child(right_cell)
+
+	var info_btn := Button.new()
+	info_btn.icon = preload("res://assets/question-square.svg")
+	info_btn.expand_icon = true
+	info_btn.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	info_btn.tooltip_text = "View details for %s" % label_text
+	info_btn.custom_minimum_size = Vector2(22, 22)
+	info_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	info_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	info_btn.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	info_btn.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
+	info_btn.add_theme_color_override("icon_normal_color", palette.text)
+	info_btn.add_theme_color_override("icon_hover_color", palette.accent)
+	info_btn.add_theme_color_override("icon_pressed_color", palette.accent)
+	info_btn.add_theme_stylebox_override("normal", Widgets.flat_style(palette.surface_soft, Color(0, 0, 0, 0), 3))
+	info_btn.add_theme_stylebox_override("hover", Widgets.flat_style(palette.surface_soft.lightened(0.1), palette.accent, 3))
+	info_btn.add_theme_stylebox_override("pressed", Widgets.flat_style(palette.accent, Color(0, 0, 0, 0), 3))
+	info_btn.pressed.connect(func(): _open_mutation_detail(entry))
+	right_cell.add_child(info_btn)
+
+	var tier := String(entry.get("tier", "")).capitalize()
+	var points := AlternityNum.as_int(entry.get("points", 0))
+	var related := String(entry.get("related_ability", "")).strip_edges()
+
+	var meta_parts: Array = []
+	if not tier.is_empty():
+		meta_parts.append(tier)
+	if points > 0:
+		meta_parts.append("%d %s" % [points, "pt" if points == 1 else "pts"])
+	if not related.is_empty():
+		meta_parts.append(related)
+
+	var meta_label := Label.new()
+	meta_label.text = " • ".join(meta_parts)
+	meta_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	meta_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	meta_label.size_flags_horizontal = Control.SIZE_SHRINK_END
+	meta_label.add_theme_color_override("font_color", palette.muted)
+	meta_label.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
+	right_cell.add_child(meta_label)
+
+	var description := String(entry.get("description", entry.get("summary", ""))).strip_edges()
+	if not description.is_empty():
+		Widgets.muted_text(item_box, description, palette, Widgets.FONT_CAPTION)
+
+
+func _open_mutation_detail(mutation: Dictionary) -> void:
+	if ctx == null or ctx.router == null:
+		return
+	var name_str := String(mutation.get("name", "Mutation"))
+	var tier := String(mutation.get("tier", "")).capitalize()
+	var points := AlternityNum.as_int(mutation.get("points", 0))
+	var related := String(mutation.get("related_ability", "")).strip_edges()
+	var roll_num := AlternityNum.as_int(mutation.get("table_roll", 0))
+
+	var meta_parts: Array = []
+	if not tier.is_empty():
+		meta_parts.append("Tier: %s" % tier)
+	if points > 0:
+		meta_parts.append("%d %s" % [points, "point" if points == 1 else "points"])
+	if not related.is_empty():
+		meta_parts.append("Related Ability: %s" % related)
+	if roll_num > 0:
+		meta_parts.append("Table Roll: #%d" % roll_num)
+
+	var ref_str := String(mutation.get("reference", "")).strip_edges()
+	var detail_data := {
+		"name": name_str,
+		"meta": " • ".join(meta_parts),
+		"summary": String(mutation.get("summary", mutation.get("description", ""))),
+		"sources": [ref_str] if not ref_str.is_empty() else [],
+	}
+
+	await ctx.router.push(DETAIL_ROUTE, {
+		"palette": ctx.palette,
+		"data": detail_data,
+		"title": name_str,
+		"can_roll": false,
+	})
 
 
 func _build_achievements(container: Container) -> void:

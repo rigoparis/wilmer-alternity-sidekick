@@ -1196,6 +1196,28 @@ func action_check(character: Dictionary) -> Dictionary:
 		action_step += 1
 	var armor_penalty := equipment.equipped_armor_action_penalty(character)
 	var penalty := dazed_penalty(character) + armor_penalty
+
+	var step_breakdown: Array = []
+	var sp_step := _as_int(current_species.get("action_step", 0))
+	if sp_step != 0:
+		step_breakdown.append({"source": "Species Trait", "step": sp_step, "detail": "Species inherent action speed modifier"})
+	var ach_step := achievements.achievement_effect_total(character, "action_check_step")
+	if ach_step != 0:
+		step_breakdown.append({"source": "Perks / Achievements", "step": ach_step, "detail": "Achievement bonus"})
+	var mut_step := mutations.mutation_action_check_step(character)
+	if mut_step != 0:
+		step_breakdown.append({"source": "Mutations", "step": mut_step, "detail": "Mutation action modifier"})
+	var cyb_step := cybertech.cybertech_action_check_step(character)
+	if cyb_step != 0:
+		step_breakdown.append({"source": "Cybertech", "step": cyb_step, "detail": "Cybernetic neural reflex enhancement"})
+	if is_flaw_selected(character, "slow"):
+		step_breakdown.append({"source": "Flaw: Slow", "step": 1, "detail": "Slow flaw adds +1 step penalty to initiative"})
+	if armor_penalty != 0:
+		step_breakdown.append({"source": "Equipped Armor", "step": armor_penalty, "detail": "Armor bulk penalty to action check"})
+	var dazed := dazed_penalty(character)
+	if dazed != 0:
+		step_breakdown.append({"source": "Damage / Dazed Condition", "step": dazed, "detail": "Penalty from marked Mortal/Fatigue damage or Dazed state"})
+
 	return {
 		"marginal": ordinary + 1,
 		"ordinary": ordinary,
@@ -1206,6 +1228,7 @@ func action_check(character: Dictionary) -> Dictionary:
 		# number, and an action check rolled at the table needs the step to build
 		# its situation die from.
 		"step": action_step + penalty,
+		"step_breakdown": step_breakdown,
 		"die": action_step_die(action_step + penalty),
 		"actions": actions_per_round(character),
 	}
@@ -1379,6 +1402,20 @@ func is_psionic_skill(skill: Dictionary) -> bool:
 	var broad_id := _as_int(skill.get("broad_id", -1))
 	var id := _as_int(skill.get("id", -1))
 	return broad_id in [525, 900, 901, 902, 903, 904, 905] or id in [525, 900, 901, 902, 903, 904, 905]
+
+
+## Whether a skill dictionary describes an FX broad skill or specialty (Arcane
+## Magic, Faith, or Super Hero). FX skills have string names and live in the FX
+## catalog, not in the numbered skill catalog, so their id is always -1.
+func is_fx_skill(skill: Dictionary) -> bool:
+	var cat := String(skill.get("category", ""))
+	if cat in ["Arcane Magic", "Faith", "Super Hero"]:
+		return true
+	var name_str := String(skill.get("name", ""))
+	if name_str.is_empty():
+		return false
+	# Check against the FX catalog directly.
+	return not fx.get_broad_skill(name_str).is_empty() or not fx.get_specialty_skill(name_str).is_empty()
 
 
 func is_mindwalker_profession(character: Dictionary) -> bool:
@@ -2145,6 +2182,12 @@ func selected_skills(character: Dictionary) -> Array:
 ##     floor(ability / 2), rather than the full ability score.
 ## Source: Player's Handbook p. 63; Table P19.
 func skill_score(character: Dictionary, skill: Dictionary) -> Dictionary:
+	# FX skills (Arcane Magic / Faith / Super Hero) live in the FX catalog and
+	# need their own scoring logic.  Delegate rather than trying to run them
+	# through the numbered-skill path, which would always report usable = false.
+	if is_fx_skill(skill):
+		return fx.fx_skill_score(character, String(skill.get("name", "")))
+
 	var abilities := effective_abilities(character)
 	var skill_id := _as_int(skill.get("id", -1))
 	var ability := String(skill.get("stat", "STR"))
@@ -2241,21 +2284,44 @@ func skill_score(character: Dictionary, skill: Dictionary) -> Dictionary:
 	step += mutations.mutation_skill_step_bonus(character, skill_id)
 	step += dazed_penalty(character)
 	
+	var step_breakdown: Array = []
+	if is_broad:
+		step_breakdown.append({"source": "Broad Skill Check", "step": 1, "detail": "Broad skills suffer a +1 step penalty (+d4)"})
+	elif using_broad_score:
+		step_breakdown.append({"source": "Covered by Broad Skill", "step": 1, "detail": "Untrained specialty covered by broad skill (+1 step penalty)"})
+
+	var sp_skill_bonus := _species_skill_step_bonus(character, skill_id)
+	if sp_skill_bonus != 0:
+		step_breakdown.append({"source": "Species Aptitude", "step": sp_skill_bonus, "detail": "Inherent species trait modifier"})
+
+	var mut_skill_bonus := mutations.mutation_skill_step_bonus(character, skill_id)
+	if mut_skill_bonus != 0:
+		step_breakdown.append({"source": "Mutation Trait", "step": mut_skill_bonus, "detail": "Mutation modifier"})
+
+	var dazed := dazed_penalty(character)
+	if dazed != 0:
+		step_breakdown.append({"source": "Damage / Dazed Condition", "step": dazed, "detail": "Penalty from marked Mortal/Fatigue damage or Dazed state"})
+
 	# Table P12 Encumbrance: +1/+2/+3 step penalty to STR and DEX checks
 	if ability == "STR" or ability == "DEX":
 		var enc := encumbrance(character)
-		step += _as_int(enc.get("penalty", 0))
+		var enc_penalty := _as_int(enc.get("penalty", 0))
+		step += enc_penalty
+		if enc_penalty != 0:
+			step_breakdown.append({"source": "Encumbrance", "step": enc_penalty, "detail": "Penalty from carrying heavy load"})
 
 	# Mindwalker profession bonus (-1 step to focused broad skill and its specialties)
 	if _as_int(character.get("profession_id", 0)) == 6:
 		var broad_id := skill_id if skill.get("type", "") == "broad" else _as_int(skill.get("broad_id", -1))
 		if _as_int(character.get("mindwalker_psionic_focus", -1)) == broad_id:
 			step -= 1
+			step_breakdown.append({"source": "Mindwalker Focus", "step": -1, "detail": "Psionic focus -1 step bonus"})
 			
 	# Combat Spec profession bonus (-1 step to chosen combat specialty skill)
 	if _as_int(character.get("profession_id", 0)) == 0: # Combat Spec primary
 		if skill.get("type", "") == "specialty" and _as_int(character.get("combat_spec_bonus_specialty", -1)) == skill_id:
 			step -= 1
+			step_breakdown.append({"source": "Combat Specialist", "step": -1, "detail": "Chosen combat specialty -1 step bonus"})
 			
 	return {
 		"ordinary": ordinary,
@@ -2266,6 +2332,7 @@ func skill_score(character: Dictionary, skill: Dictionary) -> Dictionary:
 		# cannot be recovered from the notation -- action_step_die() caps at -5 and
 		# collapses everything past +7 into a count of d20s.
 		"step": step,
+		"step_breakdown": step_breakdown,
 		"die": action_step_die(step),
 		"usable": true,
 		"trained_only": trained_only,
@@ -3589,6 +3656,10 @@ func action_step_die(step: int) -> String:
 
 
 func skill_label(skill: Dictionary) -> String:
+	# FX specialty skills carry a broad_skill string instead of a broad_id int.
+	var broad_name_str := String(skill.get("broad_skill", ""))
+	if not broad_name_str.is_empty():
+		return "%s - %s" % [broad_name_str, skill.get("name", "")]
 	if skill.get("type", "") == "broad":
 		return String(skill.get("name", ""))
 	var broad := get_skill_by_id(_as_int(skill.get("broad_id", -1)))
