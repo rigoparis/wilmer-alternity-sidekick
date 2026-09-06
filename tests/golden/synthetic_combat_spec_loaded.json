@@ -382,6 +382,7 @@
 		},
 		"flaw_count": 1,
 		"flaw_skill_points_bonus": 5,
+		"fx_defense_forms": [],
 		"last_resorts": {
 			"available": 1,
 			"base_max": 1,

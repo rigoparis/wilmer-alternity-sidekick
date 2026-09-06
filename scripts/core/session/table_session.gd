@@ -24,6 +24,9 @@ extends RefCounted
 ## Anything the table tab renders has changed.
 signal changed
 
+## A buff or beneficial skill (e.g. Fortitude) arrived and was applied.
+signal buff_applied(buff: Dictionary)
+
 ## The GM awarded points, and they have been applied to the committed hero.
 signal ap_applied(amount: int, reason: String)
 
@@ -198,6 +201,51 @@ func send_chat(text: String, private_to_gm: bool = false) -> void:
 	# A player device is never told the seat list, so it addresses the GM by a
 	# sentinel and the host resolves it to the real seat.
 	transport.send_chat(text.strip_edges(), EnetTransport.TO_GM if private_to_gm else "")
+
+
+## Cast a buff or beneficial skill (e.g. Fortitude) on a table ally.
+func send_buff(target_player_id: String, buff: Dictionary) -> void:
+	if transport == null:
+		return
+	var my_name := doc.get_hero_name() if doc != null else "Someone"
+	buff["caster_name"] = my_name
+	transport.send_buff(target_player_id, buff)
+
+
+## List of allies/other players seated at the table available for targeting.
+func table_allies() -> Array:
+	var allies: Array = []
+	var my_id := transport.local_player_id() if transport != null else ""
+	if transport != null:
+		for s in transport.table_seats():
+			var pid := String(s.get("player_id", ""))
+			if pid == my_id or bool(s.get("is_gm", false)):
+				continue
+			var char_name := String(s.get("character_name", "")).strip_edges()
+			var p_name := String(s.get("player_name", "Ally")).strip_edges()
+			var display := char_name if not char_name.is_empty() else p_name
+			if not char_name.is_empty() and char_name != p_name:
+				display = "%s (%s)" % [char_name, p_name]
+			allies.append({
+				"id": pid,
+				"name": display,
+			})
+	if active_round != null:
+		for c in active_round.combatants:
+			var cid := String(c.get("id", ""))
+			if cid == my_id:
+				continue
+			var already := false
+			for a in allies:
+				if String(a.get("id", "")) == cid:
+					already = true
+					break
+			if not already:
+				allies.append({
+					"id": cid,
+					"name": String(c.get("name", "Combatant")),
+				})
+	return allies
 
 
 func leave() -> void:
@@ -474,6 +522,9 @@ func _absorb(event: Dictionary) -> void:
 	if kind == CampaignSession.EVENT_SCENE_END:
 		_end_the_scene()
 		return
+	if kind == CampaignSession.EVENT_BUFF:
+		_absorb_buff(event)
+		return
 	if kind == CampaignSession.EVENT_AP_SET:
 		if transport != null and String(event.get("player_id", "")) == transport.local_player_id() and doc != null:
 			var payload_set: Dictionary = event.get("payload", {}) if typeof(event.get("payload")) == TYPE_DICTIONARY else {}
@@ -510,6 +561,23 @@ func _absorb(event: Dictionary) -> void:
 	# them, so the copy the GM holds has to follow.
 	push_character()
 	ap_applied.emit(amount, reason)
+
+
+## A buff or beneficial skill (e.g. Fortitude) arrived for this character.
+func _absorb_buff(event: Dictionary) -> void:
+	var payload: Dictionary = event.get("payload", {}) if typeof(event.get("payload")) == TYPE_DICTIONARY else {}
+	var target_id := String(payload.get("target_player_id", ""))
+	var my_id := transport.local_player_id() if transport != null else ""
+	if (target_id == my_id or (target_id.is_empty() and String(event.get("player_id", "")) == my_id)) and doc != null:
+		var temp_boxes: Dictionary = payload.get("temporary_durability", {})
+		if not temp_boxes.is_empty():
+			doc.apply([CharacterDoc.DAMAGE], func(character):
+				character["temporary_durability"] = temp_boxes.duplicate(true)
+			)
+			if store != null:
+				store.save(doc)
+			push_character()
+			buff_applied.emit(payload)
 
 
 ## The shooting has stopped: clear the stun and wake up.
@@ -580,4 +648,11 @@ func describe(event: Dictionary) -> String:
 			return "You joined" if mine else "Someone joined"
 		CampaignSession.EVENT_NOTE:
 			return String(payload.get("text", ""))
+		CampaignSession.EVENT_BUFF:
+			var caster := "You" if mine else String(payload.get("caster_name", "Someone"))
+			var is_target_me := (transport != null and String(payload.get("target_player_id", "")) == transport.local_player_id())
+			var target_name := "you" if is_target_me else String(payload.get("target_name", "an ally"))
+			var skill := String(payload.get("skill_name", "a spell"))
+			var degree := String(payload.get("degree", ""))
+			return "%s cast %s on %s (%s)!" % [caster, skill, target_name, degree]
 	return String(event.get("kind", ""))

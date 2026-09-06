@@ -21,7 +21,7 @@ const WIL_SKILLS := {
 	"Animal Riding": [1, true],
 	"Animal Training": [1, true],
 	"Awareness": [3, true],
-	"Intuition": [3, true],
+	"Intuition": [1, true],
 	"Perception": [2, true],
 	"Creativity": [4, true],
 	"Investigate": [7, true],

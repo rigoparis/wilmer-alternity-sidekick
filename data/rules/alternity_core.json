@@ -876,7 +876,7 @@
       "untrained": true,
       "multi": false,
       "custom_name": false,
-      "professions": "C",
+      "professions": "",
       "source": "core"
     },
     {
@@ -1142,7 +1142,7 @@
       "untrained": true,
       "multi": false,
       "custom_name": false,
-      "professions": "C",
+      "professions": "",
       "source": "core"
     },
     {
@@ -1390,11 +1390,11 @@
       "stat_id": 3,
       "type": "broad",
       "broad_id": 52,
-      "base_price": 3,
+      "base_price": 4,
       "untrained": true,
       "multi": false,
       "custom_name": false,
-      "professions": "",
+      "professions": "C",
       "source": "core"
     },
     {
@@ -2427,7 +2427,7 @@
       "stat_id": 5,
       "type": "specialty",
       "broad_id": 125,
-      "base_price": 3,
+      "base_price": 1,
       "untrained": true,
       "multi": false,
       "custom_name": false,
@@ -2543,7 +2543,7 @@
       "untrained": true,
       "multi": false,
       "custom_name": false,
-      "professions": "M",
+      "professions": "",
       "source": "core"
     },
     {
@@ -2557,7 +2557,7 @@
       "untrained": true,
       "multi": false,
       "custom_name": false,
-      "professions": "M",
+      "professions": "",
       "source": "core"
     },
     {
@@ -2571,7 +2571,7 @@
       "untrained": true,
       "multi": false,
       "custom_name": false,
-      "professions": "M",
+      "professions": "",
       "source": "core"
     },
     {
@@ -2851,7 +2851,7 @@
       "untrained": true,
       "multi": false,
       "custom_name": false,
-      "professions": "DT",
+      "professions": "",
       "source": "core"
     },
     {

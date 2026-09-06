@@ -48,6 +48,9 @@ const EVENT_SCENE_END := "scene_end"
 ## halves of it. A declaration that is still in flight is not history yet.
 const EVENT_ATTACK := "attack"
 
+## A beneficial skill, healing, or buff (e.g. Fortitude) was cast on a seat.
+const EVENT_BUFF := "buff"
+
 ## AP Award reasons based on core Alternity GM guidelines
 const AP_REASON_COMPLETION := "Adventure Completion"
 const AP_REASON_ROLEPLAYING := "Roleplaying Bonus"
@@ -195,6 +198,21 @@ func remove_seat(player_id: String) -> bool:
 	return false
 
 
+## The public view of seats for table members to see who is present.
+func public_seats() -> Array:
+	var list: Array = []
+	for s in seats:
+		var snapshot = s.get("character_snapshot", {})
+		var char_data: Dictionary = CharacterSnapshot.character_of(snapshot) if typeof(snapshot) == TYPE_DICTIONARY else {}
+		list.append({
+			"player_id": String(s.get("player_id", "")),
+			"player_name": String(s.get("player_name", "Player")),
+			"character_name": String(char_data.get("name", "")),
+			"is_gm": bool(s.get("is_gm", false)),
+		})
+	return list
+
+
 ## Record that a known player is connected again.
 ##
 ## This is the whole point of stable ids: the caller matches a freshly assigned
@@ -311,6 +329,11 @@ func append_roll(player_id: String, roll: Dictionary) -> Dictionary:
 ## Record a resolved attack against a seat. Takes the serialized CombatAttack.
 func append_attack(player_id: String, attack: Dictionary) -> Dictionary:
 	return append_event(EVENT_ATTACK, player_id, attack)
+
+
+## Record a buff or beneficial skill (e.g. Fortitude) cast on a seat.
+func append_buff(player_id: String, buff: Dictionary) -> Dictionary:
+	return append_event(EVENT_BUFF, player_id, buff)
 
 
 ## Record a chat message. `to_player_id` empty means the whole table; set it for

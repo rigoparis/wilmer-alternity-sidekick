@@ -1233,6 +1233,52 @@ func action_check(character: Dictionary) -> Dictionary:
 		"actions": actions_per_round(character),
 	}
 
+
+func action_check_base_score(character: Dictionary) -> int:
+	var abilities := effective_abilities(character)
+	return int(floor((_as_int(abilities.get("DEX", 10)) + _as_int(abilities.get("INT", 10))) / 2.0))
+
+
+func action_check_score_breakdown(character: Dictionary) -> Array:
+	var breakdown: Array = []
+	var abilities := effective_abilities(character)
+	var dex_val := _as_int(abilities.get("DEX", 10))
+	var int_val := _as_int(abilities.get("INT", 10))
+	var base := int(floor((dex_val + int_val) / 2.0))
+	breakdown.append({
+		"source": "Base Ability Average",
+		"amount": base,
+		"detail": "1/2 (DEX %d + INT %d) rounded down" % [dex_val, int_val],
+	})
+
+	var profession := get_profession_by_id(_as_int(character.get("profession_id", 0)))
+	var prof_bonus := _as_int(profession.get("action_bonus", 0))
+	if prof_bonus != 0:
+		breakdown.append({
+			"source": "Profession Bonus",
+			"amount": prof_bonus,
+			"detail": "%s profession bonus" % String(profession.get("name", "Profession")),
+		})
+
+	var ach_bonus := achievements.achievement_effect_total(character, "action_check_score")
+	if ach_bonus != 0:
+		breakdown.append({
+			"source": "Achievement Benefits",
+			"amount": ach_bonus,
+			"detail": "Action Check Increase (%d purchased)" % ach_bonus,
+		})
+
+	return breakdown
+
+
+func dazed_threshold(total_durability: int) -> int:
+	return int(floor(total_durability / 2.0))
+
+
+func is_dazed_track(track_name: String) -> bool:
+	return track_name == "stun" or track_name == "wound"
+
+
 func dazed_penalty(character: Dictionary) -> int:
 	var penalty := 0
 	var dmg: Dictionary = character.get("damage", {})
@@ -1243,9 +1289,9 @@ func dazed_penalty(character: Dictionary) -> int:
 	# Optional Rule: Dazed (> 50% Stun or Wound adds +1 step each; PHB Chapter 3 p. 51; GMG Chapter 3 p. 54).
 	if optional_rule_enabled(character, "dazed"):
 		var max_durability := durability(character)
-		if _as_int(dmg.get("stun", 0)) > int(floor(_as_int(max_durability.get("stun", 0)) / 2.0)):
+		if _as_int(dmg.get("stun", 0)) > dazed_threshold(_as_int(max_durability.get("stun", 0))):
 			penalty += 1
-		if _as_int(dmg.get("wound", 0)) > int(floor(_as_int(max_durability.get("wound", 0)) / 2.0)):
+		if _as_int(dmg.get("wound", 0)) > dazed_threshold(_as_int(max_durability.get("wound", 0))):
 			penalty += 1
 
 	return penalty
@@ -1801,52 +1847,85 @@ func skill_rank_at_level_start(character: Dictionary, skill_id: int) -> int:
 
 ## The highest rank a specialty may legally sit at for this hero.
 ##
-## A ceiling, not a purchase limit: rank 3 while the hero is being created, and
-## the system maximum of 12 afterwards. Used to validate and normalise a rank
-## the character already holds. What they may raise a skill *to* right now is
-## max_rank_for_skill, which is a different and tighter question.
+## According to Gamemaster Guide Table G4 (p. 31), specialty skill rank limits scale
+## with achievement level: min(level + 2, 12).
+## Level 1: Rank 3 (Creation maximum)
+## Level 2: Rank 4
+## Level 3: Rank 5
+## Level 4: Rank 6
+## Level 5: Rank 7
+## Level 6: Rank 8
+## Level 10+: Rank 12 (System maximum)
 ##
-## Sources: Player's Handbook Table P28; Gamemaster Guide Table G4.
+## Sources: Player's Handbook Table P28 p. 125; Gamemaster Guide Table G4 p. 31.
 func max_skill_rank_for_character(character: Dictionary) -> int:
 	if character.is_empty():
-		return MAX_SPECIALTY_RANK
-	var level := _as_int(character.get("achievement_level", 1), 1)
-	if level <= 1:
 		return CREATION_SPECIALTY_RANK
-	return MAX_SPECIALTY_RANK
+	var level := _as_int(character.get("achievement_level", 1), 1)
+	return clampi(level + 2, CREATION_SPECIALTY_RANK, MAX_SPECIALTY_RANK)
 
 
 ## The highest rank this particular specialty may be raised to right now.
 ##
-## This was a flat level + 2, which is an approximation that only holds for a
-## skill bought at creation and raised at every level since. Applied to every
-## skill it let a hero buy a brand-new specialty at 5th level and take it
-## straight to rank 7.
-##
-## The printed rules are three separate limits: creation caps specialties at
-## rank 3, the system ceiling is rank 12, and after creation a skill may not
-## gain more than one rank at a time -- "you can't improve a specialty skill
-## more than one rank at a time, even if you have enough skill points to buy two
-## ranks at once".
-##
-## Sources: Player's Handbook Table P28 and Chapter 8 p. 125.
+## Governed by the character's achievement level rank ceiling (Table G4 p. 31),
+## with additional restrictions for Psionic Talents (Player's Handbook p. 228;
+## Dark Matter p. 60, 71).
 func max_rank_for_skill(character: Dictionary, skill_id: int) -> int:
 	if character.is_empty():
 		return CREATION_SPECIALTY_RANK
-	var level := _as_int(character.get("achievement_level", 1), 1)
-	if level <= 1:
-		return CREATION_SPECIALTY_RANK
+	var skill := get_skill_by_id(skill_id)
+	if skill.is_empty():
+		return 0
+	if skill.get("type", "") == "broad":
+		return 1
 
-	# One rank per level, measured from where the skill stood when the level
-	# began -- otherwise buying a rank raises the ceiling that permitted it, and
-	# a hero climbs several ranks in one sitting.
-	#
-	# Also never more than one above the live rank: a player who sold a rank 3
-	# skill down to 1 must climb back through 2, not jump to 4 on the strength
-	# of a stale baseline.
-	var from_level_start := skill_rank_at_level_start(character, skill_id) + 1
-	var from_current := skill_rank(character, skill_id) + 1
-	return clampi(mini(from_level_start, from_current), 1, MAX_SPECIALTY_RANK)
+	var general_cap := max_skill_rank_for_character(character)
+
+	# Psionic talent specialty caps (PHB p. 228 / Dark Matter p. 60, 71)
+	if is_psionic_skill(skill) and not is_mindwalker_profession(character):
+		var psi_cap := _max_rank_for_psionic_talent_specialty(character, skill_id)
+		return mini(general_cap, psi_cap)
+
+	return general_cap
+
+
+func _max_rank_for_psionic_talent_specialty(character: Dictionary, skill_id: int) -> int:
+	var is_dm: bool = is_setting_available(character, "Dark*Matter")
+	var has_superior_talent: bool = is_perk_selected(character, "superior_talent")
+	var superior_talent_cost: int = perk_cost_selected(character, "superior_talent") if has_superior_talent else 0
+
+	var top_cap := 6
+	var second_cap := 3
+	var max_top_slots := 1
+
+	if is_dm:
+		if has_superior_talent and (superior_talent_cost == 4 or superior_talent_cost == 6):
+			top_cap = 12
+			second_cap = 6
+			max_top_slots = 1
+		else:
+			top_cap = 12
+			second_cap = 6
+			max_top_slots = 1
+	else:
+		top_cap = 6
+		second_cap = 3
+		max_top_slots = 1
+
+	var other_above_second := 0
+	for other_id in selected_skill_ids(character):
+		var o_id := _as_int(other_id)
+		if o_id == skill_id:
+			continue
+		var o_skill := get_skill_by_id(o_id)
+		if o_skill.is_empty() or not is_psionic_skill(o_skill) or String(o_skill.get("type", "")) != "specialty":
+			continue
+		if skill_rank(character, o_id) > second_cap:
+			other_above_second += 1
+
+	if other_above_second >= max_top_slots:
+		return second_cap
+	return top_cap
 
 
 
@@ -2726,6 +2805,11 @@ func _validate_fx(character: Dictionary, messages: Array) -> void:
 	# Super Power categories are deliberately not checked here: they are the one
 	# pillar a hero may mix freely.
 
+	var is_dm := is_dark_matter(character)
+	var is_talent := fx.is_fx_talent(character)
+	var max_top_slots := 1 if is_dm else 2
+	var fx_specialties_above_3 := []
+
 	for skill_name in character.get("fx", {}).get("selected_skills", {}).keys():
 		var name := String(skill_name)
 		var specialty := fx.get_specialty_skill(name)
@@ -2735,9 +2819,29 @@ func _validate_fx(character: Dictionary, messages: Array) -> void:
 		var max_rank := max_skill_rank_for_character(character)
 		if rank > max_rank:
 			messages.append("%s cannot exceed rank %d. Source: Player's Handbook Table P28 p. 125; Beyond Science p. 5." % [name, max_rank])
+		if is_talent:
+			if rank > 6:
+				messages.append(
+					"%s is at rank %d, exceeding the FX talent maximum rank of 6. Source: Beyond Science: A Guide to FX p. 3."
+					% [name, rank]
+				)
+			elif rank > 3:
+				fx_specialties_above_3.append(name)
 		var parent := String(specialty.get("broad_skill", ""))
 		if not fx.is_fx_skill_selected(character, parent):
 			messages.append("%s requires the %s broad skill. Source: Beyond Science: A Guide to FX p. 5." % [name, parent])
+
+	if is_talent and fx_specialties_above_3.size() > max_top_slots:
+		if is_dm:
+			messages.append(
+				"In Dark*Matter, an FX talent may raise only a single specialty to rank 6, with all others capped at rank 3 (%d specialties exceed rank 3: %s). Source: Dark Matter p. 74-75; Beyond Science p. 3."
+				% [fx_specialties_above_3.size(), ", ".join(fx_specialties_above_3)]
+			)
+		else:
+			messages.append(
+				"An FX talent may raise at most two specialties to rank 6, with all others capped at rank 3 (%d specialties exceed rank 3: %s). Source: Beyond Science: A Guide to FX p. 3."
+				% [fx_specialties_above_3.size(), ", ".join(fx_specialties_above_3)]
+			)
 
 	var sp_info := get_species_by_id(_as_int(character.get("species_id", -1)))
 	var sp_name := String(sp_info.get("name", ""))
@@ -2919,6 +3023,7 @@ func summary(character: Dictionary) -> Dictionary:
 		"mutations": mutations.mutation_summary(character),
 		"cybertech": cybertech.cybertech_summary(character),
 		"permanent_fx_effects": fx.permanent_fx_effects_summary(character),
+		"fx_defense_forms": fx.fx_defense_forms(character),
 		"validations": validate(character),
 	}
 	_last_character_hash = current_hash
@@ -3035,6 +3140,54 @@ func apply_damage(character: Dictionary, attack_damage: int, damage_type: String
 	var max_mortal := _as_int(dur.get("mortal", 0))
 	var max_fatigue := _as_int(dur.get("fatigue", 0))
 
+	# Temporary durability boxes (e.g. Fortitude Vitality Shield) absorb damage first.
+	var temp_absorbed := {"stun": 0, "wound": 0, "mortal": 0, "fatigue": 0}
+	var temp: Dictionary = character.get("temporary_durability", {}).duplicate(true)
+	if not temp.is_empty():
+		var max_s: int = _as_int(temp.get("max_stun", 0))
+		var max_w: int = _as_int(temp.get("max_wound", 0))
+		var max_m: int = _as_int(temp.get("max_mortal", 0))
+		var max_f: int = _as_int(temp.get("max_fatigue", 0))
+
+		var cur_s: int = _as_int(temp.get("stun", 0))
+		var cur_w: int = _as_int(temp.get("wound", 0))
+		var cur_m: int = _as_int(temp.get("mortal", 0))
+		var cur_f: int = _as_int(temp.get("fatigue", 0))
+
+		var avail_p := 0
+		if damage_type == "stun":
+			avail_p = maxi(0, max_s - cur_s)
+		elif damage_type == "wound":
+			avail_p = maxi(0, max_w - cur_w)
+		elif damage_type == "mortal":
+			avail_p = maxi(0, max_m - cur_m)
+		elif damage_type == "fatigue":
+			avail_p = maxi(0, max_f - cur_f)
+
+		var p_soak: int = mini(primary_dmg, avail_p)
+		if p_soak > 0:
+			temp[damage_type] = _as_int(temp.get(damage_type, 0)) + p_soak
+			primary_dmg -= p_soak
+			temp_absorbed[damage_type] = _as_int(temp_absorbed.get(damage_type, 0)) + p_soak
+
+		if secondary_wound > 0:
+			cur_w = _as_int(temp.get("wound", 0))
+			var avail_w: int = maxi(0, max_w - cur_w)
+			var w_soak: int = mini(secondary_wound, avail_w)
+			if w_soak > 0:
+				temp["wound"] = cur_w + w_soak
+				secondary_wound -= w_soak
+				temp_absorbed["wound"] = _as_int(temp_absorbed.get("wound", 0)) + w_soak
+
+		if secondary_stun > 0:
+			cur_s = _as_int(temp.get("stun", 0))
+			var avail_s: int = maxi(0, max_s - cur_s)
+			var s_soak: int = mini(secondary_stun, avail_s)
+			if s_soak > 0:
+				temp["stun"] = cur_s + s_soak
+				secondary_stun -= s_soak
+				temp_absorbed["stun"] = _as_int(temp_absorbed.get("stun", 0)) + s_soak
+
 	# 1. Apply primary damage
 	if damage_type == "stun":
 		current_stun += primary_dmg
@@ -3053,15 +3206,48 @@ func apply_damage(character: Dictionary, attack_damage: int, damage_type: String
 	if current_stun > max_stun:
 		var overflow_stun := current_stun - max_stun
 		current_stun = max_stun
-		current_wound += int(floor(overflow_stun / 2.0))
+		var ov_wound := int(floor(overflow_stun / 2.0))
+		if not temp.is_empty():
+			var max_w: int = _as_int(temp.get("max_wound", 0))
+			var cur_w: int = _as_int(temp.get("wound", 0))
+			var avail_w: int = maxi(0, max_w - cur_w)
+			var ov_w_soak: int = mini(ov_wound, avail_w)
+			if ov_w_soak > 0:
+				temp["wound"] = cur_w + ov_w_soak
+				ov_wound -= ov_w_soak
+				temp_absorbed["wound"] = _as_int(temp_absorbed.get("wound", 0)) + ov_w_soak
+		current_wound += ov_wound
 
 	# 4. Handle Heavy Wound overflow (2 wound -> 1 mortal)
 	if current_wound > max_wound:
 		var overflow_wound := current_wound - max_wound
 		current_wound = max_wound
-		current_mortal += int(floor(overflow_wound / 2.0))
+		var ov_mortal := int(floor(overflow_wound / 2.0))
+		if not temp.is_empty():
+			var max_m: int = _as_int(temp.get("max_mortal", 0))
+			var cur_m: int = _as_int(temp.get("mortal", 0))
+			var avail_m: int = maxi(0, max_m - cur_m)
+			var ov_m_soak: int = mini(ov_mortal, avail_m)
+			if ov_m_soak > 0:
+				temp["mortal"] = cur_m + ov_m_soak
+				ov_mortal -= ov_m_soak
+				temp_absorbed["mortal"] = _as_int(temp_absorbed.get("mortal", 0)) + ov_m_soak
+		current_mortal += ov_mortal
 
 	current_mortal = min(max_mortal, current_mortal)
+
+	if not temp.is_empty():
+		var max_s: int = _as_int(temp.get("max_stun", 0))
+		var max_w: int = _as_int(temp.get("max_wound", 0))
+		var max_m: int = _as_int(temp.get("max_mortal", 0))
+		var max_f: int = _as_int(temp.get("max_fatigue", 0))
+		if (_as_int(temp.get("stun", 0)) >= max_s
+			and _as_int(temp.get("wound", 0)) >= max_w
+			and _as_int(temp.get("mortal", 0)) >= max_m
+			and _as_int(temp.get("fatigue", 0)) >= max_f):
+			character.erase("temporary_durability")
+		else:
+			character["temporary_durability"] = temp
 
 	damage["stun"] = current_stun
 	damage["wound"] = current_wound
@@ -3077,6 +3263,7 @@ func apply_damage(character: Dictionary, attack_damage: int, damage_type: String
 		"original_damage_type": original_type,
 		"negated": false,
 		"stun_soaked": stun_soak,
+		"temporary_durability_absorbed": temp_absorbed,
 		"damage": damage,
 	}
 
@@ -3449,6 +3636,23 @@ func skill_detail(skill: Dictionary, character: Dictionary = {}) -> Dictionary:
 	var roll_notes := _skill_roll_notes(skill)
 	var complex_note := String(COMPLEX_SKILL_NOTES.get(skill_id, ""))
 	var rank_benefits: Dictionary = RANK_BENEFIT_NOTES.get(skill_id, {})
+	var sources: Array = _skill_sources(skill)
+
+	var sections: Array = []
+	if NON_FX_STRUCTURED_SECTIONS.has(skill_id):
+		sections = NON_FX_STRUCTURED_SECTIONS[skill_id].duplicate(true)
+		var rolling_lines: Array = []
+		if not ability.is_empty():
+			var aname := String(ABILITY_NAMES.get(ability, ability))
+			rolling_lines.append("Governing ability: %s (%s)" % [aname, ability])
+		for note in roll_notes:
+			var text := String(note).strip_edges()
+			if not text.is_empty():
+				rolling_lines.append(text)
+		if not rolling_lines.is_empty():
+			sections.append({"kind": "text", "title": "How it is rolled", "body": "\n".join(rolling_lines)})
+		if not sources.is_empty():
+			sections.append({"kind": "text", "title": "Source", "body": "; ".join(sources)})
 
 	return {
 		"id": skill_id,
@@ -3471,7 +3675,8 @@ func skill_detail(skill: Dictionary, character: Dictionary = {}) -> Dictionary:
 		"roll_notes": roll_notes,
 		"complex_check": complex_note,
 		"rank_benefits": rank_benefits,
-		"sources": _skill_sources(skill),
+		"sources": sources,
+		"sections": sections,
 	}
 
 

@@ -37,6 +37,18 @@ func _init() -> void:
 		rules.achievements.achievement_points_spent(character), 4,
 		"Action Check Increase costs 4 points for Combat Spec"
 	)
+	check_eq(
+		rules.action_check_base_score(character), 10,
+		"action_check_base_score matches base ability average (10)"
+	)
+	var breakdown: Array = rules.action_check_score_breakdown(character)
+	check_true(breakdown.size() >= 3, "action_check_score_breakdown has parts")
+	var breakdown_sources: Array = []
+	for item in breakdown:
+		breakdown_sources.append(item.get("source", ""))
+	check_true(breakdown_sources.has("Base Ability Average"), "breakdown includes Base Ability Average")
+	check_true(breakdown_sources.has("Profession Bonus"), "breakdown includes Profession Bonus")
+	check_true(breakdown_sources.has("Achievement Benefits"), "breakdown includes Achievement Benefits")
 
 	# WIL Increase for a Free Agent (profession 4) raises effective WIL by 1.
 	character["profession_id"] = 4

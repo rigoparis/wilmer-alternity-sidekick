@@ -51,9 +51,9 @@ func unbind() -> void:
 ## Rebuild in-place when internal hosts are valid to preserve the catalog's
 ## active category tab, search filter, and scroll position.
 func _rebuild() -> void:
-	var is_talent := ctx.rules.fx.is_fx_talent(ctx.doc.raw())
+	var is_active := ctx.rules.fx.is_fx_active(ctx.doc.raw())
 	if _pool_host != null and is_instance_valid(_pool_host) \
-			and _selected_host != null and is_instance_valid(_selected_host) and is_talent:
+			and _selected_host != null and is_instance_valid(_selected_host) and is_active:
 		_render_pool(_pool_host)
 		if _tracker_host != null and is_instance_valid(_tracker_host):
 			_render_tracker(_tracker_host)
@@ -80,7 +80,7 @@ func build(container: Container) -> void:
 	_selected_host = null
 	_picker = null
 
-	if not ctx.rules.fx.is_fx_talent(ctx.doc.raw()):
+	if not ctx.rules.fx.is_fx_active(ctx.doc.raw()):
 		_build_pool(container)
 		return
 
@@ -176,10 +176,18 @@ func _build_pool(container: Container) -> void:
 		Widgets.FONT_CAPTION
 	)
 
-	var enabled: bool = rules.fx.is_fx_talent(doc.raw())
+	var enabled: bool = rules.fx.is_fx_active(doc.raw())
 	var toggle := Widgets.toggle_row(box, "Hero uses FX", enabled, palette)
 	toggle.toggled.connect(func(pressed: bool):
-		doc.apply([CharacterDoc.FX], func(c): rules.fx.set_fx_talent(c, pressed))
+		doc.apply([CharacterDoc.FX], func(c):
+			if pressed:
+				if rules.is_dark_matter(c):
+					rules.fx.set_fx_talent(c, true)
+				else:
+					rules.fx.set_practitioner_type(c, "adept")
+			else:
+				rules.fx.set_fx_talent(c, false)
+		)
 		save_requested.emit())
 
 	if not enabled:
@@ -200,6 +208,7 @@ func _build_pool(container: Container) -> void:
 		Widgets.metric(box, "Bought with achievement points", "+%d" % bought, palette)
 		Widgets.metric(box, "Total pool", str(rules.fx.total_energy_pool(doc.raw())), palette)
 
+	_build_practitioner_type_picker(box)
 	_build_scale_picker(box)
 	_build_primary_group_picker(box)
 
@@ -346,6 +355,59 @@ func _build_primary_group_picker(parent: Container) -> void:
 	)
 
 
+func _build_practitioner_type_picker(parent: Container) -> void:
+	var doc := ctx.doc
+	var rules: AlternityRules = ctx.rules
+	var palette := ctx.palette
+	var raw := doc.raw()
+
+	if rules.is_dark_matter(raw):
+		Widgets.muted_text(
+			parent,
+			"In Dark*Matter, all FX users are FX Talents (+1 SP surcharge on FX skills; 1 specialty to Rank 6, others to Rank 3).",
+			palette,
+			Widgets.FONT_CAPTION
+		)
+		return
+
+	var label := Label.new()
+	label.text = "Practitioner type"
+	label.add_theme_color_override("font_color", palette.muted)
+	label.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
+	parent.add_child(label)
+
+	var picker := OptionButton.new()
+	picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	picker.custom_minimum_size = Vector2(0, 42)
+	picker.add_item("FX Adept (Full Practitioner)", 0)
+	picker.add_item("FX Talent", 1)
+
+	var is_talent := rules.fx.is_fx_talent(raw)
+	picker.select(1 if is_talent else 0)
+
+	picker.item_selected.connect(func(index: int):
+		var p_type := "talent" if index == 1 else "adept"
+		doc.apply([CharacterDoc.FX], func(c):
+			rules.fx.set_practitioner_type(c, p_type))
+		save_requested.emit())
+	parent.add_child(picker)
+
+	if is_talent:
+		Widgets.muted_text(
+			parent,
+			"FX Talent: Standard list price for primary school. Up to two specialties to Rank 6, all others capped at Rank 3.",
+			palette,
+			Widgets.FONT_CAPTION
+		)
+	else:
+		Widgets.muted_text(
+			parent,
+			"FX Adept: 1-point discount on primary school specialties (L - 1). Specialties scale up to Rank 12 (level limit).",
+			palette,
+			Widgets.FONT_CAPTION
+		)
+
+
 ## What the campaign charges in achievement points for a point of FX pool.
 ##
 ## A campaign-wide decision rather than a character one, but it is recorded per
@@ -412,7 +474,7 @@ func _render_powers_panel_desktop(host: Container) -> void:
 
 	_picker = null
 	var rows := ctx.rules.fx.selected_fx_skills(ctx.doc.raw())
-	var fx_enabled: bool = ctx.rules.fx.is_fx_talent(ctx.doc.raw())
+	var fx_enabled: bool = ctx.rules.fx.is_fx_active(ctx.doc.raw())
 
 	var toggle_btn := Widgets.edit_toggle_button(_editing_powers, ctx.palette)
 	toggle_btn.disabled = not fx_enabled
@@ -461,7 +523,7 @@ func _render_powers_panel_mobile(host: Container) -> void:
 
 	_picker = null
 	var rows := ctx.rules.fx.selected_fx_skills(ctx.doc.raw())
-	var fx_enabled: bool = ctx.rules.fx.is_fx_talent(ctx.doc.raw())
+	var fx_enabled: bool = ctx.rules.fx.is_fx_active(ctx.doc.raw())
 
 	var toggle_btn := Widgets.edit_toggle_button(_editing_powers, ctx.palette)
 	toggle_btn.disabled = not fx_enabled

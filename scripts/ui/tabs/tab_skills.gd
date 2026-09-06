@@ -33,11 +33,12 @@ func heading() -> String:
 
 
 func watched_sections() -> Array:
-	# Skill scores derive from abilities, flaws grant points, and achievements
-	# raise the rank cap.
+	# Skill scores derive from abilities, flaws and perks affect budget,
+	# cybertech and FX skills spend SP, and achievements raise rank caps.
 	return [
 		CharacterDoc.SKILLS, CharacterDoc.ABILITIES,
 		CharacterDoc.PERKS_FLAWS, CharacterDoc.ACHIEVEMENTS, CharacterDoc.META,
+		CharacterDoc.CYBERTECH, CharacterDoc.FX, CharacterDoc.OPTIONAL_RULES,
 	]
 
 

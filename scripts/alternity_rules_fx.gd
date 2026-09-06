@@ -25,12 +25,46 @@ func _normalize_fx(character: Dictionary) -> void:
 		fx_data["permanent_skills"] = {}
 	character["fx"] = fx_data
 
+func is_fx_active(character: Dictionary) -> bool:
+	var fx_data: Dictionary = character.get("fx", {})
+	if bool(fx_data.get("enabled", false)):
+		return true
+	if bool(fx_data.get("is_fx_talent", false)):
+		return true
+	if not fx_data.get("selected_skills", {}).is_empty():
+		return true
+	return false
+
+
 func is_fx_talent(character: Dictionary) -> bool:
+	if not is_fx_active(character):
+		return false
+	if _get_parent().is_dark_matter(character):
+		return true
+	var p_type := String(character.get("fx", {}).get("practitioner_type", ""))
+	if not p_type.is_empty():
+		return p_type == "talent"
 	return bool(character.get("fx", {}).get("is_fx_talent", false))
+
+
+func is_fx_adept(character: Dictionary) -> bool:
+	if not is_fx_active(character):
+		return false
+	if _get_parent().is_dark_matter(character):
+		return false
+	return not is_fx_talent(character)
+
 
 func set_fx_talent(character: Dictionary, enabled: bool) -> void:
 	_normalize_fx(character)
+	character["fx"]["enabled"] = enabled
 	character["fx"]["is_fx_talent"] = enabled
+
+
+func set_practitioner_type(character: Dictionary, p_type: String) -> void:
+	_normalize_fx(character)
+	character["fx"]["practitioner_type"] = p_type
+	character["fx"]["is_fx_talent"] = (p_type == "talent")
 
 ## The pool the hero started with, before anything they have bought.
 ##
@@ -235,6 +269,44 @@ func permanent_fx_effects_summary(character: Dictionary) -> Array:
 				})
 	return effects
 
+func max_rank_for_fx_skill(character: Dictionary, skill_name: String) -> int:
+	if character.is_empty():
+		return AlternityRules.CREATION_SPECIALTY_RANK
+	var broad := get_broad_skill(skill_name)
+	if not broad.is_empty():
+		return 1
+	var specialty := get_specialty_skill(skill_name)
+	if specialty.is_empty():
+		return 0
+
+	var general_cap: int = _get_parent().max_skill_rank_for_character(character)
+
+	if is_fx_adept(character):
+		return general_cap
+
+	if is_fx_talent(character):
+		var is_dm: bool = _get_parent().is_dark_matter(character)
+		var max_top_slots: int = 1 if is_dm else 2
+		var top_cap := 6
+		var second_cap := 3
+
+		var other_above_second := 0
+		var selected: Dictionary = character.get("fx", {}).get("selected_skills", {})
+		for o_name in selected.keys():
+			var o_key := String(o_name)
+			if o_key == skill_name:
+				continue
+			var o_spec := get_specialty_skill(o_key)
+			if o_spec.is_empty():
+				continue
+			if fx_skill_rank(character, o_key) > second_cap:
+				other_above_second += 1
+
+		var talent_cap := second_cap if other_above_second >= max_top_slots else top_cap
+		return mini(general_cap, talent_cap)
+
+	return general_cap
+
 func add_fx_skill(character: Dictionary, skill_name: String) -> void:
 	_normalize_fx(character)
 	var broad = get_broad_skill(skill_name)
@@ -247,8 +319,9 @@ func add_fx_skill(character: Dictionary, skill_name: String) -> void:
 		if not parent_broad.is_empty() and not is_fx_skill_selected(character, parent_broad):
 			character["fx"]["selected_skills"][parent_broad] = 1
 		var current = fx_skill_rank(character, skill_name)
+		var max_rank = max_rank_for_fx_skill(character, skill_name)
 		character["fx"]["selected_skills"][skill_name] = mini(
-			current + 1, AlternityRules.MAX_SPECIALTY_RANK
+			current + 1, max_rank
 		)
 
 func remove_fx_skill(character: Dictionary, skill_name: String) -> void:
@@ -333,7 +406,7 @@ func set_primary_broad_group(character: Dictionary, broad_name: String) -> void:
 ## powers are priced at list until they do, which is cheaper than the rules
 ## allow, so it is worth saying rather than leaving quietly favourable.
 func needs_primary_broad_group(character: Dictionary) -> bool:
-	if not is_fx_talent(character):
+	if not is_fx_active(character):
 		return false
 	if not primary_broad_group(character).is_empty():
 		return false
@@ -341,6 +414,19 @@ func needs_primary_broad_group(character: Dictionary) -> bool:
 		if is_fx_skill_selected(character, String(broad.get("name", ""))):
 			return true
 	return false
+
+
+func next_fx_skill_rank_cost(character: Dictionary, skill_name: String) -> int:
+	var broad = get_broad_skill(skill_name)
+	if not broad.is_empty():
+		return fx_skill_cost_for_rank(character, skill_name, 1) if not is_fx_skill_selected(character, skill_name) else 0
+	var specialty = get_specialty_skill(skill_name)
+	if not specialty.is_empty():
+		var rank = fx_skill_rank(character, skill_name)
+		if rank >= max_rank_for_fx_skill(character, skill_name):
+			return 0
+		return fx_skill_cost_for_rank(character, skill_name, rank + 1)
+	return 0
 
 
 func fx_skill_cost(character: Dictionary, skill_name: String) -> int:
@@ -393,11 +479,28 @@ func fx_skill_cost_for_rank(character: Dictionary, skill_name: String, rank: int
 		return _listed_cost(character, broad) + surcharge if rank == 1 else 0
 	var specialty = get_specialty_skill(skill_name)
 	if not specialty.is_empty():
-		var base_cost = _listed_cost(character, specialty) + surcharge
+		var list_cost := _listed_cost(character, specialty)
+		var base_cost := list_cost
 		var primary_group := primary_broad_group(character)
-		var skill_broad = String(specialty.get("broad_skill", ""))
-		if not primary_group.is_empty() and skill_broad != primary_group:
-			base_cost *= 2
+		var skill_broad := String(specialty.get("broad_skill", ""))
+		var is_non_primary := not primary_group.is_empty() and skill_broad != primary_group
+
+		if _get_parent().is_dark_matter(character):
+			base_cost = list_cost + surcharge
+			if is_non_primary:
+				base_cost *= 2
+		elif is_fx_adept(character):
+			if is_non_primary:
+				base_cost = 2 * list_cost
+			else:
+				base_cost = maxi(1, list_cost - 1)
+		else:
+			# FX Talent (Generic Sci-Fi)
+			if is_non_primary:
+				base_cost = 2 * list_cost
+			else:
+				base_cost = list_cost
+
 		if rank <= 1 or _get_parent().optional_rule_enabled(character, "2c"):
 			return base_cost
 		return base_cost + (rank - 1)
@@ -555,6 +658,26 @@ func fx_skill_score(character: Dictionary, skill_name: String) -> Dictionary:
 	if dazed != 0:
 		step_breakdown.append({"source": "Damage / Dazed Condition", "step": dazed, "detail": "Penalty from marked Mortal/Fatigue damage or Dazed state."})
 
+	# Medical Science - Medical Knowledge synergy for Animate Dead
+	if skill_name.to_lower() == "animate dead":
+		var med_rank: int = _get_parent().skill_rank(character, 87)
+		var med_bonus := 0
+		if med_rank >= 12:
+			med_bonus = -4
+		elif med_rank >= 8:
+			med_bonus = -3
+		elif med_rank >= 5:
+			med_bonus = -2
+		elif med_rank >= 2:
+			med_bonus = -1
+		if med_bonus != 0:
+			step += med_bonus
+			step_breakdown.append({
+				"source": "Medical Science - Medical Knowledge",
+				"step": med_bonus,
+				"detail": "Synergy bonus from Medical Knowledge rank %d (%d step bonus). Source: Beyond Science p. 32." % [med_rank, med_bonus]
+			})
+
 	# For non-permanent specialty powers, check whether the hero has enough FX
 	# energy to activate them. Flag the score unusable rather than silently
 	# letting a player roll a power they physically cannot fire.
@@ -566,10 +689,31 @@ func fx_skill_score(character: Dictionary, skill_name: String) -> Dictionary:
 			var pool: Dictionary = fx_energy(character)
 			var available: int = AlternityNum.as_int(pool.get("available", 0))
 			if available < cost:
-				return _fx_unusable(
-					"%s requires %d FX energy point%s to activate, but only %d %s available. Rest to recover FX energy. Source: Beyond Science: A Guide to FX p. 5."
-					% [skill_name, cost, "s" if cost != 1 else "", available, "are" if available != 1 else "is"]
-				)
+				var parent_broad := String(specialty.get("broad_skill", ""))
+				var has_necromancy: bool = is_fx_skill_selected(character, "Necromancy") or parent_broad.to_lower() == "necromancy"
+				if has_necromancy:
+					var needed_fx := cost - available
+					var needed_fatigue := needed_fx * 2
+					var dur: Dictionary = _get_parent().durability(character)
+					var max_fatigue: int = AlternityNum.as_int(dur.get("fatigue", 0))
+					var dmg: Dictionary = character.get("damage", {})
+					var cur_fatigue: int = AlternityNum.as_int(dmg.get("fatigue", 0))
+					if cur_fatigue + needed_fatigue <= max_fatigue:
+						step_breakdown.append({
+							"source": "Life Force Substitution",
+							"step": 0,
+							"detail": "FX energy insufficient; substituting %d fatigue points (%d available FX + %d fatigue). Source: Beyond Science p. 31." % [needed_fatigue, available, needed_fatigue]
+						})
+					else:
+						return _fx_unusable(
+							"%s requires %d FX energy point%s (or %d fatigue points via Life Force Substitution), but hero has only %d FX and %d remaining fatigue capacity. Rest to recover. Source: Beyond Science p. 31."
+							% [skill_name, cost, "s" if cost != 1 else "", needed_fatigue, available, max_fatigue - cur_fatigue]
+						)
+				else:
+					return _fx_unusable(
+						"%s requires %d FX energy point%s to activate, but only %d %s available. Rest to recover FX energy. Source: Beyond Science: A Guide to FX p. 5."
+						% [skill_name, cost, "s" if cost != 1 else "", available, "are" if available != 1 else "is"]
+					)
 
 	return {
 		"marginal": ordinary + 1,
@@ -597,6 +741,40 @@ func _fx_unusable(reason: String) -> Dictionary:
 		"via_broad": false,
 		"reason": reason,
 		"die": "+d0",
+	}
+
+
+## Checks whether a character can use Life Force Substitution (2 Fatigue per 1 missing FX).
+## Only available to practitioners of Necromancy.
+## Source: Beyond Science: A Guide to FX p. 31.
+func can_substitute_life_force(character: Dictionary, cost: int) -> Dictionary:
+	var has_necromancy: bool = is_fx_skill_selected(character, "Necromancy")
+	if not has_necromancy:
+		return {"allowed": false, "reason": "Character does not possess the Necromancy broad skill."}
+	var pool: Dictionary = fx_energy(character)
+	var available: int = AlternityNum.as_int(pool.get("available", 0))
+	if available >= cost:
+		return {"allowed": false, "reason": "Hero has sufficient FX energy pool (%d available, %d needed)." % [available, cost]}
+	var missing: int = cost - available
+	var fatigue_needed: int = missing * 2
+	var dur: Dictionary = _get_parent().durability(character)
+	var max_fatigue: int = AlternityNum.as_int(dur.get("fatigue", 0))
+	var dmg: Dictionary = character.get("damage", {})
+	var cur_fatigue: int = AlternityNum.as_int(dmg.get("fatigue", 0))
+	var remaining_fatigue: int = maxi(0, max_fatigue - cur_fatigue)
+	if cur_fatigue + fatigue_needed > max_fatigue:
+		return {
+			"allowed": false,
+			"missing_fx": missing,
+			"fatigue_needed": fatigue_needed,
+			"remaining_fatigue": remaining_fatigue,
+			"reason": "Insufficient fatigue capacity (%d needed, only %d remaining before KO)." % [fatigue_needed, remaining_fatigue],
+		}
+	return {
+		"allowed": true,
+		"missing_fx": missing,
+		"fatigue_needed": fatigue_needed,
+		"remaining_fatigue": remaining_fatigue,
 	}
 
 
@@ -636,3 +814,755 @@ func fx_activation_cost(character: Dictionary, skill_name: String) -> Dictionary
 		"untrained_surcharge": surcharge,
 		"total": base + surcharge,
 	}
+
+
+## Calculates temporary durability boxes granted by Fortitude.
+## Ordinary: +2 stun, +1 wound, +0 mortal, +0 fatigue
+## Good: +3 stun, +2 wound, +1 mortal, +0 fatigue
+## Amazing: +4 stun, +3 wound, +2 mortal, +2 fatigue
+## Rank 4: +1 to each category; Rank 8: +2; Rank 12: +3.
+## Source: Beyond Science: A Guide to FX p. 32.
+func fortitude_boxes(character: Dictionary, degree: String, rank_override: int = -1) -> Dictionary:
+	var rank: int = rank_override if rank_override >= 0 else fx_skill_rank(character, "Fortitude")
+	var rank_bonus := 0
+	if rank >= 12:
+		rank_bonus = 3
+	elif rank >= 8:
+		rank_bonus = 2
+	elif rank >= 4:
+		rank_bonus = 1
+
+	var d := degree.to_lower()
+	var s := 0
+	var w := 0
+	var m := 0
+	var f := 0
+
+	if d == "ordinary":
+		s = 2
+		w = 1
+		m = 0
+		f = 0
+	elif d == "good":
+		s = 3
+		w = 2
+		m = 1
+		f = 0
+	elif d == "amazing":
+		s = 4
+		w = 3
+		m = 2
+		f = 2
+	else:
+		return {"stun": 0, "wound": 0, "mortal": 0, "fatigue": 0, "total": 0, "degree": degree, "rank": rank, "rank_bonus": rank_bonus}
+
+	s += rank_bonus
+	w += rank_bonus
+	m += rank_bonus
+	f += rank_bonus
+	return {
+		"stun": s,
+		"wound": w,
+		"mortal": m,
+		"fatigue": f,
+		"total": s + w + m + f,
+		"degree": degree.capitalize(),
+		"rank": rank,
+		"rank_bonus": rank_bonus,
+	}
+
+
+## Apply Fortitude temporary durability boxes to a character.
+## Sets character["temporary_durability"] with the remaining and max boxes.
+func apply_fortitude(target_character: Dictionary, degree: String, rank: int = 0) -> Dictionary:
+	var boxes := fortitude_boxes(target_character, degree, rank)
+	if AlternityNum.as_int(boxes.get("total", 0)) <= 0:
+		return {}
+	var s: int = AlternityNum.as_int(boxes.get("stun", 0))
+	var w: int = AlternityNum.as_int(boxes.get("wound", 0))
+	var m: int = AlternityNum.as_int(boxes.get("mortal", 0))
+	var f: int = AlternityNum.as_int(boxes.get("fatigue", 0))
+	var temp_dur := {
+		"source": "Fortitude",
+		"degree": degree.capitalize(),
+		"rank": rank,
+		"stun": 0,
+		"wound": 0,
+		"mortal": 0,
+		"fatigue": 0,
+		"max_stun": s,
+		"max_wound": w,
+		"max_mortal": m,
+		"max_fatigue": f,
+	}
+	target_character["temporary_durability"] = temp_dur
+	return temp_dur
+
+
+## Clear any temporary durability boxes (e.g. at end of scene or when dismissed).
+func clear_temporary_durability(character: Dictionary) -> void:
+	character.erase("temporary_durability")
+
+
+## Control limit for Animate Dead: CON score.
+## Source: Beyond Science: A Guide to FX p. 32.
+func zombie_control_limit(character: Dictionary) -> int:
+	var abilities: Dictionary = _get_parent().effective_abilities(character)
+	return AlternityNum.as_int(abilities.get("CON", 10))
+
+
+## Durability bonus for zombies created by Animate Dead:
+## Rank 6: +1 to all durability tracks (+1 stun, +1 wound, +1 mortal).
+## Rank 12: +2 to all durability tracks (+2 stun, +2 wound, +2 mortal).
+## Source: Beyond Science: A Guide to FX p. 32.
+func zombie_durability_bonus(character: Dictionary) -> int:
+	var rank := fx_skill_rank(character, "Animate dead")
+	if rank >= 12:
+		return 2
+	elif rank >= 6:
+		return 1
+	return 0
+
+
+## Attack forms granted by FX powers (e.g. Energy Drain, Zombie Servant minion, etc.)
+func fx_attack_forms(character: Dictionary) -> Array:
+	var forms: Array = []
+	if is_fx_skill_selected(character, "Energy drain"):
+		var score := fx_skill_score(character, "Energy drain")
+		var rank := fx_skill_rank(character, "Energy drain")
+		var dmg := "d4+1s/d6+2s/d4+1w"
+		if rank >= 9:
+			dmg = "d8+2s/d12+3s/d4+3f"
+		elif rank >= 5:
+			dmg = "d6+2s/d8+3s/d4+2f"
+		forms.append({
+			"name": "Energy Drain",
+			"score": "%d / %d / %d" % [score.get("ordinary", 0), score.get("good", 0), score.get("amazing", 0)],
+			"base_die": _get_parent().action_step_die(AlternityNum.as_int(score.get("step", 0))),
+			"type": "En/O",
+			"range": "Touch",
+			"damage": dmg,
+			"hide": "-",
+			"clip_size": "-",
+			"mass": "-",
+		})
+	if is_fx_skill_selected(character, "Animate dead"):
+		var rank := fx_skill_rank(character, "Animate dead")
+		var limit := zombie_control_limit(character)
+		var dur_bonus := zombie_durability_bonus(character)
+		forms.append({
+			"name": "Zombie Servant (Minion)",
+			"score": "Max Control: %d" % limit,
+			"base_die": "+d0",
+			"type": "LI/O",
+			"range": "Melee",
+			"damage": "d4+1w/d4+2w/d4+3w",
+			"hide": "-",
+			"clip_size": "-",
+			"mass": "-",
+			"detail": "Zombie minion slam/bite. Durability bonus: +%d to all tracks." % dur_bonus,
+		})
+	if is_fx_skill_selected(character, "Mummy's curse"):
+		var score := fx_skill_score(character, "Mummy's curse")
+		forms.append({
+			"name": "Mummy's Curse",
+			"score": "%d / %d / %d" % [score.get("ordinary", 0), score.get("good", 0), score.get("amazing", 0)],
+			"base_die": _get_parent().action_step_die(AlternityNum.as_int(score.get("step", 0))),
+			"type": "Sp/O",
+			"range": "10m",
+			"damage": "Affliction (-2/-4/-6 stat penalty)",
+			"hide": "-",
+			"clip_size": "-",
+			"mass": "-",
+		})
+	if is_fx_skill_selected(character, "Steal the soul"):
+		var score := fx_skill_score(character, "Steal the soul")
+		forms.append({
+			"name": "Steal the Soul",
+			"score": "%d / %d / %d" % [score.get("ordinary", 0), score.get("good", 0), score.get("amazing", 0)],
+			"base_die": _get_parent().action_step_die(AlternityNum.as_int(score.get("step", 0))),
+			"type": "Sp/O",
+			"range": "Touch",
+			"damage": "Soul extraction / Coma",
+			"hide": "-",
+			"clip_size": "-",
+			"mass": "-",
+		})
+	if is_fx_skill_selected(character, "Hellfire"):
+		var score := fx_skill_score(character, "Hellfire")
+		var rank := fx_skill_rank(character, "Hellfire")
+		var dmg := "d4w/d4+1w/d4+2w"
+		if rank >= 12:
+			dmg = "d6+1w/d6+1w/d6+2w"
+		elif rank >= 8:
+			dmg = "d6w/d6+1w/d6+2w"
+		elif rank >= 4:
+			dmg = "d4+1w/d4+1w/d4+2w"
+		forms.append({
+			"name": "Hellfire",
+			"score": "%d / %d / %d" % [score.get("ordinary", 0), score.get("good", 0), score.get("amazing", 0)],
+			"base_die": _get_parent().action_step_die(AlternityNum.as_int(score.get("step", 0))),
+			"type": "En/O",
+			"range": "30m",
+			"damage": dmg,
+			"hide": "-",
+			"clip_size": "-",
+			"mass": "-",
+			"detail": "Extradimensional hellfire; bypasses physical armor.",
+		})
+	if is_fx_skill_selected(character, "Command"):
+		var score := fx_skill_score(character, "Command")
+		forms.append({
+			"name": "Command (Extradimensional)",
+			"score": "%d / %d / %d" % [score.get("ordinary", 0), score.get("good", 0), score.get("amazing", 0)],
+			"base_die": _get_parent().action_step_die(AlternityNum.as_int(score.get("step", 0))),
+			"type": "Sp/O",
+			"range": "10m",
+			"damage": "Mental Domination / Subjugation",
+			"hide": "-",
+			"clip_size": "-",
+			"mass": "-",
+			"detail": "Commands extraplanar entity; target resists with Willpower.",
+		})
+	if is_fx_skill_selected(character, "Stigmata"):
+		var score := fx_skill_score(character, "Stigmata")
+		var rank := fx_skill_rank(character, "Stigmata")
+		var dmg := "d4+1s/d6+1s/d4w"
+		if rank >= 12:
+			dmg = "d8+2s/d12+2s/d4+4w"
+		elif rank >= 8:
+			dmg = "d6+2s/2d4+2s/2d4w"
+		elif rank >= 4:
+			dmg = "d4+2s/d6+2s/d4+1w"
+		forms.append({
+			"name": "Stigmata",
+			"score": "%d / %d / %d" % [score.get("ordinary", 0), score.get("good", 0), score.get("amazing", 0)],
+			"base_die": _get_parent().action_step_die(AlternityNum.as_int(score.get("step", 0))),
+			"type": "LI/O",
+			"range": "Touch / 10m",
+			"damage": dmg,
+			"hide": "-",
+			"clip_size": "-",
+			"mass": "-",
+			"detail": "Causes spontaneous bleeding from flesh; bypasses physical armor.",
+		})
+	if is_fx_skill_selected(character, "Runs cold"):
+		var score := fx_skill_score(character, "Runs cold")
+		forms.append({
+			"name": "Runs Cold",
+			"score": "%d / %d / %d" % [score.get("ordinary", 0), score.get("good", 0), score.get("amazing", 0)],
+			"base_die": _get_parent().action_step_die(AlternityNum.as_int(score.get("step", 0))),
+			"type": "Sp/O",
+			"range": "Touch",
+			"damage": "Debuff (-1 phase / +1 step penalty)",
+			"hide": "-",
+			"clip_size": "-",
+			"mass": "-",
+			"detail": "Chills target blood; slows reactions and imposes action penalties.",
+		})
+	if is_fx_skill_selected(character, "Fiery bolt"):
+		var score := fx_skill_score(character, "Fiery bolt")
+		var rank := fx_skill_rank(character, "Fiery bolt")
+		var bonus := 0
+		if rank >= 8:
+			bonus = 2
+		elif rank >= 4:
+			bonus = 1
+		forms.append({
+			"name": "Fiery Bolt",
+			"score": "%d / %d / %d" % [score.get("ordinary", 0), score.get("good", 0), score.get("amazing", 0)],
+			"base_die": _get_parent().action_step_die(AlternityNum.as_int(score.get("step", 0))),
+			"type": "En/O",
+			"range": "20m/40m/60m",
+			"damage": "d4+%dw/d6+%dw/d4+%dm" % [1 + bonus, 1 + bonus, 2 + bonus],
+			"hide": "-",
+			"clip_size": "-",
+			"mass": "-",
+			"detail": "Searing bolt of flame projected from hands.",
+		})
+	if is_fx_skill_selected(character, "Flame gauntlet"):
+		var score := fx_skill_score(character, "Flame gauntlet")
+		var rank := fx_skill_rank(character, "Flame gauntlet")
+		var bonus := 0
+		if rank >= 12:
+			bonus = 3
+		elif rank >= 8:
+			bonus = 2
+		elif rank >= 4:
+			bonus = 1
+		forms.append({
+			"name": "Flame Gauntlet",
+			"score": "%d / %d / %d" % [score.get("ordinary", 0), score.get("good", 0), score.get("amazing", 0)],
+			"base_die": _get_parent().action_step_die(AlternityNum.as_int(score.get("step", 0))),
+			"type": "En/O",
+			"range": "Melee Touch",
+			"damage": "d4+%dw/d6+%dw/d4+%dm" % [2 + bonus, 2 + bonus, 2 + bonus],
+			"hide": "-",
+			"clip_size": "-",
+			"mass": "-",
+			"detail": "Fists sheathed in supernatural fire; adds to melee touch strikes.",
+		})
+	if is_fx_skill_selected(character, "Immolation"):
+		var score := fx_skill_score(character, "Immolation")
+		var rank := fx_skill_rank(character, "Immolation")
+		var dmg := "d4s/d4+1s/d4+2s per round"
+		if rank >= 12:
+			dmg = "d6+3s per round"
+		elif rank >= 8:
+			dmg = "d4+3s per round"
+		elif rank >= 4:
+			dmg = "d4+1s/d4+2s/d4+4s per round"
+		forms.append({
+			"name": "Immolation",
+			"score": "%d / %d / %d" % [score.get("ordinary", 0), score.get("good", 0), score.get("amazing", 0)],
+			"base_die": _get_parent().action_step_die(AlternityNum.as_int(score.get("step", 0))),
+			"type": "En/O",
+			"range": "20m",
+			"damage": dmg,
+			"hide": "-",
+			"clip_size": "-",
+			"mass": "-",
+			"detail": "Target spontaneously catches fire; continuous damage over time.",
+		})
+	if is_fx_skill_selected(character, "Incendiary seal"):
+		var score := fx_skill_score(character, "Incendiary seal")
+		var rank := fx_skill_rank(character, "Incendiary seal")
+		var range_str := "Touch"
+		if rank >= 12:
+			range_str = "30m proximity"
+		elif rank >= 8:
+			range_str = "20m proximity"
+		elif rank >= 4:
+			range_str = "10m proximity"
+		forms.append({
+			"name": "Incendiary Seal",
+			"score": "%d / %d / %d" % [score.get("ordinary", 0), score.get("good", 0), score.get("amazing", 0)],
+			"base_die": _get_parent().action_step_die(AlternityNum.as_int(score.get("step", 0))),
+			"type": "En/O",
+			"range": range_str,
+			"damage": "d4+1w/d6+1w/d4m",
+			"hide": "-",
+			"clip_size": "-",
+			"mass": "-",
+			"detail": "Trap rune inscribed on surface; detonates when crossed.",
+		})
+	if is_fx_skill_selected(character, "Storm of flames"):
+		var score := fx_skill_score(character, "Storm of flames")
+		var rank := fx_skill_rank(character, "Storm of flames")
+		var range_str := "30m"
+		if rank >= 12:
+			range_str = "250m"
+		elif rank >= 4:
+			range_str = "60m"
+		var vol_str := "10m radius" if rank < 8 else "10m x 10m volume"
+		forms.append({
+			"name": "Storm of Flames",
+			"score": "%d / %d / %d" % [score.get("ordinary", 0), score.get("good", 0), score.get("amazing", 0)],
+			"base_die": _get_parent().action_step_die(AlternityNum.as_int(score.get("step", 0))),
+			"type": "En/O",
+			"range": range_str,
+			"damage": "d6w/d8w/d6m (%s)" % vol_str,
+			"hide": "-",
+			"clip_size": "-",
+			"mass": "-",
+			"detail": "Cataclysmic tempest of fire sweeping through the designated area.",
+		})
+	if is_fx_skill_selected(character, "Super Strength"):
+		var score := fx_skill_score(character, "Super Strength")
+		var rank := fx_skill_rank(character, "Super Strength")
+		var mult := 2
+		if rank >= 12:
+			mult = 5
+		elif rank >= 8:
+			mult = 4
+		elif rank >= 4:
+			mult = 3
+		forms.append({
+			"name": "Super Strength Melee",
+			"score": "%d / %d / %d" % [score.get("ordinary", 0), score.get("good", 0), score.get("amazing", 0)],
+			"base_die": _get_parent().action_step_die(AlternityNum.as_int(score.get("step", 0))),
+			"type": "LI/O",
+			"range": "Melee",
+			"damage": "d4+2w/d4+4w/d4+2m (LI/O)",
+			"hide": "-",
+			"clip_size": "-",
+			"mass": "-",
+			"detail": "Superhuman physical strikes; lift capacity multiplied by %dx." % mult,
+		})
+	return forms
+
+
+## Defense and support forms granted by FX powers (e.g. Fortitude Vitality Shield, Haunt, Knit Wounds)
+func fx_defense_forms(character: Dictionary) -> Array:
+	var forms: Array = []
+	if is_fx_skill_selected(character, "Fortitude"):
+		var score := fx_skill_score(character, "Fortitude")
+		var rank := fx_skill_rank(character, "Fortitude")
+		var rank_bonus := 0
+		if rank >= 12:
+			rank_bonus = 3
+		elif rank >= 8:
+			rank_bonus = 2
+		elif rank >= 4:
+			rank_bonus = 1
+		forms.append({
+			"name": "Fortitude",
+			"skill_name": "Fortitude",
+			"score": "%d / %d / %d" % [score.get("ordinary", 0), score.get("good", 0), score.get("amazing", 0)],
+			"base_die": _get_parent().action_step_die(AlternityNum.as_int(score.get("step", 0))),
+			"kind": "Vitality Shield",
+			"range": "Touch (Self or Ally)",
+			"duration": "1 scene",
+			"benefit": "Temporary durability boxes: Ord %ds/%dw, Good %ds/%dw/%dm, Amazing %ds/%dw/%dm/%df." % [
+				2 + rank_bonus, 1 + rank_bonus,
+				3 + rank_bonus, 2 + rank_bonus, 1 + rank_bonus,
+				4 + rank_bonus, 3 + rank_bonus, 2 + rank_bonus, 2 + rank_bonus
+			],
+			"can_activate": true,
+		})
+	if is_fx_skill_selected(character, "Haunt"):
+		var score := fx_skill_score(character, "Haunt")
+		forms.append({
+			"name": "Haunt",
+			"skill_name": "Haunt",
+			"score": "%d / %d / %d" % [score.get("ordinary", 0), score.get("good", 0), score.get("amazing", 0)],
+			"base_die": _get_parent().action_step_die(AlternityNum.as_int(score.get("step", 0))),
+			"kind": "Supernatural Ward / Distraction",
+			"range": "5m radius",
+			"duration": "1 scene",
+			"benefit": "Opponents suffer +1/+2/+3 step penalty within 5m/10m/20m radius.",
+			"can_activate": false,
+		})
+	if is_fx_skill_selected(character, "Knit wounds"):
+		var score := fx_skill_score(character, "Knit wounds")
+		var rank := fx_skill_rank(character, "Knit wounds")
+		var heal_desc := "Heals wound damage: Ord 2w, Good 3w, Amazing 4w."
+		if rank >= 6:
+			heal_desc = "Heals mortal/wound damage: Ord 2w, Good 3w or 1m, Amazing 4w or 2m."
+		forms.append({
+			"name": "Knit Wounds",
+			"skill_name": "Knit wounds",
+			"score": "%d / %d / %d" % [score.get("ordinary", 0), score.get("good", 0), score.get("amazing", 0)],
+			"base_die": _get_parent().action_step_die(AlternityNum.as_int(score.get("step", 0))),
+			"kind": "Necromantic Healing",
+			"range": "Touch",
+			"duration": "Instantaneous",
+			"benefit": heal_desc,
+			"can_activate": false,
+		})
+	if is_fx_skill_selected(character, "Black warding"):
+		var score := fx_skill_score(character, "Black warding")
+		var rank := fx_skill_rank(character, "Black warding")
+		var bonus := 2
+		if rank >= 12:
+			bonus = 5
+		elif rank >= 8:
+			bonus = 4
+		elif rank >= 4:
+			bonus = 3
+		forms.append({
+			"name": "Black Warding",
+			"skill_name": "Black warding",
+			"score": "%d / %d / %d" % [score.get("ordinary", 0), score.get("good", 0), score.get("amazing", 0)],
+			"base_die": _get_parent().action_step_die(AlternityNum.as_int(score.get("step", 0))),
+			"kind": "Protective Ward",
+			"range": "Self",
+			"duration": "1 scene",
+			"benefit": "+%d resistance modifier against all incoming attacks (melee, ranged, psionic, FX)." % bonus,
+			"can_activate": false,
+		})
+	if is_fx_skill_selected(character, "Binding"):
+		var score := fx_skill_score(character, "Binding")
+		var rank := fx_skill_rank(character, "Binding")
+		var dur_bonus := 0
+		if rank >= 12:
+			dur_bonus = 3
+		elif rank >= 8:
+			dur_bonus = 2
+		elif rank >= 4:
+			dur_bonus = 1
+		forms.append({
+			"name": "Binding",
+			"skill_name": "Binding",
+			"score": "%d / %d / %d" % [score.get("ordinary", 0), score.get("good", 0), score.get("amazing", 0)],
+			"base_die": _get_parent().action_step_die(AlternityNum.as_int(score.get("step", 0))),
+			"kind": "Planar Entanglement",
+			"range": "Touch / Magic Circle",
+			"duration": "%d round%s + scene" % [1 + dur_bonus, "s" if dur_bonus > 0 else ""],
+			"benefit": "Restrains and incapacitates extraplanar entities; binding durability bonus +%d." % dur_bonus,
+			"can_activate": false,
+		})
+	if is_fx_skill_selected(character, "Rend the weave"):
+		var score := fx_skill_score(character, "Rend the weave")
+		forms.append({
+			"name": "Rend the Weave",
+			"skill_name": "Rend the weave",
+			"score": "%d / %d / %d" % [score.get("ordinary", 0), score.get("good", 0), score.get("amazing", 0)],
+			"base_die": _get_parent().action_step_die(AlternityNum.as_int(score.get("step", 0))),
+			"kind": "Supernatural Dispel",
+			"range": "10m",
+			"duration": "Instantaneous",
+			"benefit": "Dispels active FX spells and miracles with caster rank contest.",
+			"can_activate": false,
+		})
+	if is_fx_skill_selected(character, "Reciprocity"):
+		var score := fx_skill_score(character, "Reciprocity")
+		var rank := fx_skill_rank(character, "Reciprocity")
+		var rds := 2
+		if rank >= 9:
+			rds = 16
+		elif rank >= 6:
+			rds = 8
+		elif rank >= 3:
+			rds = 4
+		forms.append({
+			"name": "Reciprocity",
+			"skill_name": "Reciprocity",
+			"score": "%d / %d / %d" % [score.get("ordinary", 0), score.get("good", 0), score.get("amazing", 0)],
+			"base_die": _get_parent().action_step_die(AlternityNum.as_int(score.get("step", 0))),
+			"kind": "Retaliatory Feedback",
+			"range": "Self",
+			"duration": "%d rounds" % rds,
+			"benefit": "Mirrors all damage taken back to the attacker, completely bypassing target armor.",
+			"can_activate": false,
+		})
+	if is_fx_skill_selected(character, "Lifeblood"):
+		var score := fx_skill_score(character, "Lifeblood")
+		var rank := fx_skill_rank(character, "Lifeblood")
+		var heal_str := "Heals wound damage: Ord 2w, Good 3w, Amazing 4w."
+		if rank >= 6:
+			heal_str = "Heals mortal/wound damage: Ord 2w, Good 3w or 1m, Amazing 4w or 2m."
+		forms.append({
+			"name": "Lifeblood",
+			"skill_name": "Lifeblood",
+			"score": "%d / %d / %d" % [score.get("ordinary", 0), score.get("good", 0), score.get("amazing", 0)],
+			"base_die": _get_parent().action_step_die(AlternityNum.as_int(score.get("step", 0))),
+			"kind": "Hemomantic Healing",
+			"range": "Touch",
+			"duration": "Instantaneous",
+			"benefit": heal_str,
+			"can_activate": false,
+		})
+	if is_fx_skill_selected(character, "Daedalus improved"):
+		var score := fx_skill_score(character, "Daedalus improved")
+		var rank := fx_skill_rank(character, "Daedalus improved")
+		var mult := 1
+		if rank >= 12:
+			mult = 4
+		elif rank >= 8:
+			mult = 3
+		elif rank >= 4:
+			mult = 2
+		forms.append({
+			"name": "Daedalus Improved",
+			"skill_name": "Daedalus improved",
+			"score": "%d / %d / %d" % [score.get("ordinary", 0), score.get("good", 0), score.get("amazing", 0)],
+			"base_die": _get_parent().action_step_die(AlternityNum.as_int(score.get("step", 0))),
+			"kind": "Hermetic Flight",
+			"range": "Self",
+			"duration": "1 scene",
+			"benefit": "Grants flight speed: Ord %dm, Good %dm, Amazing %dm per phase." % [10 * mult, 20 * mult, 30 * mult],
+			"can_activate": false,
+		})
+	if is_fx_skill_selected(character, "Ligature"):
+		var score := fx_skill_score(character, "Ligature")
+		var rank := fx_skill_rank(character, "Ligature")
+		var bonus := 0
+		if rank >= 12:
+			bonus = 3
+		elif rank >= 8:
+			bonus = 2
+		elif rank >= 4:
+			bonus = 1
+		forms.append({
+			"name": "Ligature",
+			"skill_name": "Ligature",
+			"score": "%d / %d / %d" % [score.get("ordinary", 0), score.get("good", 0), score.get("amazing", 0)],
+			"base_die": _get_parent().action_step_die(AlternityNum.as_int(score.get("step", 0))),
+			"kind": "Restraining Threads",
+			"range": "10m",
+			"duration": "%d round%s" % [1 + bonus, "s" if bonus > 0 else ""],
+			"benefit": "Binds target limbs with invisible fibers; durability bonus +%d." % bonus,
+			"can_activate": false,
+		})
+	if is_fx_skill_selected(character, "Sleep of Morpheus"):
+		var score := fx_skill_score(character, "Sleep of Morpheus")
+		forms.append({
+			"name": "Sleep of Morpheus",
+			"skill_name": "Sleep of Morpheus",
+			"score": "%d / %d / %d" % [score.get("ordinary", 0), score.get("good", 0), score.get("amazing", 0)],
+			"base_die": _get_parent().action_step_die(AlternityNum.as_int(score.get("step", 0))),
+			"kind": "Alchemical Slumber",
+			"range": "10m",
+			"duration": "Ord 1d4 hrs, Good 1d6 hrs, Amazing 24 hrs",
+			"benefit": "Target falls into deep enchanted slumber; resists with Willpower.",
+			"can_activate": false,
+		})
+	if is_fx_skill_selected(character, "Shapechanging"):
+		var score := fx_skill_score(character, "Shapechanging")
+		forms.append({
+			"name": "Shapechanging",
+			"skill_name": "Shapechanging",
+			"score": "%d / %d / %d" % [score.get("ordinary", 0), score.get("good", 0), score.get("amazing", 0)],
+			"base_die": _get_parent().action_step_die(AlternityNum.as_int(score.get("step", 0))),
+			"kind": "Beast Form",
+			"range": "Self",
+			"duration": "1 scene",
+			"benefit": "Transforms into animal form, gaining natural attacks, enhanced senses, and bonus durability.",
+			"can_activate": false,
+		})
+	if is_fx_skill_selected(character, "Cloak of the phoenix"):
+		var score := fx_skill_score(character, "Cloak of the phoenix")
+		var rank := fx_skill_rank(character, "Cloak of the phoenix")
+		var armor_str := "d4 (LI/HI/En)"
+		if rank >= 12:
+			armor_str = "d6+1 (LI/HI), d6+2 (En)"
+		elif rank >= 4:
+			armor_str = "d4+1 (LI/HI), d4+2 (En)"
+		var retal_str := "d4 (En/O)" if rank < 8 else "d6 (En/O)"
+		forms.append({
+			"name": "Cloak of the Phoenix",
+			"skill_name": "Cloak of the phoenix",
+			"score": "%d / %d / %d" % [score.get("ordinary", 0), score.get("good", 0), score.get("amazing", 0)],
+			"base_die": _get_parent().action_step_die(AlternityNum.as_int(score.get("step", 0))),
+			"kind": "Flame Armor",
+			"range": "Self",
+			"duration": "1 scene",
+			"benefit": "Absorbs damage (%s) and retaliates with %s fire damage to melee attackers." % [armor_str, retal_str],
+			"can_activate": false,
+		})
+	if is_fx_skill_selected(character, "Fire wall"):
+		var score := fx_skill_score(character, "Fire wall")
+		var rank := fx_skill_rank(character, "Fire wall")
+		var bonus_sqm := 0
+		if rank >= 12:
+			bonus_sqm = 30
+		elif rank >= 8:
+			bonus_sqm = 20
+		elif rank >= 4:
+			bonus_sqm = 10
+		forms.append({
+			"name": "Fire Wall",
+			"skill_name": "Fire wall",
+			"score": "%d / %d / %d" % [score.get("ordinary", 0), score.get("good", 0), score.get("amazing", 0)],
+			"base_die": _get_parent().action_step_die(AlternityNum.as_int(score.get("step", 0))),
+			"kind": "Area Denial / Barrier",
+			"range": "30m",
+			"duration": "1 scene",
+			"benefit": "Impassable wall of fire (%d sq meters); inflicts d6+2w fire damage to any entering." % [10 + bonus_sqm],
+			"can_activate": false,
+		})
+	if is_fx_skill_selected(character, "Aura"):
+		var score := fx_skill_score(character, "Aura")
+		var rank := fx_skill_rank(character, "Aura")
+		var dmg_str := ""
+		if rank >= 12:
+			dmg_str = " (inflicts d14w on infernal touch)"
+		elif rank >= 8:
+			dmg_str = " (inflicts d8w on infernal touch)"
+		elif rank >= 4:
+			dmg_str = " (inflicts d4w on infernal touch)"
+		forms.append({
+			"name": "Aura",
+			"skill_name": "Aura",
+			"score": "%d / %d / %d" % [score.get("ordinary", 0), score.get("good", 0), score.get("amazing", 0)],
+			"base_die": _get_parent().action_step_die(AlternityNum.as_int(score.get("step", 0))),
+			"kind": "Divine Aura",
+			"range": "Self",
+			"duration": "1 scene",
+			"benefit": "+2 resistance modifier against all attacks; shifts onlooker attitudes toward Fanatic%s." % dmg_str,
+			"can_activate": false,
+		})
+	if is_fx_skill_selected(character, "Blessing"):
+		var score := fx_skill_score(character, "Blessing")
+		var rank := fx_skill_rank(character, "Blessing")
+		var bonus_step := 1 if rank < 4 else 2
+		var range_str := "10m radius"
+		if rank >= 12:
+			range_str = "Line of sight"
+		elif rank >= 8:
+			range_str = "100m radius"
+		forms.append({
+			"name": "Blessing",
+			"skill_name": "Blessing",
+			"score": "%d / %d / %d" % [score.get("ordinary", 0), score.get("good", 0), score.get("amazing", 0)],
+			"base_die": _get_parent().action_step_die(AlternityNum.as_int(score.get("step", 0))),
+			"kind": "Divine Favor",
+			"range": range_str,
+			"duration": "1 scene",
+			"benefit": "Allies gain -%d step bonus to all checks and +%d resistance modifier." % [bonus_step, bonus_step],
+			"can_activate": false,
+		})
+	if is_fx_skill_selected(character, "Cure"):
+		var score := fx_skill_score(character, "Cure")
+		var rank := fx_skill_rank(character, "Cure")
+		var cure_str := "Neutralizes poisons, toxins, and restores health."
+		if rank >= 6:
+			cure_str = "Neutralizes poisons, toxins, diseases, and supernatural afflictions."
+		forms.append({
+			"name": "Cure",
+			"skill_name": "Cure",
+			"score": "%d / %d / %d" % [score.get("ordinary", 0), score.get("good", 0), score.get("amazing", 0)],
+			"base_die": _get_parent().action_step_die(AlternityNum.as_int(score.get("step", 0))),
+			"kind": "Miraculous Restoration",
+			"range": "Touch",
+			"duration": "Instantaneous",
+			"benefit": cure_str,
+			"can_activate": false,
+		})
+	if is_fx_skill_selected(character, "Demon ward"):
+		var score := fx_skill_score(character, "Demon ward")
+		var rank := fx_skill_rank(character, "Demon ward")
+		var rad := 5
+		if rank >= 12:
+			rad = 30
+		elif rank >= 8:
+			rad = 20
+		elif rank >= 4:
+			rad = 10
+		forms.append({
+			"name": "Demon Ward",
+			"skill_name": "Demon ward",
+			"score": "%d / %d / %d" % [score.get("ordinary", 0), score.get("good", 0), score.get("amazing", 0)],
+			"base_die": _get_parent().action_step_die(AlternityNum.as_int(score.get("step", 0))),
+			"kind": "Sanctuary Barrier",
+			"range": "%dm radius" % rad,
+			"duration": "1 scene",
+			"benefit": "Prevents demons, undead, and infernal creatures from crossing the perimeter.",
+			"can_activate": false,
+		})
+	if is_fx_skill_selected(character, "Body Armor"):
+		var score := fx_skill_score(character, "Body Armor")
+		forms.append({
+			"name": "Body Armor",
+			"skill_name": "Body Armor",
+			"score": "%d / %d / %d" % [score.get("ordinary", 0), score.get("good", 0), score.get("amazing", 0)],
+			"base_die": _get_parent().action_step_die(AlternityNum.as_int(score.get("step", 0))),
+			"kind": "Dermal Density",
+			"range": "Self (Permanent)",
+			"duration": "Permanent",
+			"benefit": "Passive dermal armor absorption without bulk penalties (absorption dice scale with rank).",
+			"can_activate": false,
+		})
+	if is_fx_skill_selected(character, "Life Support"):
+		var score := fx_skill_score(character, "Life Support")
+		var rank := fx_skill_rank(character, "Life Support")
+		var dur_str := "24 hours"
+		if rank >= 12:
+			dur_str = "27 days"
+		elif rank >= 8:
+			dur_str = "9 days"
+		elif rank >= 4:
+			dur_str = "72 hours (3 days)"
+		forms.append({
+			"name": "Life Support",
+			"skill_name": "Life Support",
+			"score": "%d / %d / %d" % [score.get("ordinary", 0), score.get("good", 0), score.get("amazing", 0)],
+			"base_die": _get_parent().action_step_die(AlternityNum.as_int(score.get("step", 0))),
+			"kind": "Environmental Immunity",
+			"range": "Self",
+			"duration": dur_str,
+			"benefit": "Complete immunity to vacuum, extreme pressure, toxic environments, radiation, and drowning.",
+			"can_activate": false,
+		})
+	return forms

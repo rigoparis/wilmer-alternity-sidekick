@@ -407,6 +407,18 @@
 					"score": "13/6/3",
 					"slot": "",
 					"type": "HI/O"
+				},
+				{
+					"base_die": "+d0",
+					"clip_size": "-",
+					"damage": "d4+2w/d4+4w/d4+2m (LI/O)",
+					"detail": "Superhuman physical strikes; lift capacity multiplied by 2x.",
+					"hide": "-",
+					"mass": "-",
+					"name": "Super Strength Melee",
+					"range": "Melee",
+					"score": "11 / 5 / 2",
+					"type": "LI/O"
 				}
 			],
 			"carried_count": 11,
@@ -471,6 +483,7 @@
 		},
 		"flaw_count": 0,
 		"flaw_skill_points_bonus": 0,
+		"fx_defense_forms": [],
 		"last_resorts": {
 			"available": 0,
 			"base_max": 1,
@@ -764,7 +777,7 @@
 		"perk_points_used": 0,
 		"permanent_fx_effects": [
 			{
-				"description": "This power increases the character's physical power and muscle. The character's Strength is increased by 1 point even if this takes the character above a racial maximum. Movement rate and all abilities and statistics based upon Strength should be altered to reflect this new value. The hero can also lift twice as much weight as his Strength would normally allow. (See the Lifting Objects section in Chapter 4: Skills in the Gamemaster Guide.) This power lasts 10 minutes for each use.",
+				"description": "What it is: Enhances physical muscular tissue to lift massive loads and strike with extreme force [i, 99].\n\nMechanics & Rules: Hero's Strength score is increased by 1 point [i, 99]. Active use multiplies carrying and lifting capacities [i, 99]. Lasts 10 minutes [i, 99].\n\nCombat Profile: Adds a massive melee **Attack/Physical Buff Form**.\n\n---",
 				"name": "Super Strength"
 			}
 		],

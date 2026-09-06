@@ -122,6 +122,11 @@ func _build_purchased_row(parent: Container, entry: Dictionary) -> void:
 	row.add_theme_constant_override("separation", Widgets.GAP_ROW)
 	parent.add_child(row)
 
+	var col := VBoxContainer.new()
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col.add_theme_constant_override("separation", 2)
+	row.add_child(col)
+
 	var label := Label.new()
 	label.text = String(rules.achievements.achievement_display_name(achievement, entry))
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -129,7 +134,11 @@ func _build_purchased_row(parent: Container, entry: Dictionary) -> void:
 	label.custom_minimum_size = Vector2(1, 0)
 	label.add_theme_color_override("font_color", palette.text)
 	label.add_theme_font_size_override("font_size", Widgets.FONT_DETAIL)
-	row.add_child(label)
+	col.add_child(label)
+
+	var summary_text := String(achievement.get("summary", "")).strip_edges()
+	if not summary_text.is_empty():
+		Widgets.muted_text(col, summary_text, palette, Widgets.FONT_CAPTION)
 
 	var cost := Label.new()
 	cost.text = "%d SP" % AlternityNum.as_int(entry.get("cost", 0))

@@ -177,6 +177,8 @@ func _build() -> void:
 	_build_action_bar(outer)
 
 	_update_touch_filters(_scroll)
+	if _aim_overlay != null:
+		_aim_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
 
 
 func _build_header(parent: Container) -> void:
@@ -627,11 +629,16 @@ func _build_aim_controls_bar(parent: Container, is_wide: bool) -> void:
 		hand_lbl.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
 		row.add_child(hand_lbl)
 
-		var sides := [["Left", Vector3(-3.6, 3.2, 1.2)], ["Bottom", Vector3(0.0, 3.2, 3.6)], ["Right", Vector3(3.6, 3.2, 1.2)]]
+		var sides := [
+			["Left", Vector3(-3.6, 3.2, 0.0)],
+			["Top", Vector3(0.0, 3.2, -3.6)],
+			["Bottom", Vector3(0.0, 3.2, 3.6)],
+			["Right", Vector3(3.6, 3.2, 0.0)],
+		]
 		for entry in sides:
 			var btn := Button.new()
 			btn.text = String(entry[0])
-			btn.custom_minimum_size = Vector2(50, 26)
+			btn.custom_minimum_size = Vector2(46, 26)
 			btn.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
 			var hand_pos: Vector3 = entry[1]
 			btn.pressed.connect(func():
@@ -687,7 +694,12 @@ func _build_aim_controls_bar(parent: Container, is_wide: bool) -> void:
 		hand_lbl.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
 		row1.add_child(hand_lbl)
 
-		var sides := [["Left", Vector3(-3.6, 3.2, 1.2)], ["Bottom", Vector3(0.0, 3.2, 3.6)], ["Right", Vector3(3.6, 3.2, 1.2)]]
+		var sides := [
+			["Left", Vector3(-3.6, 3.2, 0.0)],
+			["Top", Vector3(0.0, 3.2, -3.6)],
+			["Bottom", Vector3(0.0, 3.2, 3.6)],
+			["Right", Vector3(3.6, 3.2, 0.0)],
+		]
 		for entry in sides:
 			var btn := Button.new()
 			btn.text = String(entry[0])
@@ -996,6 +1008,11 @@ func _show_check_outcome(control_face: int, situation: RollResult, graded: Dicti
 
 func _update_touch_filters(node: Node) -> void:
 	for child in node.get_children():
+		if child == _aim_overlay:
+			child.mouse_filter = Control.MOUSE_FILTER_STOP
+			continue
+		if child is SubViewportContainer or child == _viewport:
+			continue
 		if child is Control and not (child is Button or child is LineEdit or child is TextEdit):
 			child.mouse_filter = Control.MOUSE_FILTER_PASS
 		_update_touch_filters(child)
@@ -1026,64 +1043,132 @@ class _AimOverlay extends Control:
 			return Vector3.ZERO
 		return Vector3((p2d.x - center.x) / scale_factor, 0.5, (p2d.y - center.y) / scale_factor)
 
+	func _set_drag_state(dragging_hand: bool, dragging_target: bool) -> void:
+		_dragging_hand = dragging_hand
+		_dragging_target = dragging_target
+		# Do NOT toggle _scroll.vertical_scroll_mode here. Changing it alters
+		# the ScrollContainer's minimum size, which propagates through
+		# ModalHost._relayout → _center and resizes the whole route. The overlay
+		# already calls accept_event() on every touch/mouse event, so the scroll
+		# container never receives the gesture in the first place.
+		queue_redraw()
+
 	func _snap_hand(p3d: Vector3) -> Vector3:
-		var bound := DiceTray.TRAY_HALF - 0.7
-		# Distance to left, right, bottom
-		var d_left := absf(p3d.x - (-bound))
-		var d_right := absf(p3d.x - bound)
-		var d_bottom := absf(p3d.z - bound)
-		var min_d := minf(d_left, minf(d_right, d_bottom))
-		var out := Vector3(p3d.x, 3.2, p3d.z)
+		var bound := DiceTray.TRAY_HALF - 0.8
+		var cx := clampf(p3d.x, -bound, bound)
+		var cz := clampf(p3d.z, -bound, bound)
+
+		# Distance to each of the four walls (Left, Right, Top, Bottom)
+		var d_left := absf(cx - (-bound))
+		var d_right := absf(cx - bound)
+		var d_top := absf(cz - (-bound))
+		var d_bottom := absf(cz - bound)
+
+		var min_d := minf(minf(d_left, d_right), minf(d_top, d_bottom))
+		var out := Vector3(cx, 3.2, cz)
+
 		if is_equal_approx(min_d, d_left):
 			out.x = -bound
-			out.z = clampf(p3d.z, -bound, bound)
+			out.z = cz
 		elif is_equal_approx(min_d, d_right):
 			out.x = bound
-			out.z = clampf(p3d.z, -bound, bound)
+			out.z = cz
+		elif is_equal_approx(min_d, d_top):
+			out.z = -bound
+			out.x = cx
 		else:
 			out.z = bound
-			out.x = clampf(p3d.x, -bound, bound)
+			out.x = cx
+
 		return out
 
 	func _gui_input(event: InputEvent) -> void:
 		if _host._rolling:
 			return
 
+		var pos := Vector2.ZERO
+		var is_down := false
+		var is_up := false
+		var is_motion := false
+
+		# With emulate_touch_from_mouse enabled (project setting), every mouse
+		# click also generates an InputEventScreenTouch and every mouse drag an
+		# InputEventScreenDrag. Processing both doubles every interaction. Handle
+		# mouse events unconditionally (they arrive on every platform) and only
+		# fall through to Screen* events when there is no mouse equivalent --
+		# i.e. on a real touchscreen.
 		if event is InputEventMouseButton:
 			var mb := event as InputEventMouseButton
-			if mb.button_index == MOUSE_BUTTON_LEFT:
-				if mb.pressed:
-					var hand_2d: Vector2 = _to_2d(_host._hand_3d)
-					var target_2d: Vector2 = _to_2d(_host._target_3d)
-					if mb.position.distance_to(hand_2d) < 28.0:
-						_dragging_hand = true
-					elif mb.position.distance_to(target_2d) < 28.0:
-						_dragging_target = true
-					else:
-						# Direct aim click
-						_host._target_3d = _clamp_target(_to_3d(mb.position))
-						_dragging_target = true
-						_host._sync_tray_aim()
-						queue_redraw()
-				else:
-					# Released
-					var was_dragging: bool = _dragging_hand or _dragging_target
-					_dragging_hand = false
-					_dragging_target = false
-					queue_redraw()
-					if was_dragging and _host._release_to_throw:
-						_host._on_roll_pressed()
-
+			if mb.button_index != MOUSE_BUTTON_LEFT:
+				return
+			pos = mb.position
+			is_down = mb.pressed
+			is_up = not mb.pressed
 		elif event is InputEventMouseMotion:
-			var mm := event as InputEventMouseMotion
+			pos = (event as InputEventMouseMotion).position
+			is_motion = true
+		elif event is InputEventScreenTouch:
+			# On a real device these are the primary events; on desktop they are
+			# emulated duplicates. Godot tags emulated events with device == -1.
+			if event.device == -1:
+				accept_event()
+				return
+			var st := event as InputEventScreenTouch
+			pos = st.position
+			is_down = st.pressed
+			is_up = not st.pressed
+		elif event is InputEventScreenDrag:
+			if event.device == -1:
+				accept_event()
+				return
+			pos = (event as InputEventScreenDrag).position
+			is_motion = true
+		else:
+			return
+
+		accept_event()
+
+		if is_down:
+			var hand_2d: Vector2 = _to_2d(_host._hand_3d)
+			var target_2d: Vector2 = _to_2d(_host._target_3d)
+			var dist_hand := pos.distance_to(hand_2d)
+			var dist_target := pos.distance_to(target_2d)
+
+			# Generous grab radii for fingers and mouse
+			var grab_radius := 44.0
+
+			if dist_hand <= grab_radius and dist_hand <= dist_target:
+				_set_drag_state(true, false)
+			elif dist_target <= grab_radius:
+				_set_drag_state(false, true)
+			else:
+				var pt_3d := _to_3d(pos)
+				var inner_bound: float = DiceTray.TRAY_HALF - 1.2
+				if absf(pt_3d.x) <= inner_bound and absf(pt_3d.z) <= inner_bound:
+					_host._target_3d = _clamp_target(pt_3d)
+					_host._sync_tray_aim()
+					_set_drag_state(false, true)
+				elif dist_hand < 64.0:
+					# Forgiving proximity grab for hand near rim
+					_host._hand_3d = _snap_hand(pt_3d)
+					_host._sync_tray_aim()
+					_set_drag_state(true, false)
+
+		elif is_motion:
 			if _dragging_hand:
-				_host._hand_3d = _snap_hand(_to_3d(mm.position))
+				_host._hand_3d = _snap_hand(_to_3d(pos))
 				_host._sync_tray_aim()
 				queue_redraw()
 			elif _dragging_target:
-				_host._target_3d = _clamp_target(_to_3d(mm.position))
+				_host._target_3d = _clamp_target(_to_3d(pos))
 				_host._sync_tray_aim()
 				queue_redraw()
+
+		elif is_up:
+			var was_dragging := _dragging_hand or _dragging_target
+			_set_drag_state(false, false)
+			if was_dragging and _host._release_to_throw:
+				_host._on_roll_pressed()
 
 	func _clamp_target(p3d: Vector3) -> Vector3:
 		var bound: float = DiceTray.TRAY_HALF - 0.8
@@ -1117,16 +1202,38 @@ class _AimOverlay extends Control:
 		else:
 			draw_line(hand_pos, target_pos, line_col, line_width, true)
 
-		# Hand Grip Marker (Circle + Grip Dot)
-		draw_circle(hand_pos, 13.0, _host._palette.surface_soft)
-		draw_arc(hand_pos, 13.0, 0, TAU, 24, accent_col, 2.0, true)
-		draw_circle(hand_pos, 5.0, accent_col)
+		# Hand Grip Marker (Circle + Glow + Grip Dot + Directional Arrow)
+		var is_active_hand := _dragging_hand
+		var hand_radius: float = 16.0 if not is_active_hand else 19.0
+
+		if is_active_hand:
+			draw_circle(hand_pos, hand_radius + 6.0, Color(accent_col.r, accent_col.g, accent_col.b, 0.25))
+
+		draw_circle(hand_pos, hand_radius, _host._palette.surface_soft)
+		draw_arc(hand_pos, hand_radius, 0, TAU, 28, accent_col, 2.4 if is_active_hand else 1.8, true)
+		draw_circle(hand_pos, 6.0, accent_col)
+
+		# Direction indicator arrow on hand pointing toward target
+		var launch_dir := (target_pos - hand_pos).normalized()
+		if launch_dir.length_squared() > 0.01:
+			var tip := hand_pos + launch_dir * (hand_radius + 9.0)
+			var base_pt := hand_pos + launch_dir * (hand_radius + 2.0)
+			var side_offset := Vector2(-launch_dir.y, launch_dir.x) * 5.0
+			draw_colored_polygon(
+				PackedVector2Array([tip, base_pt + side_offset, base_pt - side_offset]),
+				accent_col
+			)
 
 		# Target Reticle
+		var is_active_target := _dragging_target
+		if is_active_target:
+			draw_circle(target_pos, 18.0, Color(accent_col.r, accent_col.g, accent_col.b, 0.25))
+
 		draw_circle(target_pos, 11.0, Color(accent_col.r, accent_col.g, accent_col.b, 0.2))
-		draw_arc(target_pos, 11.0, 0, TAU, 24, accent_col, 1.8, true)
-		draw_line(target_pos - Vector2(15, 0), target_pos + Vector2(15, 0), accent_col, 1.2)
-		draw_line(target_pos - Vector2(0, 15), target_pos + Vector2(0, 15), accent_col, 1.2)
+		draw_arc(target_pos, 11.0, 0, TAU, 24, accent_col, 2.2 if is_active_target else 1.8, true)
+		draw_line(target_pos - Vector2(16, 0), target_pos + Vector2(16, 0), accent_col, 1.4)
+		draw_line(target_pos - Vector2(0, 16), target_pos + Vector2(0, 16), accent_col, 1.4)
+
 
 	func _find_wall_bounce(origin_3d: Vector3, dir_3d: Vector3, bound: float) -> Dictionary:
 		var t_hit := 999.0

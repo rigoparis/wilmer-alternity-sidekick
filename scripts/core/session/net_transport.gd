@@ -53,6 +53,10 @@ signal events_replayed(events: Array)
 @warning_ignore("unused_signal")
 signal chat_received(player_id: String, text: String, to_player_id: String)
 
+## A buff or beneficial skill arrived.
+@warning_ignore("unused_signal")
+signal buff_received(buff: Dictionary)
+
 ## The fight changed: a round started, a check landed, a phase closed.
 ##
 ## Client side. The whole round arrives each time rather than a diff -- it is a

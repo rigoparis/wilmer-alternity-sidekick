@@ -139,148 +139,88 @@ func _init() -> void:
 	climber["species_id"] = 0
 	rules.ensure_character_shape(climber)
 
-	# At creation a specialty may be taken straight to rank 3.
+	# At creation (Level 1), a specialty may be bought up to rank 3 (Table G4 / PHB p. 34).
 	climber["achievement_level"] = 1
 	assert_eq.call(
 		rules.max_rank_for_skill(climber, ranked_specialty), 3,
 		"At creation a specialty may be bought up to rank 3"
 	)
 
-	# Past creation, a brand-new specialty starts at rank 1 -- it does not
-	# inherit the hero's level. This is the case the old formula got wrong.
-	climber["achievement_level"] = 5
+	# In play, Table G4 (p. 31) limits specialty ranks by level: min(level + 2, 12).
+	climber["achievement_level"] = 2
 	assert_eq.call(
-		rules.max_rank_for_skill(climber, ranked_specialty), 1,
-		"A new specialty bought at 5th level may only reach rank 1"
+		rules.max_rank_for_skill(climber, ranked_specialty), 4,
+		"At 2nd level a specialty may reach rank 4"
 	)
 
-	# And the level's one rank is spent once taken: buying it does not unlock
-	# the next, because the allowance is measured from the level-up snapshot.
+	climber["achievement_level"] = 5
+	assert_eq.call(
+		rules.max_rank_for_skill(climber, ranked_specialty), 7,
+		"At 5th level a specialty may reach rank 7"
+	)
+
+	climber["achievement_level"] = 10
+	assert_eq.call(
+		rules.max_rank_for_skill(climber, ranked_specialty), 12,
+		"At 10th level a specialty reaches the system cap of rank 12"
+	)
+
+	climber["achievement_level"] = 15
+	assert_eq.call(
+		rules.max_rank_for_skill(climber, ranked_specialty), 12,
+		"Levels beyond 10 remain capped at rank 12"
+	)
+
+	# A hero at 5th level can purchase multiple ranks up to their level ceiling (7).
+	climber["achievement_level"] = 5
 	rules.set_skill_rank(climber, ranked_specialty, 1)
 	assert_eq.call(rules.skill_rank(climber, ranked_specialty), 1, "the specialty is at rank 1")
 	assert_eq.call(
-		rules.max_rank_for_skill(climber, ranked_specialty), 1,
-		"this level's rank is spent, so rank 2 waits for the next level"
+		rules.max_rank_for_skill(climber, ranked_specialty), 7,
+		"at 5th level, rank ceiling remains 7 after buying rank 1"
 	)
 
-	# Asking for a jump is clamped rather than granted.
+	rules.set_skill_rank(climber, ranked_specialty, 4)
+	assert_eq.call(rules.skill_rank(climber, ranked_specialty), 4, "advances to rank 4")
+
 	rules.set_skill_rank(climber, ranked_specialty, 7)
+	assert_eq.call(rules.skill_rank(climber, ranked_specialty), 7, "advances to rank 7")
+
+	# Setting rank beyond level ceiling is clamped.
+	rules.set_skill_rank(climber, ranked_specialty, 10)
 	assert_eq.call(
-		rules.skill_rank(climber, ranked_specialty), 1,
-		"asking to jump from rank 1 to 7 grants nothing further"
+		rules.skill_rank(climber, ranked_specialty), 7,
+		"asking to exceed level ceiling of 7 is clamped to 7"
 	)
 
-	# One rank per level, measured from a snapshot taken at level-up.
-	#
-	# Measured from the live rank instead, buying a rank raises the ceiling that
-	# permitted it, so a hero climbs 3 to 4 to 5 in one sitting with every step
-	# legal on its own.
-	print("Testing One Rank Per Level...")
-	var stepper: Dictionary = rules.default_character()
-	stepper["species_id"] = 0
-	rules.ensure_character_shape(stepper)
+	# --- 4b. Table G5: Rank Cost Increments ---
+	print("Testing Table G5 Rank Cost Increments...")
+	var inc_char: Dictionary = rules.default_character()
+	inc_char["species_id"] = 0
+	inc_char["achievement_level"] = 5
+	rules.ensure_character_shape(inc_char)
+	var spec_skill := rules.get_skill_by_id(ranked_specialty)
+	var list_l: int = rules.skill_cost(inc_char, spec_skill)
+	assert_true.call(list_l > 0, "specialty skill has positive list cost")
 
-	# A specialty and the broad it hangs from.
-	var step_specialty := -1
-	var step_broad := -1
-	for skill_entry in rules.skills:
-		if typeof(skill_entry) != TYPE_DICTIONARY or skill_entry.get("type", "") != "specialty":
-			continue
-		step_specialty = AlternityNum.as_int(skill_entry.get("id", -1), -1)
-		step_broad = AlternityNum.as_int(skill_entry.get("broad_id", -1), -1)
-		break
-	assert_true.call(step_specialty >= 0, "found a specialty to test the step rule with")
-	rules.force_skill_rank(stepper, step_broad, 1)
+	# Standard Alternity formula: Cost of Rank R = L + (R - 1)
+	inc_char["optional_rules"]["2c"] = false
+	assert_eq.call(rules.skill_purchase_cost(inc_char, spec_skill, 1), list_l, "Rank 1 cost = L")
+	assert_eq.call(rules.skill_purchase_cost(inc_char, spec_skill, 2), list_l + 1, "Rank 2 cost = L + 1")
+	assert_eq.call(rules.skill_purchase_cost(inc_char, spec_skill, 3), list_l + 2, "Rank 3 cost = L + 2")
+	assert_eq.call(rules.skill_purchase_cost(inc_char, spec_skill, 4), list_l + 3, "Rank 4 cost = L + 3")
 
-	# Creation allows rank 3 outright.
-	rules.set_skill_rank(stepper, step_specialty, 3)
-	assert_eq.call(rules.skill_rank(stepper, step_specialty), 3, "creation buys straight to rank 3")
+	rules.set_skill_rank(inc_char, ranked_specialty, 3)
+	var expected_total_3 := 3 * list_l + 3
+	assert_eq.call(rules.skill_rank_total_cost(inc_char, spec_skill), expected_total_3, "Total cost for 3 ranks = 3*L + 3")
 
-	# Reaching 2nd level freezes rank 3 as the baseline, so rank 4 is allowed.
-	rules.achievements.set_achievement_points(stepper, rules.achievements.achievement_points_for_level(2))
-	assert_eq.call(
-		rules.skill_rank_at_level_start(stepper, step_specialty), 3,
-		"levelling up records the rank the skill held"
-	)
-	assert_eq.call(
-		rules.max_rank_for_skill(stepper, step_specialty), 4,
-		"a rank 3 skill may reach rank 4 this level"
-	)
-	rules.set_skill_rank(stepper, step_specialty, 4)
-	assert_eq.call(rules.skill_rank(stepper, step_specialty), 4, "the skill reaches rank 4")
-
-	# And no further this level: the baseline has not moved.
-	assert_eq.call(
-		rules.max_rank_for_skill(stepper, step_specialty), 4,
-		"buying the rank does not unlock the next one in the same level"
-	)
-	rules.set_skill_rank(stepper, step_specialty, 5)
-	assert_eq.call(
-		rules.skill_rank(stepper, step_specialty), 4,
-		"a second rank in one level is refused"
-	)
-
-	# The next level starts a fresh allowance.
-	rules.achievements.set_achievement_points(stepper, rules.achievements.achievement_points_for_level(3))
-	assert_eq.call(
-		rules.max_rank_for_skill(stepper, step_specialty), 5,
-		"the next level allows one more rank"
-	)
-
-	# Selling down does not bank the difference: from rank 2 the skill must
-	# climb back through 3, not jump to 5 on a stale baseline.
-	rules.set_skill_rank(stepper, step_specialty, 2)
-	assert_eq.call(rules.skill_rank(stepper, step_specialty), 2, "the skill can be sold down")
-	assert_eq.call(
-		rules.max_rank_for_skill(stepper, step_specialty), 3,
-		"a sold-down skill climbs back one rank at a time"
-	)
-
-	# A brand-new specialty bought after creation starts at rank 1 and stops.
-	var fresh_specialty := -1
-	for skill_entry in rules.skills:
-		if typeof(skill_entry) != TYPE_DICTIONARY or skill_entry.get("type", "") != "specialty":
-			continue
-		var candidate := AlternityNum.as_int(skill_entry.get("id", -1), -1)
-		if candidate != step_specialty and AlternityNum.as_int(skill_entry.get("broad_id", -1), -1) == step_broad:
-			fresh_specialty = candidate
-			break
-	if fresh_specialty >= 0:
-		assert_eq.call(
-			rules.max_rank_for_skill(stepper, fresh_specialty), 1,
-			"a specialty taken up after creation starts at rank 1"
-		)
-		rules.set_skill_rank(stepper, fresh_specialty, 3)
-		assert_eq.call(
-			rules.skill_rank(stepper, fresh_specialty), 1,
-			"asking for rank 3 on a new specialty grants rank 1"
-		)
-
-	# A Gamemaster award moves the baseline with it, or the hero could not raise
-	# the skill they were just handed.
-	rules.force_skill_rank(stepper, step_specialty, 7)
-	assert_eq.call(rules.skill_rank(stepper, step_specialty), 7, "an awarded rank applies outright")
-	assert_eq.call(
-		rules.max_rank_for_skill(stepper, step_specialty), 8,
-		"an awarded rank becomes the new baseline"
-	)
-
-	# A character saved before snapshots existed is seeded from present ranks,
-	# so every skill can still gain its next rank and nothing is taken away.
-	var legacy: Dictionary = rules.default_character()
-	legacy["species_id"] = 0
-	legacy["achievement_points"] = rules.achievements.achievement_points_for_level(5)
-	legacy["selected_skills"] = {str(step_broad): 1, str(step_specialty): 4}
-	legacy.erase("skill_ranks_at_level")
-	rules.ensure_character_shape(legacy)
-	assert_eq.call(
-		rules.skill_rank_at_level_start(legacy, step_specialty), 4,
-		"an old save is seeded from the ranks it already holds"
-	)
-	assert_eq.call(
-		rules.max_rank_for_skill(legacy, step_specialty), 5,
-		"and can still gain its next rank"
-	)
+	# With optional rule 2c enabled (flat costs):
+	inc_char["optional_rules"]["2c"] = true
+	assert_eq.call(rules.skill_purchase_cost(inc_char, spec_skill, 1), list_l, "Rule 2c: Rank 1 cost = L")
+	assert_eq.call(rules.skill_purchase_cost(inc_char, spec_skill, 2), list_l, "Rule 2c: Rank 2 cost = L")
+	assert_eq.call(rules.skill_purchase_cost(inc_char, spec_skill, 3), list_l, "Rule 2c: Rank 3 cost = L")
+	assert_eq.call(rules.skill_rank_total_cost(inc_char, spec_skill), 3 * list_l, "Rule 2c: Total cost = 3*L")
+	inc_char["optional_rules"]["2c"] = false
 
 	# --- 5. Table P6: Last Resort Points & Recovery Costs ---
 	print("Testing Table P6 Last Resort Points & Recovery Costs...")
@@ -510,6 +450,118 @@ func _init() -> void:
 	assert_true.call(
 		not rules.fx.needs_primary_broad_group(undecided),
 		"and the prompt goes once they have"
+	)
+
+	# --- 9d. FX Adept vs FX Talent Costs and Rank Caps ---
+	print("Testing FX Adept vs FX Talent Costs and Rank Caps...")
+	# 1) FX Adept in Generic Sci-Fi:
+	# - Primary FX school: L_adj = L - 1
+	# - Non-primary school: L_adj = 2 * L
+	# - Can advance specialties up to level limit (up to 12)
+	var adept_char: Dictionary = rules.default_character()
+	adept_char["species_id"] = 0
+	rules.ensure_character_shape(adept_char)
+	adept_char["achievement_level"] = 6 # level limit = 8
+	rules.fx.set_practitioner_type(adept_char, "adept")
+	rules.fx.add_fx_skill(adept_char, school_a)
+	rules.fx.set_primary_broad_group(adept_char, school_a)
+	var adept_power := String(
+		rules.fx.get_specialty_skills_for_broad_and_character(school_a, adept_char)[0].get("name", "")
+	)
+	var adept_spec := rules.fx.get_specialty_skill(adept_power)
+	var adept_list_cost: int = AlternityNum.as_int(adept_spec.get("cost", 0))
+	var adept_l_adj := maxi(1, adept_list_cost - 1)
+
+	assert_true.call(rules.fx.is_fx_adept(adept_char), "character is an FX Adept")
+	assert_true.call(not rules.fx.is_fx_talent(adept_char), "FX Adept is not an FX Talent")
+	assert_eq.call(
+		rules.fx.fx_skill_cost_for_rank(adept_char, adept_power, 1), adept_l_adj,
+		"FX Adept primary school specialty Rank 1 cost = L - 1"
+	)
+	assert_eq.call(
+		rules.fx.fx_skill_cost_for_rank(adept_char, adept_power, 2), adept_l_adj + 1,
+		"FX Adept primary school specialty Rank 2 cost = (L - 1) + 1"
+	)
+	assert_eq.call(
+		rules.fx.fx_skill_cost_for_rank(adept_char, adept_power, 3), adept_l_adj + 2,
+		"FX Adept primary school specialty Rank 3 cost = (L - 1) + 2"
+	)
+	assert_eq.call(
+		rules.fx.max_rank_for_fx_skill(adept_char, adept_power), 8,
+		"FX Adept specialty max rank scales with level (level 6 -> rank 8)"
+	)
+
+	# 2) FX Talent in Generic Sci-Fi:
+	# - Primary FX school: L_adj = L
+	# - At most 2 specialties to Rank 6, all others capped at Rank 3
+	var talent_char: Dictionary = rules.default_character()
+	talent_char["species_id"] = 0
+	rules.ensure_character_shape(talent_char)
+	talent_char["achievement_level"] = 6
+	rules.fx.set_practitioner_type(talent_char, "talent")
+	rules.fx.add_fx_skill(talent_char, school_a)
+	rules.fx.set_primary_broad_group(talent_char, school_a)
+	var talent_powers := rules.fx.get_specialty_skills_for_broad_and_character(school_a, talent_char)
+	assert_true.call(talent_powers.size() >= 3, "found at least 3 powers under school A")
+	var t_pow_1 := String(talent_powers[0].get("name", ""))
+	var t_pow_2 := String(talent_powers[1].get("name", ""))
+	var t_pow_3 := String(talent_powers[2].get("name", ""))
+
+	var talent_spec_1 := rules.fx.get_specialty_skill(t_pow_1)
+	var t_list_cost_1: int = AlternityNum.as_int(talent_spec_1.get("cost", 0))
+	assert_eq.call(
+		rules.fx.fx_skill_cost_for_rank(talent_char, t_pow_1, 1), t_list_cost_1,
+		"FX Talent primary school Rank 1 = L"
+	)
+	assert_eq.call(
+		rules.fx.fx_skill_cost_for_rank(talent_char, t_pow_1, 2), t_list_cost_1 + 1,
+		"FX Talent primary school Rank 2 = L + 1"
+	)
+
+	# Talent rank caps (generic: 2 at 6, rest at 3):
+	assert_eq.call(rules.fx.max_rank_for_fx_skill(talent_char, t_pow_1), 6, "first specialty can reach rank 6")
+	assert_eq.call(rules.fx.max_rank_for_fx_skill(talent_char, t_pow_2), 6, "second specialty can reach rank 6")
+	# Raise two specialties to rank 4 (above 3):
+	talent_char["fx"]["selected_skills"][t_pow_1] = 4
+	talent_char["fx"]["selected_skills"][t_pow_2] = 4
+	assert_eq.call(rules.fx.max_rank_for_fx_skill(talent_char, t_pow_1), 6, "first power still can reach 6")
+	assert_eq.call(rules.fx.max_rank_for_fx_skill(talent_char, t_pow_2), 6, "second power still can reach 6")
+	assert_eq.call(
+		rules.fx.max_rank_for_fx_skill(talent_char, t_pow_3), 3,
+		"third power is capped at rank 3 when two specialties exceed rank 3"
+	)
+
+	# 3) FX Talent in Dark*Matter:
+	# - Surcharge +1 on all FX skills: L_adj = L + 1
+	# - Only 1 specialty to Rank 6, all others capped at Rank 3
+	var dm_fx_talent: Dictionary = rules.default_character()
+	dm_fx_talent["species_id"] = 0
+	dm_fx_talent["setting"] = "Dark*Matter"
+	rules.ensure_character_shape(dm_fx_talent)
+	dm_fx_talent["achievement_level"] = 6
+	rules.fx.set_fx_talent(dm_fx_talent, true)
+	rules.fx.add_fx_skill(dm_fx_talent, school_a)
+	rules.fx.set_primary_broad_group(dm_fx_talent, school_a)
+
+	assert_eq.call(
+		rules.fx.fx_skill_cost_for_rank(dm_fx_talent, t_pow_1, 1), t_list_cost_1 + 1,
+		"Dark*Matter FX Talent Rank 1 = L + 1"
+	)
+	assert_eq.call(
+		rules.fx.fx_skill_cost_for_rank(dm_fx_talent, t_pow_1, 2), (t_list_cost_1 + 1) + 1,
+		"Dark*Matter FX Talent Rank 2 = L + 2"
+	)
+	assert_eq.call(
+		rules.fx.fx_skill_cost_for_rank(dm_fx_talent, t_pow_1, 3), (t_list_cost_1 + 1) + 2,
+		"Dark*Matter FX Talent Rank 3 = L + 3"
+	)
+	assert_eq.call(rules.fx.max_rank_for_fx_skill(dm_fx_talent, t_pow_1), 6, "DM talent first power can reach 6")
+	# Raise first power above 3:
+	dm_fx_talent["fx"]["selected_skills"][t_pow_1] = 4
+	assert_eq.call(rules.fx.max_rank_for_fx_skill(dm_fx_talent, t_pow_1), 6, "DM talent first power still can reach 6")
+	assert_eq.call(
+		rules.fx.max_rank_for_fx_skill(dm_fx_talent, t_pow_2), 3,
+		"DM talent: only 1 specialty may exceed rank 3, so second power is capped at 3"
 	)
 
 	# --- 10. Age Modifiers ---
@@ -1144,7 +1196,7 @@ func _init() -> void:
 	assert_eq.call(rules.skill_cost(cs_hero, armor_op), 6, "Combat Spec buys Armor Operation for 6 SP (-1)")
 	assert_eq.call(rules.skill_cost(cs_hero, heavy_wpn), 5, "Combat Spec buys Heavy Weapons for 5 SP (-1)")
 	assert_eq.call(rules.skill_cost(cs_hero, melee_wpn), 5, "Combat Spec buys Melee Weapons for 5 SP (-1)")
-	assert_eq.call(rules.skill_cost(cs_hero, unarmed), 4, "Combat Spec buys Unarmed Attack for 4 SP (-1)")
+	assert_eq.call(rules.skill_cost(cs_hero, unarmed), 5, "Combat Spec buys Unarmed Attack for 5 SP (Open category)")
 	assert_eq.call(rules.skill_cost(cs_hero, pma), 4, "Combat Spec buys Power Martial Arts for 4 SP (-1)")
 
 	var fa_hero: Dictionary = rules.default_character()
@@ -1467,7 +1519,7 @@ func _init() -> void:
 	assert_eq.call(rules.skill_cost(dex_cs, pistol), 3, "Combat Spec buys Pistol for 3 SP (-1)")
 	assert_eq.call(rules.skill_cost(dex_cs, rifle), 3, "Combat Spec buys Rifle for 3 SP (-1)")
 	assert_eq.call(rules.skill_cost(dex_cs, smg), 3, "Combat Spec buys SMG for 3 SP (-1)")
-	assert_eq.call(rules.skill_cost(dex_cs, prw), 6, "Combat Spec buys Primitive Ranged Weapons for 6 SP (-1)")
+	assert_eq.call(rules.skill_cost(dex_cs, prw), 7, "Combat Spec buys Primitive Ranged Weapons for 7 SP (Open category)")
 	assert_eq.call(rules.skill_cost(dex_cs, bow), 3, "Combat Spec buys Bow for 3 SP (-1)")
 	assert_eq.call(rules.skill_cost(dex_cs, crossbow), 2, "Combat Spec buys Crossbow for 2 SP (-1)")
 	assert_eq.call(rules.skill_cost(dex_cs, flintlock), 2, "Combat Spec buys Flintlock for 2 SP (-1)")
@@ -1555,7 +1607,7 @@ func _init() -> void:
 	assert_eq.call(swim_skill["base_price"], 1, "Swim base price is 1 SP")
 	assert_eq.call(trailblazing["base_price"], 3, "Trailblazing base price is 3 SP")
 
-	assert_eq.call(stamina_skill["base_price"], 3, "Stamina base price is 3 SP")
+	assert_eq.call(stamina_skill["base_price"], 4, "Stamina base price is 4 SP")
 	assert_eq.call(endurance_skill["base_price"], 4, "Endurance base price is 4 SP")
 	assert_eq.call(resist_pain["base_price"], 4, "Resist Pain base price is 4 SP")
 
@@ -1576,15 +1628,19 @@ func _init() -> void:
 
 	# 2. Profession Discounts
 	var con_fa: Dictionary = rules.default_character()
+	con_fa["species_id"] = 1 # Fraal (does not get free Stamina)
 	con_fa["profession_id"] = 4 # Free Agent
 	rules.ensure_character_shape(con_fa)
+	assert_eq.call(rules.skill_cost(con_fa, stamina_skill), 4, "Free Agent buys Stamina for 4 SP (List price)")
 	assert_eq.call(rules.skill_cost(con_fa, trailblazing), 2, "Free Agent buys Trailblazing for 2 SP (-1)")
 	assert_eq.call(rules.skill_cost(con_fa, survival_skill), 4, "Free Agent buys Survival for 4 SP (-1)")
 	assert_eq.call(rules.skill_cost(con_fa, survival_training), 2, "Free Agent buys Survival Training for 2 SP (-1)")
 
 	var con_cs: Dictionary = rules.default_character()
+	con_cs["species_id"] = 1 # Fraal (does not get free Stamina)
 	con_cs["profession_id"] = 0 # Combat Spec
 	rules.ensure_character_shape(con_cs)
+	assert_eq.call(rules.skill_cost(con_cs, stamina_skill), 3, "Combat Spec buys Stamina for 3 SP (-1)")
 	assert_eq.call(rules.skill_cost(con_cs, endurance_skill), 3, "Combat Spec buys Endurance for 3 SP (-1)")
 	assert_eq.call(rules.skill_cost(con_cs, resist_pain), 3, "Combat Spec buys Resist Pain for 3 SP (-1)")
 	assert_eq.call(rules.skill_cost(con_cs, survival_skill), 4, "Combat Spec buys Survival for 4 SP (-1)")
@@ -1761,7 +1817,7 @@ func _init() -> void:
 	assert_eq.call(anim_training["base_price"], 1, "Animal Training base price is 1 SP")
 
 	assert_eq.call(awareness_skill["base_price"], 3, "Awareness base price is 3 SP")
-	assert_eq.call(intuition_skill["base_price"], 3, "Intuition base price is 3 SP")
+	assert_eq.call(intuition_skill["base_price"], 1, "Intuition base price is 1 SP")
 	assert_eq.call(perception_skill["base_price"], 2, "Perception base price is 2 SP")
 
 	assert_eq.call(creativity_skill["base_price"], 4, "Creativity base price is 4 SP")

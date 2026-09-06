@@ -19,7 +19,7 @@ const CON_SKILLS := {
 	"Race": [2, false],   # Table P19, p. 64-65: printed in blue, so trained-only.
 	"Swim": [1, false],   # Table P19, p. 64-65: printed in blue, so trained-only.
 	"Trailblazing": [3, true],
-	"Stamina": [3, true],
+	"Stamina": [4, true],
 	"Endurance": [4, true],
 	"Resist Pain": [4, false],   # Table P19, p. 64-65: printed in blue, so trained-only.
 	"Survival": [5, true],

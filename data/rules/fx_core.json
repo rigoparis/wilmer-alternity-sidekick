@@ -26,12 +26,19 @@
       "ability": "CON/WIL",
       "category": "Super Hero",
       "cost": 9.0,
-      "description": "The Brick Super Power FX broad skill is a collection of abilities that enhance the body's ability to resist and cause damage. Many super villains are nothing more than brutes with incredible strength who can shrug off bullets. However, the Brick powers are the backbone of many comic book heroes as well, whether these powers originate from a high-tech suit of armor, obvious morphological changes such as rocklike skin, or being made of fundamentally denser materials. In some campaigns, Brick powers are so readily available that any people with the right connections—or even just a lot of money—can have themselves made into a superior physical specimen. Brick characters are likely to have a high Strength and Constitution. Most Brick powers are automatic or always active. Those that require activation are often Will-based.",
+      "description": "Brick powers physically toughen the hero's body, providing unstoppable defense and raw force.",
       "meta": "",
       "name": "Brick",
       "rank_benefits": {},
       "source": "Beyond Science: A Guide to FX, pg. 61",
-      "supplement": "beyond_science"
+      "supplement": "beyond_science",
+      "sections": [
+        {
+          "kind": "text",
+          "title": "Description",
+          "body": "Brick powers physically toughen the hero's body, providing unstoppable defense and raw force."
+        }
+      ]
     },
     "Chi": {
       "ability": "WIL/STR",
@@ -48,12 +55,19 @@
       "ability": "PER/WIL",
       "category": "Arcane Magic",
       "cost": 12.0,
-      "description": "Diabolism is the arcane practice of interacting with, summoning, and controlling entities from other dimensions, typically referred to as demons, fiends, or spirits. Unlike Faith FX, which relies on prayer and divine alignment, Diabolism treats these interactions as precise formulas, binding extra-dimensional entities through occult geometry, true names, and sheer force of will. It is a highly dangerous school of magic; errors in protective circles or formulas can result in the summoner being attacked or possessed by the very entity they sought to control.",
+      "description": "Diabolism focuses on contacting, summoning, and binding malevolent extradimensional entities (demons). All diabolism spells require a physical sacrifice to power their casting, representing a cost in personal durability.",
       "meta": "Cost: 12 skill points / Governing Abilities: Intelligence, Will",
       "name": "Diabolism",
       "rank_benefits": {},
       "source": "Beyond Science: A Guide to FX, pg. 22",
-      "supplement": "beyond_science"
+      "supplement": "beyond_science",
+      "sections": [
+        {
+          "kind": "text",
+          "title": "Description",
+          "body": "Diabolism focuses on contacting, summoning, and binding malevolent extradimensional entities (demons). All diabolism spells require a physical sacrifice to power their casting, representing a cost in personal durability."
+        }
+      ]
     },
     "Druidism": {
       "ability": "INT/WIL",
@@ -91,18 +105,25 @@
       "ability": "INT/CON",
       "category": "Arcane Magic",
       "cost": 10,
-      "description": "Hemomancy, or blood magic, is an ancient and taboo school of arcane magic that manipulates the vital life force residing within a creature's blood. Unlike traditional sorcery that shapes ambient dimensional energy, Hemomancy requires a physical sacrifice, forcing the caster to use their own vital essence—or the stolen blood of others—to fuel powerful transformations, generate violent physical frenzies, or inflict direct biological harm. Practitioners often exhibit a cold, detached disposition, and over-reliance on these dark arts can leave a spellcaster permanently drained or physically altered.",
+      "description": "Hemomancy represents the forbidden school of blood magic. Spells rely on siphoning the biological life force of either the caster or touched victims, manipulating blood chemistry, blood pressure, and bio-organic flows. Cast on a creature of another species, it inflicts a +1 step penalty.",
       "meta": "Cost: 12 skill points / Governing Abilities: Intelligence, Constitution",
       "name": "Hemomancy",
       "rank_benefits": {},
       "source": "Beyond Science: A Guide to FX, pg. 25",
-      "supplement": "beyond_science"
+      "supplement": "beyond_science",
+      "sections": [
+        {
+          "kind": "text",
+          "title": "Description",
+          "body": "Hemomancy represents the forbidden school of blood magic. Spells rely on siphoning the biological life force of either the caster or touched victims, manipulating blood chemistry, blood pressure, and bio-organic flows. Cast on a creature of another species, it inflicts a +1 step penalty."
+        }
+      ]
     },
     "Hermeticism": {
       "ability": "INT/WIL",
       "category": "Arcane Magic",
       "cost": 9,
-      "description": "Hermeticism is the traditional school of alchemy, material transmutation, and artificial life construction. Rooted in rigorous scientific formulas and esoteric equations, hermetic wizards view the universe as a complex clockwork mechanism of interacting elements that can be broken down, rewritten, and reassembled. Through precise geometric circles, alchemical reagents, and intense mental focus, a hermetic magus can transmute base materials into precious or weaponized substances, forge absolute mystical bonds between disparate objects, reshape physical anatomy, or breathe rudimentary life into artificial vessels.",
+      "description": "Hermeticism relies on alchemical formulations, precise geometry, and physical transmutations of matter.",
       "meta": "Cost: 11 skill points / Governing Abilities: Intelligence, Will",
       "name": "Hermeticism",
       "rank_benefits": {},
@@ -110,7 +131,14 @@
       "supplement": "beyond_science",
       "cost_by_setting": {
         "Dark*Matter": 10
-      }
+      },
+      "sections": [
+        {
+          "kind": "text",
+          "title": "Description",
+          "body": "Hermeticism relies on alchemical formulations, precise geometry, and physical transmutations of matter."
+        }
+      ]
     },
     "Illusion": {
       "ability": "WIL/INT",
@@ -149,12 +177,19 @@
       "ability": "PER/WIL",
       "category": "Faith",
       "cost": 14,
-      "description": "Stemming from the belief in an all-powerful deity who created the world, monotheistic faiths (including Christianity, Judaism, and Islam) are rich in tales of the supernatural. Their theological histories include stories of angelic visitation, celestial impregnation, spontaneous healing, and all sorts of transformative miracles. In the context of Faith FX, a monotheistic priest acts as a pure vessel or intermediary, funneling divine cosmic architecture to shift the local matrix. Invoking these wonders requires immense focus and character.",
+      "description": "Miracles channeling the protection of a single, supreme deity.",
       "meta": "Cost: 10 skill points / Governing Abilities: Will, Personality",
       "name": "Monotheism",
       "rank_benefits": {},
       "source": "Beyond Science: A Guide to FX, pg. 45",
-      "supplement": "beyond_science"
+      "supplement": "beyond_science",
+      "sections": [
+        {
+          "kind": "text",
+          "title": "Description",
+          "body": "Miracles channeling the protection of a single, supreme deity."
+        }
+      ]
     },
     "Movement": {
       "ability": "WIL/CON",
@@ -171,23 +206,30 @@
       "ability": "INT/CON",
       "category": "Arcane Magic",
       "cost": 10,
-      "description": "Necromancy is the dark arcane art of manipulating the forces of death, the spirits of the deceased, and the negative energy that animates corpses. Necromancers are often feared and shunned, as their spells deal directly with the violation of the natural order of life and death. Through these macabre rituals, a necromancer can animate mindless zombies from remains, converse with the departed, summon minor ghosts to haunt enemies, knit flesh back together through negative energy, inflict ancient curses, or even tear the soul from a living host.",
-      "meta": "Cost: 12 skill points / Governing Abilities: Intelligence, Will",
+      "description": "Necromancy is classified as a highly specialized and challenging school of Arcane Magic FX. It centers entirely on the movement and manipulation of life energy, typically operating through living or dead physical shells, but occasionally acting independently of a physical body. Practitioners of this school do not require a specific religious or spiritual creed; their spells can forcibly call back a human spirit regardless of the nature of the afterlife to which that soul has fled.\n\nBecause life energy does not conform to the rigid physical laws constraining other forces of nature, practicing Necromancy requires a deep, clinical understanding of biological anatomy. Practicing this magic takes a severe toll on the arcanist's psyche and physical body, causing necromancers to grow increasingly reclusive and inhuman as their mastery over death expands.\n\nUniversal School Rules & Overarching Mechanics:\n1. The Critical Failure Backfire Table: Necromancy is incredibly volatile. Each time a caster rolls a Critical Failure (a natural 20 on the control die) while attempting a Necromancy spell, they must make an immediate Personality feat check. Failure on the Check: The spell fizzles, and the necromancer permanently suffers one of the following flaws (determined randomly or selected by the GM): Poor Looks, Obsessed, or Phobia. These flaws are fully cumulative and can only be removed through standard character advancement means.\n2. Life Force Substitution (Siphoning): When a necromancer exhausts their FX energy pool, they can substitute their own raw vitality to fuel their magic. The Cost: Substituting life force for 1 FX energy point instantly inflicts a loss of 2 fatigue points upon the caster.\n3. Trapping Spirits in a Life Battery: A life battery is a specially prepared magical container used to store the siphoned life force of a necromancer's victims. Fueling Spells: Each mortal point of the victim trapped within the life battery provides the caster with 1 FX energy point. The Dissipation Risk: Every time the caster draws energy from the life battery, the trapped spirit must pass a Stamina-endurance skill check or dissipate forever. There is no mechanical way to detect if a once-full battery has run dry other than attempting to draw FX energy from it.\n4. The Xenobiology Chemistry Penalty (+5 Step): Because Necromancy is intimately tied to physical anatomy, casting these spells on creatures whose basic chemistry differs from the caster's own (such as a human necromancer casting Animate Dead on a silicon-based alien) inflicts a severe +5 step penalty to the skill check. Reduction: Possessing the Medical Science-xenomedicine specialty reduces this penalty to a +3 step penalty at Rank 1, which then scales downward based on the specialty's normal rank benefits.",
+      "meta": "Cost: 10 skill points / Governing Abilities: Intelligence, Constitution / Source: Beyond Science: A Guide to FX, pg. 31",
       "name": "Necromancy",
       "rank_benefits": {},
-      "source": "Beyond Science: A Guide to FX, pg. 33",
+      "source": "Beyond Science: A Guide to FX, pg. 31",
       "supplement": "beyond_science"
     },
     "Pyromancy": {
       "ability": "WIL/CON",
       "category": "Arcane Magic",
       "cost": 11.0,
-      "description": "Pyromancy is the highly destructive arcane art of conjuring, controlling, and extinguishing fire and extreme heat. Pyromancers are often volatile and aggressive, commanding the raw elemental fury of flame to incinerate their enemies, protect themselves with shields of fire, or set explosive arcane traps. As fire is a chaotic and hungry element, it requires immense mental discipline to control once unleashed, preventing it from consuming the caster along with their targets.",
+      "description": "Pyromancy deals with the creation, control, and projection of fire and heat.",
       "meta": "Cost: 11 skill points / Governing Abilities: Intelligence, Will",
       "name": "Pyromancy",
       "rank_benefits": {},
       "source": "Beyond Science: A Guide to FX, pg. 35",
-      "supplement": "beyond_science"
+      "supplement": "beyond_science",
+      "sections": [
+        {
+          "kind": "text",
+          "title": "Description",
+          "body": "Pyromancy deals with the creation, control, and projection of fire and heat."
+        }
+      ]
     },
     "Shamanism": {
       "ability": "WIL/PER",
@@ -268,14 +310,69 @@
       "broad_skill": "Necromancy",
       "category": "Arcane Magic",
       "cost": 5,
-      "description": "Governing Ability: Will (WIL). Player Notes: This spell imbues one or more dead bodies with enough life energy to allow them movement and rudimentary reactions. It can revive a single creature with the approximate brain size of a human or multiple creatures whose combined brain mass doesn't exceed this amount. The animated zombies follow simple verbal commands from the necromancer but have no true intelligence.",
-      "meta": "Cost: 4 skill points / This skill can't be used untrained / Transform spell (1 FX energy point)",
+      "description": "The staple spell of classical necromancers, used to animate corpses to serve as mindless servants. Imbues dead bodies with life energy to allow movement and basic reactions. The spell's capacity is tied directly to brain mass. It can revive a single human-sized brain creature (including human, fraal, sesheyan, t'sa, and weren) or multiple creatures whose combined brain mass does not exceed a human's (such as 2 dogs, 3 cats, or 20 rats). Animated zombies obey simple, direct-verb commands (\"Attack,\" \"Guard,\" \"Walk\"). The target corpse must be within 30 meters when animated. Decay Penalties: The target corpse's state of decay penalizes the success check: +1 step for bodies dead 1–6 weeks; +2 steps for bodies dead 6–12 weeks; bodies dead over 24 weeks are unsuitable. Anatomical Synergy: A necromancer with Medical Science-medical knowledge specialty gains a check bonus of -1 step at Rank 2, -2 steps at Rank 5, -3 steps at Rank 8, and -4 steps at Rank 12. Duration: Ordinary success = 1 day; Good success = 1 week; Amazing success = 1 month. The necromancer can control a maximum number of active zombies equal to their Animate Dead specialty skill rank. Combat Forms Added: This spell does not grant the caster direct combat statistics; instead, it summons a physical Zombie creature that acts as an independent combatant with its own claw attacks and physical armor.",
+      "meta": "Cost: 5 skill points / This skill can't be used untrained / Transform spell (1 FX energy point)",
       "name": "Animate dead",
       "rank_benefits": {
-        "12": "At rank 12, the necromancer can animate and control up to five human-sized corpses simultaneously.",
-        "6": "At rank 6, any zombie animated by the necromancer gains a permanent +2 bonus to its Strength and Constitution scores, making them more durable and deadly in combat."
+        "6": "Rank 6 (More Durable Zombies): Any zombie animated by the caster receives a permanent +1 bonus to all of its durability ratings.",
+        "12": "Rank 12: This durability rating bonus increases to +2."
       },
-      "source": "Beyond Science: A Guide to FX, pg. 33",
+      "sections": [
+        {
+          "kind": "text",
+          "title": "What it is",
+          "body": "The staple spell of classical necromancers, used to animate corpses to serve as mindless servants."
+        },
+        {
+          "kind": "text",
+          "title": "How it Works",
+          "body": "Imbues dead bodies with life energy to allow movement and basic reactions. The spell's capacity is tied directly to brain mass. It can revive a single human-sized brain creature (including human, fraal, sesheyan, t'sa, and weren) or multiple creatures whose combined brain mass does not exceed a human's (such as 2 dogs, 3 cats, or 20 rats). Animated zombies obey simple, direct-verb commands (\"Attack,\" \"Guard,\" \"Walk\"). The target corpse must be within 30 meters when animated."
+        },
+        {
+          "kind": "text",
+          "title": "Decay Penalties",
+          "body": "The target corpse's state of decay penalizes the success check: +1 step for bodies dead 1–6 weeks; +2 steps for bodies dead 6–12 weeks; bodies dead over 24 weeks are unsuitable."
+        },
+        {
+          "kind": "text",
+          "title": "Anatomical Synergy",
+          "body": "A necromancer with Medical Science-medical knowledge specialty gains a check bonus of -1 step at Rank 2, -2 steps at Rank 5, -3 steps at Rank 8, and -4 steps at Rank 12."
+        },
+        {
+          "kind": "outcomes",
+          "title": "Duration",
+          "ordinary": "1 day",
+          "good": "1 week",
+          "amazing": "1 month"
+        },
+        {
+          "kind": "text",
+          "title": "Zombie Control Limit",
+          "body": "The necromancer can control a maximum number of active zombies equal to their Animate Dead specialty skill rank."
+        },
+        {
+          "kind": "text",
+          "title": "Combat Forms Added",
+          "body": "Attack/Defense Form: This spell does not grant the caster direct combat statistics; instead, it summons a physical Zombie creature that acts as an independent combatant with its own claw attacks and physical armor."
+        },
+        {
+          "kind": "ranks",
+          "title": "Specialty Rank Benefits",
+          "entries": [
+            {
+              "rank": 6,
+              "title": "More Durable Zombies",
+              "body": "Any zombie animated by the caster receives a permanent +1 bonus to all of its durability ratings."
+            },
+            {
+              "rank": 12,
+              "title": "Increased Durability",
+              "body": "This durability rating bonus increases to +2."
+            }
+          ]
+        }
+      ],
+      "source": "Beyond Science: A Guide to FX, pg. 32",
       "untrained": false,
       "fx_cost": 1,
       "supplement": "beyond_science"
@@ -285,18 +382,56 @@
       "broad_skill": "Monotheism",
       "category": "Faith",
       "cost": 4,
-      "description": "Governing Ability: Will (WIL). Player Notes: The +2 resistance modifier dynamically updates the character's base defense profile against active incoming broad skills. Shifted attitudes of observers to Fanatic must be roleplayed accordingly by supporting cast members. Full Text: This miracle surrounds the priest with an invisible aura of divine energy. This aura provides a +2 resistance modifier to all attacks against the priest (melee, ranged, psionic, and FX). Furthermore, all people viewing the priest automatically have their attitude shifted one step toward Fanatic.",
-      "meta": "Cost: 3 skill points / Untrained use not specified / Conjure miracle (1 FX energy point)",
+      "description": "What it is: Surrounds the priest in an invisible, protective aura of holy energy [i, 88].\n\nMechanics & Rules: Provides a **+2 resistance modifier** against all attacks (melee, ranged, psionic, and FX) [i, 88]. Shakes target attitude toward Fanatic [i, 88]. Lasts 1 round + 1 round per degree of success [i, 88].\n\nCombat Profile: Adds an active defensive **Defense/Aura Form**.",
+      "meta": "Cost: 4 skill points / Untrained use permitted / Conjure Miracle (1 FX energy point)",
       "name": "Aura",
       "rank_benefits": {
-        "12": "At rank 12, it increases further to d4 points of mortal damage.",
-        "4": "At rank 4, the aura gains the ability to inflict d4 wound damage upon creatures of tainted or infernal origin.",
-        "8": "At rank 8, this damage increases to d8 points of wound damage."
+        "4": "Purging Contact: Damages tainted/infernal creatures (d4w) upon physical contact.",
+        "8": "Purging Contact: Contact damage increases to d8w against tainted/infernal creatures.",
+        "12": "Divine Wrath: Contact damage increases to d14w against tainted/infernal creatures."
       },
       "source": "Beyond Science: A Guide to FX, pg. 45",
       "untrained": true,
       "fx_cost": 1,
-      "supplement": "beyond_science"
+      "supplement": "beyond_science",
+      "sections": [
+        {
+          "kind": "text",
+          "title": "What it is",
+          "body": "Surrounds the priest in an invisible, protective aura of holy energy [i, 88]."
+        },
+        {
+          "kind": "text",
+          "title": "Mechanics & Rules",
+          "body": "Provides a **+2 resistance modifier** against all attacks (melee, ranged, psionic, and FX) [i, 88]. Shakes target attitude toward Fanatic [i, 88]. Lasts 1 round + 1 round per degree of success [i, 88]."
+        },
+        {
+          "kind": "ranks",
+          "title": "Specialty Rank Benefits",
+          "entries": [
+            {
+              "rank": 4,
+              "title": "Purging Contact",
+              "body": "Damages tainted/infernal creatures (d4w) upon physical contact."
+            },
+            {
+              "rank": 8,
+              "title": "Purging Contact",
+              "body": "Contact damage increases to d8w against tainted/infernal creatures."
+            },
+            {
+              "rank": 12,
+              "title": "Divine Wrath",
+              "body": "Contact damage increases to d14w against tainted/infernal creatures."
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "title": "Combat Profile",
+          "body": "Adds an active defensive **Defense/Aura Form**."
+        }
+      ]
     },
     "Ayza's juju": {
       "ability": "PER",
@@ -336,110 +471,338 @@
       "ability": "PER",
       "broad_skill": "Diabolism",
       "category": "Arcane Magic",
-      "cost": 4.0,
-      "description": "Governing Ability: Will (WIL). Player Notes: This spell allows the diabolist to bind a summoned extra-dimensional entity to a physical object, a specific location, or a mortal host. The target entity must typically be contained within a protective circle during the casting. A contested check against the entity's mental resolve is required. A successful binding forces the creature to remain anchored to the object or location, or obey a specific passive condition, for the duration of the spell.",
-      "meta": "Cost: 4 skill points / This skill can't be used untrained / Transform spell (2 FX energy points)",
+      "cost": 4,
+      "description": "What it is: Restrains a demon to bargain or force it into service [i, 68]. Cast on a magic circle or directly on a free-roaming demon (+2 step penalty) [i, 68].\n\nMechanics & Rules: Binding a least demon costs 1 FX and requires an Ordinary sacrifice [i, 68]. Lesser demon costs 2 FX, +3 step penalty, and Good sacrifice [i, 68]. Greater demon costs 3 FX, +5 step penalty, and Amazing sacrifice [i, 68].\n\nCombat Profile: Adds a powerful close-range **Defense/Debuff Form** that physically binds and incapacitates extraplanar entities.",
+      "meta": "Cost: 4 skill points / This skill can't be used untrained / Transform Spell (1 FX energy point)",
       "name": "Binding",
       "rank_benefits": {
-        "12": "At rank 12, the binding becomes semi-permanent, lasting until explicitly dispelled or broken by an external FX power.",
-        "4": "At rank 4, the duration of the physical anchor is extended to 24 hours.",
-        "8": "At rank 8, the diabolist can bind the entity to a living host, requiring a secondary physical resolve check from the host if unwilling."
+        "4": "Binding Duration & Durability: Increases duration of metallic strands/chains by 1 round, and durability by +1.",
+        "8": "Binding Duration & Durability: Increases duration by 2 rounds, and durability by +2.",
+        "12": "Binding Duration & Durability: Increases duration by 3 rounds, and durability by +3."
       },
       "source": "Beyond Science: A Guide to FX, pg. 22",
       "untrained": false,
-      "fx_cost": 2,
-      "supplement": "beyond_science"
+      "fx_cost": 1,
+      "supplement": "beyond_science",
+      "sections": [
+        {
+          "kind": "text",
+          "title": "What it is",
+          "body": "Restrains a demon to bargain or force it into service [i, 68]. Cast on a magic circle or directly on a free-roaming demon (+2 step penalty) [i, 68]."
+        },
+        {
+          "kind": "text",
+          "title": "Mechanics & Rules",
+          "body": "Binding a least demon costs 1 FX and requires an Ordinary sacrifice [i, 68]. Lesser demon costs 2 FX, +3 step penalty, and Good sacrifice [i, 68]. Greater demon costs 3 FX, +5 step penalty, and Amazing sacrifice [i, 68]."
+        },
+        {
+          "kind": "ranks",
+          "title": "Specialty Rank Benefits",
+          "entries": [
+            {
+              "rank": 4,
+              "title": "Binding Duration & Durability",
+              "body": "Increases duration of metallic strands/chains by 1 round, and durability by +1."
+            },
+            {
+              "rank": 8,
+              "title": "Binding Duration & Durability",
+              "body": "Increases duration by 2 rounds, and durability by +2."
+            },
+            {
+              "rank": 12,
+              "title": "Binding Duration & Durability",
+              "body": "Increases duration by 3 rounds, and durability by +3."
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "title": "Combat Profile",
+          "body": "Adds a powerful close-range **Defense/Debuff Form** that physically binds and incapacitates extraplanar entities."
+        }
+      ]
     },
     "Black warding": {
       "ability": "WIL",
       "broad_skill": "Diabolism",
       "category": "Arcane Magic",
-      "cost": 3.0,
-      "description": "Governing Ability: Will (WIL). Player Notes: The diabolist surrounds themselves with a faint field of shimmering dark purple light. This arcane barrier acts as a protective ward against both physical combat and extra-dimensional interference. When active, the ward provides Ordinary toughness armor (d4 points of protection) and grants a +1 bonus to resistance modifiers against any attacks or spellcasting originating from demonic or extra-dimensional beings.",
-      "meta": "Cost: 3 skill points / This skill can't be used untrained / Conjure spell (1 FX energy point)",
+      "cost": 3,
+      "description": "What it is: Creates a shimmering, purplish-black field of light around the caster that wards off melee, ranged, psionic, and magical attacks [i, 68].\n\nMechanics & Rules: Grants the caster a **+2 resistance modifier** [i, 68]. If the caster sustains any wound damage (damage that penetrates armor), the spell immediately fails [i, 68].\n\nCombat Profile: Adds an active **Defense Form** (+2 or better resistance modifier) against all incoming attacks.",
+      "meta": "Cost: 3 skill points / This skill can't be used untrained / Conjure Spell (1 FX energy point)",
       "name": "Black warding",
       "rank_benefits": {
-        "12": "At rank 12, any extra-dimensional creature attempting a physical melee attack against the diabolist suffers d4 stun damage from touching the corruptive ward.",
-        "4": "At rank 4, the armor protection provided by the dark light improves to d4+1.",
-        "8": "At rank 8, the barrier's resistance modifier against extra-dimensional entities increases to +2."
+        "4": "Protective Resistance: Increases protective resistance modifier to +3.",
+        "8": "Protective Resistance: Increases protective resistance modifier to +4.",
+        "12": "Protective Resistance: Increases protective resistance modifier to +5."
       },
       "source": "Beyond Science: A Guide to FX, pg. 16",
       "untrained": false,
       "fx_cost": 1,
-      "supplement": "beyond_science"
+      "supplement": "beyond_science",
+      "sections": [
+        {
+          "kind": "text",
+          "title": "What it is",
+          "body": "Creates a shimmering, purplish-black field of light around the caster that wards off melee, ranged, psionic, and magical attacks [i, 68]."
+        },
+        {
+          "kind": "text",
+          "title": "Mechanics & Rules",
+          "body": "Grants the caster a **+2 resistance modifier** [i, 68]. If the caster sustains any wound damage (damage that penetrates armor), the spell immediately fails [i, 68]."
+        },
+        {
+          "kind": "ranks",
+          "title": "Specialty Rank Benefits",
+          "entries": [
+            {
+              "rank": 4,
+              "title": "Protective Resistance",
+              "body": "Increases protective resistance modifier to +3."
+            },
+            {
+              "rank": 8,
+              "title": "Protective Resistance",
+              "body": "Increases protective resistance modifier to +4."
+            },
+            {
+              "rank": 12,
+              "title": "Protective Resistance",
+              "body": "Increases protective resistance modifier to +5."
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "title": "Combat Profile",
+          "body": "Adds an active **Defense Form** (+2 or better resistance modifier) against all incoming attacks."
+        }
+      ]
     },
     "Blessing": {
       "ability": "WIL",
       "broad_skill": "Monotheism",
       "category": "Faith",
       "cost": 4,
-      "description": "Governing Ability: Will (WIL). Player Notes: The -1 step bonus directly acts upon action check thresholds for the scene. Will resistance modifiers apply to mental intrusion defenses. Full Text: This miracle gives indirect aid to the priest and any of her allies within 10 meters. All people affected gain a -1 step bonus to their action checks and a +1 to their Will resistance modifiers for the remainder of the scene.",
-      "meta": "Cost: 3 skill points / Untrained use not specified / Transform miracle (1 FX energy point)",
+      "description": "What it is: Channels divine favor to protect the priest and all allies within 10 meters [i, 88].\n\nMechanics & Rules: Allies gain a **-1 step bonus** to action checks and a **+1 bonus** to all resistance modifiers [i, 88]. Lasts for the scene [i, 88].\n\nCombat Profile: Adds an elite team-wide **Support/Buff Form**.",
+      "meta": "Cost: 4 skill points / Untrained use permitted / Transform Miracle (1 FX energy point)",
       "name": "Blessing",
       "rank_benefits": {
-        "12": "At rank 12, the miracle affects all allies within the hero's line of sight.",
-        "4": "At rank 4, the effect increases to a -2 step bonus and +2 to Will resistance modifiers.",
-        "8": "At rank 8, the miracle's area of effect increases to a 100-meter radius."
+        "4": "Enhanced Divine Favor: Bonus increases to -2 steps and +2 resistance modifier.",
+        "8": "Extended Consecration: Extends effects to a 100-meter radius.",
+        "12": "Army of the Faithful: Affects all allies within line of sight."
       },
       "source": "Beyond Science: A Guide to FX, pg. 45",
       "untrained": true,
       "fx_cost": 1,
-      "supplement": "beyond_science"
+      "supplement": "beyond_science",
+      "sections": [
+        {
+          "kind": "text",
+          "title": "What it is",
+          "body": "Channels divine favor to protect the priest and all allies within 10 meters [i, 88]."
+        },
+        {
+          "kind": "text",
+          "title": "Mechanics & Rules",
+          "body": "Allies gain a **-1 step bonus** to action checks and a **+1 bonus** to all resistance modifiers [i, 88]. Lasts for the scene [i, 88]."
+        },
+        {
+          "kind": "ranks",
+          "title": "Specialty Rank Benefits",
+          "entries": [
+            {
+              "rank": 4,
+              "title": "Enhanced Divine Favor",
+              "body": "Bonus increases to -2 steps and +2 resistance modifier."
+            },
+            {
+              "rank": 8,
+              "title": "Extended Consecration",
+              "body": "Extends effects to a 100-meter radius."
+            },
+            {
+              "rank": 12,
+              "title": "Army of the Faithful",
+              "body": "Affects all allies within line of sight."
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "title": "Combat Profile",
+          "body": "Adds an elite team-wide **Support/Buff Form**."
+        }
+      ]
     },
     "Blood debt": {
       "ability": "INT",
       "broad_skill": "Hemomancy",
       "category": "Arcane Magic",
       "cost": 3,
-      "description": "Governing Ability: Constitution (CON). Player Notes: The hemomancer binds their life force to a target, transferring incoming physical suffering. When the hemomancer suffers wound or stun damage, they can invoke this spell to pass a portion of that damage directly to a bonded target within 10 meters. The target can resist with a physical resolve check. Full Text: This spell establishes an invisible, parasitic biological link between the caster and a victim, forcing the victim to pay the physical toll for the caster's injuries.",
-      "meta": "Cost: 4 skill points / This skill can't be used untrained / Transform spell (1 FX energy point)",
+      "description": "What it is: Intensifies a recipient's emotions toward a specified individual, causing an aggressive, focused combat trance [i, 70].\n\nMechanics & Rules: The recipient gains a **-1, -2, or -3 step bonus** (Ordinary/Good/Amazing) to all melee attacks made against the designated target for 1 hour [i, 70].\n\nCombat Profile: Adds an offensive **Buff Form** for melee combatants.",
+      "meta": "Cost: 3 skill points / Untrained use permitted / Transform Spell (1 FX energy point)",
       "name": "Blood debt",
       "rank_benefits": {
-        "12": "At rank 12, the link becomes bidirectional, allowing the caster to choose to siphon away a willing ally's damage to protect them from harm.",
-        "4": "At rank 4, the range of the biological link increases to 20 meters.",
-        "8": "At rank 8, the caster can transfer up to 50% of incoming mortal damage to the bonded victim."
+        "4": "Extended Debt: Duration increases to 2 hours.",
+        "8": "Extended Debt: Duration increases to 5 hours.",
+        "12": "Extended Debt: Duration increases to 10 hours."
       },
       "source": "Beyond Science: A Guide to FX, pg. 25",
-      "untrained": false,
+      "untrained": true,
       "fx_cost": 1,
-      "supplement": "beyond_science"
+      "supplement": "beyond_science",
+      "sections": [
+        {
+          "kind": "text",
+          "title": "What it is",
+          "body": "Intensifies a recipient's emotions toward a specified individual, causing an aggressive, focused combat trance [i, 70]."
+        },
+        {
+          "kind": "text",
+          "title": "Mechanics & Rules",
+          "body": "The recipient gains a **-1, -2, or -3 step bonus** (Ordinary/Good/Amazing) to all melee attacks made against the designated target for 1 hour [i, 70]."
+        },
+        {
+          "kind": "ranks",
+          "title": "Specialty Rank Benefits",
+          "entries": [
+            {
+              "rank": 4,
+              "title": "Extended Debt",
+              "body": "Duration increases to 2 hours."
+            },
+            {
+              "rank": 8,
+              "title": "Extended Debt",
+              "body": "Duration increases to 5 hours."
+            },
+            {
+              "rank": 12,
+              "title": "Extended Debt",
+              "body": "Duration increases to 10 hours."
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "title": "Combat Profile",
+          "body": "Adds an offensive **Buff Form** for melee combatants."
+        }
+      ]
     },
     "Bloodlust": {
       "ability": "INT",
       "broad_skill": "Hemomancy",
       "category": "Arcane Magic",
-      "cost": 3.0,
-      "description": "Governing Ability: Will (WIL). Player Notes: Also known as Blood Rage. The caster overclocks their circulatory system, entering a violent, hyper-focused combat frenzy. While active, the hemomancer gains a -2 step bonus to all melee combat skills and an additional +2 points to melee damage rolls, but suffers a +1 step penalty to all defensive maneuvers and intellectual skill checks. This effect lasts for the duration of the combat scene.",
-      "meta": "Cost: 3 skill points / This skill can't be used untrained / Transform spell (1 FX energy point)",
+      "cost": 3,
+      "description": "What it is: Infuses a touched living creature with raw, aggressive cellular energy, mimicking a berserk state [i, 70].\n\nMechanics & Rules: Target gains **+1 Strength** and a **-1 step bonus** to all *Stamina-endurance* checks, but suffers a **-1 step penalty** to all Personality-based skills [i, 70]. Lasts 10 minutes [i, 70]. Caster must take 1 wound point of damage to cast [i, 70].\n\nCombat Profile: Adds a physical **Buff Form** (+1 Strength and endurance bonus).",
+      "meta": "Cost: 3 skill points / Untrained use permitted / Transform Spell (1 FX energy point)",
       "name": "Bloodlust",
       "rank_benefits": {
-        "12": "At rank 12, the melee damage bonus increases to +4 points.",
-        "4": "At rank 4, the step bonus to melee attacks improves to -3.",
-        "8": "At rank 8, the hemomancer becomes completely immune to stun point loss while the frenzy remains active."
+        "4": "Extended Frenzy: Duration increases to 20 minutes.",
+        "8": "Extended Frenzy: Duration increases to 1 hour.",
+        "12": "Extended Frenzy: Duration increases to 3 hours."
       },
       "source": "Beyond Science: A Guide to FX, pg. 25",
-      "untrained": false,
+      "untrained": true,
       "fx_cost": 1,
-      "supplement": "beyond_science"
+      "supplement": "beyond_science",
+      "sections": [
+        {
+          "kind": "text",
+          "title": "What it is",
+          "body": "Infuses a touched living creature with raw, aggressive cellular energy, mimicking a berserk state [i, 70]."
+        },
+        {
+          "kind": "text",
+          "title": "Mechanics & Rules",
+          "body": "Target gains **+1 Strength** and a **-1 step bonus** to all *Stamina-endurance* checks, but suffers a **-1 step penalty** to all Personality-based skills [i, 70]. Lasts 10 minutes [i, 70]. Caster must take 1 wound point of damage to cast [i, 70]."
+        },
+        {
+          "kind": "ranks",
+          "title": "Specialty Rank Benefits",
+          "entries": [
+            {
+              "rank": 4,
+              "title": "Extended Frenzy",
+              "body": "Duration increases to 20 minutes."
+            },
+            {
+              "rank": 8,
+              "title": "Extended Frenzy",
+              "body": "Duration increases to 1 hour."
+            },
+            {
+              "rank": 12,
+              "title": "Extended Frenzy",
+              "body": "Duration increases to 3 hours."
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "title": "Combat Profile",
+          "body": "Adds a physical **Buff Form** (+1 Strength and endurance bonus)."
+        }
+      ]
     },
     "Body Armor": {
       "ability": "CON",
       "broad_skill": "Brick",
-      "category": "Super Hero",
-      "cost": 3.0,
-      "description": "This power makes the character more resistant to all sorts of damage. The body armor provides Ordinary toughness protection equal to d6+1 (LI), d6 (HI), d4 (En). Body armor is usually selected as always active, though some heroes prefer to remain incognito, in which case each activation lasts 10 minutes. If selected as always active, the player can reduce the permanent FX energy point cost from 3 to 2 by stating that the armor represents a significant change in the hero's basic form, such as rocky skin, rigid plates, and so forth.",
-      "meta": "Active or 1 FX energy point. This skill can't be used untrained.",
+      "category": "Super Power",
+      "cost": 3,
+      "description": "What it is: Hardens the skin or creates a kinetic force barrier to absorb physical impacts [i, 96].\n\nMechanics & Rules: Grants **d4 (LI), d4 (HI), d4 (En) armor protection** [i, 96]. Active activation consumes 1 FX point [i, 97].\n\nCombat Profile: Adds a permanent **Defense Form** (vitality shielding).",
+      "meta": "Cost: 3 skill points / This skill can't be used untrained / Brick Power (1 FX energy point)",
       "name": "Body Armor",
       "rank_benefits": {
-        "12": "At rank 12, it becomes Good toughness.",
-        "4": "At rank 4, the armor improves to d6+2 (LI), d6+1 (HI), d4+1 (En).",
-        "8": "At rank 8, the armor protection becomes d8+2 (LI), d8+1 (HI), d6+1 (En)."
+        "4": "Reinforced Density: Increases armor absorption dice and reduces action check penalties.",
+        "8": "Reinforced Density: Further increases armor absorption dice and reduces action check penalties.",
+        "12": "Impervious Flesh: Maximum armor absorption rating and complete negation of bulk penalties."
       },
       "source": "Beyond Science: A Guide to FX, pg. 62",
       "permanent_cost": 3,
       "untrained": false,
       "fx_cost": 1,
-      "supplement": "beyond_science"
+      "supplement": "beyond_science",
+      "sections": [
+        {
+          "kind": "text",
+          "title": "What it is",
+          "body": "Hardens the skin or creates a kinetic force barrier to absorb physical impacts [i, 96]."
+        },
+        {
+          "kind": "text",
+          "title": "Mechanics & Rules",
+          "body": "Grants **d4 (LI), d4 (HI), d4 (En) armor protection** [i, 96]. Active activation consumes 1 FX point [i, 97]."
+        },
+        {
+          "kind": "ranks",
+          "title": "Specialty Rank Benefits",
+          "entries": [
+            {
+              "rank": 4,
+              "title": "Reinforced Density",
+              "body": "Increases armor absorption dice and reduces action check penalties."
+            },
+            {
+              "rank": 8,
+              "title": "Reinforced Density",
+              "body": "Further increases armor absorption dice and reduces action check penalties."
+            },
+            {
+              "rank": 12,
+              "title": "Impervious Flesh",
+              "body": "Maximum armor absorption rating and complete negation of bulk penalties."
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "title": "Combat Profile",
+          "body": "Adds a permanent **Defense Form** (vitality shielding)."
+        }
+      ]
     },
     "Body and soul": {
       "ability": "WIL",
@@ -531,37 +894,113 @@
       "ability": "CON",
       "broad_skill": "Pyromancy",
       "category": "Arcane Magic",
-      "cost": 5.0,
-      "description": "Governing Ability: Constitution (CON). Player Notes: The pyromancer envelopes themselves in a magnificent, winged aura of restorative and protective flames. While active, the cloak provides Ordinary toughness armor (d4) against physical attacks. More importantly, the phoenix flames grant the caster an accelerated mystical healing factor; the caster automatically recovers 1 point of stun or wound damage per round for the duration of the spell. The cloak lasts for 1 minute (5 combat rounds) per degree of success.",
-      "meta": "Cost: 5 skill points / This skill can't be used untrained / Transform spell (2 FX energy points)",
+      "cost": 5,
+      "description": "What it is: Surrounds the pyromancer in a defensive shroud of flame [i, 79].\n\nMechanics & Rules: Provides protection of d4 (LI), d4 (HI), d4+1 (En) armor [i, 79]. Anyone striking the caster in melee sustains d4 points of wound damage [i, 79]. Lasts 5 rounds [i, 79].\n\nCombat Profile: Adds an active **Defense Form** with automated damage feedback.",
+      "meta": "Cost: 5 skill points / Untrained use permitted / Conjure Spell (1 FX energy point)",
       "name": "Cloak of the phoenix",
       "rank_benefits": {
-        "12": "At rank 12, if the pyromancer is reduced to 0 mortal points while the cloak is active, the spell instantly discharges, automatically stabilizing the caster and restoring 1d4 wound points in a brilliant flash of healing fire.",
-        "4": "At rank 4, the duration of the cloak extends to 10 minutes.",
-        "8": "At rank 8, the armor protection provided by the flames increases to Good toughness (d6)."
+        "4": "Upgraded Fire Armor: Upgrades defensive flame armor to d4+1 (LI), d4+1 (HI), d4+2 (En).",
+        "8": "Retaliatory Flame Damage: Retaliatory fire damage increases to d6 (En/O).",
+        "12": "Master Fire Armor: Upgrades defensive armor to d6+1 (LI), d6+1 (HI), d6+2 (En)."
       },
       "source": "Beyond Science: A Guide to FX, pg. 34",
-      "untrained": false,
-      "fx_cost": 2,
-      "supplement": "beyond_science"
+      "untrained": true,
+      "fx_cost": 1,
+      "supplement": "beyond_science",
+      "sections": [
+        {
+          "kind": "text",
+          "title": "What it is",
+          "body": "Surrounds the pyromancer in a defensive shroud of flame [i, 79]."
+        },
+        {
+          "kind": "text",
+          "title": "Mechanics & Rules",
+          "body": "Provides protection of d4 (LI), d4 (HI), d4+1 (En) armor [i, 79]. Anyone striking the caster in melee sustains d4 points of wound damage [i, 79]. Lasts 5 rounds [i, 79]."
+        },
+        {
+          "kind": "ranks",
+          "title": "Specialty Rank Benefits",
+          "entries": [
+            {
+              "rank": 4,
+              "title": "Upgraded Fire Armor",
+              "body": "Upgrades defensive flame armor to d4+1 (LI), d4+1 (HI), d4+2 (En)."
+            },
+            {
+              "rank": 8,
+              "title": "Retaliatory Flame Damage",
+              "body": "Retaliatory fire damage increases to d6 (En/O)."
+            },
+            {
+              "rank": 12,
+              "title": "Master Fire Armor",
+              "body": "Upgrades defensive armor to d6+1 (LI), d6+1 (HI), d6+2 (En)."
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "title": "Combat Profile",
+          "body": "Adds an active **Defense Form** with automated damage feedback."
+        }
+      ]
     },
     "Command": {
       "ability": "PER",
       "broad_skill": "Diabolism",
       "category": "Arcane Magic",
       "cost": 4,
-      "description": "Governing Ability: Will (WIL). Player Notes: This spell allows the diabolist to issue binding, absolute commands to an extra-dimensional creature. The spell requires a contested roll against the target's mental resolve score. If successful, the creature must execute the command to the best of its ability, provided the command does not directly cause its own immediate destruction.",
-      "meta": "Cost: 3 skill points / This skill can't be used untrained / Transform spell (1 FX energy point)",
+      "description": "What it is: Bends a summoned demon's will to that of the caster [i, 68]. The diabolist can issue a single simple action in fewer than twelve words (e.g., 'Guard this room') [i, 68].\n\nMechanics & Rules: Target gets a *Resolve-mental resolve* check to resist [i, 68]. Requires a Good-quality sacrifice [i, 68]. If the target is commanded to commit self-destructive acts, they receive a -1 or -3 step bonus to resist [i, 68].\n\nCombat Profile: Adds an offensive mind-controlling **Attack/Debuff Form** targeting extradimensional creatures.",
+      "meta": "Cost: 4 skill points / This skill can't be used untrained / Transform Spell (1 FX energy point)",
       "name": "Command",
       "rank_benefits": {
-        "12": "At rank 12, the command can force the entity to act directly against its primary nature or alignment.",
-        "4": "At rank 4, the target suffers a +1 step penalty to resist any subsequent commands during the same scene.",
-        "8": "At rank 8, the diabolist can command up to three minor extra-dimensional creatures simultaneously, provided they are of the same type."
+        "4": "Extended Command: Allows commanded activity to take up to 30 minutes.",
+        "8": "Target Penalty: Applies a +1 step penalty to the target's resistance check.",
+        "12": "Target Penalty: Increases penalty to +2 steps on the target's resistance check."
       },
       "source": "Beyond Science: A Guide to FX, pg. 23",
       "untrained": false,
       "fx_cost": 1,
-      "supplement": "beyond_science"
+      "supplement": "beyond_science",
+      "sections": [
+        {
+          "kind": "text",
+          "title": "What it is",
+          "body": "Bends a summoned demon's will to that of the caster [i, 68]. The diabolist can issue a single simple action in fewer than twelve words (e.g., 'Guard this room') [i, 68]."
+        },
+        {
+          "kind": "text",
+          "title": "Mechanics & Rules",
+          "body": "Target gets a *Resolve-mental resolve* check to resist [i, 68]. Requires a Good-quality sacrifice [i, 68]. If the target is commanded to commit self-destructive acts, they receive a -1 or -3 step bonus to resist [i, 68]."
+        },
+        {
+          "kind": "ranks",
+          "title": "Specialty Rank Benefits",
+          "entries": [
+            {
+              "rank": 4,
+              "title": "Extended Command",
+              "body": "Allows commanded activity to take up to 30 minutes."
+            },
+            {
+              "rank": 8,
+              "title": "Target Penalty",
+              "body": "Applies a +1 step penalty to the target's resistance check."
+            },
+            {
+              "rank": 12,
+              "title": "Target Penalty",
+              "body": "Increases penalty to +2 steps on the target's resistance check."
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "title": "Combat Profile",
+          "body": "Adds an offensive mind-controlling **Attack/Debuff Form** targeting extradimensional creatures."
+        }
+      ]
     },
     "Conceal": {
       "ability": "INT",
@@ -621,35 +1060,101 @@
       "ability": "WIL",
       "broad_skill": "Monotheism",
       "category": "Faith",
-      "cost": 3.0,
-      "description": "Governing Ability: Will (WIL). Player Notes: This specialty acts as the core restorative miracle of the monotheistic church. It channels divine layout design principles into damaged or corrupted biological targets. Full Text: This miracle allows the priest to cure physical conditions, biological poisons, diseases, or mental instabilities via deep prayer or direct laying on of hands. A successful check can neutralize toxic hazards or scale back severe internal infections.",
-      "meta": "Cost: 3 skill points / Untrained use not specified / Transform miracle (1 FX energy point)",
+      "cost": 3,
+      "description": "What it is: Heals wounds and cures physical ailments through touched laying of hands [i, 88].\n\nMechanics & Rules: Ordinary success heals **4 stun, 2 wound, or 1 mortal/fatigue** [i, 88]. Good success doubles healing, Amazing triples [i, 88]. Cannot transfer cured points [i, 88].\n\nCombat Profile: Adds an active touch-based **Healing Form**.",
+      "meta": "Cost: 3 skill points / Untrained use permitted / Transform Miracle (2 FX energy points)",
       "name": "Cure",
       "rank_benefits": {
-        "6": "At rank 6, higher ranks scale the effectiveness to purge engineered alien plagues or completely mend severe psychological defects."
+        "6": "Cure Disease & Affliction: Allows the priest to cure physical diseases and supernatural afflictions."
       },
       "source": "Beyond Science: A Guide to FX, pg. 45",
       "untrained": true,
-      "fx_cost": 1,
-      "supplement": "beyond_science"
+      "fx_cost": 2,
+      "supplement": "beyond_science",
+      "sections": [
+        {
+          "kind": "text",
+          "title": "What it is",
+          "body": "Heals wounds and cures physical ailments through touched laying of hands [i, 88]."
+        },
+        {
+          "kind": "text",
+          "title": "Mechanics & Rules",
+          "body": "Ordinary success heals **4 stun, 2 wound, or 1 mortal/fatigue** [i, 88]. Good success doubles healing, Amazing triples [i, 88]. Cannot transfer cured points [i, 88]."
+        },
+        {
+          "kind": "ranks",
+          "title": "Specialty Rank Benefits",
+          "entries": [
+            {
+              "rank": 6,
+              "title": "Cure Disease & Affliction",
+              "body": "Allows the priest to cure physical diseases and supernatural afflictions."
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "title": "Combat Profile",
+          "body": "Adds an active touch-based **Healing Form**."
+        }
+      ]
     },
     "Daedalus improved": {
       "ability": "INT",
       "broad_skill": "Hermeticism",
       "category": "Arcane Magic",
-      "cost": 4.0,
-      "description": "Governing Ability: Intelligence (INT). Player Notes: Drawing upon ancient alchemical blueprints and structural geometry, the hermetic magus temporarily alters the physical properties of a crafted object, such as a heavy cloak, an exoskeleton, or artificial wings. The spell grants the object functional aerodynamic properties that defy normal physics, allowing the wearer to fly at their normal run rate for 10 minutes.",
-      "meta": "Cost: 4 skill points / This skill can't be used untrained / Transform spell (2 FX energy points)",
+      "cost": 4,
+      "description": "What it is: Alters physical gravity around the alchemist, allowing flight [i, 72].\n\nMechanics & Rules: Allows flight or gliding at normal movement rates [i, 72]. Lasts 10 minutes per success [i, 72]. Requires active concentration [i, 72].\n\nCombat Profile: Adds an active tactical **Movement/Flight Form**.",
+      "meta": "Cost: 4 skill points / Untrained use permitted / Transform Spell (1 FX energy point)",
       "name": "Daedalus improved",
       "rank_benefits": {
-        "12": "At rank 12, the spell can be used to enchant a much larger object or even a non-aerodynamic vehicle weighing up to 500 kilograms, granting it the ability to hover and fly.",
-        "4": "At rank 4, the flight speed increases to the character's sprint rate.",
-        "8": "At rank 8, the duration of the aerodynamic enchantment extends to 1 hour."
+        "4": "Double Flight Speed: Doubles flying movement speed.",
+        "8": "Triple Flight Speed: Triples flying movement speed.",
+        "12": "Quadruple Flight Speed: Quadruples flying movement speed."
       },
       "source": "Beyond Science: A Guide to FX, pg. 27",
-      "untrained": false,
-      "fx_cost": 2,
-      "supplement": "beyond_science"
+      "untrained": true,
+      "fx_cost": 1,
+      "supplement": "beyond_science",
+      "sections": [
+        {
+          "kind": "text",
+          "title": "What it is",
+          "body": "Alters physical gravity around the alchemist, allowing flight [i, 72]."
+        },
+        {
+          "kind": "text",
+          "title": "Mechanics & Rules",
+          "body": "Allows flight or gliding at normal movement rates [i, 72]. Lasts 10 minutes per success [i, 72]. Requires active concentration [i, 72]."
+        },
+        {
+          "kind": "ranks",
+          "title": "Specialty Rank Benefits",
+          "entries": [
+            {
+              "rank": 4,
+              "title": "Double Flight Speed",
+              "body": "Doubles flying movement speed."
+            },
+            {
+              "rank": 8,
+              "title": "Triple Flight Speed",
+              "body": "Triples flying movement speed."
+            },
+            {
+              "rank": 12,
+              "title": "Quadruple Flight Speed",
+              "body": "Quadruples flying movement speed."
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "title": "Combat Profile",
+          "body": "Adds an active tactical **Movement/Flight Form**."
+        }
+      ]
     },
     "Danger Sense": {
       "ability": "WIL",
@@ -673,19 +1178,57 @@
       "ability": "WIL",
       "broad_skill": "Monotheism",
       "category": "Faith",
-      "cost": 4.0,
-      "description": "Governing Ability: Will (WIL). Player Notes: Malicious extra-dimensional entities must pass a physical resolve check to step over the threshold. Full Text: This miracle protects all within 5 meters of the monotheist from the presence of demons, diabolists, and hostile spirits. Such beings must make a physical resolve skill check to pass into the affected area.",
-      "meta": "Cost: 4 skill points / Untrained use not specified / Conjure miracle (1 FX energy point)",
+      "cost": 4,
+      "description": "What it is: Wards a 5-meter radius around the priest from demons, diabolists, and hostile spirits [i, 88].\n\nMechanics & Rules: Warded creatures must pass a *Resolve-physical resolve* check or flee for 2d4 rounds [i, 88]. Ward lasts 10 minutes per degree of success [i, 88].\n\nCombat Profile: Adds an active **Defense/Area-Denial Form**.",
+      "meta": "Cost: 4 skill points / Untrained use permitted / Conjure Miracle (1 FX energy point)",
       "name": "Demon ward",
       "rank_benefits": {
-        "12": "At rank 12, the radius increases to 30 meters.",
-        "4": "At rank 4, the radius of the warded area increases to 10 meters.",
-        "8": "At rank 8, the radius increases to 20 meters."
+        "4": "Expanded Ward: Ward radius increases to 10 meters.",
+        "8": "Expanded Ward: Ward radius increases to 20 meters.",
+        "12": "Cathedral Sanctuary: Ward radius increases to 30 meters."
       },
       "source": "Beyond Science: A Guide to FX, pg. 45",
       "untrained": true,
       "fx_cost": 1,
-      "supplement": "beyond_science"
+      "supplement": "beyond_science",
+      "sections": [
+        {
+          "kind": "text",
+          "title": "What it is",
+          "body": "Wards a 5-meter radius around the priest from demons, diabolists, and hostile spirits [i, 88]."
+        },
+        {
+          "kind": "text",
+          "title": "Mechanics & Rules",
+          "body": "Warded creatures must pass a *Resolve-physical resolve* check or flee for 2d4 rounds [i, 88]. Ward lasts 10 minutes per degree of success [i, 88]."
+        },
+        {
+          "kind": "ranks",
+          "title": "Specialty Rank Benefits",
+          "entries": [
+            {
+              "rank": 4,
+              "title": "Expanded Ward",
+              "body": "Ward radius increases to 10 meters."
+            },
+            {
+              "rank": 8,
+              "title": "Expanded Ward",
+              "body": "Ward radius increases to 20 meters."
+            },
+            {
+              "rank": 12,
+              "title": "Cathedral Sanctuary",
+              "body": "Ward radius increases to 30 meters."
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "title": "Combat Profile",
+          "body": "Adds an active **Defense/Area-Denial Form**."
+        }
+      ]
     },
     "Dirge of the null-mind": {
       "ability": "WIL",
@@ -906,16 +1449,60 @@
       "ability": "CON",
       "broad_skill": "Necromancy",
       "category": "Arcane Magic",
-      "cost": 4.0,
-      "description": "Governing Ability: Will (WIL). Player Notes: This dark spell allows the necromancer to leech the vital life force directly from a living target within 5 meters. The victim must pass a physical resolve check to resist. On a failure, the target suffers fatigue or stun damage, and the necromancer immediately heals an equivalent amount of damage, effectively transferring the stolen vitality to their own durability tracker.",
+      "cost": 4,
+      "description": "A targeted beam of negative energy that directly disrupts a victim's life force. The caster shoots a beam of black light that unerringly hits any chosen target within 30 meters. Damage Matrix: d6+1s / d8+2s / d4+1f (En/O). Because the damage directly disrupts life energy rather than physical flesh, physical armor does not protect against it, though magical wards and defensive shields apply. Combat Forms Added: Attack Form: Adds an elite ranged Attack Form (Range: 30 meters) that completely bypasses physical armor and inflicts heavy Stun and Fatigue damage.",
       "meta": "Cost: 4 skill points / This skill can't be used untrained / Transform spell (2 FX energy points)",
       "name": "Energy drain",
       "rank_benefits": {
-        "12": "At rank 12, the necromancer can temporarily absorb a portion of the victim's maximum FX energy pool along with their physical durability.",
-        "4": "At rank 4, the spell drains wound damage instead of stun damage.",
-        "8": "At rank 8, the range of the life siphon extends to 15 meters."
+        "5": "Rank 5 (Increased Damage): Damage scales up to d6+2s / d8+3s / d4+2f.",
+        "9": "Rank 9 (Increased Damage): Damage scales up to d8+2s / d12+3s / d4+3f."
       },
-      "source": "Beyond Science: A Guide to FX, pg. 33",
+      "sections": [
+        {
+          "kind": "text",
+          "title": "What it is",
+          "body": "A targeted beam of negative energy that directly disrupts a victim's life force."
+        },
+        {
+          "kind": "text",
+          "title": "How it Works",
+          "body": "The caster shoots a beam of black light that unerringly hits any chosen target within 30 meters."
+        },
+        {
+          "kind": "outcomes",
+          "title": "Damage Matrix (En/O)",
+          "ordinary": "d6+1s",
+          "good": "d8+2s",
+          "amazing": "d4+1f"
+        },
+        {
+          "kind": "text",
+          "title": "Armor Bypass",
+          "body": "Because the damage directly disrupts life energy rather than physical flesh, physical armor does not protect against it, though magical wards and defensive shields apply."
+        },
+        {
+          "kind": "text",
+          "title": "Combat Forms Added",
+          "body": "Attack Form: Adds an elite ranged Attack Form (Range: 30 meters) that completely bypasses physical armor and inflicts heavy Stun and Fatigue damage."
+        },
+        {
+          "kind": "ranks",
+          "title": "Specialty Rank Benefits",
+          "entries": [
+            {
+              "rank": 5,
+              "title": "Increased Damage",
+              "body": "Damage scales up to d6+2s / d8+3s / d4+2f."
+            },
+            {
+              "rank": 9,
+              "title": "Increased Damage",
+              "body": "Damage scales up to d8+2s / d12+3s / d4+3f."
+            }
+          ]
+        }
+      ],
+      "source": "Beyond Science: A Guide to FX, pg. 32",
       "untrained": false,
       "fx_cost": 2,
       "supplement": "beyond_science"
@@ -1027,49 +1614,169 @@
       "ability": "WIL",
       "broad_skill": "Pyromancy",
       "category": "Arcane Magic",
-      "cost": 4.0,
-      "description": "Governing Ability: Will (WIL). Player Notes: The caster conjures a condensed, highly volatile projectile of searing magical flame and hurls it at a single target within 30 meters. The bolt requires a successful skill check against the target's resistance modifier to hit. A successful strike inflicts d4w/d6w/d8w (En/O) damage. Any highly flammable materials (like dry wood, cloth, or fuel) struck by the bolt are instantly ignited.",
-      "meta": "Cost: 4 skill points / This skill can't be used untrained / Conjure spell (1 FX energy point)",
+      "cost": 4,
+      "description": "What it is: Projects a sphere of extremely hot fire that flies at a target within 30 meters [i, 79].\n\nMechanics & Rules: Deals **d4+1w / d6+1w / d4+4m (En/O)** damage [i, 79]. Armor protects normally [i, 79]. Does not ignite items unless extremely flammable [i, 79].\n\nCombat Profile: Adds an offensive ranged **Attack Form**.",
+      "meta": "Cost: 4 skill points / Untrained use permitted / Conjure Spell (1 FX energy point)",
       "name": "Fiery bolt",
       "rank_benefits": {
-        "12": "At rank 12, the extreme heat of the projectile allows it to bypass standard thermal shielding, entirely ignoring armor that only provides Ordinary protection against Energy (En) attacks.",
-        "4": "At rank 4, the maximum range of the fiery bolt extends to 60 meters.",
-        "8": "At rank 8, the pyromancer can overcharge the spell, spending 1 additional FX energy point to increase the damage profile to d4+1w/d6+1w/d8+1w."
+        "4": "Increased Damage Dice: Increases damage dice and upgrades hit effectiveness (+1 damage per die).",
+        "8": "Increased Damage Dice: Further increases damage dice and flame blast radius (+2 damage per die).",
+        "12": "Maximum Destruction: Maximum fire blast intensity and lethal wound/mortal scaling."
       },
       "source": "Beyond Science: A Guide to FX, pg. 34",
-      "untrained": false,
+      "untrained": true,
       "fx_cost": 1,
-      "supplement": "beyond_science"
+      "supplement": "beyond_science",
+      "sections": [
+        {
+          "kind": "text",
+          "title": "What it is",
+          "body": "Projects a sphere of extremely hot fire that flies at a target within 30 meters [i, 79]."
+        },
+        {
+          "kind": "text",
+          "title": "Mechanics & Rules",
+          "body": "Deals **d4+1w / d6+1w / d4+4m (En/O)** damage [i, 79]. Armor protects normally [i, 79]. Does not ignite items unless extremely flammable [i, 79]."
+        },
+        {
+          "kind": "ranks",
+          "title": "Specialty Rank Benefits",
+          "entries": [
+            {
+              "rank": 4,
+              "title": "Increased Damage Dice",
+              "body": "Increases damage dice and upgrades hit effectiveness (+1 damage per die)."
+            },
+            {
+              "rank": 8,
+              "title": "Increased Damage Dice",
+              "body": "Further increases damage dice and flame blast radius (+2 damage per die)."
+            },
+            {
+              "rank": 12,
+              "title": "Maximum Destruction",
+              "body": "Maximum fire blast intensity and lethal wound/mortal scaling."
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "title": "Combat Profile",
+          "body": "Adds an offensive ranged **Attack Form**."
+        }
+      ]
     },
     "Fire wall": {
       "ability": "WIL",
       "broad_skill": "Pyromancy",
       "category": "Arcane Magic",
-      "cost": 4.0,
-      "description": "This spell creates a wall of flames with an area of up to 20 square meters (for instance, 2 meters tall and 10 meters long).",
-      "meta": "Conjure spell; 1 FX energy point",
+      "cost": 4,
+      "description": "What it is: Creates a wall of flames up to 20 square meters (e.g., 2m tall, 10m long) [i, 79].\n\nMechanics & Rules: Provides light cover, imposes +1 step penalty to shoot through, and deals d6w to anyone crossing [i, 79]. Lasts 5 rounds [i, 79].\n\nCombat Profile: Adds a battlefield-controlling **Defense/Area-Denial Form**.",
+      "meta": "Cost: 4 skill points / Untrained use permitted / Conjure Spell (1 FX energy point)",
       "name": "Fire wall",
       "rank_benefits": {
-        "4": "At rank 4, increased Area: At ranks 4, 8, and 12, the area of the fiery wall increases by 10 square meters."
+        "4": "Area Expansion: Area of fiery wall increases by +10 square meters.",
+        "8": "Area Expansion: Area of fiery wall increases by an additional +10 square meters (+20 sq m total).",
+        "12": "Area Expansion: Area of fiery wall increases by an additional +10 square meters (+30 sq m total)."
       },
-      "untrained": false,
+      "untrained": true,
       "fx_cost": 1,
-      "supplement": "beyond_science"
+      "supplement": "beyond_science",
+      "sections": [
+        {
+          "kind": "text",
+          "title": "What it is",
+          "body": "Creates a wall of flames up to 20 square meters (e.g., 2m tall, 10m long) [i, 79]."
+        },
+        {
+          "kind": "text",
+          "title": "Mechanics & Rules",
+          "body": "Provides light cover, imposes +1 step penalty to shoot through, and deals d6w to anyone crossing [i, 79]. Lasts 5 rounds [i, 79]."
+        },
+        {
+          "kind": "ranks",
+          "title": "Specialty Rank Benefits",
+          "entries": [
+            {
+              "rank": 4,
+              "title": "Area Expansion",
+              "body": "Area of fiery wall increases by +10 square meters."
+            },
+            {
+              "rank": 8,
+              "title": "Area Expansion",
+              "body": "Area of fiery wall increases by an additional +10 square meters (+20 sq m total)."
+            },
+            {
+              "rank": 12,
+              "title": "Area Expansion",
+              "body": "Area of fiery wall increases by an additional +10 square meters (+30 sq m total)."
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "title": "Combat Profile",
+          "body": "Adds a battlefield-controlling **Defense/Area-Denial Form**."
+        }
+      ],
+      "source": "Beyond Science: A Guide to FX"
     },
     "Flame gauntlet": {
       "ability": "CON",
       "broad_skill": "Pyromancy",
       "category": "Arcane Magic",
-      "cost": 3.0,
-      "description": "This spell creates a nimbus of flame around one of the caster's hands and any weapon in that hand. The caster can then use this flame to inflict additional damage.",
-      "meta": "Conjure spell; 1 FX energy point",
+      "cost": 3,
+      "description": "What it is: Creates a nimbus of fire around the caster's hand or held melee weapon [i, 79].\n\nMechanics & Rules: Melee strikes deal an additional **d4 points of wound damage** [i, 79]. Extinguishing roll required if hit in melee [i, 79].\n\nCombat Profile: Adds a close-combat melee **Attack Form**.",
+      "meta": "Cost: 3 skill points / Untrained use permitted / Conjure Spell (1 FX energy point)",
       "name": "Flame gauntlet",
       "rank_benefits": {
-        "4": "At rank 4, increased Damage: At ranks 4, 8, and 12, the damage inflicted by the flame gauntlet increases by 1 point in each category."
+        "4": "Flame Intensity: Increases fire damage by +1 point in each category.",
+        "8": "Flame Intensity: Increases fire damage by an additional +1 point in each category (+2 total).",
+        "12": "Flame Intensity: Increases fire damage by an additional +1 point in each category (+3 total)."
       },
-      "untrained": false,
+      "untrained": true,
       "fx_cost": 1,
-      "supplement": "beyond_science"
+      "supplement": "beyond_science",
+      "sections": [
+        {
+          "kind": "text",
+          "title": "What it is",
+          "body": "Creates a nimbus of fire around the caster's hand or held melee weapon [i, 79]."
+        },
+        {
+          "kind": "text",
+          "title": "Mechanics & Rules",
+          "body": "Melee strikes deal an additional **d4 points of wound damage** [i, 79]. Extinguishing roll required if hit in melee [i, 79]."
+        },
+        {
+          "kind": "ranks",
+          "title": "Specialty Rank Benefits",
+          "entries": [
+            {
+              "rank": 4,
+              "title": "Flame Intensity",
+              "body": "Increases fire damage by +1 point in each category."
+            },
+            {
+              "rank": 8,
+              "title": "Flame Intensity",
+              "body": "Increases fire damage by an additional +1 point in each category (+2 total)."
+            },
+            {
+              "rank": 12,
+              "title": "Flame Intensity",
+              "body": "Increases fire damage by an additional +1 point in each category (+3 total)."
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "title": "Combat Profile",
+          "body": "Adds a close-combat melee **Attack Form**."
+        }
+      ],
+      "source": "Beyond Science: A Guide to FX"
     },
     "Flying": {
       "ability": "WIL",
@@ -1129,16 +1836,66 @@
       "ability": "CON",
       "broad_skill": "Necromancy",
       "category": "Arcane Magic",
-      "cost": 3.0,
-      "description": "Governing Ability: Constitution (CON). Player Notes: The necromancer floods their own body with a surge of dark, animating negative energy to artificially enhance their physical resilience. While under the effects of this spell, the caster ignores the standard step penalties associated with being wounded or fatigued. They also gain a -1 step bonus to all Stamina-resist pain checks and Constitution feat checks to resist toxic or biological hazards.",
+      "cost": 3,
+      "description": "An infusion of raw life energy that temporarily bolsters a creature's physical threshold. Augments a living target's durability ratings with temporary health boxes. The caster must either target themselves or touch the recipient. Incoming damage is marked off in these extra boxes first. Fortitude Durability Gains: Ordinary Success: Grants +2 Stun / +1 Wound / 0 Mortal / 0 Fatigue temporary boxes. Good Success: Grants +3 Stun / +2 Wound / +1 Mortal / 0 Fatigue temporary boxes. Amazing Success: Grants +4 Stun / +3 Wound / +2 Mortal / +2 Fatigue temporary boxes. Limitations: This spell cannot be stacked on a single target, nor does it revive unconscious characters or resurrect dead ones. The spell terminates immediately when all extra boxes are consumed or after 10 minutes (whichever comes first). Combat Forms Added: Defense Form: Adds a temporary Defense Form (vitality shielding) to the caster or a touched ally, absorbing incoming physical or energy damage before normal health tracks are touched.",
       "meta": "Cost: 3 skill points / This skill can't be used untrained / Transform spell (1 FX energy point)",
       "name": "Fortitude",
       "rank_benefits": {
-        "12": "At rank 12, the necromancer becomes completely immune to stun point loss and fatigue accumulation for the duration of the spell.",
-        "4": "At rank 4, the duration of the unnatural fortitude extends to 1 hour.",
-        "8": "At rank 8, the spell provides the caster with 2 temporary wound points that absorb incoming physical damage before depleting their actual durability tracker."
+        "4": "Rank 4 (Increased Fortitude): The durability increase goes up by 1 additional box in each category (e.g., Ordinary becomes 3s/2w/1m/1f).",
+        "8": "Rank 8: Durability increase goes up by 2 additional boxes in each category.",
+        "12": "Rank 12: Durability increase goes up by 3 additional boxes in each category."
       },
-      "source": "Beyond Science: A Guide to FX, pg. 34",
+      "sections": [
+        {
+          "kind": "text",
+          "title": "What it is",
+          "body": "An infusion of raw life energy that temporarily bolsters a creature's physical threshold."
+        },
+        {
+          "kind": "text",
+          "title": "How it Works",
+          "body": "Augments a living target's durability ratings with temporary health boxes. The caster must either target themselves or touch the recipient. Incoming damage is marked off in these extra boxes first."
+        },
+        {
+          "kind": "outcomes",
+          "title": "Fortitude Durability Gains (Temporary Boxes)",
+          "ordinary": "+2 Stun / +1 Wound / 0 Mortal / 0 Fatigue",
+          "good": "+3 Stun / +2 Wound / +1 Mortal / 0 Fatigue",
+          "amazing": "+4 Stun / +3 Wound / +2 Mortal / +2 Fatigue"
+        },
+        {
+          "kind": "text",
+          "title": "Limitations",
+          "body": "This spell cannot be stacked on a single target, nor does it revive unconscious characters or resurrect dead ones. The spell terminates immediately when all extra boxes are consumed or after 10 minutes (whichever comes first)."
+        },
+        {
+          "kind": "text",
+          "title": "Combat Forms Added",
+          "body": "Defense Form: Adds a temporary Defense Form (vitality shielding) to the caster or a touched ally, absorbing incoming physical or energy damage before normal health tracks are touched."
+        },
+        {
+          "kind": "ranks",
+          "title": "Specialty Rank Benefits",
+          "entries": [
+            {
+              "rank": 4,
+              "title": "Increased Fortitude",
+              "body": "The durability increase goes up by 1 additional box in each category (e.g., Ordinary becomes 3s/2w/1m/1f)."
+            },
+            {
+              "rank": 8,
+              "title": "Increased Fortitude",
+              "body": "Durability increase goes up by 2 additional boxes in each category."
+            },
+            {
+              "rank": 12,
+              "title": "Increased Fortitude",
+              "body": "Durability increase goes up by 3 additional boxes in each category."
+            }
+          ]
+        }
+      ],
+      "source": "Beyond Science: A Guide to FX, pg. 32",
       "untrained": false,
       "fx_cost": 1,
       "supplement": "beyond_science"
@@ -1224,18 +1981,56 @@
       "broad_skill": "Hermeticism",
       "category": "Arcane Magic",
       "cost": 4,
-      "description": "Governing Ability: Personality (PER). Player Notes: Through the application of subtle alchemical reagents and mystical geometry, the hermetic magus alters their outward physical appearance, vocal cords, and pheromonal output. Unlike the holographic tricks of the Illusion school, this is a minor physical transmutation of the skin and scent. The caster gains a -2 step bonus to Interaction checks and can mimic the general appearance and voice of a specific humanoid target of the same size. The transformation lasts for 1 hour.",
-      "meta": "Cost: 3 skill points / This skill can't be used untrained / Transform spell (1 FX energy point)",
+      "description": "What it is: Creates strong auditory and visual illusions of items or creatures [i, 73].\n\nMechanics & Rules: Covers up to 25 square meters [i, 73]. Inflicts a **+3 step penalty** to all Awareness-perception checks to spot it as false [i, 73]. Lasts 1 hour [i, 73].\n\nCombat Profile: Adds a defensive **Deception/Distraction Form**.",
+      "meta": "Cost: 4 skill points / Untrained use permitted / Conjure Spell (1 FX energy point)",
       "name": "Glamour",
       "rank_benefits": {
-        "12": "At rank 12, the structural shift is so complete that the step bonus to Interaction checks improves to -3, and the caster can mimic targets of a slightly larger or smaller size category.",
-        "4": "At rank 4, the duration of the glamour increases to 4 hours.",
-        "8": "At rank 8, the physical mimicry is flawless enough to bypass basic biometric security scanners (such as retinal, voice, or fingerprint scanners) with an Ordinary skill check."
+        "4": "Non-Human Sensory Illusions: Allows non-human sensory illusions (ultrasonic, infrared).",
+        "8": "Massive Phantasm: Increases illusion area to 100 square meters.",
+        "12": "Amazing-Intensity Illusions: Allows Amazing-intensity illusions."
       },
       "source": "Beyond Science: A Guide to FX, pg. 28",
-      "untrained": false,
+      "untrained": true,
       "fx_cost": 1,
-      "supplement": "beyond_science"
+      "supplement": "beyond_science",
+      "sections": [
+        {
+          "kind": "text",
+          "title": "What it is",
+          "body": "Creates strong auditory and visual illusions of items or creatures [i, 73]."
+        },
+        {
+          "kind": "text",
+          "title": "Mechanics & Rules",
+          "body": "Covers up to 25 square meters [i, 73]. Inflicts a **+3 step penalty** to all Awareness-perception checks to spot it as false [i, 73]. Lasts 1 hour [i, 73]."
+        },
+        {
+          "kind": "ranks",
+          "title": "Specialty Rank Benefits",
+          "entries": [
+            {
+              "rank": 4,
+              "title": "Non-Human Sensory Illusions",
+              "body": "Allows non-human sensory illusions (ultrasonic, infrared)."
+            },
+            {
+              "rank": 8,
+              "title": "Massive Phantasm",
+              "body": "Increases illusion area to 100 square meters."
+            },
+            {
+              "rank": 12,
+              "title": "Amazing-Intensity Illusions",
+              "body": "Allows Amazing-intensity illusions."
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "title": "Combat Profile",
+          "body": "Adds a defensive **Deception/Distraction Form**."
+        }
+      ]
     },
     "Gris-gris": {
       "ability": "WIL",
@@ -1308,15 +2103,45 @@
       "broad_skill": "Necromancy",
       "category": "Arcane Magic",
       "cost": 5,
-      "description": "Governing Ability: Intelligence (INT). Player Notes: This spell summons a minor ghost to frighten, harass, and annoy a target if it is bound to a person, or it hounds people within 10 meters of its target if bound to a location or object. The haunting spirit drops ambient temperatures, creates unsettling noises, and forces anyone in the area to make a mental resolve check or suffer a +1 step penalty to all actions due to fear and distraction.",
-      "meta": "Cost: 3 skill points / This skill can't be used untrained / Summon spell (2 FX energy points)",
+      "description": "A binding spell that anchors a minor ghost to annoy and harass a target. The caster summons a minor ghost and binds it to a specific person, location, or object. The ghost hounds anyone within 10 meters of its anchor (or the specific targeted person). Debuff Mechanics: The presence of this spiritual harasser inflicts a permanent +1 step penalty to all action rolls made by anyone afflicted. The ghost is immune to physical damage and physical barriers, and can only be harmed by magical attacks or protective Faith FX (such as Monotheism-exorcism). Duration: Ordinary success = 1 day; Good success = 1 week; Amazing success = 1 month. Combat Forms Added: Debuff Form: Acts as an offensive Debuff Form that systematically decreases the target's combat accuracy, skill checks, and defense rolls by 1 full step.",
+      "meta": "Cost: 5 skill points / This skill can't be used untrained / Summon spell (2 FX energy points)",
       "name": "Haunt",
-      "rank_benefits": {
-        "12": "At rank 12, the haunt becomes permanent until dispelled by an exorcism or similar FX power.",
-        "4": "At rank 4, the duration of the haunt extends to 24 hours.",
-        "8": "At rank 8, the ghost can physically manifest to deliver a chilling touch, inflicting d4 stun damage once per scene to a random target in the area."
-      },
-      "source": "Beyond Science: A Guide to FX, pg. 33",
+      "rank_benefits": {},
+      "sections": [
+        {
+          "kind": "text",
+          "title": "What it is",
+          "body": "A binding spell that anchors a minor ghost to annoy and harass a target."
+        },
+        {
+          "kind": "text",
+          "title": "How it Works",
+          "body": "The caster summons a minor ghost and binds it to a specific person, location, or object. The ghost hounds anyone within 10 meters of its anchor (or the specific targeted person)."
+        },
+        {
+          "kind": "text",
+          "title": "Debuff Mechanics",
+          "body": "The presence of this spiritual harasser inflicts a permanent +1 step penalty to all action rolls made by anyone afflicted. The ghost is immune to physical damage and physical barriers, and can only be harmed by magical attacks or protective Faith FX (such as Monotheism-exorcism)."
+        },
+        {
+          "kind": "outcomes",
+          "title": "Duration",
+          "ordinary": "1 day",
+          "good": "1 week",
+          "amazing": "1 month"
+        },
+        {
+          "kind": "text",
+          "title": "Combat Forms Added",
+          "body": "Debuff Form: Acts as an offensive Debuff Form that systematically decreases the target's combat accuracy, skill checks, and defense rolls by 1 full step."
+        },
+        {
+          "kind": "text",
+          "title": "Specialty Rank Benefits",
+          "body": "None listed in the text."
+        }
+      ],
+      "source": "Beyond Science: A Guide to FX, pg. 32",
       "untrained": false,
       "fx_cost": 2,
       "supplement": "beyond_science"
@@ -1357,19 +2182,57 @@
       "ability": "WIL",
       "broad_skill": "Diabolism",
       "category": "Arcane Magic",
-      "cost": 4.0,
-      "description": "Governing Ability: Intelligence (INT). Player Notes: The diabolist summons a burst of dark, corrupting flames directly from an infernal dimension. Unlike normal pyromancy, hellfire burns both the physical body and the life force of the target, bypassing standard thermal resistance, fireproofing gear, and environmental immunities. The caster targets a single opponent within 20 meters, inflicting d4w/d6w/d8w (En/O) damage upon a successful strike.",
-      "meta": "Cost: 4 skill points / This skill can't be used untrained / Conjure spell (2 FX energy points)",
+      "cost": 4,
+      "description": "What it is: Launches a sphere of dark, demonic fire that unerringly strikes any target within 30 meters [i, 79].\n\nMechanics & Rules: Inflicts **d4+1w / d6+1w / d4+1m (En/O)** damage [i, 79]. Physical armor is effective at reducing this damage [i, 79]. Requires a Marginal-quality sacrifice [i, 79].\n\nCombat Profile: Adds an elite ranged **Attack Form** bypass-hitting targets within 30 meters.",
+      "meta": "Cost: 4 skill points / Untrained use permitted / Conjure Spell (1 FX energy point)",
       "name": "Hellfire",
       "rank_benefits": {
-        "12": "At rank 12, the corrupting nature of the flames is so intense that targets damaged by the spell cannot be healed by natural biological recovery or standard FX healing powers for 24 hours.",
-        "4": "At rank 4, the damage of the infernal flames improves to d4+1w/d6+1w/d8+1w.",
-        "8": "At rank 8, the hellfire can be cast as an area-of-effect blast, targeting everyone within a 3-meter radius of the focal point."
+        "4": "Increased Damage: Damage increases to d4+1(LI), d4+1(HI), d4+2(En).",
+        "8": "Good Damage Classification: Damage classification upgrades to Good.",
+        "12": "Defensive Flames: Defensive value of flames upgrades to d6+1(LI), d6+1(HI), d6+2(En)."
       },
       "source": "Beyond Science: A Guide to FX, pg. 16",
-      "untrained": false,
-      "fx_cost": 2,
-      "supplement": "beyond_science"
+      "untrained": true,
+      "fx_cost": 1,
+      "supplement": "beyond_science",
+      "sections": [
+        {
+          "kind": "text",
+          "title": "What it is",
+          "body": "Launches a sphere of dark, demonic fire that unerringly strikes any target within 30 meters [i, 79]."
+        },
+        {
+          "kind": "text",
+          "title": "Mechanics & Rules",
+          "body": "Inflicts **d4+1w / d6+1w / d4+1m (En/O)** damage [i, 79]. Physical armor is effective at reducing this damage [i, 79]. Requires a Marginal-quality sacrifice [i, 79]."
+        },
+        {
+          "kind": "ranks",
+          "title": "Specialty Rank Benefits",
+          "entries": [
+            {
+              "rank": 4,
+              "title": "Increased Damage",
+              "body": "Damage increases to d4+1(LI), d4+1(HI), d4+2(En)."
+            },
+            {
+              "rank": 8,
+              "title": "Good Damage Classification",
+              "body": "Damage classification upgrades to Good."
+            },
+            {
+              "rank": 12,
+              "title": "Defensive Flames",
+              "body": "Defensive value of flames upgrades to d6+1(LI), d6+1(HI), d6+2(En)."
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "title": "Combat Profile",
+          "body": "Adds an elite ranged **Attack Form** bypass-hitting targets within 30 meters."
+        }
+      ]
     },
     "Helpful possession": {
       "ability": "WIL",
@@ -1393,37 +2256,113 @@
       "ability": "INT",
       "broad_skill": "Hermeticism",
       "category": "Arcane Magic",
-      "cost": 4.0,
-      "description": "Governing Ability: Intelligence (INT). Player Notes: This spell enables the alchemist to fashion and animate a tiny, artificial construct assistant out of clay, blood, and rare chemicals. The homunculus acts as a direct extension of the caster's senses and will, obeying simple layout commands implicitly. It possesses minor physical attributes equivalent to a tiny animal companion (minimal combat thresholds, exceptional stealth profile). The creation ritual takes 1 hour to perform and requires a dedicated workshop space.",
-      "meta": "Cost: 4 skill points / This skill can't be used untrained / Summon spell (2 FX energy points)",
+      "cost": 4,
+      "description": "What it is: Alchemically grows a small, winged artificial lifeform that obeys the creator [i, 73].\n\nMechanics & Rules: Requires organic materials (blood, mandrake root, bear's gall) and 12 hours of labor daily for a month [i, 73]. Consumes 1 FX point permanently [i, 73].\n\nCombat Profile: Adds a scouting/utility **Summoning Form**.",
+      "meta": "Cost: 4 skill points / Untrained use permitted / Transform Spell (1 FX energy point)",
       "name": "Homunculus",
       "rank_benefits": {
-        "12": "At rank 12, the homunculus gains rudimentary speech and an independent Intelligence score of 7.",
-        "4": "At rank 4, the homunculus can travel up to 1 kilometer away from the caster while maintaining a fluid sensory link.",
-        "8": "At rank 8, the construct can act as a delivery vector, channeling a single minor touch-based spell cast by the master."
+        "4": "Sensory Relay: Grants sensory relay to perceive directly through the homunculus's sensory organs.",
+        "8": "Homunculus Skill Bonus: Homunculus gains a -1 step bonus to all checks.",
+        "12": "Extended Telepathic Range: Extends telepathic control range across planetary distances."
       },
       "source": "Beyond Science: A Guide to FX, pg. 27",
-      "untrained": false,
-      "fx_cost": 2,
-      "supplement": "beyond_science"
+      "untrained": true,
+      "fx_cost": 1,
+      "supplement": "beyond_science",
+      "sections": [
+        {
+          "kind": "text",
+          "title": "What it is",
+          "body": "Alchemically grows a small, winged artificial lifeform that obeys the creator [i, 73]."
+        },
+        {
+          "kind": "text",
+          "title": "Mechanics & Rules",
+          "body": "Requires organic materials (blood, mandrake root, bear's gall) and 12 hours of labor daily for a month [i, 73]. Consumes 1 FX point permanently [i, 73]."
+        },
+        {
+          "kind": "ranks",
+          "title": "Specialty Rank Benefits",
+          "entries": [
+            {
+              "rank": 4,
+              "title": "Sensory Relay",
+              "body": "Grants sensory relay to perceive directly through the homunculus's sensory organs."
+            },
+            {
+              "rank": 8,
+              "title": "Homunculus Skill Bonus",
+              "body": "Homunculus gains a -1 step bonus to all checks."
+            },
+            {
+              "rank": 12,
+              "title": "Extended Telepathic Range",
+              "body": "Extends telepathic control range across planetary distances."
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "title": "Combat Profile",
+          "body": "Adds a scouting/utility **Summoning Form**."
+        }
+      ]
     },
     "Hunger": {
       "ability": "INT",
       "broad_skill": "Hemomancy",
       "category": "Arcane Magic",
       "cost": 3,
-      "description": "Governing Ability: Constitution (CON). Player Notes: This spell allows the caster to draw nourishment and energy directly from the freshly spilled blood of a living target within 2 meters. A successful check heals the hemomancer of 2 points of stun or fatigue damage per degree of success, while the victim suffers an equivalent amount of fatigue.",
-      "meta": "Cost: 4 skill points / This skill can't be used untrained / Transform spell (1 FX energy point)",
+      "description": "What it is: Alters a target's biological metabolism, forcing them to derive all nutritional sustenance strictly from blood [i, 70].\n\nMechanics & Rules: The target must consume at least **1 pint of blood** per day or suffer progressive starvation fatigue [i, 70]. If cast on a non-human, it requires blood of their own species [i, 70].\n\nCombat Profile: Adds a permanent biological **Debuff/Sickness Form**.",
+      "meta": "Cost: 3 skill points / Untrained use permitted / Transform Spell (1 FX energy point)",
       "name": "Hunger",
       "rank_benefits": {
-        "12": "At rank 12, an Amazing success allows the caster to temporarily steal 1 point of the target's base Strength or Constitution score for d4 rounds.",
-        "4": "At rank 4, the spell can heal wound damage (1 wound point per Good success).",
-        "8": "At rank 8, the spell can be cast on a target up to 5 meters away as an active crimson siphon."
+        "4": "Extended Starvation & Physical Boost: Extends onset time of starvation and allows target to derive temporary physical bonuses after feeding.",
+        "8": "Extended Starvation & Physical Boost: Further extends starvation timeline and enhances feeding bonus.",
+        "12": "Extended Starvation & Physical Boost: Maximum starvation endurance and predatory feeding enhancement."
       },
       "source": "Beyond Science: A Guide to FX, pg. 26",
-      "untrained": false,
+      "untrained": true,
       "fx_cost": 1,
-      "supplement": "beyond_science"
+      "supplement": "beyond_science",
+      "sections": [
+        {
+          "kind": "text",
+          "title": "What it is",
+          "body": "Alters a target's biological metabolism, forcing them to derive all nutritional sustenance strictly from blood [i, 70]."
+        },
+        {
+          "kind": "text",
+          "title": "Mechanics & Rules",
+          "body": "The target must consume at least **1 pint of blood** per day or suffer progressive starvation fatigue [i, 70]. If cast on a non-human, it requires blood of their own species [i, 70]."
+        },
+        {
+          "kind": "ranks",
+          "title": "Specialty Rank Benefits",
+          "entries": [
+            {
+              "rank": 4,
+              "title": "Extended Starvation & Physical Boost",
+              "body": "Extends onset time of starvation and allows target to derive temporary physical bonuses after feeding."
+            },
+            {
+              "rank": 8,
+              "title": "Extended Starvation & Physical Boost",
+              "body": "Further extends starvation timeline and enhances feeding bonus."
+            },
+            {
+              "rank": 12,
+              "title": "Extended Starvation & Physical Boost",
+              "body": "Maximum starvation endurance and predatory feeding enhancement."
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "title": "Combat Profile",
+          "body": "Adds a permanent biological **Debuff/Sickness Form**."
+        }
+      ]
     },
     "Hunter's stare": {
       "ability": "WIL",
@@ -1480,18 +2419,56 @@
       "broad_skill": "Pyromancy",
       "category": "Arcane Magic",
       "cost": 3,
-      "description": "Governing Ability: Will (WIL). Player Notes: This spell wreaths the pyromancer's body in a swirling aura of magical fire that does not harm the caster or their equipment. Any creature striking the pyromancer with a bare-handed melee attack or natural weapon suffers d4 points of wound damage (En/O) from the intense heat. Additionally, the caster's own unarmed strikes inflict an additional d4 wound damage (En/O). The aura provides Ordinary toughness protection (d4) against cold or ice-based attacks.",
-      "meta": "Cost: 4 skill points / This skill can't be used untrained / Transform spell (1 FX energy point)",
+      "description": "What it is: Causes a target within 30 meters to spontaneously erupt in flames [i, 92].\n\nMechanics & Rules: Deals **d4 (En/O) damage** every phase until extinguished [i, 92]. Armor protects each phase [i, 92]. Lasts 2 phases per degree of success [i, 92].\n\nCombat Profile: Adds a heavy damage-over-time **Attack Form**.",
+      "meta": "Cost: 3 skill points / Untrained use permitted / Conjure Spell (1 FX energy point)",
       "name": "Immolation",
       "rank_benefits": {
-        "12": "At rank 12, the caster can trigger the aura to flare violently once per scene, blinding anyone within a 3-meter radius who fails a Constitution feat check.",
-        "4": "At rank 4, the damage dealt to attackers and added to unarmed strikes increases to d6 wound damage.",
-        "8": "At rank 8, the immolation aura extends outward slightly, automatically melting incoming low-velocity projectiles like arrows or thrown knives, granting a +1 step penalty to incoming ranged attacks."
+        "4": "Intensified Burning: Damage increases to d4+1s / d4+2s / d4+4s per round.",
+        "8": "Severe Burning: Damage increases to d4+3s per round.",
+        "12": "Incineration: Damage increases to d6+3s per round."
       },
       "source": "Beyond Science: A Guide to FX, pg. 35",
-      "untrained": false,
+      "untrained": true,
       "fx_cost": 1,
-      "supplement": "beyond_science"
+      "supplement": "beyond_science",
+      "sections": [
+        {
+          "kind": "text",
+          "title": "What it is",
+          "body": "Causes a target within 30 meters to spontaneously erupt in flames [i, 92]."
+        },
+        {
+          "kind": "text",
+          "title": "Mechanics & Rules",
+          "body": "Deals **d4 (En/O) damage** every phase until extinguished [i, 92]. Armor protects each phase [i, 92]. Lasts 2 phases per degree of success [i, 92]."
+        },
+        {
+          "kind": "ranks",
+          "title": "Specialty Rank Benefits",
+          "entries": [
+            {
+              "rank": 4,
+              "title": "Intensified Burning",
+              "body": "Damage increases to d4+1s / d4+2s / d4+4s per round."
+            },
+            {
+              "rank": 8,
+              "title": "Severe Burning",
+              "body": "Damage increases to d4+3s per round."
+            },
+            {
+              "rank": 12,
+              "title": "Incineration",
+              "body": "Damage increases to d6+3s per round."
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "title": "Combat Profile",
+          "body": "Adds a heavy damage-over-time **Attack Form**."
+        }
+      ]
     },
     "Impact Conversion": {
       "ability": "CON",
@@ -1516,19 +2493,57 @@
       "ability": "WIL",
       "broad_skill": "Pyromancy",
       "category": "Arcane Magic",
-      "cost": 4.0,
-      "description": "Governing Ability: Intelligence (INT). Player Notes: The pyromancer traces a glowing, occult rune on a solid surface (such as a door, floor, or chest), creating a highly volatile magical trap. The seal becomes invisible to normal sight 1 round after casting. If a creature other than the caster touches or passes within 1 meter of the sealed object, the rune detonates in a fiery explosion. The blast inflicts d6w/d8w/d4m (En/O) damage to everyone within a 3-meter radius.",
-      "meta": "Cost: 4 skill points / This skill can't be used untrained / Conjure spell (2 FX energy points)",
+      "cost": 4,
+      "description": "What it is: Places a magical bomb/seal on an object that explodes when opened or disturbed [i, 92].\n\nMechanics & Rules: Deals **d6+2 points of wound damage** to anyone within 2 meters [i, 92]. Explodes instantly upon triggering [i, 92].\n\nCombat Profile: Adds a trap-setting **Attack/Area-Denial Form**.",
+      "meta": "Cost: 4 skill points / Untrained use permitted / Conjure Spell (1 FX energy point)",
       "name": "Incendiary seal",
       "rank_benefits": {
-        "12": "At rank 12, the damage profile of the explosion increases to d8w/d4m/d6m (En/G).",
-        "4": "At rank 4, the blast radius of the incendiary seal expands to 5 meters.",
-        "8": "At rank 8, the caster can set specific bypass conditions for the trap, such as a spoken password or allowing specific individuals to pass safely."
+        "4": "Extended Range: Detonation and triggering range increases to 10 meters.",
+        "8": "Extended Range: Detonation range increases to 20 meters.",
+        "12": "Extended Range: Detonation range increases to 30 meters."
       },
       "source": "Beyond Science: A Guide to FX, pg. 35",
-      "untrained": false,
-      "fx_cost": 2,
-      "supplement": "beyond_science"
+      "untrained": true,
+      "fx_cost": 1,
+      "supplement": "beyond_science",
+      "sections": [
+        {
+          "kind": "text",
+          "title": "What it is",
+          "body": "Places a magical bomb/seal on an object that explodes when opened or disturbed [i, 92]."
+        },
+        {
+          "kind": "text",
+          "title": "Mechanics & Rules",
+          "body": "Deals **d6+2 points of wound damage** to anyone within 2 meters [i, 92]. Explodes instantly upon triggering [i, 92]."
+        },
+        {
+          "kind": "ranks",
+          "title": "Specialty Rank Benefits",
+          "entries": [
+            {
+              "rank": 4,
+              "title": "Extended Range",
+              "body": "Detonation and triggering range increases to 10 meters."
+            },
+            {
+              "rank": 8,
+              "title": "Extended Range",
+              "body": "Detonation range increases to 20 meters."
+            },
+            {
+              "rank": 12,
+              "title": "Extended Range",
+              "body": "Detonation range increases to 30 meters."
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "title": "Combat Profile",
+          "body": "Adds a trap-setting **Attack/Area-Denial Form**."
+        }
+      ]
     },
     "Interior alchemy": {
       "ability": "PER",
@@ -1605,16 +2620,59 @@
       "ability": "INT",
       "broad_skill": "Necromancy",
       "category": "Arcane Magic",
-      "cost": 3.0,
-      "description": "Governing Ability: Will (WIL). Player Notes: The necromancer channels negative energy to rapidly stitch together damaged tissue. Unlike the holy curing of Monotheism or the biological acceleration of Hemomancy, this healing is crude, painful, and leaves terrible scarring. A successful check heals 2 points of wound or stun damage, but the target must pass a Stamina-resist pain check or lose their next action due to the agonizing process.",
+      "cost": 3,
+      "description": "A biological restoration spell that directly repairs wound damage. Taps into the biological reserves of a living creature to heal wounds. The caster must touch the intended target. Healing Matrix: Ordinary Success: Heals 1 Wound point. Good Success: Heals 2 Wound points. Amazing Success: Heals 3 Wound points. The Cost: Because the spell violently accelerates natural cell repair, each casting inflicts 1 point of fatigue damage upon the target. Medical Treatment Synergy: The caster can make an active Medical Science-treatment check to assist their casting. An Ordinary, Good, or Amazing treatment success grants a -1, -2, or -3 step bonus to the Knit Wounds check. Combat Forms Added: Healing/Support Form: The caster gains a touch-based Healing Form to restore physical wounds mid-firefight.",
       "meta": "Cost: 3 skill points / This skill can't be used untrained / Transform spell (1 FX energy point)",
       "name": "Knit wounds",
       "rank_benefits": {
-        "12": "At rank 12, the spell can heal 1 point of mortal damage.",
-        "4": "At rank 4, the spell heals 4 points of wound or stun damage.",
-        "8": "At rank 8, the necromancer can use this spell to reattach a severed limb if the operation is performed within 10 minutes of the injury."
+        "6": "Rank 6 (Healing Mortal Damage): The caster can now heal critical Mortal damage. The check results are upgraded to: Ordinary (2 wounds); Good (3 wounds or 1 mortal); Amazing (4 wounds or 2 mortals)."
       },
-      "source": "Beyond Science: A Guide to FX, pg. 34",
+      "sections": [
+        {
+          "kind": "text",
+          "title": "What it is",
+          "body": "A biological restoration spell that directly repairs wound damage."
+        },
+        {
+          "kind": "text",
+          "title": "How it Works",
+          "body": "Taps into the biological reserves of a living creature to heal wounds. The caster must touch the intended target."
+        },
+        {
+          "kind": "outcomes",
+          "title": "Healing Matrix",
+          "ordinary": "Heals 1 Wound point",
+          "good": "Heals 2 Wound points",
+          "amazing": "Heals 3 Wound points"
+        },
+        {
+          "kind": "text",
+          "title": "The Cost",
+          "body": "Because the spell violently accelerates natural cell repair, each casting inflicts 1 point of fatigue damage upon the target."
+        },
+        {
+          "kind": "text",
+          "title": "Medical Treatment Synergy",
+          "body": "The caster can make an active Medical Science-treatment check to assist their casting. An Ordinary, Good, or Amazing treatment success grants a -1, -2, or -3 step bonus to the Knit Wounds check."
+        },
+        {
+          "kind": "text",
+          "title": "Combat Forms Added",
+          "body": "Healing/Support Form: The caster gains a touch-based Healing Form to restore physical wounds mid-firefight."
+        },
+        {
+          "kind": "ranks",
+          "title": "Specialty Rank Benefits",
+          "entries": [
+            {
+              "rank": 6,
+              "title": "Healing Mortal Damage",
+              "body": "The caster can now heal critical Mortal damage. The check results are upgraded to: Ordinary (2 wounds); Good (3 wounds or 1 mortal); Amazing (4 wounds or 2 mortals)."
+            }
+          ]
+        }
+      ],
+      "source": "Beyond Science: A Guide to FX, pg. 32-33",
       "untrained": false,
       "fx_cost": 1,
       "supplement": "beyond_science"
@@ -1640,21 +2698,59 @@
     "Life Support": {
       "ability": "CON",
       "broad_skill": "Brick",
-      "category": "Super Hero",
-      "cost": 3.0,
-      "description": "This power allows the character to survive without food, water, sleep, or even air without difficulty. Of course, certain abilities may not function in cases of extreme deprivation. For example, a character who can function without air can survive in space, but she cannot speak in that airless environment. The power sustains the character for up to 24 hours. After using this power, the character must let it rest for an equal amount of time before it can be used again.",
-      "meta": "Active or 1 FX energy point. This skill can't be used untrained.",
+      "category": "Super Power",
+      "cost": 3,
+      "description": "What it is: Allows the hero to survive without food, water, sleep, or air [i, 99].\n\nMechanics & Rules: Provides complete environmental immunity for up to 24 hours [i, 99]. Active use costs 1 FX point [i, 99].\n\nCombat Profile: Adds an active environmental **Defense Form**.",
+      "meta": "Cost: 3 skill points / This skill can't be used untrained / Brick Power (1 FX energy point)",
       "name": "Life Support",
       "rank_benefits": {
-        "12": "At rank 12, it increases to 27 days.",
-        "4": "At rank 4, the duration of life support increases to 72 hours (3 days).",
-        "8": "At rank 8, it increases to 9 days."
+        "4": "Extended Adaptation: Duration extends to 72 hours (3 days).",
+        "8": "Extended Adaptation: Duration extends to 9 days.",
+        "12": "Permanent Adaptation: Duration extends to 27 days."
       },
       "source": "Beyond Science: A Guide to FX, pg. 62",
       "permanent_cost": 3,
       "untrained": false,
       "fx_cost": 1,
-      "supplement": "beyond_science"
+      "supplement": "beyond_science",
+      "sections": [
+        {
+          "kind": "text",
+          "title": "What it is",
+          "body": "Allows the hero to survive without food, water, sleep, or air [i, 99]."
+        },
+        {
+          "kind": "text",
+          "title": "Mechanics & Rules",
+          "body": "Provides complete environmental immunity for up to 24 hours [i, 99]. Active use costs 1 FX point [i, 99]."
+        },
+        {
+          "kind": "ranks",
+          "title": "Specialty Rank Benefits",
+          "entries": [
+            {
+              "rank": 4,
+              "title": "Extended Adaptation",
+              "body": "Duration extends to 72 hours (3 days)."
+            },
+            {
+              "rank": 8,
+              "title": "Extended Adaptation",
+              "body": "Duration extends to 9 days."
+            },
+            {
+              "rank": 12,
+              "title": "Permanent Adaptation",
+              "body": "Duration extends to 27 days."
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "title": "Combat Profile",
+          "body": "Adds an active environmental **Defense Form**."
+        }
+      ]
     },
     "Life endures": {
       "ability": "INT",
@@ -1695,36 +2791,100 @@
       "broad_skill": "Hemomancy",
       "category": "Arcane Magic",
       "cost": 4,
-      "description": "Governing Ability: Constitution (CON). Player Notes: The hemomancer safely accelerates their internal healing mechanics, using their own bloodstream to flush out impurities and close wounds. A successful check allows the caster to instantly convert up to 3 points of wound damage into stun damage, which can then be recovered much faster through conventional rest.",
-      "meta": "Cost: 3 skill points / This skill can't be used untrained / Transform spell (1 FX energy point)",
+      "description": "What it is: Siphons the caster's own blood reserves to instantly heal wounds or stabilize a dying ally [i, 71].\n\nMechanics & Rules: The caster spills a few drops of their own blood (suffering **1 Stun point** of feedback) [i, 71]. On success, they can repair **d6+1 Stun** or **d4+1 Wound** points on a touched target [i, 71]. Can also stop bleeding immediately [i, 71].\n\nCombat Profile: Adds an essential touch-based **Healing Form**.",
+      "meta": "Cost: 4 skill points / Untrained use permitted / Transform Spell (1 FX energy point)",
       "name": "Lifeblood",
       "rank_benefits": {
-        "12": "At rank 12, the spell can be cast via touch to mend the wounds of an ally.",
-        "4": "At rank 4, the hemomancer can use this spell to purge basic non-synthetic poisons or biological diseases from their system.",
-        "8": "At rank 8, the conversion threshold improves, allowing up to 6 points of wound damage to be shifted to stun damage."
+        "6": "Heal Mortal Damage: The arcanist can heal mortal damage, upgrading checks to: Ordinary (2 wounds); Good (3 wounds or 1 mortal); Amazing (4 wounds or 2 mortals)."
       },
       "source": "Beyond Science: A Guide to FX, pg. 26",
-      "untrained": false,
+      "untrained": true,
       "fx_cost": 1,
-      "supplement": "beyond_science"
+      "supplement": "beyond_science",
+      "sections": [
+        {
+          "kind": "text",
+          "title": "What it is",
+          "body": "Siphons the caster's own blood reserves to instantly heal wounds or stabilize a dying ally [i, 71]."
+        },
+        {
+          "kind": "text",
+          "title": "Mechanics & Rules",
+          "body": "The caster spills a few drops of their own blood (suffering **1 Stun point** of feedback) [i, 71]. On success, they can repair **d6+1 Stun** or **d4+1 Wound** points on a touched target [i, 71]. Can also stop bleeding immediately [i, 71]."
+        },
+        {
+          "kind": "ranks",
+          "title": "Specialty Rank Benefits",
+          "entries": [
+            {
+              "rank": 6,
+              "title": "Heal Mortal Damage",
+              "body": "The arcanist can heal mortal damage, upgrading checks to: Ordinary (2 wounds); Good (3 wounds or 1 mortal); Amazing (4 wounds or 2 mortals)."
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "title": "Combat Profile",
+          "body": "Adds an essential touch-based **Healing Form**."
+        }
+      ]
     },
     "Ligature": {
       "ability": "INT",
       "broad_skill": "Hermeticism",
       "category": "Arcane Magic",
-      "cost": 3.0,
-      "description": "Governing Ability: Will (WIL). Player Notes: This spell creates an invisible, unbreakable mystical bond or connection between two discrete objects or individuals. For the duration of the spell, what happens to one target physically or energetically echoes directly into the other. Alternatively, they can be mystically tethered together so that they cannot move more than a specified distance apart. An unwilling living target can resist this connection with a mental resolve check.",
-      "meta": "Cost: 3 skill points / This skill can't be used untrained / Transform spell (1 FX energy point)",
+      "cost": 3,
+      "description": "What it is: Wraps a target in metallic threads that snap tight to restrict movement [i, 74].\n\nMechanics & Rules: Ordinary binds target at half speed (+2 penalty) [i, 74]; Good immobilizes for d4+2 rounds [i, 74]; Amazing immobilizes for d8+2 rounds [i, 74]. Threads have Durability 3, Ordinary toughness [i, 74].\n\nCombat Profile: Adds an active crowd-controlling **Debuff Form**.",
+      "meta": "Cost: 3 skill points / Untrained use permitted / Transform Spell (1 FX energy point)",
       "name": "Ligature",
       "rank_benefits": {
-        "12": "At rank 12, the ligature can bind a physical object to a spiritual or phased entity, grounding it into the material realm.",
-        "4": "At rank 4, the distance threshold between the tethered targets can be fixed up to 50 meters.",
-        "8": "At rank 8, any kinetic impact or physical force exerted on one object is fully transferred to the other, allowing remote structural manipulation."
+        "4": "Thread Reinforcement: Increases thread thickness and count, adding +1 round of duration and +1 durability.",
+        "8": "Thread Reinforcement: Adds an additional +1 round of duration (+2 total) and +1 durability (+2 total).",
+        "12": "Thread Reinforcement: Adds an additional +1 round of duration (+3 total) and +1 durability (+3 total)."
       },
       "source": "Beyond Science: A Guide to FX, pg. 28",
-      "untrained": false,
+      "untrained": true,
       "fx_cost": 1,
-      "supplement": "beyond_science"
+      "supplement": "beyond_science",
+      "sections": [
+        {
+          "kind": "text",
+          "title": "What it is",
+          "body": "Wraps a target in metallic threads that snap tight to restrict movement [i, 74]."
+        },
+        {
+          "kind": "text",
+          "title": "Mechanics & Rules",
+          "body": "Ordinary binds target at half speed (+2 penalty) [i, 74]; Good immobilizes for d4+2 rounds [i, 74]; Amazing immobilizes for d8+2 rounds [i, 74]. Threads have Durability 3, Ordinary toughness [i, 74]."
+        },
+        {
+          "kind": "ranks",
+          "title": "Specialty Rank Benefits",
+          "entries": [
+            {
+              "rank": 4,
+              "title": "Thread Reinforcement",
+              "body": "Increases thread thickness and count, adding +1 round of duration and +1 durability."
+            },
+            {
+              "rank": 8,
+              "title": "Thread Reinforcement",
+              "body": "Adds an additional +1 round of duration (+2 total) and +1 durability (+2 total)."
+            },
+            {
+              "rank": 12,
+              "title": "Thread Reinforcement",
+              "body": "Adds an additional +1 round of duration (+3 total) and +1 durability (+3 total)."
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "title": "Combat Profile",
+          "body": "Adds an active crowd-controlling **Debuff Form**."
+        }
+      ]
     },
     "Lightning Speed": {
       "ability": "CON",
@@ -1823,17 +2983,45 @@
       "broad_skill": "Necromancy",
       "category": "Arcane Magic",
       "cost": 5,
-      "description": "Governing Ability: Intelligence (INT). Player Notes: The necromancer inflicts a terrible, wasting affliction upon a target within touch range. The victim must pass a physical resolve check. On a failure, the curse takes hold, halving their natural healing rate and preventing any FX or psionic healing from affecting them. The curse also inflicts 1 point of fatigue damage every 24 hours that cannot be recovered until the curse is lifted.",
-      "meta": "Cost: 4 skill points / This skill can't be used untrained / Transform spell (2 FX energy points)",
+      "description": "A touch-delivered biological blight that initiates a permanent, wasting disease. The caster touches a target, who must immediately roll a Resolve-physical resolve check. If the target fails, they immediately contract a magical blight, beginning at the Ill stage of a disease. The AFFLICTION Progress: The target's condition fluctuates between Ill and Terminally Ill. Because of the magical nature of the curse, Constitution feat checks can never allow the victim to recover beyond the Ill stage. They are trapped in this wasting loop until they die or the curse is lifted. The Siphoned Cost: To maintain this blight, the caster must feed it with their own life force, sustaining 1 point of Wound damage when cast. This Wound point cannot be healed by any means while the Mummy's Curse remains active on the victim. The caster can lift the curse at will, and the curse terminates automatically upon the caster's death. Combat Forms Added: Debuff/Attack Form: Adds a dangerous touch-based Attack Form that bypasses physical armor to infect a target with a terminal, wasting sickness.",
+      "meta": "Cost: 5 skill points / This skill can't be used untrained / Transform spell (1 FX energy point)",
       "name": "Mummy's curse",
-      "rank_benefits": {
-        "12": "At rank 12, the fatigue damage increases to 1 point of wound damage every 24 hours.",
-        "4": "At rank 4, the target suffers a permanent +1 step penalty to all Constitution-based checks while the curse is active.",
-        "8": "At rank 8, the curse can be triggered at a range of 10 meters via a sympathetic link (such as a lock of the victim's hair)."
-      },
-      "source": "Beyond Science: A Guide to FX, pg. 34",
+      "rank_benefits": {},
+      "sections": [
+        {
+          "kind": "text",
+          "title": "What it is",
+          "body": "A touch-delivered biological blight that initiates a permanent, wasting disease."
+        },
+        {
+          "kind": "text",
+          "title": "How it Works",
+          "body": "The caster touches a target, who must immediately roll a Resolve-physical resolve check. If the target fails, they immediately contract a magical blight, beginning at the Ill stage of a disease."
+        },
+        {
+          "kind": "text",
+          "title": "The Affliction Progress",
+          "body": "The target's condition fluctuates between Ill and Terminally Ill. Because of the magical nature of the curse, Constitution feat checks can never allow the victim to recover beyond the Ill stage. They are trapped in this wasting loop until they die or the curse is lifted."
+        },
+        {
+          "kind": "text",
+          "title": "The Siphoned Cost",
+          "body": "To maintain this blight, the caster must feed it with their own life force, sustaining 1 point of Wound damage when cast. This Wound point cannot be healed by any means while the Mummy's Curse remains active on the victim. The caster can lift the curse at will, and the curse terminates automatically upon the caster's death."
+        },
+        {
+          "kind": "text",
+          "title": "Combat Forms Added",
+          "body": "Debuff/Attack Form: Adds a dangerous touch-based Attack Form that bypasses physical armor to infect a target with a terminal, wasting sickness."
+        },
+        {
+          "kind": "text",
+          "title": "Specialty Rank Benefits",
+          "body": "None listed in the text."
+        }
+      ],
+      "source": "Beyond Science: A Guide to FX, pg. 33",
       "untrained": false,
-      "fx_cost": 2,
+      "fx_cost": 1,
       "supplement": "beyond_science"
     },
     "Negate the spirit": {
@@ -2022,18 +3210,44 @@
       "broad_skill": "Diabolism",
       "category": "Arcane Magic",
       "cost": 2,
-      "description": "Governing Ability: Intelligence (INT). Player Notes: The diabolist tears at the local dimensional fabric, creating a localized instability that disrupts active FX, psionics, or technological shielding. This spell triggers an immediate area-of-effect disruption within a 5-meter radius, adding a +2 step penalty to any active skill checks or operations involving energetic fields, spatial transitions, or dimensional anchors.",
-      "meta": "Cost: 4 skill points / This skill can't be used untrained / Transform spell (2 FX energy points)",
+      "description": "What it is: Negates other active magical spells (both Arcane Magic and Faith FX) directed against the caster or a target within 30 meters [i, 78].\n\nMechanics & Rules: Automatically succeeds against the caster's own magic [i, 78]. Target spells from Enochian or Monotheism schools inflict a +1 step penalty to the check [i, 78]. Requires an Ordinary-quality sacrifice [i, 78].\n\nCombat Profile: Adds a utility **Defense Form** capable of dispelling enemy spells and miracles.",
+      "meta": "Cost: 2 skill points / Untrained use permitted / Transform Spell (1 FX energy point)",
       "name": "Rend the weave",
       "rank_benefits": {
-        "12": "At rank 12, the tear creates a brief spatial vacuum, forcing any phased or teleporting entities within the area to immediately materialize and sustain d4 points of stun damage.",
-        "4": "At rank 4, the radius of the dimensional disruption expands to 10 meters.",
-        "8": "At rank 8, the disruption actively damages incoming energy fields, lowering their effectiveness by one intensity grade."
+        "1": "Caster Level Advantage: Each rank of difference between the skill rank of the caster and the target spell's caster adds a -1 step bonus (or penalty) to the check."
       },
       "source": "Beyond Science: A Guide to FX, pg. 23",
-      "untrained": false,
-      "fx_cost": 2,
-      "supplement": "beyond_science"
+      "untrained": true,
+      "fx_cost": 1,
+      "supplement": "beyond_science",
+      "sections": [
+        {
+          "kind": "text",
+          "title": "What it is",
+          "body": "Negates other active magical spells (both Arcane Magic and Faith FX) directed against the caster or a target within 30 meters [i, 78]."
+        },
+        {
+          "kind": "text",
+          "title": "Mechanics & Rules",
+          "body": "Automatically succeeds against the caster's own magic [i, 78]. Target spells from Enochian or Monotheism schools inflict a +1 step penalty to the check [i, 78]. Requires an Ordinary-quality sacrifice [i, 78]."
+        },
+        {
+          "kind": "ranks",
+          "title": "Specialty Rank Benefits",
+          "entries": [
+            {
+              "rank": 1,
+              "title": "Caster Level Advantage",
+              "body": "Each rank of difference between the skill rank of the caster and the target spell's caster adds a -1 step bonus (or penalty) to the check."
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "title": "Combat Profile",
+          "body": "Adds a utility **Defense Form** capable of dispelling enemy spells and miracles."
+        }
+      ]
     },
     "Reward of toil": {
       "ability": "WIL",
@@ -2069,36 +3283,118 @@
       "broad_skill": "Hemomancy",
       "category": "Arcane Magic",
       "cost": 2,
-      "description": "Governing Ability: Will (WIL). Player Notes: The caster suppresses their metabolic output and slows their heart rate to a near-stasis level, causing their blood to \"run cold.\" While active, the hemomancer becomes entirely invisible to thermal sensors, infrared scanning, and tracking mechanisms that seek body heat. Furthermore, they gain a +2 bonus to resistance modifiers against cold-based environmental hazards or attacks, but take a +1 step penalty to initiative action checks.",
-      "meta": "Cost: 3 skill points / This skill can't be used untrained / Transform spell (1 FX energy point)",
+      "description": "What it is: Causes the target's blood flow to violently decelerate, freezing their motor functions and robbing energy from the brain [i, 71].\n\nMechanics & Rules: Target must be touched [i, 71]. On success, the target suffers a **+1, +2, or +3 step penalty** (Ordinary/Good/Amazing) to all action checks for the next **4 phases** [i, 71]. Caster must spend 1 stun point [i, 71].\n\nCombat Profile: Adds an active close-combat **Debuff Form** (reducing target initiative and accuracy).",
+      "meta": "Cost: 2 skill points / Untrained use permitted / Transform Spell (1 FX energy point)",
       "name": "Runs cold",
       "rank_benefits": {
-        "12": "At rank 12, the metabolic slowing is so profound that the hemomancer can feign absolute death, bypassing chemical and biological life-sign scans entirely.",
-        "4": "At rank 4, the duration of the stasis state extends to 1 hour.",
-        "8": "At rank 8, the protection increases, allowing the caster to completely ignore normal environmental cold damage hazards."
+        "3": "Extended Action Penalty: Duration of the action penalty doubles.",
+        "6": "Extended Action Penalty: Duration of the action penalty quadruples.",
+        "9": "Extended Action Penalty: Duration of the action penalty increases to 8x base.",
+        "12": "Extended Action Penalty: Duration of the action penalty increases to 16x base."
       },
       "source": "Beyond Science: A Guide to FX, pg. 26",
-      "untrained": false,
+      "untrained": true,
       "fx_cost": 1,
-      "supplement": "beyond_science"
+      "supplement": "beyond_science",
+      "sections": [
+        {
+          "kind": "text",
+          "title": "What it is",
+          "body": "Causes the target's blood flow to violently decelerate, freezing their motor functions and robbing energy from the brain [i, 71]."
+        },
+        {
+          "kind": "text",
+          "title": "Mechanics & Rules",
+          "body": "Target must be touched [i, 71]. On success, the target suffers a **+1, +2, or +3 step penalty** (Ordinary/Good/Amazing) to all action checks for the next **4 phases** [i, 71]. Caster must spend 1 stun point [i, 71]."
+        },
+        {
+          "kind": "ranks",
+          "title": "Specialty Rank Benefits",
+          "entries": [
+            {
+              "rank": 3,
+              "title": "Extended Action Penalty",
+              "body": "Duration of the action penalty doubles."
+            },
+            {
+              "rank": 6,
+              "title": "Extended Action Penalty",
+              "body": "Duration of the action penalty quadruples."
+            },
+            {
+              "rank": 9,
+              "title": "Extended Action Penalty",
+              "body": "Duration of the action penalty increases to 8x base."
+            },
+            {
+              "rank": 12,
+              "title": "Extended Action Penalty",
+              "body": "Duration of the action penalty increases to 16x base."
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "title": "Combat Profile",
+          "body": "Adds an active close-combat **Debuff Form** (reducing target initiative and accuracy)."
+        }
+      ]
     },
     "Shapechanging": {
       "ability": "WIL",
       "broad_skill": "Hermeticism",
       "category": "Arcane Magic",
-      "cost": 5.0,
-      "description": "Governing Ability: Will (WIL). Player Notes: The alchemist restructures their own atomic composition or that of a touched non-living object, altering its shape, size, and texture. Unlike purely cosmetic illusion skills, this transformation is completely real and physical, shifting the underlying material geometry. If changing their own form, the wizard can assume the physical dimensions and structural properties of another creature or material, though they retain their base mental attributes.",
-      "meta": "Cost: 5 skill points / This skill can't be used untrained / Transform spell (2 FX energy points)",
+      "cost": 5,
+      "description": "What it is: Allows the caster to assume the form of a specific animal [i, 74].\n\nMechanics & Rules: Requires bear fat or other lubricants [i, 74]. Caster retains their own INT, WIL, PER but gains STR, DEX, CON of the animal [i, 74]. Lasts 4 hours + 1 hour per success [i, 74].\n\nCombat Profile: Adds a versatile physical **Buff/Combat Form**.",
+      "meta": "Cost: 5 skill points / Untrained use permitted / Transform Spell (2 FX energy points)",
       "name": "Shapechanging",
       "rank_benefits": {
-        "12": "At rank 12, the transformation allows the complete acquisition of a single natural physical trait of the assumed form, such as gills or natural armor.",
-        "4": "At rank 4, the duration of the physical transformation extends to 1 hour.",
-        "8": "At rank 8, the caster can safely alter their total mass by up to 50% to take on larger or smaller shapes."
+        "4": "Bonus Durability & Fatigue: Grants bonus stun, wound, fatigue, and mortal points in animal form.",
+        "8": "Enhanced Durability: Gains additional durability and physical power.",
+        "12": "Apex Beast Durability: Maximum physical stat boosts and durability scaling."
       },
       "source": "Beyond Science: A Guide to FX, pg. 28",
-      "untrained": false,
+      "untrained": true,
       "fx_cost": 2,
-      "supplement": "beyond_science"
+      "supplement": "beyond_science",
+      "sections": [
+        {
+          "kind": "text",
+          "title": "What it is",
+          "body": "Allows the caster to assume the form of a specific animal [i, 74]."
+        },
+        {
+          "kind": "text",
+          "title": "Mechanics & Rules",
+          "body": "Requires bear fat or other lubricants [i, 74]. Caster retains their own INT, WIL, PER but gains STR, DEX, CON of the animal [i, 74]. Lasts 4 hours + 1 hour per success [i, 74]."
+        },
+        {
+          "kind": "ranks",
+          "title": "Specialty Rank Benefits",
+          "entries": [
+            {
+              "rank": 4,
+              "title": "Bonus Durability & Fatigue",
+              "body": "Grants bonus stun, wound, fatigue, and mortal points in animal form."
+            },
+            {
+              "rank": 8,
+              "title": "Enhanced Durability",
+              "body": "Gains additional durability and physical power."
+            },
+            {
+              "rank": 12,
+              "title": "Apex Beast Durability",
+              "body": "Maximum physical stat boosts and durability scaling."
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "title": "Combat Profile",
+          "body": "Adds a versatile physical **Buff/Combat Form**."
+        }
+      ]
     },
     "Shapeshifting": {
       "ability": "WIL",
@@ -2157,34 +3453,122 @@
       "ability": "INT",
       "broad_skill": "Hermeticism",
       "category": "Arcane Magic",
-      "cost": 4.0,
-      "description": "Governing Ability: Will (WIL). Player Notes: The alchemist utilizes a combination of spoken esoteric formulas and dispersed alchemical powders to induce a profound, unnatural slumber. The caster targets a single living creature with a functioning respiratory system within 10 meters. The target must pass a physical resolve check. On a failure, they fall into a deep, comatose sleep for the duration of the scene. They cannot be awakened by normal noise or mild jostling; it requires actual physical damage or an aggressive neutralizing chemical to break the enchantment.",
-      "meta": "Cost: 4 skill points / This skill can't be used untrained / Transform spell (1 FX energy point)",
+      "cost": 4,
+      "description": "What it is: Forces a living creature up to 30 meters away to fall into a deep sleep [i, 74].\n\nMechanics & Rules: Target gets a *Resolve-mental resolve* check to resist [i, 74]. Sleep lasts 20 minutes minus target CON [i, 74].\n\nCombat Profile: Adds an active crowd-controlling **Debuff/Sleep Form**.",
+      "meta": "Cost: 4 skill points / Untrained use permitted / Transform Spell (1 FX energy point)",
       "name": "Sleep of Morpheus",
       "rank_benefits": {
-        "12": "At rank 12, the duration of the unnatural slumber extends to 24 hours.",
-        "4": "At rank 4, the spell can be cast as a localized 3-meter radius cloud, affecting all breathing targets within the area.",
-        "8": "At rank 8, the sleep becomes so incredibly deep that even suffering physical damage only grants the victim a secondary physical resolve check to awaken, rather than breaking the spell automatically."
+        "4": "Deep Slumber Penalty: Target resists at a +1 step penalty.",
+        "8": "Extended Slumber: Sleep duration increases to 30 minutes minus target's CON score.",
+        "12": "Comatose Slumber Penalty: Target resists at a +2 step penalty."
       },
       "source": "Beyond Science: A Guide to FX, pg. 29",
-      "untrained": false,
+      "untrained": true,
       "fx_cost": 1,
-      "supplement": "beyond_science"
+      "supplement": "beyond_science",
+      "sections": [
+        {
+          "kind": "text",
+          "title": "What it is",
+          "body": "Forces a living creature up to 30 meters away to fall into a deep sleep [i, 74]."
+        },
+        {
+          "kind": "text",
+          "title": "Mechanics & Rules",
+          "body": "Target gets a *Resolve-mental resolve* check to resist [i, 74]. Sleep lasts 20 minutes minus target CON [i, 74]."
+        },
+        {
+          "kind": "ranks",
+          "title": "Specialty Rank Benefits",
+          "entries": [
+            {
+              "rank": 4,
+              "title": "Deep Slumber Penalty",
+              "body": "Target resists at a +1 step penalty."
+            },
+            {
+              "rank": 8,
+              "title": "Extended Slumber",
+              "body": "Sleep duration increases to 30 minutes minus target's CON score."
+            },
+            {
+              "rank": 12,
+              "title": "Comatose Slumber Penalty",
+              "body": "Target resists at a +2 step penalty."
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "title": "Combat Profile",
+          "body": "Adds an active crowd-controlling **Debuff/Sleep Form**."
+        }
+      ]
     },
     "Speak with dead": {
       "ability": "INT",
       "broad_skill": "Necromancy",
       "category": "Arcane Magic",
       "cost": 2,
-      "description": "Governing Ability: Intelligence (INT). Player Notes: This spell allows the necromancer to temporarily call the spirit of a deceased creature back to its remains (or a place of its death) to answer questions. The spirit retains the knowledge it had in life but is often cryptic, resentful, or confused. The caster can ask one question per degree of success. The spell lasts for 5 minutes.",
-      "meta": "Cost: 3 skill points / This skill can't be used untrained / Augur spell (1 FX energy point)",
+      "description": "A ritual that summons a spirit from the grave to answer direct inquiries. Summons a specific ghost to answer questions. If the physical corpse is nearby, the caster receives a -2 step bonus to the check; however, they suffer a +1 step penalty for every week that has passed since the target died. The Questioning: The caster may ask 1, 2, or 3 questions based on an Ordinary, Good, or Amazing success. The spirit is compelled to tell the truth, but it retains its living personality (if it hated the caster in life, it remains hostile in death). The ghost can only answer questions it physically knew in life, and will depart after 5 minutes. Combat Forms Added: None.",
+      "meta": "Cost: 2 skill points / This skill can't be used untrained / Summon spell (1 FX energy point)",
       "name": "Speak with dead",
       "rank_benefits": {
-        "12": "At rank 12, the necromancer can call upon spirits without a physical anchor, simply naming the dead entity if they possess a strong personal connection to them.",
-        "4": "At rank 4, the necromancer receives a -1 step bonus to Interaction checks made to compel the spirit to speak truthfully.",
-        "8": "At rank 8, the duration of the conversation extends to 30 minutes, and the spirit's memory is clearer."
+        "4": "Ranks 4, 8, and 12 (More Questions): The caster may ask 1 additional question (allowing up to 4 questions on an Amazing success).",
+        "8": "Ranks 4, 8, and 12 (More Questions): The caster may ask 1 additional question.",
+        "12": "Ranks 4, 8, and 12 (More Questions): The caster may ask 1 additional question."
       },
-      "source": "Beyond Science: A Guide to FX, pg. 34",
+      "sections": [
+        {
+          "kind": "text",
+          "title": "What it is",
+          "body": "A ritual that summons a spirit from the grave to answer direct inquiries."
+        },
+        {
+          "kind": "text",
+          "title": "How it Works",
+          "body": "Summons a specific ghost to answer questions. If the physical corpse is nearby, the caster receives a -2 step bonus to the check; however, they suffer a +1 step penalty for every week that has passed since the target died."
+        },
+        {
+          "kind": "outcomes",
+          "title": "The Questioning",
+          "ordinary": "1 question",
+          "good": "2 questions",
+          "amazing": "3 questions"
+        },
+        {
+          "kind": "text",
+          "title": "Spirit Interaction",
+          "body": "The spirit is compelled to tell the truth, but it retains its living personality (if it hated the caster in life, it remains hostile in death). The ghost can only answer questions it physically knew in life, and will depart after 5 minutes."
+        },
+        {
+          "kind": "text",
+          "title": "Combat Forms Added",
+          "body": "None."
+        },
+        {
+          "kind": "ranks",
+          "title": "Specialty Rank Benefits",
+          "entries": [
+            {
+              "rank": 4,
+              "title": "More Questions",
+              "body": "The caster may ask 1 additional question (allowing up to 4 questions on an Amazing success)."
+            },
+            {
+              "rank": 8,
+              "title": "More Questions",
+              "body": "The caster may ask 1 additional question."
+            },
+            {
+              "rank": 12,
+              "title": "More Questions",
+              "body": "The caster may ask 1 additional question."
+            }
+          ]
+        }
+      ],
+      "source": "Beyond Science: A Guide to FX, pg. 33",
       "untrained": false,
       "fx_cost": 1,
       "supplement": "beyond_science"
@@ -2207,19 +3591,57 @@
       "ability": "PER",
       "broad_skill": "Diabolism",
       "category": "Arcane Magic",
-      "cost": 4.0,
-      "description": "Governing Ability: Will (WIL). Player Notes: This spell creates a painful resonance that torments beings native to other dimensions, such as demons. The targeted creature is wracked with debilitating pains, suffering an immediate step penalty to all its actions based on the spell's success check.",
-      "meta": "Cost: 4 skill points / This skill can't be used untrained / Transform spell (1 FX energy point)",
+      "cost": 4,
+      "description": "What it is: Creates a painful, destabilizing resonance against extraplanar entities (demons, elementals, spirits) within 30 meters [i, 78].\n\nMechanics & Rules: The target is wracked with debilitating pain, suffering a **+3 step penalty to all actions** [i, 78]. Requires an Ordinary-quality sacrifice [i, 78]. If cast on a demon bound by *Binding*, the pain duration is determined by a spiritwrack check [i, 78].\n\nCombat Profile: Adds a heavy-disrupting **Debuff Form** against extraplanar entities.",
+      "meta": "Cost: 4 skill points / Untrained use permitted / Transform Spell (1 FX energy point)",
       "name": "Spiritwrack",
       "rank_benefits": {
-        "12": "At rank 12, the duration of the spell increases, keeping the entity incapacitated for the entire scene unless disrupted.",
-        "4": "At rank 4, any penalty inflicted by this spell increases by +1 step.",
-        "8": "At rank 8, the penalty increases by another +1 step."
+        "4": "Increased Agony: Action penalty inflicted increases to +4 steps.",
+        "8": "Extended Duration: Increases the duration of the pain.",
+        "12": "Permanent Agony: Makes the effect permanent (with a d6 roll to the target's Constitution per day)."
       },
       "source": "Beyond Science: A Guide to FX, pg. 23",
-      "untrained": false,
+      "untrained": true,
       "fx_cost": 1,
-      "supplement": "beyond_science"
+      "supplement": "beyond_science",
+      "sections": [
+        {
+          "kind": "text",
+          "title": "What it is",
+          "body": "Creates a painful, destabilizing resonance against extraplanar entities (demons, elementals, spirits) within 30 meters [i, 78]."
+        },
+        {
+          "kind": "text",
+          "title": "Mechanics & Rules",
+          "body": "The target is wracked with debilitating pain, suffering a **+3 step penalty to all actions** [i, 78]. Requires an Ordinary-quality sacrifice [i, 78]. If cast on a demon bound by *Binding*, the pain duration is determined by a spiritwrack check [i, 78]."
+        },
+        {
+          "kind": "ranks",
+          "title": "Specialty Rank Benefits",
+          "entries": [
+            {
+              "rank": 4,
+              "title": "Increased Agony",
+              "body": "Action penalty inflicted increases to +4 steps."
+            },
+            {
+              "rank": 8,
+              "title": "Extended Duration",
+              "body": "Increases the duration of the pain."
+            },
+            {
+              "rank": 12,
+              "title": "Permanent Agony",
+              "body": "Makes the effect permanent (with a d6 roll to the target's Constitution per day)."
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "title": "Combat Profile",
+          "body": "Adds a heavy-disrupting **Debuff Form** against extraplanar entities."
+        }
+      ]
     },
     "Static image": {
       "ability": "WIL",
@@ -2243,18 +3665,66 @@
       "ability": "CON",
       "broad_skill": "Necromancy",
       "category": "Arcane Magic",
-      "cost": 4.0,
-      "description": "Governing Ability: Constitution (CON). Player Notes: This is the most feared spell in the necromancer's arsenal. The caster attempts to literally tear the soul or life essence from a living victim within 5 meters. This is an opposed check against the target's mental and physical resolve. If the spell succeeds, the target falls into a deep coma, and their life essence is captured in a prepared gemstone or receptacle. The victim will die in d4 days if the soul is not returned.",
-      "meta": "Cost: 4 skill points / This skill can't be used untrained / Transform spell (3 FX energy points)",
+      "cost": 4,
+      "description": "The offensive extraction of a living target's spirit, trapping them inside a container. The caster can violently rip the soul out of a target who is physically restrained within 10 meters of both the caster and a life battery. The victim must roll a Resolve-mental resolve check to resist. On a failure, their life force is extracted and stored in the battery. Body Decay: If the soul is not returned to its physical body within 1 hour, the body begins to die. For every hour the spirit is trapped beyond the first, the body must make a Resolve-physical resolve check or suffer 1 point of Mortal damage. Necromantic Synergy: If a corpse drained via Steal the Soul is subsequently animated, the caster receives a permanent -2 step bonus to their Animate Dead skill check. Combat Forms Added: Attack/Soul-Trap Form: The caster gains a powerful, close-range Attack Form capable of stripping a restrained target's soul and converting it into storable FX energy.",
+      "meta": "Cost: 4 skill points / This skill can't be used untrained / Transform spell (2 FX energy points)",
       "name": "Steal the soul",
       "rank_benefits": {
-        "12": "At rank 12, the caster permanently absorbs a fraction of the victim's power, temporarily gaining 1 rank in a random broad skill possessed by the victim for 24 hours.",
-        "4": "At rank 4, the caster can utilize the stolen soul energy to immediately heal all their own stun and wound damage.",
-        "8": "At rank 8, the range of the soul theft increases to 15 meters."
+        "4": "Ranks 4, 8, and 12 (Increased Potency): The target suffers a cumulative +1 penalty to their Resolve-mental resolve check made to resist the spell.",
+        "8": "Ranks 4, 8, and 12 (Increased Potency): The target suffers a cumulative +2 penalty to their Resolve-mental resolve check made to resist the spell.",
+        "12": "Ranks 4, 8, and 12 (Increased Potency): The target suffers a cumulative +3 penalty to their Resolve-mental resolve check made to resist the spell."
       },
-      "source": "Beyond Science: A Guide to FX, pg. 34",
+      "sections": [
+        {
+          "kind": "text",
+          "title": "What it is",
+          "body": "The offensive extraction of a living target's spirit, trapping them inside a container."
+        },
+        {
+          "kind": "text",
+          "title": "How it Works",
+          "body": "The caster can violently rip the soul out of a target who is physically restrained within 10 meters of both the caster and a life battery. The victim must roll a Resolve-mental resolve check to resist. On a failure, their life force is extracted and stored in the battery."
+        },
+        {
+          "kind": "text",
+          "title": "Body Decay",
+          "body": "If the soul is not returned to its physical body within 1 hour, the body begins to die. For every hour the spirit is trapped beyond the first, the body must make a Resolve-physical resolve check or suffer 1 point of Mortal damage."
+        },
+        {
+          "kind": "text",
+          "title": "Necromantic Synergy",
+          "body": "If a corpse drained via Steal the Soul is subsequently animated, the caster receives a permanent -2 step bonus to their Animate Dead skill check."
+        },
+        {
+          "kind": "text",
+          "title": "Combat Forms Added",
+          "body": "Attack/Soul-Trap Form: The caster gains a powerful, close-range Attack Form capable of stripping a restrained target's soul and converting it into storable FX energy."
+        },
+        {
+          "kind": "ranks",
+          "title": "Specialty Rank Benefits",
+          "entries": [
+            {
+              "rank": 4,
+              "title": "Increased Potency",
+              "body": "The target suffers a cumulative +1 penalty to their Resolve-mental resolve check made to resist the spell."
+            },
+            {
+              "rank": 8,
+              "title": "Increased Potency",
+              "body": "The target suffers a cumulative +2 penalty to their Resolve-mental resolve check made to resist the spell."
+            },
+            {
+              "rank": 12,
+              "title": "Increased Potency",
+              "body": "The target suffers a cumulative +3 penalty to their Resolve-mental resolve check made to resist the spell."
+            }
+          ]
+        }
+      ],
+      "source": "Beyond Science: A Guide to FX, pg. 33",
       "untrained": false,
-      "fx_cost": 3,
+      "fx_cost": 2,
       "supplement": "beyond_science"
     },
     "Stigmata": {
@@ -2262,36 +3732,112 @@
       "broad_skill": "Hemomancy",
       "category": "Arcane Magic",
       "cost": 3,
-      "description": "Governing Ability: Intelligence (INT). Player Notes: The hemomancer causes a burst of weaponized blood to spray or weep from their own skin or open wounds, shaping it into a corrosive, toxic mist or a razor-sharp projectile. This attack targets a single opponent within 10 meters, inflicting d4w/d6w/d4m (En/O) damage upon a successful strike. The caster must sacrifice 2 stun points to trigger this invocation.",
-      "meta": "Cost: 4 skill points / This skill can't be used untrained / Conjure spell (1 FX energy point)",
+      "description": "What it is: Causes a target within 30 meters to suffer immediate, severe cutaneous bruising and spontaneous bleeding [i, 71].\n\nMechanics & Rules: The caster expends **1 stun point** [i, 71]. Target suffers **d4+1s / d6+1s / d4w (LI/O)** damage [i, 71]. Physical armor does *not* protect against this internal rupture [i, 71].\n\nCombat Profile: Adds a powerful armor-bypassing **Attack Form** dealing Stun and Wound damage.",
+      "meta": "Cost: 3 skill points / Untrained use permitted / Transform Spell (1 FX energy point)",
       "name": "Stigmata",
       "rank_benefits": {
-        "12": "At rank 12, the spray acts as an area-of-effect mist, clouding a 3-meter radius and adding a +1 step penalty to all actions for those caught inside.",
-        "4": "At rank 4, the damage increases to d4+1w/d6+1w/d4+1m.",
-        "8": "At rank 8, the range of the kinetic blood strike increases to 20 meters."
+        "4": "Increased Bleeding: Damage increases to d4+2s / d6+2s / d4+1w.",
+        "8": "Severe Stigmata: Damage increases to d6+2s / 2d4+2s / 2d4w.",
+        "12": "Lethal Exsanguination: Damage upgrades to d8+2s / d12+2s / d4+4w."
       },
       "source": "Beyond Science: A Guide to FX, pg. 26",
-      "untrained": false,
+      "untrained": true,
       "fx_cost": 1,
-      "supplement": "beyond_science"
+      "supplement": "beyond_science",
+      "sections": [
+        {
+          "kind": "text",
+          "title": "What it is",
+          "body": "Causes a target within 30 meters to suffer immediate, severe cutaneous bruising and spontaneous bleeding [i, 71]."
+        },
+        {
+          "kind": "text",
+          "title": "Mechanics & Rules",
+          "body": "The caster expends **1 stun point** [i, 71]. Target suffers **d4+1s / d6+1s / d4w (LI/O)** damage [i, 71]. Physical armor does *not* protect against this internal rupture [i, 71]."
+        },
+        {
+          "kind": "ranks",
+          "title": "Specialty Rank Benefits",
+          "entries": [
+            {
+              "rank": 4,
+              "title": "Increased Bleeding",
+              "body": "Damage increases to d4+2s / d6+2s / d4+1w."
+            },
+            {
+              "rank": 8,
+              "title": "Severe Stigmata",
+              "body": "Damage increases to d6+2s / 2d4+2s / 2d4w."
+            },
+            {
+              "rank": 12,
+              "title": "Lethal Exsanguination",
+              "body": "Damage upgrades to d8+2s / d12+2s / d4+4w."
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "title": "Combat Profile",
+          "body": "Adds a powerful armor-bypassing **Attack Form** dealing Stun and Wound damage."
+        }
+      ]
     },
     "Storm of flames": {
       "ability": "WIL",
       "broad_skill": "Pyromancy",
       "category": "Arcane Magic",
-      "cost": 5.0,
-      "description": "Governing Ability: Will (WIL). Player Notes: This is the pinnacle of the pyromancer's destructive capability. The caster summons a torrential downpour of liquid fire and scorching winds over a targeted 10-meter radius within 30 meters. Everyone caught within the area of effect must make a Dexterity resistance check to avoid the brunt of the blast. The storm inflicts d4w/d6w/d8w (En/O) damage. Highly flammable materials within the area are instantly ignited.",
-      "meta": "Cost: 5 skill points / This skill can't be used untrained / Conjure spell (3 FX energy points)",
+      "cost": 5,
+      "description": "What it is: Fills an area with roaring flames, burning everything within a 5m x 5m x 5m area [i, 92].\n\nMechanics & Rules: Deals heavy fire damage to everyone in the area [i, 92]. Wall of fire limits apply [i, 92]. Lasts 1 phase [i, 92].\n\nCombat Profile: Adds a high-impact **Area Attack Form**.",
+      "meta": "Cost: 5 skill points / Untrained use permitted / Conjure Spell (2 FX energy points)",
       "name": "Storm of flames",
       "rank_benefits": {
-        "12": "At rank 12, achieving an Amazing success allows the caster to shape the storm, deliberately leaving safe pockets within the inferno to protect allies.",
-        "4": "At rank 4, the range of the spell increases to 50 meters, and the area of effect expands to a 15-meter radius.",
-        "8": "At rank 8, the intensity of the flames is upgraded, causing the damage to bypass Ordinary armor entirely."
+        "4": "Extended Range: Casting range increases to 60 meters.",
+        "8": "Volume Expansion: Storm volume increases to 10m x 10m.",
+        "12": "Extreme Range: Casting range reaches 250 meters."
       },
       "source": "Beyond Science: A Guide to FX, pg. 36",
-      "untrained": false,
-      "fx_cost": 3,
-      "supplement": "beyond_science"
+      "untrained": true,
+      "fx_cost": 2,
+      "supplement": "beyond_science",
+      "sections": [
+        {
+          "kind": "text",
+          "title": "What it is",
+          "body": "Fills an area with roaring flames, burning everything within a 5m x 5m x 5m area [i, 92]."
+        },
+        {
+          "kind": "text",
+          "title": "Mechanics & Rules",
+          "body": "Deals heavy fire damage to everyone in the area [i, 92]. Wall of fire limits apply [i, 92]. Lasts 1 phase [i, 92]."
+        },
+        {
+          "kind": "ranks",
+          "title": "Specialty Rank Benefits",
+          "entries": [
+            {
+              "rank": 4,
+              "title": "Extended Range",
+              "body": "Casting range increases to 60 meters."
+            },
+            {
+              "rank": 8,
+              "title": "Volume Expansion",
+              "body": "Storm volume increases to 10m x 10m."
+            },
+            {
+              "rank": 12,
+              "title": "Extreme Range",
+              "body": "Casting range reaches 250 meters."
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "title": "Combat Profile",
+          "body": "Adds a high-impact **Area Attack Form**."
+        }
+      ]
     },
     "Stretching": {
       "ability": "CON",
@@ -2316,20 +3862,57 @@
       "ability": "PER",
       "broad_skill": "Diabolism",
       "category": "Arcane Magic",
-      "cost": 5.0,
-      "description": "Governing Ability: Intelligence (INT). Player Notes: This spell allows the diabolist to tear through dimensional boundaries and pull a specific extra-dimensional creature into the local space. The ritual is complex and typically requires a pre-drawn occult circle to safely contain the entity upon arrival. Without a protective circle, the creature is free to act independently and will likely target the summoner.",
-      "meta": "Cost: 5 skill points / This skill can't be used untrained / Summon spell (2 FX energy points)",
+      "cost": 5,
+      "description": "What it is: Opens an extradimensional gateway to summon a demon to the caster's current location [i, 78].\n\nMechanics & Rules: Summoning a least demon requires an Ordinary sacrifice, 1 FX, and a complex check of 3 successes [i, 78]. Lesser demon requires a Good sacrifice, 2 FX, +2 step penalty, and 5 successes [i, 78]. Greater demon requires 100 participants, Amazing sacrifice, 3 FX, +4 step penalty, and 8 successes [i, 78].\n\nCombat Profile: Adds a **Summoning Form** to field demonic combatants.",
+      "meta": "Cost: 5 skill points / This skill can't be used untrained / Summon Spell (1 FX energy point)",
       "name": "Summoning",
       "rank_benefits": {
-        "12": "At rank 12, the summoner can open a brief gateway to call forth a major extra-dimensional entity.",
-        "3": "At rank 3, the diabolist can accurately summon a specific named minor entity with a -1 step bonus.",
-        "6": "At rank 6, the summoning ritual time is reduced from 10 minutes to 1 minute (5 rounds).",
-        "9": "At rank 9, the diabolist can summon up to three minor entities simultaneously."
+        "4": "Check Bonus: Applies a -1 step bonus to the check.",
+        "8": "Reduced Success Requirement: Reduces the required successes by 1.",
+        "12": "Reduced Success Requirement: Reduces the required successes by 2."
       },
       "source": "Beyond Science: A Guide to FX, pg. 24",
       "untrained": false,
-      "fx_cost": 2,
-      "supplement": "beyond_science"
+      "fx_cost": 1,
+      "supplement": "beyond_science",
+      "sections": [
+        {
+          "kind": "text",
+          "title": "What it is",
+          "body": "Opens an extradimensional gateway to summon a demon to the caster's current location [i, 78]."
+        },
+        {
+          "kind": "text",
+          "title": "Mechanics & Rules",
+          "body": "Summoning a least demon requires an Ordinary sacrifice, 1 FX, and a complex check of 3 successes [i, 78]. Lesser demon requires a Good sacrifice, 2 FX, +2 step penalty, and 5 successes [i, 78]. Greater demon requires 100 participants, Amazing sacrifice, 3 FX, +4 step penalty, and 8 successes [i, 78]."
+        },
+        {
+          "kind": "ranks",
+          "title": "Specialty Rank Benefits",
+          "entries": [
+            {
+              "rank": 4,
+              "title": "Check Bonus",
+              "body": "Applies a -1 step bonus to the check."
+            },
+            {
+              "rank": 8,
+              "title": "Reduced Success Requirement",
+              "body": "Reduces the required successes by 1."
+            },
+            {
+              "rank": 12,
+              "title": "Reduced Success Requirement",
+              "body": "Reduces the required successes by 2."
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "title": "Combat Profile",
+          "body": "Adds a **Summoning Form** to field demonic combatants."
+        }
+      ]
     },
     "Super Constitution": {
       "ability": "WIL",
@@ -2411,21 +3994,59 @@
     "Super Strength": {
       "ability": "WIL",
       "broad_skill": "Brick",
-      "category": "Super Hero",
-      "cost": 4.0,
-      "description": "This power increases the character's physical power and muscle. The character's Strength is increased by 1 point even if this takes the character above a racial maximum. Movement rate and all abilities and statistics based upon Strength should be altered to reflect this new value. The hero can also lift twice as much weight as his Strength would normally allow. (See the Lifting Objects section in Chapter 4: Skills in the Gamemaster Guide.) This power lasts 10 minutes for each use.",
-      "meta": "Active or 1 FX energy point. This skill can't be used untrained. No skill check required.",
+      "category": "Super Power",
+      "cost": 4,
+      "description": "What it is: Enhances physical muscular tissue to lift massive loads and strike with extreme force [i, 99].\n\nMechanics & Rules: Hero's Strength score is increased by 1 point [i, 99]. Active use multiplies carrying and lifting capacities [i, 99]. Lasts 10 minutes [i, 99].\n\nCombat Profile: Adds a massive melee **Attack/Physical Buff Form**.\n\n---",
+      "meta": "Cost: 4 skill points / This skill can't be used untrained / Brick Power (1 FX energy point)",
       "name": "Super Strength",
       "rank_benefits": {
-        "12": "At rank 12, strength increases by another 1 and lifting/moving increases to x5.",
-        "4": "At rank 4, improved Strength - Strength increases by another 1, and Strength for lifting or moving heavy objects increases to x3.",
-        "8": "At rank 8, strength increases by another 1 and lifting/moving increases to x4."
+        "4": "Mighty Lift: Strength score bonus increases by +1 and multiplies lift capacity by 3x.",
+        "8": "Colossal Lift: Strength score bonus increases by an additional +1 (+2 total) and multiplies lift capacity by 4x.",
+        "12": "Titan Strength: Strength score bonus increases by an additional +1 (+3 total) and multiplies lift capacity by 5x."
       },
       "source": "Beyond Science: A Guide to FX, pgs. 62-63",
       "permanent_cost": 3,
       "untrained": false,
       "fx_cost": 1,
-      "supplement": "beyond_science"
+      "supplement": "beyond_science",
+      "sections": [
+        {
+          "kind": "text",
+          "title": "What it is",
+          "body": "Enhances physical muscular tissue to lift massive loads and strike with extreme force [i, 99]."
+        },
+        {
+          "kind": "text",
+          "title": "Mechanics & Rules",
+          "body": "Hero's Strength score is increased by 1 point [i, 99]. Active use multiplies carrying and lifting capacities [i, 99]. Lasts 10 minutes [i, 99]."
+        },
+        {
+          "kind": "ranks",
+          "title": "Specialty Rank Benefits",
+          "entries": [
+            {
+              "rank": 4,
+              "title": "Mighty Lift",
+              "body": "Strength score bonus increases by +1 and multiplies lift capacity by 3x."
+            },
+            {
+              "rank": 8,
+              "title": "Colossal Lift",
+              "body": "Strength score bonus increases by an additional +1 (+2 total) and multiplies lift capacity by 4x."
+            },
+            {
+              "rank": 12,
+              "title": "Titan Strength",
+              "body": "Strength score bonus increases by an additional +1 (+3 total) and multiplies lift capacity by 5x."
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "title": "Combat Profile",
+          "body": "Adds a massive melee **Attack/Physical Buff Form**.\n\n---"
+        }
+      ]
     },
     "Super Will": {
       "ability": "WIL",
@@ -2533,37 +4154,119 @@
       "ability": "INT",
       "broad_skill": "Hemomancy",
       "category": "Arcane Magic",
-      "cost": 4.0,
-      "description": "Governing Ability: Intelligence (INT). Player Notes: By utilizing their own blood as a sympathetic mystical conduit, the hemomancer establishes a deep biological and spiritual bond with chosen allies. The caster sheds a few drops of blood to anoint up to three willing targets within 5 meters. For the duration of the scene, any beneficial FX healing, physiological buffs, or resistance modifiers applied to the hemomancer are automatically shared with the bonded allies at no additional FX energy cost.",
-      "meta": "Cost: 4 skill points / This skill can't be used untrained / Transform spell (1 FX energy point)",
+      "cost": 4,
+      "description": "What it is: Locks a mystical compass onto a target's blood, allowing the caster to track them across vast distances [i, 71].\n\nMechanics & Rules: The caster must touch a sample of the target's spilled blood [i, 71]. Grants the caster the equivalent of **Rank 4 in *Investigate-track*** to follow the target up to 10 kilometers away [i, 71]. Requires 1 stun point [i, 71].\n\nCombat Profile: Adds an advanced **Utility/Tracking Form**.",
+      "meta": "Cost: 4 skill points / Untrained use permitted / Transform Spell (1 FX energy point)",
       "name": "Thicker than water",
       "rank_benefits": {
-        "12": "At rank 12, the bond is so strong that it prevents bonded allies from bleeding out; any ally dropping to 0 wound points stabilizes automatically without needing a Constitution feat check.",
-        "4": "At rank 4, the duration of the blood bond extends to 24 hours.",
-        "8": "At rank 8, the hemomancer can actively siphon fatigue or stun damage away from a bonded ally and absorb it themselves as a free action."
+        "3": "Duration Boost: Base duration of the tracking link increases by 10 minutes.",
+        "6": "Planetary Range: Tracking range extends to 100 kilometers.",
+        "9": "Duration Boost: Tracking link duration increases by an additional 10 minutes.",
+        "12": "Interplanetary Range: Tracking range extends to 1,000 kilometers."
       },
       "source": "Beyond Science: A Guide to FX, pg. 20",
-      "untrained": false,
+      "untrained": true,
       "fx_cost": 1,
-      "supplement": "beyond_science"
+      "supplement": "beyond_science",
+      "sections": [
+        {
+          "kind": "text",
+          "title": "What it is",
+          "body": "Locks a mystical compass onto a target's blood, allowing the caster to track them across vast distances [i, 71]."
+        },
+        {
+          "kind": "text",
+          "title": "Mechanics & Rules",
+          "body": "The caster must touch a sample of the target's spilled blood [i, 71]. Grants the caster the equivalent of **Rank 4 in *Investigate-track*** to follow the target up to 10 kilometers away [i, 71]. Requires 1 stun point [i, 71]."
+        },
+        {
+          "kind": "ranks",
+          "title": "Specialty Rank Benefits",
+          "entries": [
+            {
+              "rank": 3,
+              "title": "Duration Boost",
+              "body": "Base duration of the tracking link increases by 10 minutes."
+            },
+            {
+              "rank": 6,
+              "title": "Planetary Range",
+              "body": "Tracking range extends to 100 kilometers."
+            },
+            {
+              "rank": 9,
+              "title": "Duration Boost",
+              "body": "Tracking link duration increases by an additional 10 minutes."
+            },
+            {
+              "rank": 12,
+              "title": "Interplanetary Range",
+              "body": "Tracking range extends to 1,000 kilometers."
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "title": "Combat Profile",
+          "body": "Adds an advanced **Utility/Tracking Form**."
+        }
+      ]
     },
     "Tongue of the damned": {
       "ability": "PER",
       "broad_skill": "Diabolism",
       "category": "Arcane Magic",
-      "cost": 2.0,
-      "description": "Governing Ability: Personality (PER). Player Notes: This spell allows the diabolist to reach across the dimensional veil and contact a demonic intelligence or extra-dimensional entity to seek hidden information or answer specific questions. The degree of success grants a corresponding -1, -2, or -3 step bonus, representing the caster's ability to locate a specific demonic intelligence that is more likely to be able to accurately answer the particular questions posed. Critical Failure Warning: Diabolism carries immense risk. If a Critical Failure is rolled on the skill check, the demon becomes irritated by the diabolist's questioning and actively attempts to possess the caster. If the demon is communicating through a physical anchor or object, it will spell out a terrifying prediction to those watching, violently hurl the object across the room, and then attempt the possession.",
-      "meta": "Cost: 2 skill points / This skill can't be used untrained / Augur spell (1 FX energy point)",
+      "cost": 2,
+      "description": "What it is: Compels a minor demon or demonic intelligence to answer a single question honestly [i, 79].\n\nMechanics & Rules: Requires a Good-quality sacrifice [i, 79]. The spirit answers with a single word or short phrase [i, 79]. *Lore-occult lore* can assist the check, granting up to a -3 step bonus [i, 79]. Critical failure on casting angers the demon, forcing a possession check [i, 79].\n\nCombat Profile: Adds an informational **Utility Form** to extract occult truths.",
+      "meta": "Cost: 2 skill points / Untrained use permitted / Augur Spell (1 FX energy point)",
       "name": "Tongue of the damned",
       "rank_benefits": {
-        "12": "At rank 12, the diabolist can safely contact major fiendish intelligences without the risk of immediate possession on a standard Failure (though a Critical Failure still carries grave consequences).",
-        "4": "At rank 4, the diabolist can ask an additional question per invocation and gains a +1 bonus to their resistance modifier against any possession attempts triggered by a Critical Failure.",
-        "8": "At rank 8, the spell can be cast to identify the true name of a minor extra-dimensional entity that the caster is currently observing."
+        "4": "Coherent Sentences: Allows the spirit to answer in full, coherent sentences.",
+        "8": "Multiple Inquiries: Allows up to 3 questions.",
+        "12": "Extended Discourse: Allows the demon to communicate for up to 10 minutes."
       },
       "source": "Beyond Science: A Guide to FX, pg. 24",
-      "untrained": false,
+      "untrained": true,
       "fx_cost": 1,
-      "supplement": "beyond_science"
+      "supplement": "beyond_science",
+      "sections": [
+        {
+          "kind": "text",
+          "title": "What it is",
+          "body": "Compels a minor demon or demonic intelligence to answer a single question honestly [i, 79]."
+        },
+        {
+          "kind": "text",
+          "title": "Mechanics & Rules",
+          "body": "Requires a Good-quality sacrifice [i, 79]. The spirit answers with a single word or short phrase [i, 79]. *Lore-occult lore* can assist the check, granting up to a -3 step bonus [i, 79]. Critical failure on casting angers the demon, forcing a possession check [i, 79]."
+        },
+        {
+          "kind": "ranks",
+          "title": "Specialty Rank Benefits",
+          "entries": [
+            {
+              "rank": 4,
+              "title": "Coherent Sentences",
+              "body": "Allows the spirit to answer in full, coherent sentences."
+            },
+            {
+              "rank": 8,
+              "title": "Multiple Inquiries",
+              "body": "Allows up to 3 questions."
+            },
+            {
+              "rank": 12,
+              "title": "Extended Discourse",
+              "body": "Allows the demon to communicate for up to 10 minutes."
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "title": "Combat Profile",
+          "body": "Adds an informational **Utility Form** to extract occult truths."
+        }
+      ]
     },
     "Tongue of the infinite stars": {
       "ability": "INT",
@@ -2601,20 +4304,58 @@
       "ability": "INT",
       "broad_skill": "Hermeticism",
       "category": "Arcane Magic",
-      "cost": 4.0,
-      "description": "Governing Ability: Intelligence (INT). Player Notes: This carefully guarded spell allows the alchemist to transform one substance into another via a complex extended ritual. The wizard reorders the molecular structure of an object, turning lead to gold, stone to wood, or steel to glass. The base material mass that can be reordered scales explicitly based on the alchemist's rank.",
-      "meta": "Cost: 4 skill points / This skill can't be used untrained / Transform spell (1 or 2 FX energy points)",
+      "cost": 4,
+      "description": "What it is: Transforms one physical substance into another [i, 75].\n\nMechanics & Rules: Requires 10 successes on complex check [i, 75]. Converts up to 500 grams of matter [i, 75]. Setup costs $5,000 [i, 75].\n\nCombat Profile: Adds an alchemical **Utility Form**.",
+      "meta": "Cost: 4 skill points / Untrained use permitted / Transform Spell (1 FX energy point)",
       "name": "Transmutation",
       "rank_benefits": {
-        "12": "At rank 12, the alchemist can transmute up to 5 kilograms of matter.",
-        "4": "At rank 4, the alchemist can transmute up to 1 kilogram of matter.",
-        "8": "At rank 8, the alchemist can transmute up to 3 kilograms of matter."
+        "4": "Increased Mass: Transmutes up to 1 kg of non-living material.",
+        "8": "Increased Mass: Transmutes up to 3 kg of non-living material.",
+        "12": "Increased Mass: Transmutes up to 5 kg of non-living material."
       },
       "source": "Beyond Science: A Guide to FX, pg. 29",
-      "untrained": false,
+      "untrained": true,
       "fx_cost": 1,
       "fx_cost_max": 2,
-      "supplement": "beyond_science"
+      "supplement": "beyond_science",
+      "sections": [
+        {
+          "kind": "text",
+          "title": "What it is",
+          "body": "Transforms one physical substance into another [i, 75]."
+        },
+        {
+          "kind": "text",
+          "title": "Mechanics & Rules",
+          "body": "Requires 10 successes on complex check [i, 75]. Converts up to 500 grams of matter [i, 75]. Setup costs $5,000 [i, 75]."
+        },
+        {
+          "kind": "ranks",
+          "title": "Specialty Rank Benefits",
+          "entries": [
+            {
+              "rank": 4,
+              "title": "Increased Mass",
+              "body": "Transmutes up to 1 kg of non-living material."
+            },
+            {
+              "rank": 8,
+              "title": "Increased Mass",
+              "body": "Transmutes up to 3 kg of non-living material."
+            },
+            {
+              "rank": 12,
+              "title": "Increased Mass",
+              "body": "Transmutes up to 5 kg of non-living material."
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "title": "Combat Profile",
+          "body": "Adds an alchemical **Utility Form**."
+        }
+      ]
     },
     "Venom spirit": {
       "ability": "WIL",
@@ -2891,6 +4632,62 @@
       "fx_cost": 2,
       "setting": "Dark*Matter",
       "source": "Dark Matter Campaign Setting, Chapter 4: Arcana, pp. 52-53, 55."
+    },
+    "Reciprocity": {
+      "name": "Reciprocity",
+      "broad_skill": "Hemomancy",
+      "category": "Arcane Magic",
+      "cost": 4,
+      "ability": "CON",
+      "untrained": true,
+      "fx_cost": 1,
+      "meta": "Cost: 4 skill points / Untrained use permitted / Transform Spell (1 FX energy point)",
+      "description": "What it is: Forges a violent biological link between the caster's physical body and a target within 10 meters [i, 20].\n\nMechanics & Rules: For the next 2 rounds, any time the caster suffers physical damage, the linked target takes the exact same amount and type of damage [i, 20]. Target's armor does *not* reduce this damage [i, 20].\n\nCombat Profile: Adds a defensive **Retaliation Form** that bypasses enemy armor.",
+      "rank_benefits": {
+        "3": "Extended Retaliation: Spell's duration increases to 4 rounds.",
+        "6": "Extended Retaliation: Spell's duration increases to 8 rounds.",
+        "9": "Extended Retaliation: Spell's duration increases to 16 rounds."
+      },
+      "sections": [
+        {
+          "kind": "text",
+          "title": "What it is",
+          "body": "Forges a violent biological link between the caster's physical body and a target within 10 meters [i, 20]."
+        },
+        {
+          "kind": "text",
+          "title": "Mechanics & Rules",
+          "body": "For the next 2 rounds, any time the caster suffers physical damage, the linked target takes the exact same amount and type of damage [i, 20]. Target's armor does *not* reduce this damage [i, 20]."
+        },
+        {
+          "kind": "ranks",
+          "title": "Specialty Rank Benefits",
+          "entries": [
+            {
+              "rank": 3,
+              "title": "Extended Retaliation",
+              "body": "Spell's duration increases to 4 rounds."
+            },
+            {
+              "rank": 6,
+              "title": "Extended Retaliation",
+              "body": "Spell's duration increases to 8 rounds."
+            },
+            {
+              "rank": 9,
+              "title": "Extended Retaliation",
+              "body": "Spell's duration increases to 16 rounds."
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "title": "Combat Profile",
+          "body": "Adds a defensive **Retaliation Form** that bypasses enemy armor."
+        }
+      ],
+      "source": "Beyond Science: A Guide to FX",
+      "supplement": "beyond_science"
     }
   }
 }

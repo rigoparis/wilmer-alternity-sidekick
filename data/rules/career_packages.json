@@ -44,7 +44,7 @@
       "setting": "Dark Matter",
       "source": "Dark•Matter Campaign Setting p. 63",
       "printed_cost": 33,
-      "canonical_cost": 32,
+      "canonical_cost": 33,
       "description": "A gritty contemporary combatant focused on close-quarters combat, survivalism, and street negotiations.",
       "skills": [
         {"name": "Unarmed Attack", "type": "broad", "rank": 1},

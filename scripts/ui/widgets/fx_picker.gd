@@ -261,7 +261,7 @@ func _build_row(parent: Container, skill: Dictionary, is_broad: bool) -> void:
 	var skill_name := String(skill.get("name", ""))
 	var rank: int = rules.fx.fx_skill_rank(raw, skill_name)
 	var owned: bool = rules.fx.is_fx_skill_selected(raw, skill_name)
-	var max_rank := 1 if is_broad else AlternityRules.MAX_SPECIALTY_RANK
+	var max_rank: int = rules.fx.max_rank_for_fx_skill(raw, skill_name)
 
 	if is_broad:
 		if parent.get_child_count() > 0:

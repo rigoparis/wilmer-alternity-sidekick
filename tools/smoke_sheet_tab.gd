@@ -52,6 +52,9 @@ func _run() -> void:
 	await _test_availability()
 	await _test_rebind_and_unbind()
 	await _test_save_request()
+	await _test_skills_tab_watches_fx_and_cybertech()
+	await _test_sheet_header_atomic_details()
+	await _test_summary_tab_dazed_tooltip()
 
 	finish()
 
@@ -205,5 +208,84 @@ func _test_save_request() -> void:
 	tab.save_requested.connect(func(): requests[0] += 1)
 	tab.save_requested.emit()
 	check_eq(requests[0], 1, "a tab asks the shell to save rather than saving itself")
+
+	tab.queue_free()
+
+
+func _test_skills_tab_watches_fx_and_cybertech() -> void:
+	var tab_scene := preload("res://scenes/ui/tabs/tab_skills.tscn")
+	var tab = tab_scene.instantiate()
+	root.add_child(tab)
+	var doc = Doc.new(_rules)
+	tab.bind(_context(doc))
+	await process_frame
+
+	check_true(tab.watched_sections().has(CharacterDoc.FX), "Skills tab watches FX section")
+	check_true(tab.watched_sections().has(CharacterDoc.CYBERTECH), "Skills tab watches CYBERTECH section")
+	check_true(tab.watched_sections().has(CharacterDoc.OPTIONAL_RULES), "Skills tab watches OPTIONAL_RULES section")
+
+	# Editing FX while hidden flags needs_rebuild
+	tab.visible = false
+	await process_frame
+	check_false(tab.needs_rebuild(), "no rebuild pending initially")
+
+	doc.apply([CharacterDoc.FX], func(c):
+		_rules.fx.add_fx_skill(c, "Hermeticism")
+	)
+	check_true(tab.needs_rebuild(), "FX mutation flags Skills tab for rebuild while hidden")
+
+	tab.visible = true
+	await process_frame
+	check_false(tab.needs_rebuild(), "Skills tab rebuilds upon becoming visible")
+
+	tab.queue_free()
+
+
+func _test_sheet_header_atomic_details() -> void:
+	var sheet_scene := preload("res://scenes/ui/screens/character_sheet.tscn")
+	var sheet = sheet_scene.instantiate()
+	root.add_child(sheet)
+
+	var doc = Doc.new(_rules)
+	doc.set_hero_name("Test Hero")
+	var ctx := Context.new(doc, _rules, null, ThemePalette.new(), false)
+	sheet.setup(ctx, null)
+	await process_frame
+
+	check_eq(sheet._title.text, "Wilmer Alternity Sidekick", "header title is Wilmer Alternity Sidekick")
+	check_true(sheet._status.text.begins_with("Test Hero"), "header status begins with hero name")
+	check_true(sheet._status.text.contains("SP "), "header status contains SP details")
+	check_true(sheet._status.text.contains("Lv "), "header status contains level")
+
+	var initial_status: String = sheet._status.text
+
+	# Applying FX changes SP in header immediately
+	doc.apply([CharacterDoc.FX], func(c):
+		_rules.fx.add_fx_skill(c, "Hermeticism")
+	)
+	await process_frame
+	check_true(sheet._status.text != initial_status, "header status updates immediately when FX skill is added")
+
+	sheet.queue_free()
+
+
+func _test_summary_tab_dazed_tooltip() -> void:
+	var tab_scene := preload("res://scenes/ui/tabs/tab_summary.tscn")
+	var tab = tab_scene.instantiate()
+	root.add_child(tab)
+
+	var doc = Doc.new(_rules)
+	doc.apply([CharacterDoc.OPTIONAL_RULES], func(c):
+		c["optional_rules"] = {"dazed": true}
+	)
+	var ctx := Context.new(doc, _rules, null, ThemePalette.new(), false)
+	tab.bind(ctx)
+	await process_frame
+
+	var stun_tracker: DamageTrack = tab._damage_trackers.get("stun")
+	check_true(stun_tracker != null, "stun damage tracker exists")
+	if stun_tracker:
+		check_true(stun_tracker._marker_tooltip.contains("> 50% damage"), "tooltip contains formatted '> 50% damage'")
+		check_true(stun_tracker._marker_tooltip.contains("causes Dazed"), "tooltip contains 'causes Dazed'")
 
 	tab.queue_free()

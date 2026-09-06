@@ -223,6 +223,11 @@ func _build_header(parent: Container) -> void:
 	title_row.add_theme_constant_override("separation", Widgets.GAP_SECTION)
 	outer.add_child(title_row)
 
+	var title_col := VBoxContainer.new()
+	title_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title_col.add_theme_constant_override("separation", 2)
+	title_row.add_child(title_col)
+
 	_title = Label.new()
 	_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	# Ellipsis rather than wrap: a long hero name must never be able to grow the
@@ -231,14 +236,17 @@ func _build_header(parent: Container) -> void:
 	_title.custom_minimum_size = Vector2(1, 0)
 	_title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_title.add_theme_color_override("font_color", _ctx.palette.text)
-	_title.add_theme_font_size_override("font_size", 22 if _ctx.is_wide_layout else 18)
-	title_row.add_child(_title)
+	_title.add_theme_font_size_override("font_size", 20 if _ctx.is_wide_layout else 18)
+	title_col.add_child(_title)
 
 	_status = Label.new()
+	_status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_status.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_status.custom_minimum_size = Vector2(1, 0)
 	_status.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_status.add_theme_color_override("font_color", _ctx.palette.muted)
 	_status.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
-	title_row.add_child(_status)
+	title_col.add_child(_status)
 
 	# Wide keeps the single row it always had; compact gets its own row where the
 	# five buttons share the width evenly instead of competing with the name.
@@ -930,11 +938,43 @@ func _definition_for(id: String) -> Dictionary:
 
 
 func _refresh_header() -> void:
-	if _ctx == null or _ctx.doc == null:
+	if _ctx == null or _ctx.doc == null or _title == null or _status == null:
 		return
-	var name := _ctx.doc.get_hero_name()
-	_title.text = name if not name.is_empty() else "Unnamed Hero"
-	_on_dirty_changed(_ctx.doc.is_dirty())
+	_title.text = "Wilmer Alternity Sidekick"
+
+	var raw := _ctx.doc.raw()
+	var summary := _ctx.doc.summary()
+	var hero_name := _ctx.doc.get_hero_name().strip_edges()
+	if hero_name.is_empty():
+		hero_name = "New Hero"
+
+	var level := AlternityNum.as_int(summary.get("achievement_level", 1))
+	var skill_remaining := AlternityNum.as_int(summary.get("skill_points_remaining", 0))
+	var skill_budget := AlternityNum.as_int(summary.get("skill_budget", 0))
+	var skill_text := "SP %d/%d" % [skill_remaining, skill_budget]
+	var dirty_mark := " *" if _ctx.doc.is_dirty() else ""
+
+	if not _ctx.is_wide_layout:
+		_status.text = "%s%s | Lv %d | %s" % [hero_name, dirty_mark, level, skill_text]
+	else:
+		var species := _ctx.rules.get_species_by_id(AlternityNum.as_int(raw.get("species_id", 0)))
+		var profession := _ctx.rules.get_profession_by_id(AlternityNum.as_int(raw.get("profession_id", 0)))
+		var last_resorts: Dictionary = summary.get("last_resorts", {})
+		_status.text = "%s%s | %s %s | Lv %d | %s | LR %d/%d" % [
+			hero_name,
+			dirty_mark,
+			String(species.get("name", "")),
+			String(profession.get("name", "")),
+			level,
+			skill_text,
+			AlternityNum.as_int(last_resorts.get("available", 0)),
+			AlternityNum.as_int(last_resorts.get("max", 0)),
+		]
+
+	_status.add_theme_color_override(
+		"font_color",
+		_ctx.palette.warning if skill_remaining < 0 else _ctx.palette.muted
+	)
 
 
 ## Sections that can never change which tabs apply.
@@ -952,8 +992,7 @@ const TAB_SET_UNAFFECTED_BY := [CharacterDoc.DAMAGE, CharacterDoc.NOTES]
 
 
 func _on_document_changed(sections: PackedStringArray) -> void:
-	if sections.has(String(CharacterDoc.META)):
-		_refresh_header()
+	_refresh_header()
 	for section in sections:
 		if not TAB_SET_UNAFFECTED_BY.has(StringName(section)):
 			_refresh_tab_bar()
@@ -992,14 +1031,8 @@ func _refresh_tab_bar() -> void:
 			_buttons[tab_id].button_pressed = tab_id == _active_id
 
 
-func _on_dirty_changed(is_dirty: bool) -> void:
-	if _status == null:
-		return
-	_status.text = "Unsaved changes" if is_dirty else "Saved"
-	_status.add_theme_color_override(
-		"font_color",
-		_ctx.palette.warning if is_dirty else _ctx.palette.muted
-	)
+func _on_dirty_changed(_is_dirty: bool) -> void:
+	_refresh_header()
 
 
 func _open_optional_rules() -> void:
@@ -1102,13 +1135,20 @@ func _set_status(message: String, color: Color) -> void:
 		return
 	_status.text = message
 	_status.add_theme_color_override("font_color", color)
+	var timer := get_tree().create_timer(2.5)
+	timer.timeout.connect(func():
+		if is_instance_valid(self) and is_instance_valid(_status):
+			_refresh_header())
 
 
 func _save() -> void:
 	if _store == null or _ctx == null or _ctx.doc == null:
 		return
-	_store.save(_ctx.doc)
-	_refresh_header()
+	var result: Dictionary = _store.save(_ctx.doc)
+	if bool(result.get("ok", false)):
+		_set_status("Saved to %s" % String(result.get("file_name", "")), _ctx.palette.accent)
+	else:
+		_refresh_header()
 
 
 func _on_close_pressed() -> void:

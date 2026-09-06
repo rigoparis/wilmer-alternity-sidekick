@@ -78,6 +78,7 @@ const MSG_DEFENCE := "defence"
 ## what the attacker did, the other a settled fact about what it cost.
 const MSG_ATTACK := "attack"
 const MSG_ATTACK_RESULT := "attack_result"
+const MSG_BUFF := "buff"
 const MSG_WELCOME := "welcome"
 const MSG_DENIED := "denied"
 const MSG_EVENT := "event"
@@ -117,6 +118,7 @@ var _local_player_name: String = ""
 var _campaign_id: String = ""
 var _campaign_name: String = ""
 var _campaign_optional_rules: Dictionary = {}
+var _table_seats: Array = []
 var _since_seq: int = 0
 var _handshaken: bool = false
 
@@ -250,6 +252,13 @@ func campaign_optional_rules() -> Dictionary:
 	return _campaign_optional_rules.duplicate(true)
 
 
+## Public view of table seats known to this connection.
+func table_seats() -> Array:
+	if _session != null:
+		return _session.public_seats()
+	return _table_seats.duplicate(true)
+
+
 ## Player ids currently connected. Host side; the GM's own seat is not among
 ## them because the GM is not a peer of itself.
 func connected_players() -> Array:
@@ -335,6 +344,16 @@ func send_attack_result(attack: Dictionary) -> void:
 	if _role == Role.GM:
 		return
 	_send_to_host({"kind": MSG_ATTACK_RESULT, "attack": attack})
+
+
+## Send a buff or beneficial skill (e.g. Fortitude) to an ally or the table.
+func send_buff(target_player_id: String, buff: Dictionary) -> void:
+	buff["target_player_id"] = target_player_id
+	if _role == Role.GM:
+		var event := _log_and_broadcast(CampaignSession.EVENT_BUFF, _gm_player_id(), buff)
+		event_received.emit(event)
+		return
+	_send_to_host({"kind": MSG_BUFF, "target_player_id": target_player_id, "buff": buff})
 
 
 ## Tell the GM about a dodge, so the attacks that follow it are harder.
@@ -521,6 +540,16 @@ func _handle_as_host(from_peer: int, message: Dictionary) -> void:
 			var event := _log_and_broadcast(CampaignSession.EVENT_CHAT, player_id, {"text": text, "to": to})
 			chat_received.emit(player_id, text, to)
 			event_received.emit(event)
+		MSG_BUFF:
+			var player_id := String(_peer_to_player.get(from_peer, ""))
+			if player_id.is_empty():
+				return
+			var buff: Dictionary = message.get("buff", {})
+			buff["source_player_id"] = player_id
+			buff["target_player_id"] = String(message.get("target_player_id", ""))
+			var event := _log_and_broadcast(CampaignSession.EVENT_BUFF, player_id, buff)
+			buff_received.emit(buff)
+			event_received.emit(event)
 
 
 ## The handshake, and the whole reason player_id exists.
@@ -577,6 +606,7 @@ func _handle_hello(from_peer: int, message: Dictionary) -> void:
 		# and the starting skill budget, so a hero built without them is not
 		# merely differently configured -- their numbers are wrong for this table.
 		"optional_rules": _session.get_campaign_optional_rules(),
+		"seats": _session.public_seats(),
 	})
 
 	# Replay what they missed. A first-time joiner asks from 0 and gets the tail
@@ -647,6 +677,8 @@ func _handle_as_client(message: Dictionary) -> void:
 			_campaign_name = String(message.get("campaign_name", ""))
 			var table_rules = message.get("optional_rules", {})
 			_campaign_optional_rules = table_rules.duplicate(true) if typeof(table_rules) == TYPE_DICTIONARY else {}
+			var s_list = message.get("seats", [])
+			_table_seats = s_list.duplicate(true) if typeof(s_list) == TYPE_ARRAY else []
 			_handshaken = true
 			player_connected.emit(_local_player_id, bool(message.get("is_reconnect", false)))
 		MSG_DENIED:
@@ -663,6 +695,10 @@ func _handle_as_client(message: Dictionary) -> void:
 			if typeof(incoming) != TYPE_DICTIONARY:
 				return
 			attack_received.emit(incoming)
+		MSG_BUFF:
+			var buff = message.get("buff", {})
+			if typeof(buff) == TYPE_DICTIONARY:
+				buff_received.emit(buff)
 		MSG_ROUND:
 			var round_data = message.get("round", {})
 			if typeof(round_data) != TYPE_DICTIONARY:
@@ -696,6 +732,8 @@ func _emit_specific(event: Dictionary) -> void:
 			roll_received.emit(who, payload)
 		CampaignSession.EVENT_CHAT:
 			chat_received.emit(who, String(payload.get("text", "")), String(payload.get("to", "")))
+		CampaignSession.EVENT_BUFF:
+			buff_received.emit(payload)
 
 
 ## How far this device's log has got, to hand back to join() next time.

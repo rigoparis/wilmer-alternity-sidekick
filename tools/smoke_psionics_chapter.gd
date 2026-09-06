@@ -1019,7 +1019,7 @@ func _test_rank_caps() -> void:
 		_rules.max_skill_rank_for_character(psion), CREATION_RANK_CAP,
 		"a psionic specialty stops at rank 3 during creation"
 	)
-	psion["achievement_level"] = 4
+	psion["achievement_level"] = 10
 	check_eq(
 		_rules.max_skill_rank_for_character(psion), CAMPAIGN_RANK_CAP,
 		"and at rank 12 thereafter"

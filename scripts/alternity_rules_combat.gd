@@ -487,10 +487,11 @@ const KNOCKOUT_ROUNDS := 2
 func end_scene(character: Dictionary) -> int:
 	var damage: Dictionary = character.get("damage", {})
 	var cleared := AlternityNum.as_int(damage.get("stun", 0))
-	if cleared <= 0:
-		return 0
-	damage["stun"] = 0
-	character["damage"] = damage
+	if cleared > 0:
+		damage["stun"] = 0
+		character["damage"] = damage
+	if character.has("temporary_durability"):
+		character.erase("temporary_durability")
 	return cleared
 
 

@@ -365,6 +365,8 @@ func _test_always_active_costs_triple() -> void:
 
 func _test_rank_ceiling() -> void:
 	var hero: Dictionary = _character()
+	_rules.fx.set_practitioner_type(hero, "adept")
+	hero["achievement_level"] = 10
 	_rules.fx.add_fx_skill(hero, "Monotheism")
 	for _i in 20:
 		_rules.fx.add_fx_skill(hero, "Blessing")

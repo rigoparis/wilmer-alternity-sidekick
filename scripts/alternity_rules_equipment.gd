@@ -312,6 +312,8 @@ func attack_forms_for_character(character: Dictionary) -> Array:
 		forms.append(form)
 	for form in psionic_attack_forms(character):
 		forms.append(form)
+	for form in _get_parent().fx.fx_attack_forms(character):
+		forms.append(form)
 	return forms
 
 func psionic_attack_forms(character: Dictionary) -> Array:

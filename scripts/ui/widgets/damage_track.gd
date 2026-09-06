@@ -27,12 +27,24 @@ var _label: Label
 var _boxes: HFlowContainer
 var _used: int = 0
 var _total: int = 0
+var _marker_index: int = -1
+var _marker_tooltip: String = ""
+var _marker_node: Control = null
 
 
-func setup(palette: ThemePalette, title: String, used: int, total: int) -> void:
+func setup(
+	palette: ThemePalette,
+	title: String,
+	used: int,
+	total: int,
+	marker_index: int = -1,
+	marker_tooltip: String = ""
+) -> void:
 	_palette = palette
 	_used = used
 	_total = total
+	_marker_index = marker_index
+	_marker_tooltip = marker_tooltip
 	add_theme_constant_override("separation", Widgets.GAP_TIGHT)
 
 	var header := HBoxContainer.new()
@@ -56,6 +68,12 @@ func setup(palette: ThemePalette, title: String, used: int, total: int) -> void:
 	_boxes.add_theme_constant_override("v_separation", Widgets.GAP_TIGHT)
 	add_child(_boxes)
 
+	_render()
+
+
+func set_marker(marker_index: int, marker_tooltip: String = "") -> void:
+	_marker_index = marker_index
+	_marker_tooltip = marker_tooltip
 	_render()
 
 
@@ -110,25 +128,36 @@ func _render() -> void:
 		_boxes.add_child(bar)
 		return
 
+	var has_marker := _total <= MAX_BOXES and _marker_index > 0 and _marker_index < _total
+	var expected_count := _total + (1 if has_marker else 0)
+
 	# Fast path: update existing box buttons in place without destroying and re-instantiating.
-	if _boxes.get_child_count() == _total:
+	if _boxes.get_child_count() == expected_count:
 		var can_reuse := true
 		for child in _boxes.get_children():
-			if not (child is Button):
+			if not (child is Button or child == _marker_node):
 				can_reuse = false
 				break
 		if can_reuse:
-			for index in range(_total):
-				var box := _boxes.get_child(index) as Button
-				_apply_box_style(box, index < _used)
+			var box_index := 0
+			for child in _boxes.get_children():
+				if child is Button:
+					_apply_box_style(child, box_index < _used)
+					box_index += 1
+			_update_marker()
 			return
 
+	_marker_node = null
 	for child in _boxes.get_children():
 		_boxes.remove_child(child)
 		child.queue_free()
 
 	for index in range(_total):
+		if has_marker and index == _marker_index:
+			_marker_node = _make_marker()
+			_boxes.add_child(_marker_node)
 		_boxes.add_child(_make_box(index))
+	_update_marker()
 
 
 func _apply_box_style(box: Button, filled: bool) -> void:
@@ -138,11 +167,33 @@ func _apply_box_style(box: Button, filled: bool) -> void:
 		box.add_theme_stylebox_override(state, Widgets.flat_style(fill, edge, 4))
 
 
+func _make_marker() -> Control:
+	var marker := Panel.new()
+	marker.name = "DazedMarker"
+	marker.custom_minimum_size = Vector2(4, BOX_SIZE.y)
+	marker.mouse_filter = Control.MOUSE_FILTER_PASS
+	var style := Widgets.flat_style(_palette.accent, Color(0, 0, 0, 0), 2)
+	marker.add_theme_stylebox_override("panel", style)
+	return marker
+
+
+func _update_marker() -> void:
+	if _marker_node == null or not is_instance_valid(_marker_node):
+		return
+	if not _marker_tooltip.is_empty():
+		_marker_node.tooltip_text = _marker_tooltip
+	else:
+		_marker_node.tooltip_text = "Dazed threshold: > 50% damage causes Dazed (+1 step penalty)."
+
+
 func _make_box(index: int) -> Button:
 	var box := Button.new()
 	box.custom_minimum_size = BOX_SIZE
 	box.focus_mode = Control.FOCUS_NONE
-	box.tooltip_text = "%d" % (index + 1)
+	var tooltip := "%d" % (index + 1)
+	if _marker_index > 0 and index >= _marker_index:
+		tooltip += " (Dazed)"
+	box.tooltip_text = tooltip
 	_apply_box_style(box, index < _used)
 
 	box.pressed.connect(func():

@@ -49,9 +49,11 @@ func _run() -> void:
 	await _test_psionics_tab()
 	await _test_fx_tab()
 	await _test_summary_attack_forms_and_tables()
+	await _test_summary_armor_cards()
 	await _test_dark_matter_basics_career_packages()
 	await _test_dark_matter_equipment_requisition()
 	await _test_custom_ability_target_spinbox()
+	await _test_durability_dazed_markers()
 
 	finish()
 
@@ -629,6 +631,35 @@ func _test_summary_attack_forms_and_tables() -> void:
 	tab.queue_free()
 
 
+func _test_summary_armor_cards() -> void:
+	var doc := Doc.new(_rules)
+	doc.set_species_id(0)
+	doc.set_profession_id(0)
+
+	doc.apply(CharacterDoc.ALL, func(c):
+		var line_id := _rules.equipment.add_equipment_to_character(c, "armor_core_028", 1)
+		_rules.equipment.update_carried_equipment(c, line_id, 1, true, "Armor", "")
+	)
+
+	var tab = _mount(TAB_SUMMARY, doc, true)
+	await process_frame
+	check_true(tab.get_child_count() > 0, "Summary tab mounts with armor")
+
+	var labels := _labels_in(tab)
+	check_true(_any_label_contains(labels, "Armour"), "Summary shows Armour section")
+	check_true(_any_label_contains(labels, "Leather armor"), "Summary Armour card names Leather armor")
+	check_false(labels.has("?"), "Summary Armour card does not show '?' placeholder")
+	check_true(_any_label_contains(labels, "LI Armor"), "Armour card has LI Armor field")
+	check_true(_any_label_contains(labels, "d6-2"), "Armour card shows LI rating d6-2")
+	check_true(_any_label_contains(labels, "HI Armor"), "Armour card has HI Armor field")
+	check_true(_any_label_contains(labels, "d6-4"), "Armour card shows HI rating d6-4")
+	check_true(_any_label_contains(labels, "EN Armor"), "Armour card has EN Armor field")
+	check_true(_any_label_contains(labels, "Toughness"), "Armour card has Toughness field")
+	check_true(_any_label_contains(labels, "Equipped"), "Armour card indicates Equipped status")
+
+	tab.queue_free()
+
+
 func _test_dark_matter_basics_career_packages() -> void:
 	var doc_dm := Doc.new(_rules)
 	doc_dm.apply(CharacterDoc.ALL, func(c):
@@ -724,6 +755,51 @@ func _test_custom_ability_target_spinbox() -> void:
 			65,
 			"rules.ability_point_total reflects customized target"
 		)
+
+	tab.queue_free()
+
+
+func _test_durability_dazed_markers() -> void:
+	check_eq(_rules.dazed_threshold(10), 5, "dazed threshold for 10 is 5")
+	check_eq(_rules.dazed_threshold(11), 5, "dazed threshold for 11 is 5")
+	check_eq(_rules.dazed_threshold(9), 4, "dazed threshold for 9 is 4")
+	check_true(_rules.is_dazed_track("stun"), "stun is a dazed track")
+	check_true(_rules.is_dazed_track("wound"), "wound is a dazed track")
+	check_false(_rules.is_dazed_track("mortal"), "mortal is not a dazed track")
+	check_false(_rules.is_dazed_track("fatigue"), "fatigue is not a dazed track")
+
+	var doc := Doc.new(_rules)
+	doc.set_species_id(0) # Human, CON 10 -> Stun 10, Wound 10, Mortal 5, Fatigue 10
+	doc.set_profession_id(0)
+
+	var tab = _mount(TAB_SUMMARY, doc, false)
+	await process_frame
+
+	var trackers: Dictionary = tab._damage_trackers
+	check_true(trackers.has("stun"), "summary has stun damage tracker")
+	check_true(trackers.has("wound"), "summary has wound damage tracker")
+	check_true(trackers.has("mortal"), "summary has mortal damage tracker")
+
+	var stun_tracker: DamageTrack = trackers.get("stun")
+	check_eq(stun_tracker._marker_index, 5, "stun tracker marker index is 5")
+	check_eq(stun_tracker._boxes.get_child_count(), 11, "stun tracker has 11 children (10 boxes + 1 marker)")
+	check_true(stun_tracker._marker_node != null, "stun tracker instantiated marker node")
+	check_eq(stun_tracker._boxes.get_child(5), stun_tracker._marker_node, "marker node sits at index 5 between box 5 and 6")
+
+	# Check button tooltips
+	var box_4: Button = stun_tracker._boxes.get_child(4)
+	var box_6: Button = stun_tracker._boxes.get_child(6)
+	check_false(box_4.tooltip_text.contains("(Dazed)"), "pre-marker box 5 does not say (Dazed)")
+	check_true(box_6.tooltip_text.contains("(Dazed)"), "post-marker box 6 says (Dazed)")
+
+	# Fast-path value update test
+	stun_tracker.set_value(6)
+	check_eq(stun_tracker.value(), 6, "tracker value updated to 6")
+	check_eq(stun_tracker._boxes.get_child_count(), 11, "fast-path preserves child count")
+
+	var mortal_tracker: DamageTrack = trackers.get("mortal")
+	check_eq(mortal_tracker._marker_index, -1, "mortal tracker has no marker index")
+	check_eq(mortal_tracker._boxes.get_child_count(), 5, "mortal tracker has exactly 5 boxes without marker")
 
 	tab.queue_free()
 

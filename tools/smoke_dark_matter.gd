@@ -873,7 +873,7 @@ func _test_career_packages() -> void:
 	var sof := _rules.get_career_package_by_id("soldier_of_fortune")
 	check_true(not sof.is_empty(), "Soldier of Fortune package ships")
 	var sof_hero := _hero("Dark*Matter", SPECIES_HUMAN, PROFESSION_COMBAT_SPEC)
-	check_eq(_rules.career_package_cost(sof_hero, sof), 32, "Soldier of Fortune costs 32 SP")
+	check_eq(_rules.career_package_cost(sof_hero, sof), 33, "Soldier of Fortune costs 33 SP")
 
 	var sec := _rules.get_career_package_by_id("corporate_security_specialist")
 	check_true(not sec.is_empty(), "Corporate Security Specialist package ships")
