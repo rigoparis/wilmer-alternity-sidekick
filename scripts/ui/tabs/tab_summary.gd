@@ -154,7 +154,7 @@ func _build_validations(container: Container, summary: Dictionary) -> void:
 	var palette := ctx.palette
 	var box := Widgets.section(container, "Needs attention", palette)
 	for message in messages:
-		Widgets.text(box, String(message), palette, Widgets.FONT_DETAIL, palette.warning)
+		Widgets.text(box, "• " + String(message), palette, Widgets.FONT_DETAIL, palette.warning)
 
 
 ## Abilities as a table, and the three numbers you actually roll against.

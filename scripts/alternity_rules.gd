@@ -2514,7 +2514,10 @@ func _validate_abilities(character: Dictionary, messages: Array) -> void:
 	var total := ability_total(character)
 	var target := ability_point_total(character)
 	if total != target:
-		messages.append("Ability total must be %d; current total is %d." % [target, total])
+		if target == 60:
+			messages.append("Ability total must be 60; current total is %d. Source: Player's Handbook Table P4 p. 31." % total)
+		else:
+			messages.append("Ability total must be %d (campaign target); current total is %d." % [target, total])
 
 	var abilities: Dictionary = character.get("abilities", {})
 	for ability in ABILITIES:
@@ -2524,13 +2527,13 @@ func _validate_abilities(character: Dictionary, messages: Array) -> void:
 			messages.append("%s must be between %d and %d for this species and profession. Source: Player's Handbook Tables P1 and P3." % [ability, _as_int(limits[0]), _as_int(limits[1])])
 		var achievement_adjusted_score := _as_int(achievement_adjusted_abilities(character).get(ability, score))
 		if achievement_adjusted_score > _as_int(limits[1]):
-			messages.append("%s achievement increases exceed the species maximum of %d." % [ability, _as_int(limits[1])])
+			messages.append("%s achievement increases exceed the species maximum of %d. Source: Player's Handbook Table P29." % [ability, _as_int(limits[1])])
 
 
 func _validate_skills(character: Dictionary, messages: Array) -> void:
 	var remaining := skill_budget(character) - skill_points_used(character)
 	if remaining < 0:
-		messages.append("Skill points are overspent by %d." % abs(remaining))
+		messages.append("Skill points are overspent by %d. Source: Player's Handbook Chapter 4 p. 34." % abs(remaining))
 
 	if optional_rule_enabled(character, "2b"):
 		var additional_broad_remaining := additional_broad_skill_limit(character) - additional_broad_skills_used(character)
@@ -2539,7 +2542,7 @@ func _validate_skills(character: Dictionary, messages: Array) -> void:
 	else:
 		var broad_remaining := max_broad_skills(character) - broad_skills_used(character)
 		if broad_remaining < 0:
-			messages.append("Broad skills exceed the allowed maximum by %d." % abs(broad_remaining))
+			messages.append("Broad skills exceed the allowed maximum by %d. Source: Player's Handbook Table P5 p. 34." % abs(broad_remaining))
 
 	var selected: Dictionary = character.get("selected_skills", {})
 	var species_info := get_species_by_id(_as_int(character.get("species_id", 0)))
@@ -2573,13 +2576,13 @@ func _validate_skills(character: Dictionary, messages: Array) -> void:
 		var rank := skill_rank(character, _as_int(key))
 		var max_rank := max_skill_rank_for_character(character)
 		if skill.get("type", "") == "specialty" and rank > max_rank:
-			messages.append("%s cannot exceed rank %d." % [skill_label(skill), max_rank])
+			messages.append("%s cannot exceed rank %d. Source: Player's Handbook Table P28 p. 125." % [skill_label(skill), max_rank])
 		if skill.get("type", "") != "specialty":
 			continue
 		var broad_id := _as_int(skill.get("broad_id", -1))
 		if not is_skill_selected(character, broad_id):
 			var broad_skill := get_skill_by_id(broad_id)
-			messages.append("%s requires the %s broad skill." % [skill.get("name", "Specialty"), broad_skill.get("name", "parent")])
+			messages.append("%s requires the %s broad skill. Source: Player's Handbook p. 35." % [skill.get("name", "Specialty"), broad_skill.get("name", "parent")])
 
 
 ## What a psionic talent -- anyone who is not a Mindwalker -- may hold.
@@ -2713,6 +2716,13 @@ func _validate_fx(character: Dictionary, messages: Array) -> void:
 			% [schools.size(), ", ".join(schools)]
 		)
 
+	# Faith and Arcane Magic are mutually incompatible traditions.
+	if not faiths.is_empty() and not schools.is_empty():
+		messages.append(
+			"A hero cannot practice both Faith and Arcane Magic (%s and %s). Source: Beyond Science: A Guide to FX p. 5."
+			% [", ".join(faiths), ", ".join(schools)]
+		)
+
 	# Super Power categories are deliberately not checked here: they are the one
 	# pillar a hero may mix freely.
 
@@ -2722,11 +2732,12 @@ func _validate_fx(character: Dictionary, messages: Array) -> void:
 		if specialty.is_empty():
 			continue
 		var rank := fx.fx_skill_rank(character, name)
-		if rank > MAX_SPECIALTY_RANK:
-			messages.append("%s cannot exceed rank %d." % [name, MAX_SPECIALTY_RANK])
+		var max_rank := max_skill_rank_for_character(character)
+		if rank > max_rank:
+			messages.append("%s cannot exceed rank %d. Source: Player's Handbook Table P28 p. 125; Beyond Science p. 5." % [name, max_rank])
 		var parent := String(specialty.get("broad_skill", ""))
 		if not fx.is_fx_skill_selected(character, parent):
-			messages.append("%s requires the %s broad skill." % [name, parent])
+			messages.append("%s requires the %s broad skill. Source: Beyond Science: A Guide to FX p. 5." % [name, parent])
 
 	var sp_info := get_species_by_id(_as_int(character.get("species_id", -1)))
 	var sp_name := String(sp_info.get("name", ""))
@@ -2739,9 +2750,20 @@ func _validate_perks_and_flaws(character: Dictionary, messages: Array) -> void:
 	if perks_limit_count > 3:
 		messages.append("A starting hero can have no more than three standard perks (excluding GM-given). Current: %d. Source: Player's Handbook p. 103." % perks_limit_count)
 
+	var perk_pts := perk_points_used(character)
+	if perk_pts > 10:
+		messages.append("A starting hero can spend at most 10 skill points on perks (currently %d). Source: Player's Handbook p. 103." % perk_pts)
+
 	var flaws_limit_count := non_gm_flaw_count(character)
 	if flaws_limit_count > 3:
 		messages.append("A starting hero can have no more than three standard flaws (excluding GM-given). Current: %d. Source: Player's Handbook p. 107." % flaws_limit_count)
+
+	var flaw_pts := flaw_skill_points_bonus(character)
+	if flaw_pts > 10:
+		messages.append("A starting hero can gain at most 10 bonus skill points from flaws (currently %d). Source: Player's Handbook p. 107." % flaw_pts)
+
+	if is_perk_selected(character, "heightened_ability") and heightened_ability_target(character).is_empty():
+		messages.append("Heightened Ability perk requires selecting an ability to increase. Source: Player's Handbook p. 104.")
 
 	# Dark Matter: Dilettante (no skill rank may exceed current hero level)
 	if is_flaw_selected(character, "dilettante"):
@@ -2762,6 +2784,10 @@ func _validate_perks_and_flaws(character: Dictionary, messages: Array) -> void:
 
 
 func _validate_achievements(character: Dictionary, messages: Array) -> void:
+	var available_ap := achievements.achievement_points_available(character)
+	if available_ap < 0:
+		messages.append("Achievement points are overspent by %d. Source: Player's Handbook Table P29." % abs(available_ap))
+
 	for entry in achievements.selected_achievements(character):
 		var achievement: Dictionary = entry.get("achievement", {})
 		var min_level := _as_int(achievements.achievement_cost_entry(achievement, character).get("min_level", 99))

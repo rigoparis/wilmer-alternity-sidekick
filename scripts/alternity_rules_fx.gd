@@ -243,9 +243,10 @@ func add_fx_skill(character: Dictionary, skill_name: String) -> void:
 		return
 	var specialty = get_specialty_skill(skill_name)
 	if not specialty.is_empty():
+		var parent_broad := String(specialty.get("broad_skill", ""))
+		if not parent_broad.is_empty() and not is_fx_skill_selected(character, parent_broad):
+			character["fx"]["selected_skills"][parent_broad] = 1
 		var current = fx_skill_rank(character, skill_name)
-		# A specialty stops at rank 12 like every other specialty in the game.
-		# Nothing capped this, so repeated buys walked straight past it.
 		character["fx"]["selected_skills"][skill_name] = mini(
 			current + 1, AlternityRules.MAX_SPECIALTY_RANK
 		)
@@ -259,6 +260,10 @@ func remove_fx_skill(character: Dictionary, skill_name: String) -> void:
 	if not broad.is_empty():
 		selected.erase(skill_name)
 		character["fx"].get("permanent_skills", {}).erase(skill_name)
+		for spec in get_specialty_skills_for_broad(skill_name):
+			var spec_name := String(spec.get("name", ""))
+			selected.erase(spec_name)
+			character["fx"].get("permanent_skills", {}).erase(spec_name)
 		return
 	var current = fx_skill_rank(character, skill_name)
 	if current <= 1:

@@ -520,7 +520,7 @@
 		"sold_broads_count": 0,
 		"starting_skill_budget": 50,
 		"validations": [
-			"Ability total must be 60; current total is 61."
+			"Ability total must be 60; current total is 61. Source: Player's Handbook Table P4 p. 31."
 		]
 	}
 }
