@@ -125,7 +125,9 @@ func _rebuild() -> void:
 	if container == null:
 		return
 	for child in container.get_children():
-		child.hide()
+		# queue_free() is deferred, so detach first: build() is promised a fresh,
+		# empty container and may inspect or lay out its children immediately.
+		container.remove_child(child)
 		child.queue_free()
 	build(container)
 
