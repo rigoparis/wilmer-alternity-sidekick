@@ -79,6 +79,9 @@ func achievement_skill_bonus(character: Dictionary) -> int:
 
 func achievement_profile_key(character: Dictionary) -> String:
 	var profession: Dictionary = _get_parent().get_profession_by_id(AlternityNum.as_int(character.get("profession_id", 0)))
+	var explicit_profile := String(profession.get("advancement_profile", ""))
+	if not explicit_profile.is_empty():
+		return explicit_profile
 	var profession_name := String(profession.get("name", ""))
 	if profession_name.begins_with("Diplomat"):
 		return "diplomat"
@@ -304,7 +307,7 @@ func can_purchase_achievement(
 	if effect_type == "extra_action" and _get_parent().actions_per_round(character) >= 4:
 		return {"allowed": false, "reason": "Actions per round are already at the maximum of 4."}
 	if effect_type == "fx_energy_pool":
-		if not _get_parent().fx.is_fx_talent(character):
+		if not _get_parent().fx.is_fx_active(character):
 			return {"allowed": false, "reason": "This hero does not use FX."}
 		var base_pool: int = fx_energy_pool_increase_limit(character)
 		if base_pool <= 0:

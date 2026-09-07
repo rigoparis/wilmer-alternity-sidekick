@@ -177,29 +177,27 @@ func _build_pool(container: Container) -> void:
 	)
 
 	var enabled: bool = rules.fx.is_fx_active(doc.raw())
-	var toggle := Widgets.toggle_row(box, "Hero uses FX", enabled, palette)
-	toggle.toggled.connect(func(pressed: bool):
-		doc.apply([CharacterDoc.FX], func(c):
-			if pressed:
-				if rules.is_dark_matter(c):
-					rules.fx.set_fx_talent(c, true)
-				else:
-					rules.fx.set_practitioner_type(c, "adept")
-			else:
-				rules.fx.set_fx_talent(c, false)
-		)
-		save_requested.emit())
+	if rules.is_adept_profession(doc.raw()):
+		Widgets.metric(box, "FX access", "Granted by profession", palette)
+	else:
+		var toggle := Widgets.toggle_row(box, "Hero is an FX Talent", enabled, palette)
+		toggle.toggled.connect(func(pressed: bool):
+			doc.apply([CharacterDoc.FX], func(c): rules.fx.set_fx_talent(c, pressed))
+			save_requested.emit())
 
 	if not enabled:
 		return
 
 	var pool: int = rules.fx.energy_pool(doc.raw())
-	var stepper := NumberStepper.new()
-	box.add_child(stepper)
-	stepper.setup(palette, "Starting FX energy pool", pool, 0, 99, 1, 0, true)
-	stepper.value_changed.connect(func(value: int):
-		doc.apply([CharacterDoc.FX], func(c): rules.fx.set_energy_pool(c, value))
-		save_requested.emit())
+	if rules.is_dark_matter(doc.raw()):
+		Widgets.metric(box, "Starting FX energy pool", str(pool), palette)
+	else:
+		var stepper := NumberStepper.new()
+		box.add_child(stepper)
+		stepper.setup(palette, "Starting FX energy pool", pool, 0, 99, 1, 0, true)
+		stepper.value_changed.connect(func(value: int):
+			doc.apply([CharacterDoc.FX], func(c): rules.fx.set_energy_pool(c, value))
+			save_requested.emit())
 
 	# Points bought with achievement points, which is the only way the pool
 	# grows after creation, and which the Achievements tab sells.
@@ -299,6 +297,8 @@ func _build_primary_group_picker(parent: Container) -> void:
 	var rules: AlternityRules = ctx.rules
 	var palette := ctx.palette
 	var raw := doc.raw()
+	if not rules.fx.is_fx_adept(raw):
+		return
 
 	# Only schools the hero actually has: a primary school you do not practise
 	# is what caused the problem.
@@ -348,9 +348,9 @@ func _build_primary_group_picker(parent: Container) -> void:
 
 	Widgets.muted_text(
 		parent,
-		"Every FX user names one primary school. Powers from any other school "
-		+ "cost double, and the choice cannot be changed later. Until you "
-		+ "choose, every power is priced at list -- cheaper than the rules allow.",
+		"Every FX user names one primary school, and the choice cannot be changed later. "
+		+ "An Adept receives the profession's 1-point discount on that broad skill and "
+		+ "its specialties; Talents pay the printed price.",
 		palette, Widgets.FONT_CAPTION
 	)
 
@@ -361,6 +361,25 @@ func _build_practitioner_type_picker(parent: Container) -> void:
 	var palette := ctx.palette
 	var raw := doc.raw()
 
+	if rules.fx.is_fx_adept(raw):
+		var profession := rules.get_profession_by_id(AlternityNum.as_int(raw.get("profession_id", 0)))
+		Widgets.metric(parent, "Practitioner type", String(profession.get("name", "FX Adept")), palette)
+		var pool_note := (
+			"This secondary Adept profession uses a Talent-sized starting pool. "
+			if String(profession.get("adept_role", "")) == "secondary"
+			else "A primary Adept uses the campaign's full starting pool. "
+		)
+		var rank_note := "Specialties may advance to Rank 12, subject to level."
+		if rules.is_dark_matter(raw) and not rules.optional_rule_enabled(raw, "dm_adept_unrestricted_ranks"):
+			rank_note = "Chosen-school specialties cap at Rank 6; other schools cap at Rank 3."
+		Widgets.muted_text(
+			parent,
+			pool_note + "The chosen broad skill and its specialties receive the 1-point Adept discount. " + rank_note,
+			palette,
+			Widgets.FONT_CAPTION
+		)
+		return
+
 	if rules.is_dark_matter(raw):
 		Widgets.muted_text(
 			parent,
@@ -370,42 +389,13 @@ func _build_practitioner_type_picker(parent: Container) -> void:
 		)
 		return
 
-	var label := Label.new()
-	label.text = "Practitioner type"
-	label.add_theme_color_override("font_color", palette.muted)
-	label.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
-	parent.add_child(label)
-
-	var picker := OptionButton.new()
-	picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	picker.custom_minimum_size = Vector2(0, 42)
-	picker.add_item("FX Adept (Full Practitioner)", 0)
-	picker.add_item("FX Talent", 1)
-
-	var is_talent := rules.fx.is_fx_talent(raw)
-	picker.select(1 if is_talent else 0)
-
-	picker.item_selected.connect(func(index: int):
-		var p_type := "talent" if index == 1 else "adept"
-		doc.apply([CharacterDoc.FX], func(c):
-			rules.fx.set_practitioner_type(c, p_type))
-		save_requested.emit())
-	parent.add_child(picker)
-
-	if is_talent:
-		Widgets.muted_text(
-			parent,
-			"FX Talent: Standard list price for primary school. Up to two specialties to Rank 6, all others capped at Rank 3.",
-			palette,
-			Widgets.FONT_CAPTION
-		)
-	else:
-		Widgets.muted_text(
-			parent,
-			"FX Adept: 1-point discount on primary school specialties (L - 1). Specialties scale up to Rank 12 (level limit).",
-			palette,
-			Widgets.FONT_CAPTION
-		)
+	Widgets.metric(parent, "Practitioner type", "FX Talent", palette)
+	Widgets.muted_text(
+		parent,
+		"FX Talents pay printed list price for every FX skill. Up to two specialties may reach Rank 6; all others cap at Rank 3.",
+		palette,
+		Widgets.FONT_CAPTION
+	)
 
 
 ## What the campaign charges in achievement points for a point of FX pool.

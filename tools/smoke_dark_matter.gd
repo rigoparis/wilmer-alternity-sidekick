@@ -1,11 +1,10 @@
 extends "res://tools/test_harness.gd"
 ##
-## What Dark*Matter forbids that the core rules allow.
+## The rules Dark*Matter changes while character concepts remain GM-owned.
 ##
-## Dark*Matter is contemporary Earth, so it takes things away rather than adding
-## them: no alien species, no Mindwalker career, no Adept profession. Everything
-## it changes is reached through a perk instead, which is why every psionic and
-## every spellcaster in the setting is a talent and lives under the talent caps.
+## Species and professions are deliberately available across every setting. The
+## setting still supplies its own FX, psionic, equipment and campaign mechanics;
+## the GM reviews whether a particular hero concept fits the campaign.
 ##
 ## Half of this suite is about Core. Every rule below is gated on the setting, and
 ## a gate that leaks is invisible -- a Core hero would simply start failing
@@ -86,48 +85,21 @@ func _test_the_setting_is_recognised() -> void:
 	check_false(_rules.is_dark_matter(_hero("Star*Drive")), "neither is Star*Drive")
 
 
-## Human by default, non-human at the Gamemaster's option -- and not a ban.
-##
-## The books do not forbid a non-human hero; they assume one is not there and
-## hand the decision to the table (p. 51, and Chapter 10 p. 257). So this is a
-## note the GM can switch off, not a rule the sheet enforces, and the difference
-## matters: an error would have made a legal character look illegal.
+## Species fit is reviewed by the GM rather than enforced by validation.
 func _test_humans_only() -> void:
 	var phrase := "belongs to the far-future setting"
-
-	check_false(
-		_complains_about(_hero("Dark*Matter", SPECIES_HUMAN), phrase),
-		"a Human is at home in Dark*Matter"
-	)
-	check_true(
-		_complains_about(_hero("Dark*Matter", SPECIES_WEREN), phrase),
-		"a Weren is questioned"
-	)
-	check_true(
-		_complains_about(_hero("Dark*Matter", 1), phrase),
-		"and so is a Fraal, whatever the core rules allow them"
-	)
-
-	# The Gamemaster's option, which is what makes it a note rather than a ban.
-	var allowed := _hero("Dark*Matter", SPECIES_WEREN)
-	_rules.set_optional_rule(allowed, "dm_alien_heroes", true)
-	check_false(
-		_complains_about(allowed, phrase),
-		"and the note goes away once the GM allows alien heroes"
-	)
-
-	# Human is unremarkable either way; turning the rule on must not start
-	# saying something about a hero it has nothing to say about.
-	var human := _hero("Dark*Matter", SPECIES_HUMAN)
-	_rules.set_optional_rule(human, "dm_alien_heroes", true)
-	check_false(_complains_about(human, phrase), "a Human is still unremarkable with it on")
+	for species_id in [SPECIES_HUMAN, SPECIES_WEREN, 1]:
+		check_false(
+			_complains_about(_hero("Dark*Matter", species_id), phrase),
+			"Dark*Matter leaves species %d to GM review" % species_id
+		)
 
 
-## "Humans cannot select the dedicated Mindwalker career."
+## Profession fit is likewise reviewed by the GM rather than validation.
 func _test_no_mindwalker_career() -> void:
-	check_true(
+	check_false(
 		_complains_about(_hero("Dark*Matter", SPECIES_HUMAN, PROFESSION_MINDWALKER), "no Mindwalker career"),
-		"the Mindwalker career is refused in Dark*Matter"
+		"the Mindwalker career is available for GM-approved Dark*Matter heroes"
 	)
 	check_false(
 		_complains_about(_hero("Dark*Matter", SPECIES_HUMAN, PROFESSION_COMBAT_SPEC), "no Mindwalker career"),
@@ -337,12 +309,10 @@ func _skill_named(name: String) -> Dictionary:
 	return {}
 
 
-## The five species Chapter 10 offers, and the two gates in front of them.
+## The five species introduced in Dark*Matter Chapter 10.
 ##
-## "At the Gamemaster's option, other species -- including Greys, kinori,
-## mothmen, sandmen, or sasquatch -- may be available to play as heroes."
-## (Dark Matter Campaign Setting Chapter 10 p. 257.) So they need the setting and
-## the Alien Heroes rule both, and a Core campaign must never see them.
+## Every shipped species is offered in every setting; these five also retain
+## their distinct Dark*Matter mechanics and creation data.
 const DM_SPECIES := ["Grey", "Kinori", "Mothman", "Sandman", "Sasquatch"]
 
 
@@ -350,30 +320,11 @@ func _test_alien_heroes() -> void:
 	for name in DM_SPECIES:
 		check_true(not _species_named(String(name)).is_empty(), "%s ships" % name)
 
-	# Core: not offered, whatever the optional rule says, because the rule is
-	# about Dark*Matter's own species and Core has never heard of them.
-	var core := _hero("Core")
-	_rules.set_optional_rule(core, "dm_alien_heroes", true)
-	for name in DM_SPECIES:
-		check_false(_offers_species(core, String(name)), "%s stays out of Core" % name)
-
-	# Dark*Matter without the rule: still not offered.
-	var closed := _hero("Dark*Matter")
-	for name in DM_SPECIES:
-		check_false(_offers_species(closed, String(name)), "%s waits on the GM in Dark*Matter" % name)
-	check_true(_offers_species(closed, "Human"), "and Human is offered regardless")
-
-	# Dark*Matter with the rule: all five.
-	var open_table := _hero("Dark*Matter")
-	_rules.set_optional_rule(open_table, "dm_alien_heroes", true)
-	for name in DM_SPECIES:
-		check_true(_offers_species(open_table, String(name)), "%s is offered once the GM allows it" % name)
-
-	# A hero already built as one keeps it even if the rule is switched back off.
-	# A picker that drops the saved answer writes back index 0 on the next save,
-	# so the hero silently becomes a Human.
-	var built := _hero("Dark*Matter", AlternityNum.as_int(_species_named("Sasquatch").get("id", -1)))
-	check_true(_offers_species(built, "Sasquatch"), "a hero already built as one keeps their species")
+	for setting in ["Core", "Dark*Matter", "Star*Drive"]:
+		var hero := _hero(String(setting))
+		for name in DM_SPECIES:
+			check_true(_offers_species(hero, String(name)), "%s offers %s" % [setting, name])
+		check_true(_offers_species(hero, "Human"), "%s also offers Human" % setting)
 
 	# The numbers that make them different from each other.
 	check_eq(_limits("Sandman", "WIL"), [2, 12], "a sandman may have a Will of 2, lower than any other species")

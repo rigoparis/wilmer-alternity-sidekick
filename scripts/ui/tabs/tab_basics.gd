@@ -351,7 +351,7 @@ func _build_setting_picker(parent: Container) -> void:
 
 	Widgets.muted_text(
 		parent,
-		"The setting decides which content this hero may take. Dark*Matter is contemporary Earth: it assumes Human heroes, has no Mindwalker or Adept career, and reaches psionics and FX through a perk instead. Star*Drive is planned for a future update.",
+		"Setting and books determine which rules and catalogs apply, but never hide a species or profession. The GM reviews whether each hero fits the campaign. Star*Drive is planned for a future update.",
 		palette,
 		Widgets.FONT_CAPTION
 	)
@@ -385,11 +385,7 @@ func _build_origin(container: Container) -> void:
 		func(id: int): doc.set_species_id(id)
 	)
 
-	var profession_ids: Array = rules.professions_by_id.keys()
-	profession_ids.sort_custom(func(a, b): return AlternityNum.as_int(a) < AlternityNum.as_int(b))
-	var professions: Array = []
-	for id in profession_ids:
-		professions.append(rules.professions_by_id[id])
+	var professions: Array = rules.available_professions(doc.raw())
 	_id_picker(
 		box, "Profession", professions, doc.get_profession_id(),
 		func(id: int): doc.set_profession_id(id)
@@ -684,16 +680,17 @@ func _build_ability_row(parent: Container, ability: String) -> void:
 func _build_profession_options(container: Container) -> void:
 	var doc := ctx.doc
 	var rules: AlternityRules = ctx.rules
-	var codes: Array = rules.profession_codes(doc.raw())
+	var profession := rules.get_profession_by_id(doc.get_profession_id())
+	var primary_code := String(profession.get("code", ""))
 
 	var rows: Array = []
-	if codes.has("F"):
+	if primary_code == "F":
 		rows.append(_free_agent_row)
-	if codes.has("C"):
+	if primary_code == "C":
 		rows.append(_combat_spec_row)
-	if codes.has("M"):
+	if primary_code == "M":
 		rows.append(_mindwalker_row)
-	if codes.has("D"):
+	if primary_code == "D":
 		rows.append(_diplomat_row)
 	if rows.is_empty():
 		return

@@ -119,10 +119,8 @@ func _update_damage_in_place() -> void:
 func build(container: Container) -> void:
 	var summary := ctx.doc.summary()
 
-	# Validations span the full width -- they are the one thing you must not
-	# miss. Everything else splits, so a desktop window shows the stat block and
-	# the trackers at once instead of one narrow strip scrolled twice.
-	_build_validations(container, summary)
+	# Kept out of the Summary tab temporarily while validation rules are audited.
+	# _build_validations(container, summary)
 
 	if ctx.is_wide_layout:
 		var split := columns(container)

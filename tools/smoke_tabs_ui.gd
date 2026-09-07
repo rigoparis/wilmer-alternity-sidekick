@@ -25,6 +25,7 @@ const TAB_PSIONICS := preload("res://scenes/ui/tabs/tab_psionics.tscn")
 const TAB_EQUIPMENT := preload("res://scenes/ui/tabs/tab_equipment.tscn")
 const OPTIONAL_RULES_ROUTE := preload("res://scenes/ui/routes/optional_rules_route.tscn")
 const SkillPickerScript := preload("res://scripts/ui/widgets/skill_picker.gd")
+const FxPickerScript := preload("res://scripts/ui/widgets/fx_picker.gd")
 
 var _rules: AlternityRules
 
@@ -46,6 +47,7 @@ func _run() -> void:
 	await _test_permanent_fx_effects_render()
 	await _test_optional_rules_route()
 	await _test_skills_tab()
+	await _test_catalog_rank_controls_and_scores()
 	await _test_psionics_tab()
 	await _test_fx_tab()
 	await _test_summary_attack_forms_and_tables()
@@ -419,6 +421,26 @@ func _any_label_contains(labels: Array, needle: String) -> bool:
 	return false
 
 
+func _assert_rank_is_between_buttons(picker: Control, label: String) -> void:
+	var rank_label := picker.find_child("RankLabel", true, false) as Label
+	check_true(rank_label != null, "%s catalog renders a Rank label" % label)
+	if rank_label == null:
+		return
+	var row := rank_label.get_parent()
+	var minus_index := -1
+	var plus_index := -1
+	for index in row.get_child_count():
+		var child := row.get_child(index)
+		if child is Button:
+			var button := child as Button
+			if button.tooltip_text == "Reduce rank":
+				minus_index = index
+			elif button.tooltip_text == "Increase rank":
+				plus_index = index
+	check_true(minus_index >= 0 and plus_index >= 0, "%s catalog has both rank buttons" % label)
+	check_true(minus_index < rank_label.get_index() and rank_label.get_index() < plus_index, "%s places Rank between minus and plus" % label)
+
+
 ## The new-hero flow: rules chosen before the character exists, because several
 ## change the starting skill budget.
 func _test_optional_rules_route() -> void:
@@ -454,6 +476,15 @@ func _test_optional_rules_route() -> void:
 		_rules.set_supplement(doc.raw(), String(supplement_id), bool(result["supplements"][supplement_id]))
 	check_true(_rules.optional_rule_enabled(doc.raw(), "2a"), "the chosen rule reaches the character")
 	check_true(_rules.supplement_enabled(doc.raw(), "dataware"), "the chosen supplement reaches the character")
+
+	var full_rank_rule: Dictionary = {}
+	for rule in AlternityRules.OPTIONAL_RULES:
+		if String(rule.get("id", "")) == "dm_adept_unrestricted_ranks":
+			full_rank_rule = rule
+	check_false(route._rule_is_visible(full_rank_rule), "the Adept rank crossover is hidden outside Dark*Matter")
+	doc.raw()["setting"] = "Dark*Matter"
+	_rules.set_supplement(doc.raw(), "beyond_science", false)
+	check_true(route._rule_is_visible(full_rank_rule), "the Adept rank crossover is available in Dark*Matter regardless of books in play")
 
 	route.queue_free()
 
@@ -516,6 +547,43 @@ func _test_skills_tab() -> void:
 	labels = _labels_in(tab_mobile)
 	check_true(_any_label_contains(labels, "Selected Skills"), "Compact layout has Selected Skills accordion")
 	tab_mobile.queue_free()
+
+
+func _test_catalog_rank_controls_and_scores() -> void:
+	var normal_doc := Doc.new(_rules)
+	normal_doc.set_species_id(0)
+	normal_doc.set_profession_id(0)
+	normal_doc.apply(CharacterDoc.ALL, func(c):
+		_rules.set_skill_rank(c, 3, 1) # Athletics
+		_rules.set_skill_rank(c, 4, 1) # Climb
+	)
+	var normal_picker := SkillPickerScript.new()
+	root.add_child(normal_picker)
+	normal_picker.setup(Context.new(normal_doc, _rules, null, ThemePalette.new(), true), SkillPickerScript.Mode.NORMAL)
+	await process_frame
+	check_true(_any_label_contains(_labels_in(normal_picker), "O11 / G5 / A2"), "normal catalog shows the current O / G / A score below cost")
+	check_eq(normal_picker.find_children("CheckScore", "Label", true, false).size(), 2, "normal catalog shows scores only for its bought broad and specialty")
+	_assert_rank_is_between_buttons(normal_picker, "normal")
+	normal_picker.queue_free()
+
+	var fx_doc := Doc.new(_rules)
+	fx_doc.set_species_id(0)
+	fx_doc.set_profession_id(0)
+	fx_doc.apply([CharacterDoc.FX], func(c):
+		_rules.fx.set_fx_talent(c, true)
+		_rules.fx.add_fx_skill(c, "Shamanism")
+		_rules.fx.add_fx_skill(c, "Animal voice")
+	)
+	var fx_picker := FxPickerScript.new()
+	root.add_child(fx_picker)
+	fx_picker.setup(Context.new(fx_doc, _rules, null, ThemePalette.new(), true))
+	fx_picker._category = "Faith"
+	fx_picker.refresh_skills()
+	await process_frame
+	check_true(_any_label_contains(_labels_in(fx_picker), "O11 / G5 / A2"), "FX catalog shows the current O / G / A score below cost")
+	check_eq(fx_picker.find_children("CheckScore", "Label", true, false).size(), 2, "FX catalog shows scores only for its bought broad and power")
+	_assert_rank_is_between_buttons(fx_picker, "FX")
+	fx_picker.queue_free()
 
 
 func _specialty_names(picker, broad: Dictionary) -> Array:
@@ -802,4 +870,3 @@ func _test_durability_dazed_markers() -> void:
 	check_eq(mortal_tracker._boxes.get_child_count(), 5, "mortal tracker has exactly 5 boxes without marker")
 
 	tab.queue_free()
-

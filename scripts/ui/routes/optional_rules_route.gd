@@ -24,6 +24,8 @@ var _character: Dictionary = {}
 var _changed: Dictionary = {}
 var _changed_supplements: Dictionary = {}
 var _confirm_text: String = "Done"
+var _options_list: VBoxContainer
+var _rebuild_queued: bool = false
 
 
 ## props: palette, rules, character (the raw dictionary, read-only here).
@@ -87,20 +89,11 @@ func _build() -> void:
 	scroll_margin.add_theme_constant_override("margin_right", Widgets.PAD_PANEL)
 	scroll.add_child(scroll_margin)
 
-	var list := VBoxContainer.new()
-	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	list.add_theme_constant_override("separation", Widgets.GAP_SECTION)
-	scroll_margin.add_child(list)
-
-	_build_supplements(list)
-
-	var rules_heading := Widgets.text(list, "Optional rules", _palette, Widgets.FONT_SECTION_TITLE, _palette.accent)
-	rules_heading.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	rules_heading.custom_minimum_size = Vector2(1, 0)
-
-	var enabled: Dictionary = _character.get("optional_rules", {})
-	for rule in AlternityRules.OPTIONAL_RULES:
-		_build_rule(list, rule, bool(enabled.get(String(rule.get("id", "")), false)))
+	_options_list = VBoxContainer.new()
+	_options_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_options_list.add_theme_constant_override("separation", Widgets.GAP_SECTION)
+	scroll_margin.add_child(_options_list)
+	_rebuild_options()
 
 	var done := Button.new()
 	done.text = _confirm_text
@@ -116,6 +109,64 @@ func _result():
 	return {"rules": _changed, "supplements": _changed_supplements}
 
 
+func _rebuild_options() -> void:
+	_rebuild_queued = false
+	if _options_list == null or not is_instance_valid(_options_list):
+		return
+	for child in _options_list.get_children():
+		_options_list.remove_child(child)
+		child.free()
+
+	_build_supplements(_options_list)
+	var rules_heading := Widgets.text(
+		_options_list, "Optional rules", _palette, Widgets.FONT_SECTION_TITLE, _palette.accent
+	)
+	rules_heading.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	rules_heading.custom_minimum_size = Vector2(1, 0)
+
+	for rule in AlternityRules.OPTIONAL_RULES:
+		if not _rule_is_visible(rule):
+			continue
+		var rule_id := String(rule.get("id", ""))
+		_build_rule(_options_list, rule, _effective_rule_enabled(rule_id))
+
+
+func _queue_options_rebuild() -> void:
+	if _rebuild_queued:
+		return
+	_rebuild_queued = true
+	call_deferred("_rebuild_options")
+
+
+func _effective_rule_enabled(rule_id: String) -> bool:
+	if _changed.has(rule_id):
+		return bool(_changed[rule_id])
+	return bool(_character.get("optional_rules", {}).get(rule_id, false))
+
+
+func _effective_supplement_enabled(supplement_id: String) -> bool:
+	if _changed_supplements.has(supplement_id):
+		return bool(_changed_supplements[supplement_id])
+	return (
+		_rules.supplement_enabled(_character, supplement_id) if _rules != null
+		else false
+	)
+
+
+func _rule_is_visible(rule: Dictionary) -> bool:
+	var required_setting := String(rule.get("requires_setting", "")).strip_edges()
+	if not required_setting.is_empty():
+		if _rules == null or not _rules.is_setting_available(_character, required_setting):
+			return false
+	var required_supplement := String(rule.get("requires_supplement", "")).strip_edges()
+	if not required_supplement.is_empty() and not _effective_supplement_enabled(required_supplement):
+		return false
+	var required_rule := String(rule.get("requires_rule", "")).strip_edges()
+	if not required_rule.is_empty() and not _effective_rule_enabled(required_rule):
+		return false
+	return true
+
+
 ## The books on the table, above the rules, because they are the larger question.
 ##
 ## A supplement decides whether content exists; an optional rule decides how
@@ -129,21 +180,22 @@ func _build_supplements(parent: Container) -> void:
 
 	for supplement in AlternityRules.SUPPLEMENTS:
 		var supplement_id := String(supplement.get("id", ""))
-		var enabled: bool = (
-			_rules.supplement_enabled(_character, supplement_id) if _rules != null
-			else bool(supplement.get("default", false))
-		)
+		var enabled: bool = _effective_supplement_enabled(supplement_id)
 		var block := Widgets.section(parent, String(supplement.get("name", supplement_id)), _palette)
 		Widgets.muted_text(block, String(supplement.get("summary", "")), _palette, Widgets.FONT_CAPTION)
 		Widgets.text(block, String(supplement.get("description", "")), _palette, Widgets.FONT_CAPTION)
 
 		var toggle := Widgets.toggle_row(block, _supplement_state_label(enabled), enabled, _palette)
 		toggle.toggled.connect(func(pressed: bool):
-			toggle.text = _supplement_state_label(pressed)
-			if pressed == enabled:
+			var original := (
+				_rules.supplement_enabled(_character, supplement_id) if _rules != null
+				else bool(supplement.get("default", false))
+			)
+			if pressed == original:
 				_changed_supplements.erase(supplement_id)
 			else:
-				_changed_supplements[supplement_id] = pressed)
+				_changed_supplements[supplement_id] = pressed
+			_queue_options_rebuild())
 
 
 func _supplement_state_label(enabled: bool) -> String:
@@ -162,12 +214,12 @@ func _build_rule(parent: Container, rule: Dictionary, enabled: bool) -> void:
 	# know which. It now says what is true.
 	var toggle := Widgets.toggle_row(block, _rule_state_label(enabled), enabled, _palette)
 	toggle.toggled.connect(func(pressed: bool):
-		toggle.text = _rule_state_label(pressed)
-		# Record only the net change: toggling twice leaves nothing to apply.
-		if pressed == enabled:
+		var original := bool(_character.get("optional_rules", {}).get(rule_id, false))
+		if pressed == original:
 			_changed.erase(rule_id)
 		else:
-			_changed[rule_id] = pressed)
+			_changed[rule_id] = pressed
+		_queue_options_rebuild())
 
 
 func _rule_state_label(enabled: bool) -> String:

@@ -362,15 +362,14 @@ func _init() -> void:
 		assert_eq.call(rules.free_species_skill_rank(seller, free_id), 1, "Species broad is granted again")
 		assert_eq.call(rules.skill_budget(seller), budget_before, "Taking it back gives the 3 SP up again")
 
-	# --- 9c. FX primary school surcharge ---
-	# Powers outside the primary school cost double. A stale primary school --
-	# one the hero does not actually have -- silently doubled the price of every
-	# power they owned, and nothing in the app could set or clear the field.
-	print("Testing FX Primary School Surcharge...")
+	# --- 9c. FX primary school discount ---
+	# An Adept's chosen school is cheaper; skills outside it remain at list.
+	# Beyond Science p. 3 says non-Adepts pay full cost for all FX skills.
+	print("Testing FX Primary School Discount...")
 	var caster: Dictionary = rules.default_character()
 	caster["species_id"] = 0
+	caster["profession_id"] = 9 # Adept (Combat Spec)
 	rules.ensure_character_shape(caster)
-	rules.fx.set_fx_talent(caster, true)
 
 	# Two schools, and a power under the second.
 	var school_a := ""
@@ -400,18 +399,18 @@ func _init() -> void:
 	)
 	assert_eq.call(
 		rules.fx.fx_skill_cost_for_rank(caster, power, 1), list_price,
-		"and does not double the price of a power they do own"
+		"and does not discount a power they do own"
 	)
 
-	# Owning it makes it real, and then the surcharge applies.
+	# Owning it makes it real. The other school's power stays at list.
 	rules.fx.add_fx_skill(caster, school_a)
 	assert_eq.call(
 		rules.fx.primary_broad_group(caster), school_a,
 		"a primary school the hero has is honoured"
 	)
 	assert_eq.call(
-		rules.fx.fx_skill_cost_for_rank(caster, power, 1), list_price * 2,
-		"a power outside the primary school costs double"
+		rules.fx.fx_skill_cost_for_rank(caster, power, 1), list_price,
+		"a power outside the primary school stays at list price"
 	)
 
 	# And it is fixed once named: the tradition is not a purchase to re-optimise,
@@ -427,16 +426,16 @@ func _init() -> void:
 		"nor moved to another school"
 	)
 	assert_eq.call(
-		rules.fx.fx_skill_cost_for_rank(caster, power, 1), list_price * 2,
-		"so the surcharge stays where it was"
+		rules.fx.fx_skill_cost_for_rank(caster, power, 1), list_price,
+		"so the other school stays at list price"
 	)
 
-	# A hero who holds an FX school and has named none is flagged, because
-	# pricing every power at list is cheaper than the rules allow.
+	# An Adept who holds an FX school and has named none is flagged because the
+	# profession requires the player to choose where its discount applies.
 	var undecided: Dictionary = rules.default_character()
 	undecided["species_id"] = 0
+	undecided["profession_id"] = 9
 	rules.ensure_character_shape(undecided)
-	rules.fx.set_fx_talent(undecided, true)
 	assert_true.call(
 		not rules.fx.needs_primary_broad_group(undecided),
 		"a hero with no FX schools is not asked to name a primary one"
@@ -456,13 +455,13 @@ func _init() -> void:
 	print("Testing FX Adept vs FX Talent Costs and Rank Caps...")
 	# 1) FX Adept in Generic Sci-Fi:
 	# - Primary FX school: L_adj = L - 1
-	# - Non-primary school: L_adj = 2 * L
+	# - Non-primary school: L_adj = L
 	# - Can advance specialties up to level limit (up to 12)
 	var adept_char: Dictionary = rules.default_character()
 	adept_char["species_id"] = 0
+	adept_char["profession_id"] = 9
 	rules.ensure_character_shape(adept_char)
 	adept_char["achievement_level"] = 6 # level limit = 8
-	rules.fx.set_practitioner_type(adept_char, "adept")
 	rules.fx.add_fx_skill(adept_char, school_a)
 	rules.fx.set_primary_broad_group(adept_char, school_a)
 	var adept_power := String(

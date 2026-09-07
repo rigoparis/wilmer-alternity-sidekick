@@ -26,6 +26,8 @@ func _normalize_fx(character: Dictionary) -> void:
 	character["fx"] = fx_data
 
 func is_fx_active(character: Dictionary) -> bool:
+	if _get_parent().is_adept_profession(character):
+		return true
 	var fx_data: Dictionary = character.get("fx", {})
 	if bool(fx_data.get("enabled", false)):
 		return true
@@ -39,6 +41,8 @@ func is_fx_active(character: Dictionary) -> bool:
 func is_fx_talent(character: Dictionary) -> bool:
 	if not is_fx_active(character):
 		return false
+	if _get_parent().is_adept_profession(character):
+		return false
 	if _get_parent().is_dark_matter(character):
 		return true
 	var p_type := String(character.get("fx", {}).get("practitioner_type", ""))
@@ -50,15 +54,21 @@ func is_fx_talent(character: Dictionary) -> bool:
 func is_fx_adept(character: Dictionary) -> bool:
 	if not is_fx_active(character):
 		return false
+	if _get_parent().is_adept_profession(character):
+		return true
 	if _get_parent().is_dark_matter(character):
 		return false
-	return not is_fx_talent(character)
+	# Compatibility for characters saved before Adept became a profession in
+	# the app. New characters select an Adept profession instead.
+	return String(character.get("fx", {}).get("practitioner_type", "")) == "adept"
 
 
 func set_fx_talent(character: Dictionary, enabled: bool) -> void:
 	_normalize_fx(character)
 	character["fx"]["enabled"] = enabled
 	character["fx"]["is_fx_talent"] = enabled
+	if enabled:
+		character["fx"]["practitioner_type"] = "talent"
 
 
 func set_practitioner_type(character: Dictionary, p_type: String) -> void:
@@ -80,8 +90,23 @@ func set_practitioner_type(character: Dictionary, p_type: String) -> void:
 ## names.
 func energy_pool(character: Dictionary) -> int:
 	if _get_parent().is_dark_matter(character):
+		if _get_parent().is_primary_adept_profession(character):
+			return 10
 		return AlternityRules.DARK_MATTER_FX_STARTING_POOL
-	return AlternityNum.as_int(character.get("fx", {}).get("energy_pool", 0))
+	var recorded := AlternityNum.as_int(character.get("fx", {}).get("energy_pool", 0))
+	if recorded > 0 or not is_fx_active(character):
+		return recorded
+
+	# Beyond Science p. 4 sets the full pool by campaign scale. Page 6 gives
+	# Talents half that amount (rounded up), while a primary Adept receives the
+	# full pool. The default heroic campaign therefore starts at 10 / 5.
+	var full_pool := 10
+	match _get_parent().fx_campaign_scale(character):
+		"realistic": full_pool = 5
+		"superheroic": full_pool = 15
+		_: full_pool = 10
+	var is_legacy_primary_adept: bool = is_fx_adept(character) and not _get_parent().is_adept_profession(character)
+	return full_pool if _get_parent().is_primary_adept_profession(character) or is_legacy_primary_adept else int(ceil(full_pool / 2.0))
 
 func set_energy_pool(character: Dictionary, amount: int) -> void:
 	_normalize_fx(character)
@@ -282,6 +307,18 @@ func max_rank_for_fx_skill(character: Dictionary, skill_name: String) -> int:
 	var general_cap: int = _get_parent().max_skill_rank_for_character(character)
 
 	if is_fx_adept(character):
+		if (
+			_get_parent().is_dark_matter(character)
+			and not _get_parent().optional_rule_enabled(character, "dm_adept_unrestricted_ranks")
+		):
+			var primary_group := primary_broad_group(character)
+			var skill_broad := String(specialty.get("broad_skill", ""))
+			var setting_cap := (
+				AlternityRules.DARK_MATTER_FX_TALENT_TOP_RANK
+				if not primary_group.is_empty() and skill_broad == primary_group
+				else AlternityRules.DARK_MATTER_FX_TALENT_OTHER_RANK
+			)
+			return mini(general_cap, setting_cap)
 		return general_cap
 
 	if is_fx_talent(character):
@@ -368,14 +405,13 @@ func selected_fx_skills(character: Dictionary) -> Array:
 
 ## The school this hero's FX is centred on, if they still have it.
 ##
-## Powers outside the primary school cost double, so a stale value here silently
-## doubles the price of everything. A real saved character had this set to
-## Alienism while owning Brick, Druidism and Taoism -- so every power in a school
-## they did own was charged at twice its price, and nothing in the app could set
-## or clear the field to fix it.
+## Adepts receive their profession discount only inside the primary school.
+## Talents still name a primary tradition, but Beyond Science p. 3 says they pay
+## full list price for all FX broad and specialty skills; it does not double the
+## price of skills outside that tradition.
 ##
-## A primary school the hero does not have is treated as unset: the surcharge is
-## defined relative to a school you actually practise.
+## A primary school the hero does not have is treated as unset, so an Adept never
+## receives a discount from stale imported data.
 func primary_broad_group(character: Dictionary) -> String:
 	var stored := String(character.get("fx", {}).get("primary_broad_group", "")).strip_edges()
 	if stored.is_empty():
@@ -406,7 +442,7 @@ func set_primary_broad_group(character: Dictionary, broad_name: String) -> void:
 ## powers are priced at list until they do, which is cheaper than the rules
 ## allow, so it is worth saying rather than leaving quietly favourable.
 func needs_primary_broad_group(character: Dictionary) -> bool:
-	if not is_fx_active(character):
+	if not is_fx_adept(character):
 		return false
 	if not primary_broad_group(character).is_empty():
 		return false
@@ -442,12 +478,12 @@ func fx_skill_cost(character: Dictionary, skill_name: String) -> int:
 		return fx_skill_cost_for_rank(character, skill_name, rank + 1)
 	return 0
 
-## What a Dark*Matter FX talent pays above the listed price.
+## What Dark*Matter adds above the listed price for every FX practitioner.
 ##
 ## "FX Talents must pay 1 point more than the listed cost for all FX broad and
 ## specialty skills." It is the same shape as the psionic talent surcharge and
-## for the same reason: in Dark*Matter nobody has the profession that would make
-## them a full practitioner, so everybody is a talent and everybody pays it.
+## for the same reason. A GM-imported Adept still pays it; the Adept's chosen
+## school discount is applied separately and offsets the surcharge there.
 ##
 ## Zero outside Dark*Matter, where an Adept buys at list.
 func _talent_surcharge(character: Dictionary) -> int:
@@ -473,38 +509,28 @@ func _listed_cost(character: Dictionary, entry: Dictionary) -> int:
 
 
 func fx_skill_cost_for_rank(character: Dictionary, skill_name: String, rank: int) -> int:
-	var surcharge := _talent_surcharge(character)
-	var broad = get_broad_skill(skill_name)
-	if not broad.is_empty():
-		return _listed_cost(character, broad) + surcharge if rank == 1 else 0
-	var specialty = get_specialty_skill(skill_name)
-	if not specialty.is_empty():
-		var list_cost := _listed_cost(character, specialty)
-		var base_cost := list_cost
-		var primary_group := primary_broad_group(character)
-		var skill_broad := String(specialty.get("broad_skill", ""))
-		var is_non_primary := not primary_group.is_empty() and skill_broad != primary_group
+	var entry: Dictionary = get_broad_skill(skill_name)
+	var entry_broad := skill_name
+	var is_broad := not entry.is_empty()
+	if not is_broad:
+		entry = get_specialty_skill(skill_name)
+		if entry.is_empty():
+			return 0
+		entry_broad = String(entry.get("broad_skill", ""))
 
-		if _get_parent().is_dark_matter(character):
-			base_cost = list_cost + surcharge
-			if is_non_primary:
-				base_cost *= 2
-		elif is_fx_adept(character):
-			if is_non_primary:
-				base_cost = 2 * list_cost
-			else:
-				base_cost = maxi(1, list_cost - 1)
-		else:
-			# FX Talent (Generic Sci-Fi)
-			if is_non_primary:
-				base_cost = 2 * list_cost
-			else:
-				base_cost = list_cost
+	if is_broad and rank != 1:
+		return 0
 
-		if rank <= 1 or _get_parent().optional_rule_enabled(character, "2c"):
-			return base_cost
-		return base_cost + (rank - 1)
-	return 0
+	var base_cost := _listed_cost(character, entry)
+	var primary_group := primary_broad_group(character)
+	if is_fx_adept(character) and not primary_group.is_empty() and entry_broad == primary_group:
+		base_cost -= 1
+	base_cost += _talent_surcharge(character)
+	base_cost = maxi(1, base_cost)
+
+	if is_broad or rank <= 1 or _get_parent().optional_rule_enabled(character, "2c"):
+		return base_cost
+	return base_cost + (rank - 1)
 
 func fx_skill_total_cost(character: Dictionary, skill_name: String) -> int:
 	var rank = fx_skill_rank(character, skill_name)

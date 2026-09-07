@@ -320,7 +320,13 @@ func _build_row(parent: Container, skill: Dictionary, is_broad: bool) -> void:
 			var cost: int = rules.fx.fx_skill_cost_for_rank(raw, skill_name, 1)
 			cost_lbl.text = "Cost %d" % cost
 			cost_lbl.add_theme_color_override("font_color", palette.muted)
-		broad_row.add_child(cost_lbl)
+		var cost_box := VBoxContainer.new()
+		cost_box.add_theme_constant_override("separation", 0)
+		cost_box.add_child(cost_lbl)
+		if owned:
+			var broad_score: Dictionary = rules.fx.fx_skill_score(raw, skill_name)
+			cost_box.add_child(_score_label(broad_score, palette))
+		broad_row.add_child(cost_box)
 		return
 
 	# Specialty power row
@@ -380,6 +386,9 @@ func _build_row(parent: Container, skill: Dictionary, is_broad: bool) -> void:
 	sub_lbl.add_theme_color_override("font_color", palette.muted)
 	sub_lbl.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
 	name_box.add_child(sub_lbl)
+	if rank > 0:
+		var score: Dictionary = rules.fx.fx_skill_score(raw, skill_name)
+		name_box.add_child(_score_label(score, palette))
 
 	var minus_btn := _make_flat_icon_btn(ICON_MINUS, Vector2(34, 34), "Reduce rank")
 	minus_btn.disabled = (rank <= 0)
@@ -388,6 +397,16 @@ func _build_row(parent: Container, skill: Dictionary, is_broad: bool) -> void:
 		change_requested.emit()
 	)
 	row.add_child(minus_btn)
+
+	var rank_lbl := Label.new()
+	rank_lbl.name = "RankLabel"
+	rank_lbl.text = "Rank %d" % rank
+	rank_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	rank_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	rank_lbl.custom_minimum_size = Vector2(48, 0)
+	rank_lbl.add_theme_color_override("font_color", palette.text if rank > 0 else palette.muted)
+	rank_lbl.add_theme_font_size_override("font_size", Widgets.FONT_DETAIL)
+	row.add_child(rank_lbl)
 
 	var plus_btn := _make_flat_icon_btn(ICON_PLUS, Vector2(34, 34), "Increase rank")
 	plus_btn.disabled = (rank >= max_rank)
@@ -406,19 +425,6 @@ func _build_row(parent: Container, skill: Dictionary, is_broad: bool) -> void:
 	detail_btn.pressed.connect(func(): detail_requested.emit(skill))
 	row.add_child(detail_btn)
 
-	var slack := Control.new()
-	slack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(slack)
-
-	var rank_lbl := Label.new()
-	rank_lbl.text = "Rank %d" % rank
-	rank_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	rank_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	rank_lbl.custom_minimum_size = Vector2(48, 0)
-	rank_lbl.add_theme_color_override("font_color", palette.text if rank > 0 else palette.muted)
-	rank_lbl.add_theme_font_size_override("font_size", Widgets.FONT_DETAIL)
-	row.add_child(rank_lbl)
-
 	if owned and rules.fx.can_fx_skill_be_permanent(skill_name):
 		var perm_row := HBoxContainer.new()
 		perm_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -435,3 +441,17 @@ func _build_row(parent: Container, skill: Dictionary, is_broad: bool) -> void:
 				rules.fx.set_fx_skill_permanent(c, skill_name, pressed))
 			change_requested.emit()
 		)
+
+
+func _score_label(score: Dictionary, palette: ThemePalette) -> Label:
+	var label := Label.new()
+	label.name = "CheckScore"
+	label.text = "O%d / G%d / A%d" % [
+		AlternityNum.as_int(score.get("ordinary", 0)),
+		AlternityNum.as_int(score.get("good", 0)),
+		AlternityNum.as_int(score.get("amazing", 0)),
+	]
+	label.tooltip_text = "Current check score: Ordinary / Good / Amazing"
+	label.add_theme_color_override("font_color", palette.muted)
+	label.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
+	return label

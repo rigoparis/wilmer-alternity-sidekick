@@ -68,7 +68,8 @@ const DARK_MATTER_FX_TALENT_OTHER_RANK := 3
 
 ## The perks that make somebody an FX talent in Dark*Matter.
 ##
-## The setting has no Adept profession, so one of these is the only way in.
+## Ordinary Dark*Matter FX Talents enter through one of these perks. Adepts are
+## independently selectable and use their profession rules instead.
 ## Source: Dark Matter Campaign Setting, Chapter 3: Heroes of Dark Matter.
 const DARK_MATTER_FX_PERKS := ["faith", "arcane_magic"]
 
@@ -303,6 +304,13 @@ const STARTING_FUNDS_BY_PROFESSION := {
 	5: "5d8",   # Tech Op
 	6: "5d4",   # Mindwalker
 	7: "5d12",  # Diplomat (Mindwalker)
+	8: "5d12",  # Diplomat (Adept)
+	9: "5d6",   # Adept (Combat Spec)
+	10: "5d12", # Adept (Diplomat)
+	11: "5d8",  # Adept (Free Agent)
+	12: "5d8",  # Adept (Tech Op)
+	13: "5d4",  # Adept (Mindwalker)
+	14: "5d6",  # Non-Professional (supporting character default)
 }
 
 ## Passive Resistance Abilities (Table P2): STR, DEX, INT, WIL. CON and PER have no passive RM.
@@ -387,10 +395,11 @@ const OPTIONAL_RULES := [
 		"description": "When a weapon's firepower exceeds the target's toughness, the quality of a hit is promoted -- one grade above and an Ordinary hit becomes Good and a Good hit becomes Amazing; two or more grades above and any hit is Amazing. The Gamemaster Guide is explicit that no standard rule exists for this and offers it as a guideline, which is why it is a toggle. Its counterpart, damage degradation when a weapon is too weak for its target, is core and always applies. Source: Gamemaster Guide Chapter 3 p. 52, sidebar \"Upgrading Damage?\".",
 	},
 	{
-		"id": "dm_alien_heroes",
-		"name": "Optional Rule: Alien Heroes",
-		"summary": "Dark*Matter campaigns may allow non-human heroes",
-		"description": "Dark*Matter assumes human heroes -- \"Human beings inhabit most of the globe, so by sheer weight of numbers, it's up to humans to defend themselves\" -- and offers non-humans as a Gamemaster's option: Greys, kinori, mothmen, sandmen and sasquatch. Those five species are not yet in the app, so today this rule only stops the sheet from questioning a non-human hero. It has no effect outside Dark*Matter. Source: Dark Matter Campaign Setting p. 51; Chapter 10: Campaign Options p. 257.",
+		"id": "dm_adept_unrestricted_ranks",
+		"name": "Optional Rule: Full Adept Ranks in Dark*Matter",
+		"summary": "Let Dark*Matter Adepts use the normal Rank 12 Adept ceiling",
+		"description": "When off, Dark*Matter's weak-FX baseline limits an Adept to Rank 6 in any number of specialties from the chosen school and Rank 3 in other schools. When on, an Adept uses the normal Beyond Science ceiling, subject to the hero's level and the system maximum of Rank 12. This is a Gamemaster ruling for combining two rulesets; neither book defines the crossover. Sources: Beyond Science: A Guide to FX p. 6; Dark Matter Campaign Setting Part 2 p. 75.",
+		"requires_setting": "Dark*Matter",
 	},
 	{
 		"id": "weapon_accuracy",
@@ -2106,7 +2115,7 @@ const PERK_DEFINITIONS := [
 		"ability": "INT",
 		"activation": "Active",
 		"setting": "Dark Matter",
-		"summary": "The hero is an arcane FX talent and may buy a school of magic and its spells. Dark*Matter has no Adept profession, so this perk is the only way into arcane FX; a talent pays 1 skill point above the listed cost for every FX skill.",
+		"summary": "The hero is an arcane FX talent and may buy a school of magic and its spells. Under standard Dark*Matter rules this perk is the path into arcane FX; a talent pays 1 skill point above the listed cost for every FX skill.",
 		"source": "Dark Matter Campaign Setting, Chapter 3: Heroes of Dark Matter.",
 	},
 	{
@@ -2919,6 +2928,134 @@ const PROFESSION_DEFINITIONS := [
 			"Action Check Score Increase: action check score increased by 1. Source: Player's Handbook p. 227.",
 			"Situation Bonus: choose one psionic broad skill; that broad skill and all of its specialty skills receive a situation die improvement of 1 step (broad skill +d0, specialties -d4). Source: Player's Handbook p. 227.",
 			"Profession requirements: WIL 11, INT 9, CON 9. Source: Player's Handbook Table P1 p. 30 and p. 227.",
+		],
+	},
+	{
+		"id": 8,
+		"name": "Diplomat (Adept)",
+		"code": "D",
+		"secondary_code": "A",
+		"action_bonus": 1,
+		"last_resort_bonus": 0,
+		"ability_minimums": {"WIL": 9, "PER": 11, "INT": 9},
+		"supplement": "beyond_science",
+		"adept_role": "secondary",
+		"advancement_profile": "diplomat",
+		"notes": [
+			"A Diplomat who studies a single FX tradition as a secondary profession. Source: Beyond Science: A Guide to FX p. 6.",
+			"Action Check Score Increase: action check score increased by 1. Source: Player's Handbook p. 31.",
+			"Contacts or Resources: a Diplomat starts with contacts or resources as described in the Gamemaster Guide. Source: Player's Handbook p. 31.",
+			"Secondary Profession (Adept): choose one FX broad skill; that broad skill and all its specialty skills cost list price -1. The hero has a Talent-sized FX energy pool rather than a primary Adept's full pool. Source: Beyond Science: A Guide to FX p. 6.",
+			"Profession requirements: PER 11, WIL 9, INT 9. Source: Player's Handbook Table P1 p. 30.",
+		],
+	},
+	{
+		"id": 9,
+		"name": "Adept (Combat Spec)",
+		"code": "A",
+		"secondary_code": "C",
+		"action_bonus": 1,
+		"last_resort_bonus": 0,
+		"ability_minimums": {"STR": 11, "DEX": 9, "CON": 9},
+		"supplement": "beyond_science",
+		"adept_role": "primary",
+		"advancement_profile": "combat_spec",
+		"notes": [
+			"A dedicated FX practitioner with Combat Spec as the secondary profession. Source: Beyond Science: A Guide to FX p. 6.",
+			"Action Check Score Increase: action check score increased by 1. Source: Beyond Science: A Guide to FX p. 6.",
+			"Adept School: choose one FX broad skill; that broad skill and all its specialty skills cost list price -1 and may advance to Rank 12, subject to level. Source: Beyond Science: A Guide to FX p. 6.",
+			"Secondary Profession (Combat Spec): Combat Spec skills cost list price -1; the secondary profession also determines starting money and achievement-benefit costs. Source: Beyond Science: A Guide to FX p. 6.",
+			"Begins with the campaign's full FX energy pool (10 in a heroic campaign). Source: Beyond Science: A Guide to FX pp. 4, 6.",
+		],
+	},
+	{
+		"id": 10,
+		"name": "Adept (Diplomat)",
+		"code": "A",
+		"secondary_code": "D",
+		"action_bonus": 1,
+		"last_resort_bonus": 0,
+		"ability_minimums": {"WIL": 9, "PER": 11, "INT": 9},
+		"supplement": "beyond_science",
+		"adept_role": "primary",
+		"advancement_profile": "diplomat",
+		"notes": [
+			"A dedicated FX practitioner with Diplomat as the secondary profession; this does not grant another secondary profession. Source: Beyond Science: A Guide to FX p. 6.",
+			"Action Check Score Increase: action check score increased by 1. Source: Beyond Science: A Guide to FX p. 6.",
+			"Adept School: choose one FX broad skill; that broad skill and all its specialty skills cost list price -1 and may advance to Rank 12, subject to level. Source: Beyond Science: A Guide to FX p. 6.",
+			"Secondary Profession (Diplomat): Diplomat skills cost list price -1; the secondary profession also determines starting money and achievement-benefit costs. Source: Beyond Science: A Guide to FX p. 6.",
+			"Begins with the campaign's full FX energy pool (10 in a heroic campaign). Source: Beyond Science: A Guide to FX pp. 4, 6.",
+		],
+	},
+	{
+		"id": 11,
+		"name": "Adept (Free Agent)",
+		"code": "A",
+		"secondary_code": "F",
+		"action_bonus": 1,
+		"last_resort_bonus": 0,
+		"ability_minimums": {"DEX": 11, "INT": 9, "WIL": 9},
+		"supplement": "beyond_science",
+		"adept_role": "primary",
+		"advancement_profile": "free_agent",
+		"notes": [
+			"A dedicated FX practitioner with Free Agent as the secondary profession. Source: Beyond Science: A Guide to FX p. 6.",
+			"Action Check Score Increase: action check score increased by 1. Source: Beyond Science: A Guide to FX p. 6.",
+			"Adept School: choose one FX broad skill; that broad skill and all its specialty skills cost list price -1 and may advance to Rank 12, subject to level. Source: Beyond Science: A Guide to FX p. 6.",
+			"Secondary Profession (Free Agent): Free Agent skills cost list price -1; the secondary profession also determines starting money and achievement-benefit costs. Source: Beyond Science: A Guide to FX p. 6.",
+			"Begins with the campaign's full FX energy pool (10 in a heroic campaign). Source: Beyond Science: A Guide to FX pp. 4, 6.",
+		],
+	},
+	{
+		"id": 12,
+		"name": "Adept (Tech Op)",
+		"code": "A",
+		"secondary_code": "T",
+		"action_bonus": 1,
+		"last_resort_bonus": 0,
+		"ability_minimums": {"INT": 11, "DEX": 9, "CON": 9},
+		"supplement": "beyond_science",
+		"adept_role": "primary",
+		"advancement_profile": "tech_op",
+		"notes": [
+			"A dedicated FX practitioner with Tech Op as the secondary profession. Source: Beyond Science: A Guide to FX p. 6.",
+			"Action Check Score Increase: action check score increased by 1. Source: Beyond Science: A Guide to FX p. 6.",
+			"Adept School: choose one FX broad skill; that broad skill and all its specialty skills cost list price -1 and may advance to Rank 12, subject to level. Source: Beyond Science: A Guide to FX p. 6.",
+			"Secondary Profession (Tech Op): Tech Op skills cost list price -1; the secondary profession also determines starting money and achievement-benefit costs. Source: Beyond Science: A Guide to FX p. 6.",
+			"Begins with the campaign's full FX energy pool (10 in a heroic campaign). Source: Beyond Science: A Guide to FX pp. 4, 6.",
+		],
+	},
+	{
+		"id": 13,
+		"name": "Adept (Mindwalker)",
+		"code": "A",
+		"secondary_code": "M",
+		"action_bonus": 1,
+		"last_resort_bonus": 0,
+		"ability_minimums": {"WIL": 11, "INT": 9, "CON": 9},
+		"supplement": "beyond_science",
+		"adept_role": "primary",
+		"advancement_profile": "mindwalker",
+		"notes": [
+			"A dedicated FX practitioner with Mindwalker as the secondary profession. Psionic energy and FX energy are separate pools. Source: Beyond Science: A Guide to FX p. 6.",
+			"Action Check Score Increase: action check score increased by 1. Source: Beyond Science: A Guide to FX p. 6.",
+			"Adept School: choose one FX broad skill; that broad skill and all its specialty skills cost list price -1 and may advance to Rank 12, subject to level. Source: Beyond Science: A Guide to FX p. 6.",
+			"Secondary Profession (Mindwalker): psionic skills cost list price -1; the secondary profession also determines starting money and achievement-benefit costs. Source: Beyond Science: A Guide to FX p. 6.",
+			"Begins with the campaign's full FX energy pool (10 in a heroic campaign). Source: Beyond Science: A Guide to FX pp. 4, 6.",
+		],
+	},
+	{
+		"id": 14,
+		"name": "Non-Professional",
+		"code": "",
+		"secondary_code": "",
+		"action_bonus": 0,
+		"last_resort_bonus": 0,
+		"ability_minimums": {},
+		"notes": [
+			"A supporting character without a heroic profession. Source: Alternity Gamemaster Guide p. 89.",
+			"No profession action-check increase and no professional skill-cost reductions. Source: Alternity Gamemaster Guide p. 89.",
+			"Uses standard durability from Constitution. Source: Alternity Gamemaster Guide p. 89.",
 		],
 	},
 ]
