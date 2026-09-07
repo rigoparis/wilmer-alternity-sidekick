@@ -75,6 +75,7 @@
 			"age_effects": false,
 			"damage_upgrading": false,
 			"dazed": false,
+			"dm_adept_unrestricted_ranks": false,
 			"dm_alien_heroes": false,
 			"monetary_awards_uncapped": false,
 			"psionic_talents": false,
