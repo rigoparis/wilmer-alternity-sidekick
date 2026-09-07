@@ -947,7 +947,6 @@ func fx_attack_forms(character: Dictionary) -> Array:
 			"mass": "-",
 		})
 	if is_fx_skill_selected(character, "Animate dead"):
-		var rank := fx_skill_rank(character, "Animate dead")
 		var limit := zombie_control_limit(character)
 		var dur_bonus := zombie_durability_bonus(character)
 		forms.append({

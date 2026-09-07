@@ -157,7 +157,7 @@ func _render_found() -> void:
 	if _found_list == null or _discovery == null:
 		return
 	for child in _found_list.get_children():
-		_found_list.remove_child(child)
+		child.hide()
 		child.queue_free()
 
 	var hosts: Array = _discovery.hosts()

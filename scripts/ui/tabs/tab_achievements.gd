@@ -176,8 +176,12 @@ func _open_catalog() -> void:
 		for entry_id in chosen:
 			var parts := String(entry_id).split(FIELD_SEPARATOR)
 			var achievement_id := parts[0]
-			var target_id := parts[1] if parts.size() > 1 else ""
-			var target_value := AlternityNum.as_int(parts[2] if parts.size() > 2 else 0)
+			var target_id := ""
+			if parts.size() > 1:
+				target_id = parts[1]
+			var target_value := 0
+			if parts.size() > 2:
+				target_value = AlternityNum.as_int(parts[2])
 			rules.achievements.add_achievement_purchase(c, achievement_id, target_id, target_value))
 	save_requested.emit()
 
@@ -274,7 +278,9 @@ func _budget_text(selected_ids: Array) -> String:
 	for entry_id in selected_ids:
 		var parts := String(entry_id).split(FIELD_SEPARATOR)
 		var achievement: Dictionary = rules.get_achievement_by_id(parts[0])
-		var target_value := AlternityNum.as_int(parts[2] if parts.size() > 2 else 0)
+		var target_value := 0
+		if parts.size() > 2:
+			target_value = AlternityNum.as_int(parts[2])
 		pending += rules.achievements.achievement_purchase_cost(raw, achievement, target_value)
 
 	var remaining := available - pending

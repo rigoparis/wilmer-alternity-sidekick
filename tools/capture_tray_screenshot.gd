@@ -19,7 +19,7 @@ const SIZES := [
 	[1280, 720, "desktop"],
 ]
 
-var _out_dir := "user://shots/"
+var _out_dir := "res://builds/tray-shots/"
 var _rules
 
 
@@ -94,7 +94,7 @@ func _capture(width: int, height: int, label: String) -> void:
 		await process_frame
 		if not tray._resolved.is_empty():
 			break
-	for _i in 6:
+	for _i in 45:
 		await process_frame
 	_save("%s_tray_settled" % label)
 

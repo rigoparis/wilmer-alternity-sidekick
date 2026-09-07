@@ -32,6 +32,7 @@ var _weapon: Dictionary = {}
 
 var _attacker_field: LineEdit
 var _score_stepper: NumberStepper
+var _manual_stepper: NumberStepper
 var _weapon_label: Label
 var _weapon_list: VBoxContainer
 var _picker: VBoxContainer
@@ -146,9 +147,20 @@ func _build_attacker(parent: Container) -> void:
 	section.add_child(_score_stepper)
 	_score_stepper.setup(_palette, "Attack score", 12, 1, 30, 1, 0, true)
 
+	# A stat block often supplies a final situation modifier without spelling out
+	# which table rows produced it. Keep that adjustment separate, then net it
+	# with range and the conditions selected below.
+	_manual_stepper = NumberStepper.new()
+	_manual_stepper.name = "AttackStepInput"
+	section.add_child(_manual_stepper)
+	_manual_stepper.setup(
+		_palette, "Manual steps", 0, SkillCheck.MIN_STEP, SkillCheck.MAX_STEP, 1, 0, true
+	)
+	_manual_stepper.value_changed.connect(func(_value: int): _refresh())
+
 	var note := Widgets.muted_text(
 		section,
-		"Their skill score for this attack. Good is half of it and Amazing a quarter, as on a sheet.",
+		"The score sets Ordinary, Good and Amazing. Manual steps adjust the situation die; range and selected conditions below are added to them.",
 		_palette,
 		Widgets.FONT_CAPTION
 	)
@@ -211,7 +223,7 @@ func _refresh_weapons(query: String) -> void:
 	if _weapon_list == null or _rules == null:
 		return
 	for child in _weapon_list.get_children():
-		_weapon_list.remove_child(child)
+		child.hide()
 		child.queue_free()
 
 	var needle := query.strip_edges().to_lower()
@@ -219,15 +231,15 @@ func _refresh_weapons(query: String) -> void:
 	for item in _rules.equipment.filtered_equipment({"category": "Weapons"}):
 		if shown >= MAX_WEAPONS_SHOWN:
 			break
-		var name := String(item.get("name", ""))
-		if not needle.is_empty() and not name.to_lower().contains(needle):
+		var weapon_name := String(item.get("name", ""))
+		if not needle.is_empty() and not weapon_name.to_lower().contains(needle):
 			continue
 		var combat: Dictionary = item.get("combat", {})
 		if String(combat.get("damage", "")).is_empty():
 			continue
 
 		var button := Button.new()
-		button.text = "%s   %s" % [name, String(combat.get("damage", ""))]
+		button.text = "%s   %s" % [weapon_name, String(combat.get("damage", ""))]
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.custom_minimum_size = Vector2(0, 34)
@@ -283,7 +295,7 @@ func _render_modifiers() -> void:
 	if _modifier_body == null:
 		return
 	for child in _modifier_body.get_children():
-		_modifier_body.remove_child(child)
+		child.hide()
 		child.queue_free()
 
 	var scope := "melee" if _is_melee() else "ranged"
@@ -401,7 +413,8 @@ func _ready() -> void:
 
 ## Every step this attack is worth, and the die it comes to.
 func net_steps() -> int:
-	var total := _rules.net_situation_steps(_chosen.keys())
+	var total: int = _manual_stepper.value() if _manual_stepper != null else 0
+	total += _rules.net_situation_steps(_chosen.keys())
 	total += _range_step()
 	return total
 

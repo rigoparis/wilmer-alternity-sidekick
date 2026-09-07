@@ -128,14 +128,14 @@ func _build_compact_layout(container: Container) -> void:
 
 func _render_budget(host: Container) -> void:
 	for child in host.get_children():
-		host.remove_child(child)
+		child.hide()
 		child.queue_free()
 	_build_budget(host)
 
 
 func _render_trackers(host: Container) -> void:
 	for child in host.get_children():
-		host.remove_child(child)
+		child.hide()
 		child.queue_free()
 	_build_trackers(host)
 
@@ -151,7 +151,7 @@ func _set_editing_skills(editing: bool) -> void:
 
 func _render_skills_panel_desktop(host: Container) -> void:
 	for child in host.get_children():
-		host.remove_child(child)
+		child.hide()
 		child.queue_free()
 
 	_picker = null
@@ -199,7 +199,7 @@ func _render_skills_panel_desktop(host: Container) -> void:
 
 func _render_skills_panel_mobile(host: Container) -> void:
 	for child in host.get_children():
-		host.remove_child(child)
+		child.hide()
 		child.queue_free()
 
 	_picker = null
@@ -227,6 +227,10 @@ func _render_skills_panel_mobile(host: Container) -> void:
 
 
 func _populate_selected_skills_table(container: Container, rows: Array) -> void:
+	if not ctx.is_wide_layout:
+		_populate_selected_skills_cards(container, rows)
+		return
+
 	var palette := ctx.palette
 
 	var grid := GridContainer.new()
@@ -258,6 +262,101 @@ func _populate_selected_skills_table(container: Container, rows: Array) -> void:
 
 	for specialty in standalone:
 		_add_skill_grid_row(grid, specialty, false, 0)
+
+
+## The desktop table has five useful columns, but their intrinsic widths cannot
+## fit inside a phone card. Compact rows put identity above the numeric details,
+## preserving all five values without horizontal scrolling or clipped content.
+func _populate_selected_skills_cards(container: Container, rows: Array) -> void:
+	var grouped: Dictionary = _group_selected_skills(rows)
+	var sorted_groups: Array = grouped.get("groups", [])
+	var standalone: Array = grouped.get("standalone", [])
+
+	for group in sorted_groups:
+		var broad: Dictionary = group.get("broad", {})
+		if not broad.is_empty():
+			_add_skill_card_row(container, broad, true, 0)
+		for specialty in group.get("specialties", []):
+			_add_skill_card_row(container, specialty, false, 1)
+
+	for specialty in standalone:
+		_add_skill_card_row(container, specialty, false, 0)
+
+
+func _add_skill_card_row(container: Container, skill: Dictionary, is_broad: bool, indent_level: int) -> void:
+	var rules: AlternityRules = ctx.rules
+	var palette := ctx.palette
+	var raw := ctx.doc.raw()
+	var skill_id: int = AlternityNum.as_int(skill.get("id", -1))
+	var rank: int = rules.skill_rank(raw, skill_id)
+	var score: Dictionary = rules.skill_score(raw, skill)
+
+	var card := VBoxContainer.new()
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.add_theme_constant_override("separation", 0)
+	container.add_child(card)
+
+	var heading_row := HBoxContainer.new()
+	heading_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	heading_row.add_theme_constant_override("separation", Widgets.GAP_TIGHT)
+	card.add_child(heading_row)
+
+	if indent_level > 0:
+		var indent := Control.new()
+		indent.custom_minimum_size = Vector2(12, 0)
+		heading_row.add_child(indent)
+
+	var name_button := Button.new()
+	name_button.flat = true
+	name_button.text = String(skill.get("name", rules.skill_label(skill)))
+	name_button.tooltip_text = "View details for %s" % rules.skill_label(skill)
+	name_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	name_button.clip_text = true
+	name_button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	name_button.custom_minimum_size = Vector2(1, 36)
+	name_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_button.add_theme_color_override("font_color", palette.accent if is_broad else palette.text)
+	name_button.add_theme_font_size_override("font_size", Widgets.FONT_DETAIL)
+	name_button.pressed.connect(func(): _open_detail(skill))
+	heading_row.add_child(name_button)
+
+	var rank_label := Label.new()
+	rank_label.text = "Broad" if is_broad else "Rank %d" % rank
+	rank_label.add_theme_color_override("font_color", palette.muted)
+	rank_label.add_theme_font_size_override("font_size", Widgets.FONT_DETAIL)
+	heading_row.add_child(rank_label)
+
+	var die_label := Label.new()
+	die_label.text = String(score.get("die", "+d0"))
+	die_label.add_theme_color_override("font_color", palette.muted)
+	die_label.add_theme_font_size_override("font_size", Widgets.FONT_DETAIL)
+	heading_row.add_child(die_label)
+
+	var detail_row := HBoxContainer.new()
+	detail_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	detail_row.add_theme_constant_override("separation", Widgets.GAP_TIGHT)
+	card.add_child(detail_row)
+
+	var is_free: bool = is_broad and rules.is_free_species_skill(raw, skill_id)
+	var total_cost: int = rules.skill_rank_total_cost(raw, skill)
+	var cost_label := Label.new()
+	cost_label.text = "Free" if (is_free or total_cost <= 0) else "%d SP" % total_cost
+	cost_label.add_theme_color_override("font_color", palette.muted)
+	cost_label.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
+	detail_row.add_child(cost_label)
+
+	var detail_spacer := Control.new()
+	detail_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	detail_row.add_child(detail_spacer)
+
+	var ordinary: int = AlternityNum.as_int(score.get("ordinary", 0))
+	var good: int = AlternityNum.as_int(score.get("good", 0))
+	var amazing: int = AlternityNum.as_int(score.get("amazing", 0))
+	var score_label := Label.new()
+	score_label.text = "O %d / G %d / A %d" % [ordinary, good, amazing]
+	score_label.add_theme_color_override("font_color", palette.text)
+	score_label.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
+	detail_row.add_child(score_label)
 
 
 func _add_skill_grid_row(grid: GridContainer, skill: Dictionary, is_broad: bool, indent_level: int) -> void:

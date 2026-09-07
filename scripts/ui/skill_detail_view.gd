@@ -27,7 +27,7 @@ func _init() -> void:
 func render(detail: SkillDetail, palette: ThemePalette) -> void:
 	_palette = palette
 	for child in get_children():
-		remove_child(child)
+		child.hide()
 		child.queue_free()
 
 	if not detail.subtitle.is_empty():

@@ -200,7 +200,7 @@ func _refresh() -> void:
 	if _list == null or _rules == null:
 		return
 	for child in _list.get_children():
-		_list.remove_child(child)
+		child.hide()
 		child.queue_free()
 
 	var shown := 0

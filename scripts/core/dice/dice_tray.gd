@@ -28,6 +28,8 @@ extends Node3D
 ## A throw resolved. `faces` is [{sides, number}] in the order the dice were
 ## asked for; `rerolls` is how many whole throws were voided getting here.
 signal settled(faces: Array, rerolls: int)
+signal impact(strength: float)
+signal rethrowing(attempt: int)
 
 ## Physics layers, reserved in project.godot long before this existed.
 const LAYER_DIE := 1
@@ -85,6 +87,7 @@ var _palette: ThemePalette
 var _aim_hand: Vector3 = Vector3(3.6, 3.2, 1.2)
 var _aim_target: Vector3 = Vector3(0.0, 0.5, 0.0)
 var _aim_force_tier: int = 2 # 1 = Soft, 2 = Medium, 3 = Hard, 4 = Max
+var _continuous_strength: float = -1.0
 
 ## Whether the last throw ran out of time rather than coming to rest.
 ##
@@ -161,11 +164,14 @@ func _throw_attempt() -> void:
 	set_physics_process(true)
 
 
-## Configure the simulated hand launch vector.
-## hand_3d: where the dice originate (at the tray rim / side or bottom).
-## target_3d: where the throw is aimed inside the tray.
-## force_tier: 1 (Soft), 2 (Medium), 3 (Hard), 4 (Max).
+## Optional continuous strength for pull gestures; legacy tiers remain supported.
+func set_throw_strength(strength: float) -> void:
+	_continuous_strength = clampf(strength, 0.0, 1.0)
+
+
+## Configure the launch position and direction, resetting to a legacy power tier.
 func set_aim(hand_3d: Vector3, target_3d: Vector3, force_tier: int = 2) -> void:
+	_continuous_strength = -1.0
 	_aim_hand = hand_3d
 	_aim_target = target_3d
 	_aim_force_tier = clampi(force_tier, 1, 4)
@@ -182,10 +188,17 @@ func _launch(body: RigidBody3D, index: int) -> void:
 	if count > 1:
 		var angle := (TAU * float(index)) / float(count)
 		cluster_offset = Vector3(cos(angle), _rng.randf_range(-0.15, 0.15), sin(angle)) * (DIE_RADIUS * 0.9)
+	# Usual checks contain two or three dice. Separate their bounding spheres
+	# so the solver doesn't eject overlapping dice sideways on the first step.
+	if count <= 4:
+		cluster_offset = Vector3((float(index) - float(count - 1) * 0.5) * (DIE_RADIUS * 2.0 + 0.1), 0, 0)
 
 	var spawn_pos := _aim_hand + cluster_offset
 	# Clamp inside tray walls with margin
 	var bound := TRAY_HALF - DIE_RADIUS - 0.2
+	if count <= 4:
+		var half_span := float(count - 1) * 0.5 * (DIE_RADIUS * 2.0 + 0.1)
+		spawn_pos.x = clampf(_aim_hand.x, -bound + half_span, bound - half_span) + cluster_offset.x
 	spawn_pos.x = clampf(spawn_pos.x, -bound, bound)
 	spawn_pos.z = clampf(spawn_pos.z, -bound, bound)
 	spawn_pos.y = clampf(spawn_pos.y, DIE_RADIUS + 1.0, WALL_HEIGHT - 0.5)
@@ -208,6 +221,8 @@ func _launch(body: RigidBody3D, index: int) -> void:
 		3: base_speed = 18.0
 		4: base_speed = 24.0
 
+	if _continuous_strength >= 0.0:
+		base_speed = lerpf(7.5, 24.0, _continuous_strength)
 	var speed := base_speed * _rng.randf_range(0.92, 1.08)
 	var horiz_vel := dir * speed
 	# Downward launch arc toward the tray floor
@@ -277,8 +292,13 @@ func _finish_attempt(timed_out: bool) -> void:
 	# A cocked die voids the throw and every die goes again -- decided up front,
 	# and the reason RollResult has somewhere to record it.
 	if any_cocked and not timed_out and _attempt < MAX_ATTEMPTS:
+		rethrowing.emit(_attempt + 1)
 		_throw_attempt()
 		return
+
+	# Hold the exact faces used for the result, including the timeout path.
+	for body in _bodies:
+		body.freeze = true
 
 	# Out of attempts, or the clock ran out. Force a result from where the dice
 	# are: an answer read from a die that had almost stopped is worth more than
@@ -306,6 +326,12 @@ func _build_die(shape: DieShape, index: int) -> RigidBody3D:
 	# is not decoration: it is part of what decides the outcome.
 	body.collision_mask = (1 << (LAYER_DIE - 1)) | (1 << (LAYER_WALL - 1)) | (1 << (LAYER_FLOOR - 1))
 	body.mass = 1.0
+	body.contact_monitor = true
+	body.max_contacts_reported = 4
+	body.body_entered.connect(func(_other: Node):
+		if _rolling:
+			impact.emit(clampf(body.linear_velocity.length() / 18.0, 0.05, 1.0))
+	)
 	# Heavier-feeling gravity than the engine default. At this scale a die is a
 	# unit across, and real dice fall a few of their own widths and stop inside a
 	# second or so; at 1g they drift down instead, and a player watches three
@@ -350,6 +376,9 @@ func _add_numbers(body: RigidBody3D, shape: DieShape) -> void:
 		var label := Label3D.new()
 		label.text = str(AlternityNum.as_int(placement["number"]))
 		label.font_size = 96
+		# Dark ink on a pale face needs no outline. The default thick border
+		# closes the counters of small digits when the dice are viewed at a distance.
+		label.outline_size = 0
 		label.pixel_size = DIE_RADIUS / 260.0
 		label.modulate = _number_colour()
 		label.billboard = BaseMaterial3D.BILLBOARD_DISABLED
@@ -486,3 +515,11 @@ func read_now() -> Array:
 			"cocked": bool(reading.get("cocked", false)),
 		})
 	return faces
+
+
+## Read-only locations for presentation; never used to change the outcome.
+func die_positions() -> Array[Vector3]:
+	var positions: Array[Vector3] = []
+	for body in _bodies:
+		positions.append(body.position)
+	return positions

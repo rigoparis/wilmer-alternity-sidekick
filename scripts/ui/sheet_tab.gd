@@ -23,6 +23,7 @@ extends VBoxContainer
 ## directly so a tab has no opinion about where characters live -- the old code
 ## threaded notes_editing and notes_draft through save_character() at 14 call
 ## sites from unrelated tabs.
+@warning_ignore("unused_signal")
 signal save_requested
 
 var ctx: SheetContext
@@ -124,7 +125,7 @@ func _rebuild() -> void:
 	if container == null:
 		return
 	for child in container.get_children():
-		container.remove_child(child)
+		child.hide()
 		child.queue_free()
 	build(container)
 

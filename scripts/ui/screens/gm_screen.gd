@@ -97,14 +97,14 @@ var _summary_cache: Dictionary = {}
 
 
 func setup(
-	session: CampaignSession,
+	campaign_session: CampaignSession,
 	store: CampaignStore,
 	characters: CharacterStore,
 	rules,
 	router: UiRouter,
 	palette: ThemePalette
 ) -> void:
-	_session = session
+	_session = campaign_session
 	_store = store
 	_characters = characters
 	_rules = rules
@@ -209,7 +209,7 @@ func _render_combat() -> void:
 	if _combat_body == null:
 		return
 	for child in _combat_body.get_children():
-		_combat_body.remove_child(child)
+		child.hide()
 		child.queue_free()
 
 	if _fight == null:
@@ -308,12 +308,12 @@ func _render_acting_order() -> void:
 			Widgets.FONT_CAPTION
 		)
 	var acting_ids: Dictionary = {}
-	var position := 0
+	var order_position := 0
 	for entry in acting:
-		position += 1
+		order_position += 1
 		acting_ids[String(entry.get("id", ""))] = true
 		var line := "%d. %s   (score %d)" % [
-			position,
+			order_position,
 			String(entry.get("name", "Someone")),
 			AlternityNum.as_int(entry.get("check_score", 0)),
 		]
@@ -570,6 +570,7 @@ func _on_roll_for_pressed(player_id: String) -> void:
 		"palette": _palette,
 		"rules": _rules,
 		"check": stand_in.to_dict(),
+		"allow_reroll": true,
 	})
 	if not is_instance_valid(self) or typeof(outcome) != TYPE_DICTIONARY or not outcome.has("check"):
 		return
@@ -705,6 +706,7 @@ func _roll_to_hit(declaration: Dictionary, steps: int) -> String:
 		"palette": _palette,
 		"rules": _rules,
 		"check": to_hit.to_dict(),
+		"allow_reroll": true,
 	})
 	if not is_instance_valid(self) or typeof(outcome) != TYPE_DICTIONARY or not outcome.has("check"):
 		return ""
@@ -787,6 +789,7 @@ func _roll_blast_band(entry: String, weapon_name: String, zone: String) -> int:
 		"rules": _rules,
 		"terms": [term],
 		"label": "%s -- %s band (%s)" % [weapon_name, zone.capitalize(), entry],
+		"allow_reroll": true,
 	})
 	if not is_instance_valid(self) or typeof(rolled) != TYPE_DICTIONARY:
 		return 0
@@ -806,6 +809,7 @@ func _roll_weapon_failure(declaration: Dictionary) -> void:
 		"rules": _rules,
 		"terms": [DiceNotation.parse("d8")],
 		"label": "What went wrong with the %s" % String(declaration.get("weapon_name", "weapon")),
+		"allow_reroll": true,
 	})
 	if not is_instance_valid(self) or typeof(rolled) != TYPE_DICTIONARY:
 		return
@@ -838,6 +842,7 @@ func _roll_damage(entry: String, attack: CombatAttack) -> int:
 		"rules": _rules,
 		"terms": [term],
 		"label": "%s damage (%s)" % [attack.weapon_name, entry],
+		"allow_reroll": true,
 	})
 	if not is_instance_valid(self) or typeof(rolled) != TYPE_DICTIONARY:
 		return 0
@@ -1053,7 +1058,7 @@ func _render_checks() -> void:
 	if _checks_list == null:
 		return
 	for child in _checks_list.get_children():
-		_checks_list.remove_child(child)
+		child.hide()
 		child.queue_free()
 
 	_checks_note.visible = _pending_checks.is_empty()
@@ -1114,7 +1119,7 @@ func _render_shortcuts() -> void:
 	if _shortcut_row == null:
 		return
 	for child in _shortcut_row.get_children():
-		_shortcut_row.remove_child(child)
+		child.hide()
 		child.queue_free()
 
 	for entry in _session.most_checked(SHORTCUT_COUNT):
@@ -1132,7 +1137,7 @@ func _render_shortcuts() -> void:
 ## points, so a row for it is a row of blanks.
 func _render_roster() -> void:
 	for child in _roster_list.get_children():
-		_roster_list.remove_child(child)
+		child.hide()
 		child.queue_free()
 
 	var players := 0
@@ -1268,7 +1273,7 @@ func _build_key_numbers(parent: Container, snapshot: Dictionary) -> void:
 	])
 
 
-func _metric(parent: Container, name: String, value: String) -> void:
+func _metric(parent: Container, metric_name: String, value: String) -> void:
 	var box := VBoxContainer.new()
 	# Expanding is load-bearing. A GridContainer sizes a column to the widest
 	# minimum among its children and only stretches it for a child that expands;
@@ -1277,7 +1282,7 @@ func _metric(parent: Container, name: String, value: String) -> void:
 	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	box.add_theme_constant_override("separation", 0)
 	parent.add_child(box)
-	Widgets.muted_text(box, name, _palette, Widgets.FONT_CAPTION)
+	Widgets.muted_text(box, metric_name, _palette, Widgets.FONT_CAPTION)
 	Widgets.text(box, value, _palette, Widgets.FONT_SUBHEADING)
 
 
@@ -1325,7 +1330,7 @@ func _render_feed() -> void:
 	if _feed_list == null:
 		return
 	for child in _feed_list.get_children():
-		_feed_list.remove_child(child)
+		child.hide()
 		child.queue_free()
 
 	var recent: Array = _session.recent_events(FEED_LENGTH)
@@ -1520,29 +1525,30 @@ func _on_call_check_pressed() -> void:
 
 func _call_check_for(skill: Dictionary) -> void:
 	var skill_id := AlternityNum.as_int(skill.get("id", -1), -1)
-	var call := SkillCheck.call_for(_rules.skill_label(skill), 0, "", skill_id)
+	# Avoid Object.call's inherited name so the check stays strongly inferred.
+	var check_call := SkillCheck.call_for(_rules.skill_label(skill), 0, "", skill_id)
 
 	var chosen = await _router.push(CHECK_STEP_ROUTE, {
 		"palette": _palette,
 		"rules": _rules,
-		"check": call.to_dict(),
+		"check": check_call.to_dict(),
 		"title": "How hard is it?",
 		"confirm_text": "Ask the table",
 	})
 	if not is_instance_valid(self) or typeof(chosen) != TYPE_DICTIONARY:
 		return
 
-	call.gm_step = clampi(AlternityNum.as_int(chosen.get("step", 0)), SkillCheck.MIN_STEP, SkillCheck.MAX_STEP)
-	call.reason = String(chosen.get("reason", ""))
+	check_call.gm_step = clampi(AlternityNum.as_int(chosen.get("step", 0)), SkillCheck.MIN_STEP, SkillCheck.MAX_STEP)
+	check_call.reason = String(chosen.get("reason", ""))
 	if _transport != null and _hosting:
 		# Empty recipient means the whole table.
-		_transport.send_ruling(call.to_dict())
+		_transport.send_ruling(check_call.to_dict())
 
 	_note_check_skill(skill_id)
 	# Logged because it is something the GM did, and it stands whether or not
 	# anybody answers it. A player's own request is not logged: if they roll, the
 	# roll carries the check, and if they change their mind nothing happened.
-	_session.append_event(CampaignSession.EVENT_CHECK, "", call.to_dict())
+	_session.append_event(CampaignSession.EVENT_CHECK, "", check_call.to_dict())
 	_store.save(_session)
 	_render_feed()
 	_render_shortcuts()

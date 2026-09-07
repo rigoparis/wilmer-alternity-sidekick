@@ -14,6 +14,7 @@ extends "res://tools/test_harness.gd"
 
 const SHELL := preload("res://scenes/ui/app_shell.tscn")
 const Session := preload("res://scripts/core/session/campaign_session.gd")
+const ATTACK_ROUTE := preload("res://scenes/ui/routes/combat_attack_route.tscn")
 const BLAST_ROUTE := preload("res://scenes/ui/routes/combat_blast_route.tscn")
 
 const TEST_DIR := "user://__gm_test__/"
@@ -43,6 +44,7 @@ func _run() -> void:
 	await _test_table_award()
 	await _test_set_ap()
 	await _test_feed()
+	await _test_manual_attack_steps()
 	await _test_attack_targets()
 	await _test_a_blast()
 	await _test_remove_seat()
@@ -420,6 +422,39 @@ func _test_feed() -> void:
 
 
 # --- Attacks ---------------------------------------------------------------
+
+## A GM can apply the final step modifier from a creature stat block directly;
+## it is netted with the structured range and condition choices.
+func _test_manual_attack_steps() -> void:
+	var route = ATTACK_ROUTE.instantiate()
+	_shell.add_child(route)
+	route.configure({
+		"palette": ThemePalette.new(),
+		"rules": _shell.rules,
+		"target_id": "target",
+		"target_name": "Target",
+	})
+	await process_frame
+
+	check_true(route._manual_stepper != null, "the attack form exposes a manual step input")
+	route._manual_stepper.set_value_silent(2)
+	route._choose_weapon({
+		"name": "Club",
+		"combat": {"damage": "d4s/d4+1s/d4+2s", "damage_type": "LI/O", "melee": true},
+	})
+	check_eq(route.net_steps(), 2, "manual attack steps enter the situation total")
+
+	var closed: Array = []
+	route.closed.connect(func(result): closed.append(result))
+	route._submit()
+	await process_frame
+	check_eq(closed.size(), 1, "the attack declaration is submitted")
+	if not closed.is_empty():
+		var declaration: Dictionary = closed[0]
+		check_eq(AlternityNum.as_int(declaration.get("steps", 0)), 2, "the throw receives the GM's manual steps")
+
+	route.queue_free()
+	await process_frame
 
 ## Who the GM can attack, and where the button to do it is.
 ##

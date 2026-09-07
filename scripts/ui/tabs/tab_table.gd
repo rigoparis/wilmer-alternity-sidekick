@@ -132,7 +132,7 @@ func _render_called_checks(table: TableSession) -> void:
 	if _checks_body == null or not is_instance_valid(_checks_body):
 		return
 	for child in _checks_body.get_children():
-		_checks_body.remove_child(child)
+		child.hide()
 		child.queue_free()
 
 	if table == null or table.incoming_checks.is_empty():
@@ -188,11 +188,11 @@ func _render_called_checks(table: TableSession) -> void:
 		detail.custom_minimum_size = Vector2(1, 0)
 
 		if not score.is_empty():
-			var ord: int = AlternityNum.as_int(score.get("ordinary", 0))
+			var ordinary: int = AlternityNum.as_int(score.get("ordinary", 0))
 			var gd: int = AlternityNum.as_int(score.get("good", 0))
 			var am: int = AlternityNum.as_int(score.get("amazing", 0))
 			var mod: int = AlternityNum.as_int(score.get("step", 0))
-			var score_text := "Score: %d / %d / %d   (Your modifiers: %+d step)" % [ord, gd, am, mod]
+			var score_text := "Score: %d / %d / %d   (Your modifiers: %+d step)" % [ordinary, gd, am, mod]
 			var score_label := Widgets.muted_text(col, score_text, ctx.palette, Widgets.FONT_CAPTION)
 			score_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			score_label.custom_minimum_size = Vector2(1, 0)
@@ -261,7 +261,7 @@ func _render_combat(table: TableSession) -> void:
 	if _combat_body == null or not is_instance_valid(_combat_body):
 		return
 	for child in _combat_body.get_children():
-		_combat_body.remove_child(child)
+		child.hide()
 		child.queue_free()
 
 	# First, because somebody is waiting on it and because an attack can arrive
@@ -737,7 +737,7 @@ func _render_feed(table: TableSession) -> void:
 	if _feed_list == null:
 		return
 	for child in _feed_list.get_children():
-		_feed_list.remove_child(child)
+		child.hide()
 		child.queue_free()
 
 	var recent := table.recent()

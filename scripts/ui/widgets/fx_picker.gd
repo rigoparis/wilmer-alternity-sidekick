@@ -88,7 +88,7 @@ func _categories() -> Array:
 
 func _build() -> void:
 	for child in get_children():
-		remove_child(child)
+		child.hide()
 		child.queue_free()
 
 	var search := SearchField.new()
@@ -146,25 +146,25 @@ func _build_category_bar() -> void:
 	scroll.add_child(bar)
 
 	for category in categories:
-		var name := String(category)
+		var category_name := String(category)
 		var button := Button.new()
-		button.text = name
+		button.text = category_name
 		button.toggle_mode = true
 		button.action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS
-		button.button_pressed = name == _category
+		button.button_pressed = category_name == _category
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.custom_minimum_size = Vector2(0, 38)
-		button.pressed.connect(func(): _select_category(name))
+		button.pressed.connect(func(): _select_category(category_name))
 		bar.add_child(button)
-		_category_buttons[name] = button
+		_category_buttons[category_name] = button
 
 
 func _select_category(category: String) -> void:
 	if category == _category:
 		return
 	_category = category
-	for name in _category_buttons:
-		_category_buttons[name].button_pressed = name == category
+	for category_name in _category_buttons:
+		_category_buttons[category_name].button_pressed = category_name == category
 	_refresh_list()
 
 
@@ -173,7 +173,7 @@ func _refresh_list() -> void:
 	if _list == null:
 		return
 	for child in _list.get_children():
-		_list.remove_child(child)
+		child.hide()
 		child.queue_free()
 
 	_reset_card_columns()
@@ -269,45 +269,44 @@ func _build_row(parent: Container, skill: Dictionary, is_broad: bool) -> void:
 			sep.custom_minimum_size = Vector2(0, 4)
 			parent.add_child(sep)
 
-		var row := HBoxContainer.new()
-		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.add_theme_constant_override("separation", Widgets.GAP_ROW)
-		parent.add_child(row)
+		var broad_row := HBoxContainer.new()
+		broad_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		broad_row.add_theme_constant_override("separation", Widgets.GAP_ROW)
+		parent.add_child(broad_row)
 
-		var check_btn := _make_flat_icon_btn(
+		var broad_check_btn := _make_flat_icon_btn(
 			ICON_CHECK if owned else ICON_UNCHECK,
 			Vector2(32, 32),
 			"Drop school" if owned else "Take school"
 		)
-		check_btn.add_theme_color_override("icon_normal_color", palette.accent if owned else Color(palette.muted, 0.4))
-		check_btn.pressed.connect(func():
+		broad_check_btn.add_theme_color_override("icon_normal_color", palette.accent if owned else Color(palette.muted, 0.4))
+		broad_check_btn.pressed.connect(func():
 			if not owned:
 				doc.apply([CharacterDoc.FX], func(c): rules.fx.add_fx_skill(c, skill_name))
 			else:
 				doc.apply([CharacterDoc.FX], func(c): rules.fx.remove_fx_skill(c, skill_name))
 			change_requested.emit()
 		)
-		row.add_child(check_btn)
+		broad_row.add_child(broad_check_btn)
 
-		var name_lbl := Label.new()
-		name_lbl.text = skill_name
-		name_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		name_lbl.add_theme_color_override("font_color", palette.text)
-		name_lbl.add_theme_font_size_override("font_size", Widgets.FONT_BODY)
-		row.add_child(name_lbl)
+		var broad_name_lbl := Label.new()
+		broad_name_lbl.text = skill_name
+		broad_name_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		broad_name_lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		broad_name_lbl.custom_minimum_size = Vector2(1, 0)
+		broad_name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		broad_name_lbl.add_theme_color_override("font_color", palette.text)
+		broad_name_lbl.add_theme_font_size_override("font_size", Widgets.FONT_BODY)
+		broad_row.add_child(broad_name_lbl)
 
-		var detail_btn := _make_flat_icon_btn(
+		var broad_detail_btn := _make_flat_icon_btn(
 			ICON_QUESTION,
 			Vector2(34, 34),
 			"View details for %s" % skill_name
 		)
-		detail_btn.add_theme_color_override("icon_normal_color", Color(palette.muted, 0.8))
-		detail_btn.pressed.connect(func(): detail_requested.emit(skill))
-		row.add_child(detail_btn)
-
-		var slack := Control.new()
-		slack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.add_child(slack)
+		broad_detail_btn.add_theme_color_override("icon_normal_color", Color(palette.muted, 0.8))
+		broad_detail_btn.pressed.connect(func(): detail_requested.emit(skill))
+		broad_row.add_child(broad_detail_btn)
 
 		var cost_lbl := Label.new()
 		cost_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -321,7 +320,7 @@ func _build_row(parent: Container, skill: Dictionary, is_broad: bool) -> void:
 			var cost: int = rules.fx.fx_skill_cost_for_rank(raw, skill_name, 1)
 			cost_lbl.text = "Cost %d" % cost
 			cost_lbl.add_theme_color_override("font_color", palette.muted)
-		row.add_child(cost_lbl)
+		broad_row.add_child(cost_lbl)
 		return
 
 	# Specialty power row
@@ -356,7 +355,7 @@ func _build_row(parent: Container, skill: Dictionary, is_broad: bool) -> void:
 
 	var name_box := VBoxContainer.new()
 	name_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	name_box.custom_minimum_size = Vector2(130, 0)
+	name_box.custom_minimum_size = Vector2(1, 0)
 	name_box.add_theme_constant_override("separation", 0)
 	row.add_child(name_box)
 

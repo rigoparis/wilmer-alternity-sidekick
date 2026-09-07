@@ -41,6 +41,12 @@ func _run() -> void:
 	await _test_a_throw_uses_the_whole_range()
 	await _test_group_throw()
 	await _test_source_builds_results()
+	for strength in [0.0, 1.0]:
+		_tray.set_aim(Vector3(0, 3.2, 3.2), Vector3(-3, 0.5, -1.5))
+		_tray.set_throw_strength(strength)
+		var outcome := await _throw([20, 8])
+		check_eq(outcome.size(), 2, "pull strength %s resolves" % strength)
+		check_false(_tray.was_forced(), "pull strength %s settles naturally" % strength)
 
 	_tray.queue_free()
 	finish()

@@ -2475,8 +2475,8 @@ func _validate_dark_matter(character: Dictionary, messages: Array) -> void:
 	# a far-future Alternity species, which is the point -- a Weren in a
 	# conspiracy game is not a rules problem, it is a setting one, so this says so
 	# once and leaves the ruling to the table.
-	var species := get_species_by_id(_as_int(character.get("species_id", 0)))
-	var species_name := String(species.get("name", ""))
+	var species_info := get_species_by_id(_as_int(character.get("species_id", 0)))
+	var species_name := String(species_info.get("name", ""))
 	if (
 		not species_name.is_empty()
 		and species_name != "Human"

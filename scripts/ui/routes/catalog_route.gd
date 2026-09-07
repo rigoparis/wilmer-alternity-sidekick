@@ -158,7 +158,7 @@ func _matches(entry: Dictionary) -> bool:
 
 func _refresh_list() -> void:
 	for child in _list.get_children():
-		_list.remove_child(child)
+		child.hide()
 		child.queue_free()
 
 	var shown := 0

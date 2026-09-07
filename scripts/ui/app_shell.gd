@@ -24,6 +24,11 @@ const GM_SCREEN := preload("res://scenes/ui/screens/gm_screen.tscn")
 const TABLE_JOIN_SCREEN := preload("res://scenes/ui/screens/table_join.tscn")
 const COMMIT_CHARACTER_ROUTE := preload("res://scenes/ui/routes/commit_character_route.tscn")
 
+## Controls remember their desktop mouse filter while touch-pass mode is active.
+## This matters in the editor: switching the helper off must restore deliberate
+## IGNORE filters as well as the STOP defaults used by interactive controls.
+const TOUCH_SCROLL_FILTER_META := &"_touch_scroll_original_mouse_filter"
+
 var rules
 var store: CharacterStore
 var campaigns: CampaignStore
@@ -54,6 +59,7 @@ var table: TableSession
 var _palette: ThemePalette
 
 var _is_wide: bool = false
+var _touch_pass_enabled: bool = false
 
 ## Where characters are read and written. Empty means the real user:// location.
 ##
@@ -69,6 +75,11 @@ var _is_wide: bool = false
 
 
 func _ready() -> void:
+	_touch_pass_enabled = OS.has_feature("mobile")
+	# Most UI is assembled procedurally, including route rows that appear after a
+	# search. Watching additions keeps those new controls scroll-friendly too.
+	get_tree().node_added.connect(_on_tree_node_added)
+
 	rules = RulesScript.new()
 	rules.load_core_data()
 	store = CharacterStore.new(rules) if store_directory.is_empty() else CharacterStore.new(rules, store_directory)
@@ -112,6 +123,63 @@ func _ready() -> void:
 		if doc != null:
 			_open_sheet(doc)
 
+	_update_mouse_filters_for_touch(self, _touch_pass_enabled)
+
+
+func _exit_tree() -> void:
+	var callback := Callable(self, "_on_tree_node_added")
+	if get_tree() != null and get_tree().node_added.is_connected(callback):
+		get_tree().node_added.disconnect(callback)
+
+
+## Let a ScrollContainer claim a finger drag that began over one of its child
+## controls. A child using MOUSE_FILTER_STOP receives the initial touch and
+## prevents the scroll container from seeing the drag; PASS preserves the
+## child's tap/click behaviour while allowing the gesture to bubble upward.
+##
+## `touch_pass` is explicit so desktop tests and responsive rebuilds can restore
+## every control's original filter instead of guessing its class default.
+func _update_mouse_filters_for_touch(node: Node, touch_pass: bool) -> void:
+	if node == null:
+		return
+	if node is Control and _has_scroll_ancestor(node):
+		var control := node as Control
+		if touch_pass:
+			if not control.has_meta(TOUCH_SCROLL_FILTER_META):
+				control.set_meta(TOUCH_SCROLL_FILTER_META, control.mouse_filter)
+			control.mouse_filter = Control.MOUSE_FILTER_PASS
+		elif control.has_meta(TOUCH_SCROLL_FILTER_META):
+			control.mouse_filter = int(control.get_meta(TOUCH_SCROLL_FILTER_META)) as Control.MouseFilter
+			control.remove_meta(TOUCH_SCROLL_FILTER_META)
+	for child in node.get_children():
+		_update_mouse_filters_for_touch(child, touch_pass)
+
+
+func _has_scroll_ancestor(node: Node) -> bool:
+	# Embedded gesture surfaces own input for their whole subtree, including
+	# decorative IGNORE layers. Do not turn those layers into touch blockers.
+	var ancestor := node
+	while ancestor != null and ancestor != self:
+		if ancestor.get_meta(&"owns_touch_gesture", false):
+			return false
+		if ancestor is ScrollContainer and ancestor != node:
+			return true
+		ancestor = ancestor.get_parent()
+	return false
+
+
+func _on_tree_node_added(node: Node) -> void:
+	if not _touch_pass_enabled or not is_ancestor_of(node):
+		return
+	# Every member of a newly attached subtree emits node_added after its parent
+	# chain is established, so updating just this node covers dynamic lists
+	# without queueing one recursive deferred traversal per descendant.
+	if node is Control and _has_scroll_ancestor(node):
+		var control := node as Control
+		if not control.has_meta(TOUCH_SCROLL_FILTER_META):
+			control.set_meta(TOUCH_SCROLL_FILTER_META, control.mouse_filter)
+		control.mouse_filter = Control.MOUSE_FILTER_PASS
+
 
 func _resolve_palette() -> ThemePalette:
 	var service := get_node_or_null("/root/ThemeService")
@@ -124,6 +192,11 @@ func _connect_theme() -> void:
 		return
 	service.palette_changed.connect(func(palette: ThemePalette):
 		_palette = palette
+		# CheckRunner is deliberately longer-lived than any one screen or route.
+		# Refresh its palette too, or the difficulty dialog and dice tray keep the
+		# colours that were active when the app started.
+		if checks != null:
+			checks.use_palette(palette)
 		# The backdrop is built once and outlives the rebuild below, so it has to
 		# be recoloured by hand or the app keeps the old theme's ground.
 		if _background != null and is_instance_valid(_background):
@@ -297,7 +370,7 @@ func _clear_screens() -> void:
 	_gm = null
 	_table_join = null
 	for child in _screens.get_children():
-		_screens.remove_child(child)
+		child.hide()
 		child.queue_free()
 
 

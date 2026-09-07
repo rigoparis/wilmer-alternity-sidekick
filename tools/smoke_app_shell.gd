@@ -32,6 +32,8 @@ func _run() -> void:
 	await process_frame
 
 	await _test_starts_on_character_select()
+	await _test_check_runner_tracks_theme()
+	await _test_touch_scroll_filters()
 	await _test_create_opens_sheet()
 	await _test_tabs()
 	await _test_tab_availability()
@@ -82,6 +84,63 @@ func _test_starts_on_character_select() -> void:
 	check_true(_shell.store != null, "the shell built a store")
 	check_true(_shell.router != null, "the shell built a router")
 	check_eq(_shell.store.list().size(), 0, "the scratch store starts empty")
+
+
+func _test_check_runner_tracks_theme() -> void:
+	var service := root.get_node_or_null("ThemeService")
+	if not check(service != null, "the theme service is available"):
+		return
+	var original: ThemePalette = _shell._palette
+	var changed := original.duplicate_palette()
+	changed.accent = Color(0.91, 0.17, 0.43)
+
+	# Exercise the same signal AppShell receives when the picker changes theme,
+	# without writing a different preference into the test user's config file.
+	service.palette_changed.emit(changed)
+	await process_frame
+	check_true(_shell._palette == changed, "the shell accepts the new palette")
+	check_true(_shell.checks._palette == changed,
+		"the check difficulty dialog and dice tray receive the new palette")
+
+	service.palette_changed.emit(original)
+	await process_frame
+
+
+func _test_touch_scroll_filters() -> void:
+	var screen = _select_screen()
+	if not check(screen != null, "touch scrolling has a screen to inspect"):
+		return
+	var scrolls := screen.find_children("*", "ScrollContainer", true, false)
+	if not check_false(scrolls.is_empty(), "the character list has a scroll container"):
+		return
+	var scroll := scrolls[0] as ScrollContainer
+	var buttons := scroll.find_children("*", "Button", true, false)
+	if not check_false(buttons.is_empty(), "the scroll area has an interactive child"):
+		return
+	var button := buttons[0] as Button
+	var original_filter := button.mouse_filter
+	var outside_filter := _screens().mouse_filter
+
+	_shell._update_mouse_filters_for_touch(screen, true)
+	check_eq(button.mouse_filter, Control.MOUSE_FILTER_PASS,
+		"interactive children pass touch drags to their scroll container")
+	check_eq(_screens().mouse_filter, outside_filter,
+		"controls outside the scroll area keep their mouse filter")
+
+	_shell._update_mouse_filters_for_touch(screen, false)
+	check_eq(button.mouse_filter, original_filter,
+		"leaving touch-pass mode restores the original mouse filter")
+
+	# Lists and routes add controls after their initial build. Exercise the
+	# SceneTree hook that makes those late children scrollable on a phone.
+	_shell._touch_pass_enabled = true
+	var dynamic_button := Button.new()
+	(scroll.get_child(0).get_child(0) as Container).add_child(dynamic_button)
+	check_eq(dynamic_button.mouse_filter, Control.MOUSE_FILTER_PASS,
+		"a control added later also passes touch drags")
+	_shell._touch_pass_enabled = OS.has_feature("mobile")
+	_shell._update_mouse_filters_for_touch(dynamic_button, false)
+	dynamic_button.queue_free()
 
 
 func _test_create_opens_sheet() -> void:

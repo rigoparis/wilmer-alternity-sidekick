@@ -109,7 +109,7 @@ func _render() -> void:
 			return
 
 		for child in _boxes.get_children():
-			_boxes.remove_child(child)
+			child.hide()
 			child.queue_free()
 
 		var bar := ProgressBar.new()
@@ -149,7 +149,7 @@ func _render() -> void:
 
 	_marker_node = null
 	for child in _boxes.get_children():
-		_boxes.remove_child(child)
+		child.hide()
 		child.queue_free()
 
 	for index in range(_total):

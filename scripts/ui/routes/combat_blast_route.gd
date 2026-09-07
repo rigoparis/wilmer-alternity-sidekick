@@ -188,7 +188,7 @@ func _refresh_weapons(query: String) -> void:
 	if _weapon_list == null or _rules == null:
 		return
 	for child in _weapon_list.get_children():
-		_weapon_list.remove_child(child)
+		child.hide()
 		child.queue_free()
 
 	var needle := query.strip_edges().to_lower()

@@ -100,12 +100,12 @@ func _build(detail) -> void:
 	scroll_margin.add_child(view)
 	view.render(detail, _palette)
 
-	var close := Button.new()
-	close.text = "Close"
-	close.custom_minimum_size = Vector2(0, 44)
-	close.add_theme_stylebox_override("normal", Widgets.flat_style(_palette.surface_soft, _palette.border, 6))
-	close.pressed.connect(func(): close_route())
-	box.add_child(close)
+	var close_button := Button.new()
+	close_button.text = "Close"
+	close_button.custom_minimum_size = Vector2(0, 44)
+	close_button.add_theme_stylebox_override("normal", Widgets.flat_style(_palette.surface_soft, _palette.border, 6))
+	close_button.pressed.connect(func(): close_route())
+	box.add_child(close_button)
 
 
 ## Named to avoid shadowing RouteScene.close() from inside the lambda above.

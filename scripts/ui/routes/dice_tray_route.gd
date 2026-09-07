@@ -1,28 +1,5 @@
 extends RouteScene
-##
-## The dice tray route, presented as an authoritative tabletop dice throw console.
-##
-## Hosts the 3D tray in a SubViewport inside the Control tree with an interactive
-## aim and trajectory HUD overlay.
-##
-## Core Rules and Constraints:
-##   * COMMITTED THROW (No way out, no way back): Once a player enters this
-##     screen, the action is committed. is_dismissible() returns false, and there
-##     is no Back or Cancel button. The player MUST throw the dice, and the
-##     settled result cannot be backed out or re-rolled.
-##   * STEP BREAKDOWN EXPLANATION: Clearly explains where player carried step
-##     modifiers originate (broad skill, species traits, profession perks,
-##     dazed/wound penalties, encumbrance, armor) alongside GM situation steps,
-##     and how they combine to determine the Situation Die.
-##   * APPROACH A HAND THROW: Dice are thrown from a simulated hand placed on
-##     the border (Left, Bottom, or Right rim). Players can drag the hand position,
-##     drag the target reticle in the tray, view the wall-bounce ricochet preview,
-##     and select throw power (Soft, Medium, Hard, Max).
-##   * OPTION C WITH TOGGLE: Aim and click "Throw Dice", or enable "Release to throw"
-##     to launch instantly upon dragging and releasing.
-##   * AUTHORITATIVE SIMULATION: Results are read from where the dice settle in
-##     3D physics. Numbers are never revealed before the dice stop tumbling.
-##
+## Pull-and-release physical dice, with results kept beside the tray.
 
 const Check := preload("res://scripts/core/session/skill_check.gd")
 const Tray := preload("res://scripts/core/dice/dice_tray.gd")
@@ -37,6 +14,8 @@ var _check: SkillCheck
 ## What to throw when this is not a check.
 var _terms: Array = []
 var _label: String = ""
+var _allow_reroll: bool = false
+var _initial_check: Dictionary = {}
 
 var _tray: DiceTray
 var _source: PhysicalDiceSource
@@ -49,6 +28,7 @@ var _outcome: Label
 var _detail: Label
 var _context_note: Label
 var _roll_button: Button
+var _reroll_button: Button
 var _done_button: Button
 var _outcome_card: PanelContainer
 var _aim_overlay: Control
@@ -56,14 +36,21 @@ var _aim_overlay: Control
 var _resolved: Dictionary = {}
 var _rolling: bool = false
 
-# Aim & Throw Parameters (Approach A)
-var _hand_3d: Vector3 = Vector3(3.6, 3.2, 1.2)
+# Pull gesture launch parameters
+var _hand_3d: Vector3 = Vector3(0.0, 3.2, 1.8)
 var _target_3d: Vector3 = Vector3(0.0, 0.5, 0.0)
-var _force_tier: int = 2 # 1=Soft, 2=Medium, 3=Hard, 4=Max
-var _release_to_throw: bool = false
+var _throw_strength: float = 0.4
+var _camera: Camera3D
+var _frame: Control
+var _instructions: Label
+var _explanation: Control
+var _explanation_toggle: Button
 
-# Power buttons references
-var _power_buttons: Array[Button] = []
+# Presentation feedback
+var _impact_player: AudioStreamPlayer
+var _last_impact_ms: int = -1000
+var _camera_tween: Tween
+var _result_labels: Control
 
 
 ## props:
@@ -72,14 +59,17 @@ var _power_buttons: Array[Button] = []
 ##   check     a SkillCheck dictionary, for an action check
 ##   terms     [parsed notation], for a plain roll
 ##   label     what the roll is for
+##   allow_reroll  whether the roller may discard the result before accepting it
 func configure(props: Dictionary) -> void:
 	_palette = props.get("palette", ThemePalette.new())
 	_rules = props.get("rules", null)
 	_label = String(props.get("label", "Roll"))
+	_allow_reroll = bool(props.get("allow_reroll", false))
 
 	var check_data = props.get("check", null)
 	if typeof(check_data) == TYPE_DICTIONARY and not check_data.is_empty():
-		_check = Check.from_dict(check_data)
+		_initial_check = check_data.duplicate(true)
+		_check = Check.from_dict(_initial_check)
 
 	var terms = props.get("terms", [])
 	if typeof(terms) == TYPE_ARRAY:
@@ -96,8 +86,9 @@ func title() -> String:
 	return _check.skill_label if _check != null else _label
 
 
-## Once in the dice rolling screen, there is no way out and no way back.
-## The player HAS to throw the dice and the result is authoritative.
+## Once in the dice rolling screen, there is no way out and no way back. Player
+## results are committed; a GM may explicitly discard a preview before sending
+## it, but whichever physical throw they accept is authoritative.
 func is_dismissible() -> bool:
 	return false
 
@@ -145,33 +136,30 @@ func _build() -> void:
 	column.add_theme_constant_override("separation", Widgets.GAP_ROW)
 	_scroll.add_child(column)
 
-	if _check != null:
-		if is_wide:
-			# Desktop: Place Targets and Modifiers side by side to conserve vertical space!
-			var cards_row := HBoxContainer.new()
-			cards_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			cards_row.add_theme_constant_override("separation", Widgets.GAP_ROW)
-			column.add_child(cards_row)
-
-			var targets_card := _build_targets_card(cards_row, is_wide)
-			targets_card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			targets_card.size_flags_stretch_ratio = 1.0
-
-			var mods_card := _build_modifiers_card(cards_row, is_wide)
-			mods_card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			mods_card.size_flags_stretch_ratio = 1.0
-		else:
-			# Mobile: Stack vertically
-			_build_targets_card(column, is_wide)
-			_build_modifiers_card(column, is_wide)
-	else:
-		_build_plain_roll_card(column)
-
-	# 3D Tray Card with interactive aim controls
+	var brief := Label.new()
+	brief.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	brief.custom_minimum_size = Vector2(1, 0)
+	brief.add_theme_color_override("font_color", _palette.muted)
+	brief.text = ("d20 %s  •  Ordinary %d / Good %d / Amazing %d" % [_situation_notation(), _check.ordinary, _check.good, _check.amazing]) if _check != null else _label
+	column.add_child(brief)
 	_build_tray_card(column, is_wide)
-
-	# Outcome Card (revealed post-settle)
 	_build_outcome_card(column)
+	if _check != null:
+		_explanation_toggle = Button.new()
+		_explanation_toggle.text = "Why these dice?"
+		_explanation_toggle.flat = true
+		_explanation_toggle.custom_minimum_size.y = 44
+		column.add_child(_explanation_toggle)
+		_explanation = VBoxContainer.new()
+		column.add_child(_explanation)
+		_build_modifiers_card(_explanation, is_wide)
+		_explanation.hide()
+		_explanation_toggle.pressed.connect(func():
+			_explanation.visible = not _explanation.visible
+			_explanation_toggle.text = "Hide explanation" if _explanation.visible else "Why these dice?"
+		)
+	else:
+		_summary = brief
 
 	# 3. Pinned Action Bar at the bottom
 	_build_action_bar(outer)
@@ -206,128 +194,6 @@ func _build_header(parent: Container) -> void:
 	category.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
 	title_box.add_child(category)
 
-	# Lock / Commitment Pill
-	var commit_pill := PanelContainer.new()
-	commit_pill.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	commit_pill.add_theme_stylebox_override("panel", Widgets.flat_style(_palette.surface_soft, _palette.warning, 12))
-	header.add_child(commit_pill)
-
-	var pill_margin := MarginContainer.new()
-	pill_margin.add_theme_constant_override("margin_left", 8)
-	pill_margin.add_theme_constant_override("margin_right", 8)
-	pill_margin.add_theme_constant_override("margin_top", 4)
-	pill_margin.add_theme_constant_override("margin_bottom", 4)
-	commit_pill.add_child(pill_margin)
-
-	var commit_label := Label.new()
-	commit_label.text = "ROLL COMMITTED"
-	commit_label.add_theme_color_override("font_color", _palette.warning)
-	commit_label.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
-	pill_margin.add_child(commit_label)
-
-
-# --- Targets Card ----------------------------------------------------------
-
-func _build_targets_card(parent: Container, is_wide: bool) -> Control:
-	var card := PanelContainer.new()
-	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	card.add_theme_stylebox_override("panel", Widgets.flat_style(_palette.surface, _palette.border, 8))
-	parent.add_child(card)
-
-	var margin := MarginContainer.new()
-	for side in ["left", "right", "top", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, 10)
-	card.add_child(margin)
-
-	var box := VBoxContainer.new()
-	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	box.add_theme_constant_override("separation", Widgets.GAP_TIGHT)
-	margin.add_child(box)
-
-	var label := Label.new()
-	label.text = "TARGET SUCCESS DEGREES"
-	label.add_theme_color_override("font_color", _palette.text)
-	label.add_theme_font_size_override("font_size", Widgets.FONT_SUBHEADING)
-	box.add_child(label)
-
-	var is_act := _check.skill_label.to_lower().contains("action check")
-
-	var targets_row := HBoxContainer.new()
-	targets_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	targets_row.add_theme_constant_override("separation", 4)
-	box.add_child(targets_row)
-
-	var degrees := [
-		{
-			"name": "Ordinary",
-			"score": _check.ordinary,
-			"desc": "Ordinary Phase" if is_act else "Standard success",
-			"color": _palette.text,
-		},
-		{
-			"name": "Good",
-			"score": _check.good,
-			"desc": "Good Phase" if is_act else "Superior success",
-			"color": _palette.accent,
-		},
-		{
-			"name": "Amazing",
-			"score": _check.amazing,
-			"desc": "Amazing Phase" if is_act else "Critical / best",
-			"color": _palette.accent,
-		},
-	]
-
-	for entry in degrees:
-		var pill := PanelContainer.new()
-		pill.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		pill.add_theme_stylebox_override("panel", Widgets.flat_style(_palette.surface_soft, _palette.border, 6))
-		targets_row.add_child(pill)
-
-		var pm := MarginContainer.new()
-		pm.add_theme_constant_override("margin_left", 4)
-		pm.add_theme_constant_override("margin_right", 4)
-		pm.add_theme_constant_override("margin_top", 6)
-		pm.add_theme_constant_override("margin_bottom", 6)
-		pill.add_child(pm)
-
-		var pb := VBoxContainer.new()
-		pb.add_theme_constant_override("separation", 1)
-		pm.add_child(pb)
-
-		var title_lbl := Label.new()
-		title_lbl.text = String(entry["name"])
-		title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		title_lbl.add_theme_color_override("font_color", entry["color"])
-		title_lbl.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
-		pb.add_child(title_lbl)
-
-		var val_lbl := Label.new()
-		val_lbl.text = "<= %d" % AlternityNum.as_int(entry["score"])
-		val_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		val_lbl.add_theme_color_override("font_color", _palette.accent if entry["name"] != "Ordinary" else _palette.text)
-		val_lbl.add_theme_font_size_override("font_size", Widgets.FONT_BODY if is_wide else Widgets.FONT_CAPTION)
-		pb.add_child(val_lbl)
-
-		var sub_lbl := Label.new()
-		sub_lbl.text = String(entry["desc"])
-		sub_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		sub_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		sub_lbl.custom_minimum_size = Vector2(1, 0)
-		sub_lbl.add_theme_color_override("font_color", _palette.muted)
-		sub_lbl.add_theme_font_size_override("font_size", 10)
-		pb.add_child(sub_lbl)
-
-	var footnote := Label.new()
-	footnote.text = ("Over %d: Marginal Phase (acts last)" % _check.ordinary) if is_act else ("Over %d: Failure (Marginal/Failure to achieve task)" % _check.ordinary)
-	footnote.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	footnote.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	footnote.custom_minimum_size = Vector2(1, 0)
-	footnote.add_theme_color_override("font_color", _palette.muted)
-	footnote.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
-	box.add_child(footnote)
-
-	return card
 
 
 # --- Modifiers & Explanation Card ------------------------------------------
@@ -471,45 +337,7 @@ func _build_modifiers_card(parent: Container, is_wide: bool) -> Control:
 	return card
 
 
-# --- Plain Roll Card -------------------------------------------------------
-
-func _build_plain_roll_card(parent: Container) -> void:
-	var card := PanelContainer.new()
-	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	card.add_theme_stylebox_override("panel", Widgets.flat_style(_palette.surface, _palette.border, 8))
-	parent.add_child(card)
-
-	var margin := MarginContainer.new()
-	for side in ["left", "right", "top", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, Widgets.PAD_PANEL)
-	card.add_child(margin)
-
-	var box := VBoxContainer.new()
-	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	box.add_theme_constant_override("separation", Widgets.GAP_TIGHT)
-	margin.add_child(box)
-
-	var heading := Label.new()
-	heading.text = "UNREFERENCED DICE ROLL"
-	heading.add_theme_color_override("font_color", _palette.text)
-	heading.add_theme_font_size_override("font_size", Widgets.FONT_SUBHEADING)
-	box.add_child(heading)
-
-	var desc := Label.new()
-	desc.text = "Rolling %s with physical 3D simulation." % _label
-	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	desc.custom_minimum_size = Vector2(1, 0)
-	desc.add_theme_color_override("font_color", _palette.muted)
-	desc.add_theme_font_size_override("font_size", Widgets.FONT_BODY)
-	box.add_child(desc)
-
-	_summary = Label.new()
-	_summary.text = _label
-	_summary.visible = false
-	box.add_child(_summary)
-
-
-# --- 3D Tray Card with Interactive Aim (Approach A) ------------------------
+# --- Tray ---------------------------------------------------------------
 
 func _build_tray_card(parent: Container, is_wide: bool) -> void:
 	var card := PanelContainer.new()
@@ -548,15 +376,22 @@ func _build_tray_card(parent: Container, is_wide: bool) -> void:
 	_tray_status.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
 	header_row.add_child(_tray_status)
 
-	# Controls Bar for Approach A: Side Hand Picker + Power Selector + Release Toggle
-	_build_aim_controls_bar(box, is_wide)
+	# One gesture hint, without a throw settings toolbar.
+	_instructions = Label.new()
+	_instructions.text = "Pull the dice back, then release. Or tap Throw Dice."
+	_instructions.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_instructions.custom_minimum_size = Vector2(1, 0)
+	_instructions.add_theme_color_override("font_color", _palette.muted)
+	box.add_child(_instructions)
 
 	# Viewport container with overlay
 	var frame := PanelContainer.new()
+	frame.set_meta(&"owns_touch_gesture", true)
 	frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	frame.custom_minimum_size = Vector2(0, 350 if is_wide else 250)
+	frame.custom_minimum_size = Vector2(0, 350 if is_wide else 340)
 	frame.add_theme_stylebox_override("panel", Widgets.flat_style(_palette.surface, _palette.border, 6))
 	box.add_child(frame)
+	_frame = frame
 
 	var container := SubViewportContainer.new()
 	container.stretch = true
@@ -565,6 +400,9 @@ func _build_tray_card(parent: Container, is_wide: bool) -> void:
 	frame.add_child(container)
 
 	_viewport = SubViewport.new()
+	# Smooth polygon silhouettes locally, without blurring number textures or
+	# paying for supersampling across the rest of the interface.
+	_viewport.msaa_3d = Viewport.MSAA_4X
 	_viewport.transparent_bg = false
 	_viewport.own_world_3d = true
 	_viewport.world_3d = World3D.new()
@@ -575,9 +413,13 @@ func _build_tray_card(parent: Container, is_wide: bool) -> void:
 	_viewport.add_child(_tray)
 	_tray.configure(_palette)
 	_source = Source.new(_tray)
+	_build_impact_audio()
+	_tray.impact.connect(_play_impact)
+	_tray.rethrowing.connect(func(attempt: int): _tray_status.text = "Cocked die - throwing again (%d)" % attempt)
 	_sync_tray_aim()
 
 	var camera := Camera3D.new()
+	_camera = camera
 	camera.fov = 45.0
 	var span := DiceTray.TRAY_HALF * 2.0 + 1.2
 	var height := (span * 0.5) / tan(deg_to_rad(camera.fov * 0.5))
@@ -585,6 +427,8 @@ func _build_tray_card(parent: Container, is_wide: bool) -> void:
 		Vector3(0, maxf(height, DiceTray.WALL_HEIGHT + 2.0), 0.001), Vector3.ZERO, Vector3.FORWARD
 	)
 	_viewport.add_child(camera)
+	frame.resized.connect(_fit_camera)
+	_fit_camera.call_deferred()
 
 	var key := DirectionalLight3D.new()
 	key.rotation_degrees = Vector3(-60, -35, 0)
@@ -610,170 +454,78 @@ func _build_tray_card(parent: Container, is_wide: bool) -> void:
 	_aim_overlay = _AimOverlay.new(self)
 	_aim_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	frame.add_child(_aim_overlay)
+	_result_labels = _ResultLabels.new(self)
+	_result_labels.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	frame.add_child(_result_labels)
 
 
-func _build_aim_controls_bar(parent: Container, is_wide: bool) -> void:
-	_power_buttons.clear()
-	var powers := ["Soft", "Med", "Hard", "Max"]
-
-	if is_wide:
-		var row := HBoxContainer.new()
-		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.add_theme_constant_override("separation", 6)
-		parent.add_child(row)
-
-		# Hand Side Quick Switch
-		var hand_lbl := Label.new()
-		hand_lbl.text = "Hand:"
-		hand_lbl.add_theme_color_override("font_color", _palette.muted)
-		hand_lbl.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
-		row.add_child(hand_lbl)
-
-		var sides := [
-			["Left", Vector3(-3.6, 3.2, 0.0)],
-			["Top", Vector3(0.0, 3.2, -3.6)],
-			["Bottom", Vector3(0.0, 3.2, 3.6)],
-			["Right", Vector3(3.6, 3.2, 0.0)],
-		]
-		for entry in sides:
-			var btn := Button.new()
-			btn.text = String(entry[0])
-			btn.custom_minimum_size = Vector2(46, 26)
-			btn.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
-			var hand_pos: Vector3 = entry[1]
-			btn.pressed.connect(func():
-				_hand_3d = hand_pos
-				_sync_tray_aim()
-				if _aim_overlay != null:
-					_aim_overlay.queue_redraw()
-			)
-			row.add_child(btn)
-
-		var spacer := Control.new()
-		spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.add_child(spacer)
-
-		# Power Selector [Soft | Med | Hard | Max]
-		var power_lbl := Label.new()
-		power_lbl.text = "Power:"
-		power_lbl.add_theme_color_override("font_color", _palette.muted)
-		power_lbl.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
-		row.add_child(power_lbl)
-
-		for i in powers.size():
-			var tier := i + 1
-			var p_btn := Button.new()
-			p_btn.text = powers[i]
-			p_btn.custom_minimum_size = Vector2(46, 26)
-			p_btn.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
-			p_btn.pressed.connect(func(): _set_power(tier))
-			_power_buttons.append(p_btn)
-			row.add_child(p_btn)
-
-		# Release to throw toggle
-		var rel_btn := Button.new()
-		rel_btn.text = "Flick to Throw: OFF"
-		rel_btn.custom_minimum_size = Vector2(110, 26)
-		rel_btn.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
-		rel_btn.pressed.connect(func():
-			_release_to_throw = not _release_to_throw
-			rel_btn.text = "Flick to Throw: ON" if _release_to_throw else "Flick to Throw: OFF"
-			rel_btn.add_theme_color_override("font_color", _palette.accent if _release_to_throw else _palette.text)
-		)
-		row.add_child(rel_btn)
-	else:
-		# Mobile: 2 compact rows
-		var row1 := HBoxContainer.new()
-		row1.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row1.add_theme_constant_override("separation", 4)
-		parent.add_child(row1)
-
-		var hand_lbl := Label.new()
-		hand_lbl.text = "Hand:"
-		hand_lbl.add_theme_color_override("font_color", _palette.muted)
-		hand_lbl.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
-		row1.add_child(hand_lbl)
-
-		var sides := [
-			["Left", Vector3(-3.6, 3.2, 0.0)],
-			["Top", Vector3(0.0, 3.2, -3.6)],
-			["Bottom", Vector3(0.0, 3.2, 3.6)],
-			["Right", Vector3(3.6, 3.2, 0.0)],
-		]
-		for entry in sides:
-			var btn := Button.new()
-			btn.text = String(entry[0])
-			btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			btn.custom_minimum_size = Vector2(0, 26)
-			btn.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
-			var hand_pos: Vector3 = entry[1]
-			btn.pressed.connect(func():
-				_hand_3d = hand_pos
-				_sync_tray_aim()
-				if _aim_overlay != null:
-					_aim_overlay.queue_redraw()
-			)
-			row1.add_child(btn)
-
-		var rel_btn := Button.new()
-		rel_btn.text = "Flick: OFF"
-		rel_btn.custom_minimum_size = Vector2(76, 26)
-		rel_btn.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
-		rel_btn.pressed.connect(func():
-			_release_to_throw = not _release_to_throw
-			rel_btn.text = "Flick: ON" if _release_to_throw else "Flick: OFF"
-			rel_btn.add_theme_color_override("font_color", _palette.accent if _release_to_throw else _palette.text)
-		)
-		row1.add_child(rel_btn)
-
-		var row2 := HBoxContainer.new()
-		row2.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row2.add_theme_constant_override("separation", 4)
-		parent.add_child(row2)
-
-		var power_lbl := Label.new()
-		power_lbl.text = "Power:"
-		power_lbl.add_theme_color_override("font_color", _palette.muted)
-		power_lbl.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
-		row2.add_child(power_lbl)
-
-		for i in powers.size():
-			var tier := i + 1
-			var p_btn := Button.new()
-			p_btn.text = powers[i]
-			p_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			p_btn.custom_minimum_size = Vector2(0, 26)
-			p_btn.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
-			p_btn.pressed.connect(func(): _set_power(tier))
-			_power_buttons.append(p_btn)
-			row2.add_child(p_btn)
-
-	_refresh_power_buttons()
+func _fit_camera() -> void:
+	if _camera == null or _frame == null:
+		return
+	if not _resolved.is_empty():
+		_focus_result()
+		return
+	var aspect := _frame.size.x / maxf(_frame.size.y, 1.0)
+	var span := (DiceTray.TRAY_HALF * 2.0 + 1.2) / minf(aspect, 1.0)
+	var height := span * 0.5 / tan(deg_to_rad(_camera.fov * 0.5)) + 3.0
+	_camera.position = Vector3(0, height, 0.001)
 
 
-func _set_power(tier: int) -> void:
-	_force_tier = tier
-	_sync_tray_aim()
-	_refresh_power_buttons()
-	if _aim_overlay != null:
-		_aim_overlay.queue_redraw()
+func _focus_result() -> void:
+	var positions := _tray.die_positions()
+	if positions.is_empty():
+		return
+	var low := positions[0]
+	var high := positions[0]
+	for point in positions:
+		low = low.min(point)
+		high = high.max(point)
+	var center := (low + high) * 0.5
+	var aspect := _frame.size.x / maxf(_frame.size.y, 1.0)
+	var span := maxf(6.5, maxf(high.z - low.z + 3.5, (high.x - low.x + 3.5) / aspect))
+	var height := maxf(DiceTray.WALL_HEIGHT + 2.0, span * 0.5 / tan(deg_to_rad(_camera.fov * 0.5)) + high.y)
+	if _camera_tween != null:
+		_camera_tween.kill()
+	_camera_tween = create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_camera_tween.tween_property(_camera, "position", Vector3(center.x, height, center.z + 0.001), 0.45)
+	_result_labels.set_process(true)
 
 
-func _refresh_power_buttons() -> void:
-	for i in _power_buttons.size():
-		var tier := i + 1
-		var btn := _power_buttons[i]
-		if tier == _force_tier:
-			btn.add_theme_stylebox_override("normal", Widgets.flat_style(_palette.surface_soft, _palette.accent, 4))
-			btn.add_theme_color_override("font_color", _palette.accent)
-		else:
-			btn.add_theme_stylebox_override("normal", Widgets.flat_style(_palette.surface_soft, _palette.border, 4))
-			btn.add_theme_color_override("font_color", _palette.muted)
+func _build_impact_audio() -> void:
+	# A small procedural wooden clack, independent of the simulation RNG.
+	var samples := PackedByteArray()
+	var sound_rng := RandomNumberGenerator.new()
+	sound_rng.seed = 17
+	for i in 2205:
+		var t := float(i) / 22050.0
+		var sample := (sound_rng.randf_range(-1.0, 1.0) * 0.6 + sin(t * TAU * 950.0) * 0.4) * exp(-t * 85.0)
+		var value := int(sample * 20000.0)
+		samples.append(value & 255)
+		samples.append((value >> 8) & 255)
+	var stream := AudioStreamWAV.new()
+	stream.format = AudioStreamWAV.FORMAT_16_BITS
+	stream.mix_rate = 22050
+	stream.data = samples
+	_impact_player = AudioStreamPlayer.new()
+	_impact_player.stream = stream
+	_impact_player.max_polyphony = 4
+	add_child(_impact_player)
+
+
+func _play_impact(strength: float) -> void:
+	var now := Time.get_ticks_msec()
+	if now - _last_impact_ms < 45:
+		return
+	_last_impact_ms = now
+	_impact_player.volume_db = lerpf(-27.0, -12.0, strength)
+	_impact_player.pitch_scale = lerpf(0.85, 1.15, strength)
+	_impact_player.play()
 
 
 func _sync_tray_aim() -> void:
 	if _tray != null:
-		_tray.set_aim(_hand_3d, _target_3d, _force_tier)
+		_tray.set_aim(_hand_3d, _target_3d)
+		_tray.set_throw_strength(_throw_strength)
 
 
 # --- Outcome Card ----------------------------------------------------------
@@ -839,9 +591,21 @@ func _build_action_bar(parent: Container) -> void:
 	_roll_button.pressed.connect(_on_roll_pressed)
 	actions.add_child(_roll_button)
 
+	_reroll_button = Button.new()
+	_reroll_button.name = "RerollButton"
+	_reroll_button.text = "Throw Again"
+	_reroll_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_reroll_button.custom_minimum_size = Vector2(0, 48)
+	_reroll_button.visible = false
+	_reroll_button.add_theme_stylebox_override("normal", Widgets.flat_style(_palette.surface_soft, _palette.border, 8))
+	_reroll_button.add_theme_font_size_override("font_size", Widgets.FONT_SUBHEADING)
+	_reroll_button.add_theme_color_override("font_color", _palette.text)
+	_reroll_button.pressed.connect(_on_reroll_pressed)
+	actions.add_child(_reroll_button)
+
 	_done_button = Button.new()
 	_done_button.name = "DoneButton"
-	_done_button.text = "Confirm & Send"
+	_done_button.text = "Send Result" if _allow_reroll else "Continue"
 	_done_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_done_button.custom_minimum_size = Vector2(0, 48)
 	_done_button.visible = false
@@ -878,12 +642,18 @@ func _situation_notation() -> String:
 # --- Rolling ---------------------------------------------------------------
 
 func _on_roll_pressed() -> void:
-	if _rolling:
+	if _rolling or not _resolved.is_empty():
 		return
 	_rolling = true
 	_roll_button.disabled = true
 	_roll_button.text = "Rolling..."
-	_tray_status.text = "Tumbling... resolving physics"
+	_tray_status.text = "Rolling…"
+	# Keep the tray in the same screen position at the instant of launch.
+	_instructions.modulate.a = 0.0
+	if _explanation != null:
+		_explanation.hide()
+		_explanation_toggle.hide()
+	_scroll.scroll_vertical = 0
 	_tray_status.add_theme_color_override("font_color", _palette.warning)
 	if _aim_overlay != null:
 		_aim_overlay.visible = false
@@ -902,20 +672,39 @@ func _on_roll_pressed() -> void:
 	if not is_instance_valid(self):
 		return
 	_rolling = false
-	_tray_status.text = "Settled"
+	_tray_status.text = "Result" if not _tray.was_forced() else "Result • time limit reached"
 	_tray_status.add_theme_color_override("font_color", _palette.accent)
 	_outcome_card.visible = true
 	_roll_button.visible = false
+	_reroll_button.visible = _allow_reroll
 	_done_button.visible = true
 	_done_button.grab_focus()
 
-	# Auto-scroll so the outcome card is brought cleanly into view
-	if _scroll != null and is_instance_valid(_scroll):
-		var tree := get_tree()
-		if tree != null:
-			await tree.process_frame
-			if is_instance_valid(_scroll) and is_instance_valid(_outcome_card):
-				_scroll.ensure_control_visible(_outcome_card)
+	_context_note.visible = not _context_note.text.is_empty()
+	_focus_result()
+	_outcome_card.modulate.a = 0.0
+	create_tween().tween_property(_outcome_card, "modulate:a", 1.0, 0.22)
+	_scroll.scroll_vertical = 0
+
+
+## Discard the GM's preview locally and make a fresh physical throw. Nothing is
+## returned to the caller until Send Result is pressed, so rejected results
+## never reach the transport or the campaign log.
+func _on_reroll_pressed() -> void:
+	if not _allow_reroll or _rolling or _resolved.is_empty():
+		return
+	_resolved.clear()
+	if not _initial_check.is_empty():
+		_check = Check.from_dict(_initial_check)
+	_reroll_button.visible = false
+	_done_button.visible = false
+	_outcome_card.visible = false
+	if _camera_tween != null:
+		_camera_tween.kill()
+	_fit_camera()
+	if _result_labels != null:
+		_result_labels.queue_redraw()
+	_on_roll_pressed()
 
 
 func _roll_check() -> void:
@@ -982,18 +771,13 @@ func _show_check_outcome(control_face: int, situation: RollResult, graded: Dicti
 
 	var total_roll := AlternityNum.as_int(graded.get("total", 0))
 	var sit_sign_str := ("%+d" % situation.total) if not situation.dice.is_empty() else "+0"
-	_detail.text = "1d20 [%d]   +   %s [%s]   =   Total: %d   vs   Target: %d" % [
-		control_face,
-		_situation_notation(),
-		sit_sign_str,
-		total_roll,
-		_check.ordinary,
-	]
+	_detail.text = "Control %d  %s situation  =  %d" % [control_face, sit_sign_str, total_roll]
+	_outcome.text = "%s — %d" % [outcome_title, total_roll]
 
 	var notes: Array = []
 	var is_act := _check.skill_label.to_lower().contains("action check")
 	if is_act:
-		notes.append("Hero acts in the %s Phase!" % degree)
+		_outcome.text = "%s PHASE — %d" % [degree.to_upper(), total_roll]
 
 	if is_crit_fail:
 		notes.append("Natural 20 on Control Die: Critical Failure! Table G8 weapon mishap or setback occurs.")
@@ -1008,6 +792,11 @@ func _show_check_outcome(control_face: int, situation: RollResult, graded: Dicti
 
 func _update_touch_filters(node: Node) -> void:
 	for child in node.get_children():
+		# This full-frame decoration is above the grip in draw order. PASS
+		# bubbles to its parent, not to the grip sibling underneath it.
+		if child == _result_labels:
+			child.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			continue
 		if child == _aim_overlay:
 			child.mouse_filter = Control.MOUSE_FILTER_STOP
 			continue
@@ -1018,266 +807,162 @@ func _update_touch_filters(node: Node) -> void:
 		_update_touch_filters(child)
 
 
-# --- Inner Class: 2D Interactive Aim Overlay (Approach A) ------------------
-
+# One real pointer owns a gesture. Synthetic duplicate events are ignored.
 class _AimOverlay extends Control:
 	var _host: Node
-	var _dragging_hand: bool = false
-	var _dragging_target: bool = false
+	var _dragging := false
+	var _pointer := -2
+	var _start := Vector2.ZERO
+	var _pull := Vector2.ZERO
 
 	func _init(host: Node) -> void:
 		_host = host
 		mouse_filter = Control.MOUSE_FILTER_STOP
 
-	func _to_2d(p3d: Vector3) -> Vector2:
-		var rect_sz := size
-		var center := rect_sz * 0.5
-		var scale_factor := (minf(rect_sz.x, rect_sz.y) * 0.44) / DiceTray.TRAY_HALF
-		return center + Vector2(p3d.x * scale_factor, p3d.z * scale_factor)
+	func _ready() -> void:
+		resized.connect(_cancel)
 
-	func _to_3d(p2d: Vector2) -> Vector3:
-		var rect_sz := size
-		var center := rect_sz * 0.5
-		var scale_factor := (minf(rect_sz.x, rect_sz.y) * 0.44) / DiceTray.TRAY_HALF
-		if is_zero_approx(scale_factor):
-			return Vector3.ZERO
-		return Vector3((p2d.x - center.x) / scale_factor, 0.5, (p2d.y - center.y) / scale_factor)
+	func _grip() -> Vector2:
+		if _host._camera == null or not _host._camera.is_inside_tree():
+			return Vector2(size.x * 0.5, size.y * 0.65)
+		return _host._camera.unproject_position(_host._hand_3d)
 
-	func _set_drag_state(dragging_hand: bool, dragging_target: bool) -> void:
-		_dragging_hand = dragging_hand
-		_dragging_target = dragging_target
-		# Do NOT toggle _scroll.vertical_scroll_mode here. Changing it alters
-		# the ScrollContainer's minimum size, which propagates through
-		# ModalHost._relayout → _center and resizes the whole route. The overlay
-		# already calls accept_event() on every touch/mouse event, so the scroll
-		# container never receives the gesture in the first place.
+	func _max_pull() -> float:
+		# Leave space for the grip and ring below the player's finger.
+		return maxf(20.0, minf(60.0, size.y - _grip().y - 44.0))
+
+	func _power() -> float:
+		return clampf(_pull.length() / _max_pull(), 0.0, 1.0)
+
+	func _cancel() -> void:
+		_dragging = false
+		_pointer = -2
+		_pull = Vector2.ZERO
 		queue_redraw()
 
-	func _snap_hand(p3d: Vector3) -> Vector3:
-		var bound := DiceTray.TRAY_HALF - 0.8
-		var cx := clampf(p3d.x, -bound, bound)
-		var cz := clampf(p3d.z, -bound, bound)
-
-		# Distance to each of the four walls (Left, Right, Top, Bottom)
-		var d_left := absf(cx - (-bound))
-		var d_right := absf(cx - bound)
-		var d_top := absf(cz - (-bound))
-		var d_bottom := absf(cz - bound)
-
-		var min_d := minf(minf(d_left, d_right), minf(d_top, d_bottom))
-		var out := Vector3(cx, 3.2, cz)
-
-		if is_equal_approx(min_d, d_left):
-			out.x = -bound
-			out.z = cz
-		elif is_equal_approx(min_d, d_right):
-			out.x = bound
-			out.z = cz
-		elif is_equal_approx(min_d, d_top):
-			out.z = -bound
-			out.x = cx
-		else:
-			out.z = bound
-			out.x = cx
-
-		return out
+	func _notification(what: int) -> void:
+		if what == NOTIFICATION_APPLICATION_FOCUS_OUT:
+			_cancel()
 
 	func _gui_input(event: InputEvent) -> void:
-		if _host._rolling:
+		if _host._rolling or not _host._resolved.is_empty():
 			return
-
+		if event.device == -1:
+			return
 		var pos := Vector2.ZERO
-		var is_down := false
-		var is_up := false
-		var is_motion := false
-
-		# With emulate_touch_from_mouse enabled (project setting), every mouse
-		# click also generates an InputEventScreenTouch and every mouse drag an
-		# InputEventScreenDrag. Processing both doubles every interaction. Handle
-		# mouse events unconditionally (they arrive on every platform) and only
-		# fall through to Screen* events when there is no mouse equivalent --
-		# i.e. on a real touchscreen.
+		var down := false
+		var up := false
+		var pointer := -1
 		if event is InputEventMouseButton:
-			var mb := event as InputEventMouseButton
-			if mb.button_index != MOUSE_BUTTON_LEFT:
+			if event.button_index != MOUSE_BUTTON_LEFT:
 				return
-			pos = mb.position
-			is_down = mb.pressed
-			is_up = not mb.pressed
+			pos = event.position
+			down = event.pressed
+			up = not event.pressed
 		elif event is InputEventMouseMotion:
-			pos = (event as InputEventMouseMotion).position
-			is_motion = true
+			pos = event.position
 		elif event is InputEventScreenTouch:
-			# On a real device these are the primary events; on desktop they are
-			# emulated duplicates. Godot tags emulated events with device == -1.
-			if event.device == -1:
-				accept_event()
+			pointer = event.index
+			pos = event.position
+			down = event.pressed
+			up = not event.pressed
+			if event.canceled and pointer == _pointer:
+				_cancel()
 				return
-			var st := event as InputEventScreenTouch
-			pos = st.position
-			is_down = st.pressed
-			is_up = not st.pressed
 		elif event is InputEventScreenDrag:
-			if event.device == -1:
-				accept_event()
-				return
-			pos = (event as InputEventScreenDrag).position
-			is_motion = true
+			pointer = event.index
+			pos = event.position
 		else:
 			return
-
 		accept_event()
-
-		if is_down:
-			var hand_2d: Vector2 = _to_2d(_host._hand_3d)
-			var target_2d: Vector2 = _to_2d(_host._target_3d)
-			var dist_hand := pos.distance_to(hand_2d)
-			var dist_target := pos.distance_to(target_2d)
-
-			# Generous grab radii for fingers and mouse
-			var grab_radius := 44.0
-
-			if dist_hand <= grab_radius and dist_hand <= dist_target:
-				_set_drag_state(true, false)
-			elif dist_target <= grab_radius:
-				_set_drag_state(false, true)
-			else:
-				var pt_3d := _to_3d(pos)
-				var inner_bound: float = DiceTray.TRAY_HALF - 1.2
-				if absf(pt_3d.x) <= inner_bound and absf(pt_3d.z) <= inner_bound:
-					_host._target_3d = _clamp_target(pt_3d)
-					_host._sync_tray_aim()
-					_set_drag_state(false, true)
-				elif dist_hand < 64.0:
-					# Forgiving proximity grab for hand near rim
-					_host._hand_3d = _snap_hand(pt_3d)
-					_host._sync_tray_aim()
-					_set_drag_state(true, false)
-
-		elif is_motion:
-			if _dragging_hand:
-				_host._hand_3d = _snap_hand(_to_3d(pos))
-				_host._sync_tray_aim()
-				queue_redraw()
-			elif _dragging_target:
-				_host._target_3d = _clamp_target(_to_3d(pos))
-				_host._sync_tray_aim()
-				queue_redraw()
-
-		elif is_up:
-			var was_dragging := _dragging_hand or _dragging_target
-			_set_drag_state(false, false)
-			if was_dragging and _host._release_to_throw:
-				_host._on_roll_pressed()
-
-	func _clamp_target(p3d: Vector3) -> Vector3:
-		var bound: float = DiceTray.TRAY_HALF - 0.8
-		return Vector3(clampf(p3d.x, -bound, bound), 0.5, clampf(p3d.z, -bound, bound))
+		if down:
+			if not _dragging and pos.distance_to(_grip()) <= 54.0:
+				_dragging = true
+				_pointer = pointer
+				_start = pos
+		elif _dragging and pointer == _pointer:
+			var max_pull := _max_pull()
+			_pull = (pos - _start).limit_length(max_pull)
+			_pull.y = maxf(0.0, _pull.y)
+			if up:
+				var launch := _pull.y >= 14.0
+				if launch:
+					_host._throw_strength = _power()
+					_host._target_3d = Vector3(clampf(-_pull.x / maxf(_pull.y, 20.0) * 3.0, -3.0, 3.0), 0.5, -1.5)
+				_cancel()
+				if launch:
+					_host._on_roll_pressed()
+		queue_redraw()
 
 	func _draw() -> void:
-		if _host._rolling or _host._palette == null:
+		if _host._rolling or not _host._resolved.is_empty():
 			return
-
-		var hand_pos: Vector2 = _to_2d(_host._hand_3d)
-		var target_pos: Vector2 = _to_2d(_host._target_3d)
-		var accent_col: Color = _host._palette.accent
-		var line_col := Color(accent_col.r, accent_col.g, accent_col.b, 0.85)
-
-		# Power width
-		var line_width: float = 1.5 + float(_host._force_tier) * 0.9
-
-		# Wall bounce calculation in 3D
-		var wall_bound: float = DiceTray.TRAY_HALF - 0.5
-		var dir_3d: Vector3 = (_host._target_3d - _host._hand_3d).normalized()
-		var bounce_result: Dictionary = _find_wall_bounce(_host._hand_3d, dir_3d, wall_bound)
-
-		if bounce_result.has("hit"):
-			var hit_2d := _to_2d(bounce_result["hit"])
-			draw_line(hand_pos, hit_2d, line_col, line_width, true)
-			# Draw ricochet bounce line
-			var bounce_end_2d := _to_2d(bounce_result["end"])
-			draw_dashed_line(hit_2d, bounce_end_2d, Color(accent_col.r, accent_col.g, accent_col.b, 0.45), line_width * 0.8, 6.0)
-			# Bounce point marker
-			draw_circle(hit_2d, 4.0, _host._palette.warning)
+		var grip := _grip()
+		var accent: Color = _host._palette.accent
+		var held := grip + _pull
+		if _dragging:
+			draw_circle(grip, 5, accent)
+			draw_line(grip, held, accent, 1.5, true)
+		draw_circle(held, 32, _host._palette.surface_soft)
+		draw_arc(held, 32, 0, TAU, 48, accent, 2, true)
+		for offset in [Vector2(-12, -7), Vector2(7, 5)]:
+			draw_rect(Rect2(held + offset - Vector2(8, 8), Vector2(16, 16)), accent, false, 2)
+		if _dragging and _pull.y >= 14:
+			var direction := -_pull.normalized()
+			var tip := grip + direction * (35 + _pull.length() * 0.6)
+			draw_line(grip, tip, accent, 3, true)
+			var side := direction.orthogonal() * 7
+			draw_colored_polygon(PackedVector2Array([tip, tip - direction * 12 + side, tip - direction * 12 - side]), accent)
+			draw_arc(held, 38, -PI * 0.5, -PI * 0.5 + TAU * _power(), 48, accent, 3, true)
 		else:
-			draw_line(hand_pos, target_pos, line_col, line_width, true)
-
-		# Hand Grip Marker (Circle + Glow + Grip Dot + Directional Arrow)
-		var is_active_hand := _dragging_hand
-		var hand_radius: float = 16.0 if not is_active_hand else 19.0
-
-		if is_active_hand:
-			draw_circle(hand_pos, hand_radius + 6.0, Color(accent_col.r, accent_col.g, accent_col.b, 0.25))
-
-		draw_circle(hand_pos, hand_radius, _host._palette.surface_soft)
-		draw_arc(hand_pos, hand_radius, 0, TAU, 28, accent_col, 2.4 if is_active_hand else 1.8, true)
-		draw_circle(hand_pos, 6.0, accent_col)
-
-		# Direction indicator arrow on hand pointing toward target
-		var launch_dir := (target_pos - hand_pos).normalized()
-		if launch_dir.length_squared() > 0.01:
-			var tip := hand_pos + launch_dir * (hand_radius + 9.0)
-			var base_pt := hand_pos + launch_dir * (hand_radius + 2.0)
-			var side_offset := Vector2(-launch_dir.y, launch_dir.x) * 5.0
-			draw_colored_polygon(
-				PackedVector2Array([tip, base_pt + side_offset, base_pt - side_offset]),
-				accent_col
-			)
-
-		# Target Reticle
-		var is_active_target := _dragging_target
-		if is_active_target:
-			draw_circle(target_pos, 18.0, Color(accent_col.r, accent_col.g, accent_col.b, 0.25))
-
-		draw_circle(target_pos, 11.0, Color(accent_col.r, accent_col.g, accent_col.b, 0.2))
-		draw_arc(target_pos, 11.0, 0, TAU, 24, accent_col, 2.2 if is_active_target else 1.8, true)
-		draw_line(target_pos - Vector2(16, 0), target_pos + Vector2(16, 0), accent_col, 1.4)
-		draw_line(target_pos - Vector2(0, 16), target_pos + Vector2(0, 16), accent_col, 1.4)
+			draw_line(grip + Vector2(0, 42), grip + Vector2(0, 68), accent, 2, true)
+			draw_line(grip + Vector2(0, 68), grip + Vector2(-6, 60), accent, 2, true)
+			draw_line(grip + Vector2(0, 68), grip + Vector2(6, 60), accent, 2, true)
 
 
-	func _find_wall_bounce(origin_3d: Vector3, dir_3d: Vector3, bound: float) -> Dictionary:
-		var t_hit := 999.0
-		var hit_norm := Vector3.ZERO
+class _ResultLabels extends Control:
+	var _host: Node
 
-		# Left wall x = -bound
-		if dir_3d.x < -0.001:
-			var t := (-bound - origin_3d.x) / dir_3d.x
-			if t > 0.05 and t < t_hit:
-				var z_at := origin_3d.z + dir_3d.z * t
-				if absf(z_at) <= bound + 0.1:
-					t_hit = t
-					hit_norm = Vector3(1, 0, 0)
-		# Right wall x = +bound
-		if dir_3d.x > 0.001:
-			var t := (bound - origin_3d.x) / dir_3d.x
-			if t > 0.05 and t < t_hit:
-				var z_at := origin_3d.z + dir_3d.z * t
-				if absf(z_at) <= bound + 0.1:
-					t_hit = t
-					hit_norm = Vector3(-1, 0, 0)
-		# Top wall z = -bound
-		if dir_3d.z < -0.001:
-			var t := (-bound - origin_3d.z) / dir_3d.z
-			if t > 0.05 and t < t_hit:
-				var x_at := origin_3d.x + dir_3d.x * t
-				if absf(x_at) <= bound + 0.1:
-					t_hit = t
-					hit_norm = Vector3(0, 0, 1)
-		# Bottom wall z = +bound
-		if dir_3d.z > 0.001:
-			var t := (bound - origin_3d.z) / dir_3d.z
-			if t > 0.05 and t < t_hit:
-				var x_at := origin_3d.x + dir_3d.x * t
-				if absf(x_at) <= bound + 0.1:
-					t_hit = t
-					hit_norm = Vector3(0, 0, -1)
+	func _init(host: Node) -> void:
+		_host = host
+		set_process(false)
 
-		if t_hit < 900.0:
-			var hit_pt := origin_3d + dir_3d * t_hit
-			var ref_dir := dir_3d.bounce(hit_norm).normalized()
-			var bounce_len := 3.5
-			return {
-				"hit": hit_pt,
-				"end": hit_pt + ref_dir * bounce_len,
-			}
-		return {}
+	func _process(_delta: float) -> void:
+		queue_redraw()
+		if _host._camera_tween == null or not _host._camera_tween.is_running():
+			set_process(false)
+
+	func _draw() -> void:
+		if _host._resolved.is_empty():
+			return
+		var positions: Array[Vector3] = _host._tray.die_positions()
+		var faces: Array = _host._tray.read_now()
+		var font := get_theme_default_font()
+		var projected: Array[Vector2] = []
+		var occupied: Array[Rect2] = []
+		for point in positions:
+			var screen: Vector2 = _host._camera.unproject_position(point)
+			projected.append(screen)
+			occupied.append(Rect2(screen - Vector2(25, 25), Vector2(50, 50)))
+		for i in positions.size():
+			var label := str(faces[i]["number"])
+			if _host._check != null:
+				label = ("Control " if i == 0 else "Situation ") + label
+			var width := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
+			var rect := Rect2()
+			for offset in [Vector2(0, 42), Vector2(0, -42), Vector2(0, 72), Vector2(0, -72), Vector2(95, 0), Vector2(-95, 0)]:
+				var point: Vector2 = projected[i] + offset
+				point.x = clampf(point.x - width * 0.5, 6, maxf(6, _host._frame.size.x - width - 6))
+				point.y = clampf(point.y, 24, _host._frame.size.y - 8)
+				rect = Rect2(point - Vector2(5, 17), Vector2(width + 10, 24))
+				var clear := true
+				for other in occupied:
+					if other.intersects(rect.grow(3)):
+						clear = false
+						break
+				if clear:
+					break
+			occupied.append(rect)
+			draw_line(projected[i], rect.get_center(), _host._palette.muted, 1, true)
+			draw_style_box(Widgets.flat_style(_host._palette.surface, _host._palette.border, 4), rect)
+			draw_string(font, rect.position + Vector2(5, 17), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, _host._palette.text)

@@ -114,4 +114,7 @@ func _build() -> void:
 
 func _submit() -> void:
 	var text := current_text()
-	close(null if text.is_empty() else text)
+	if text.is_empty():
+		close(null)
+	else:
+		close(text)

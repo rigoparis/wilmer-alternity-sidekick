@@ -50,6 +50,14 @@ func _init(rules: AlternityRules, router: UiRouter, palette: ThemePalette) -> vo
 	_palette = palette
 
 
+## Keep future check routes aligned with the active app theme.
+##
+## The runner outlives screen rebuilds, so the palette it received at startup
+## otherwise becomes stale after ThemeService switches themes.
+func use_palette(palette: ThemePalette) -> void:
+	_palette = palette if palette != null else ThemePalette.new()
+
+
 ## Point the runner at a table, or at nothing.
 func use_transport(transport: EnetTransport) -> void:
 	if _transport != null and _listening and is_instance_valid(_transport):

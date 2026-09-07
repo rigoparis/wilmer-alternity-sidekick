@@ -367,7 +367,7 @@ func _build_damage(container: Container, summary: Dictionary) -> void:
 ## Temporary durability boxes (e.g. granted by Fortitude Vitality Shield).
 func _render_shield(container: Container, temp: Dictionary) -> void:
 	for child in container.get_children():
-		container.remove_child(child)
+		child.hide()
 		child.queue_free()
 
 	if temp.is_empty():
@@ -451,7 +451,7 @@ func _render_shield(container: Container, temp: Dictionary) -> void:
 ## rather than a button that cannot work.
 func _render_recovery(container: Container, damage: Dictionary) -> void:
 	for child in container.get_children():
-		container.remove_child(child)
+		child.hide()
 		child.queue_free()
 	var fatigue_used := AlternityNum.as_int(damage.get("fatigue", 0))
 	var wound_used := AlternityNum.as_int(damage.get("wound", 0))
@@ -614,7 +614,7 @@ func _build_last_resorts_content(box: Container, summary: Dictionary) -> void:
 
 func _render_last_resorts_actions(host: Container, summary: Dictionary) -> void:
 	for child in host.get_children():
-		host.remove_child(child)
+		child.hide()
 		child.queue_free()
 
 	var doc := ctx.doc

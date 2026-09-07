@@ -1015,7 +1015,7 @@ func _refresh_tab_bar() -> void:
 	_listed_ids = ids
 	_buttons.clear()
 	for child in _tab_bar.get_children():
-		_tab_bar.remove_child(child)
+		child.hide()
 		child.queue_free()
 	_populate_tab_bar()
 

@@ -57,8 +57,8 @@ var _flushed_seq: Dictionary = {}
 var _stored_count: Dictionary = {}
 
 
-func _init(directory: String = SAVE_DIR) -> void:
-	_dir = directory if directory.ends_with("/") else directory + "/"
+func _init(storage_directory: String = SAVE_DIR) -> void:
+	_dir = storage_directory if storage_directory.ends_with("/") else storage_directory + "/"
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(_dir))
 
 

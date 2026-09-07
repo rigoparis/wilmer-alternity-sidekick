@@ -63,6 +63,7 @@ signal trouble(message: String)
 ##
 ## A signal rather than something the tab does itself: leaving means taking the
 ## sheet down and putting the character list back, which only the shell can do.
+@warning_ignore("unused_signal")
 signal leave_requested
 
 ## How much of the feed to keep. The GM's copy is the one that has to be

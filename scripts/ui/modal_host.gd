@@ -89,8 +89,10 @@ func present(route: RouteScene, presentation: int) -> void:
 	var frame := Control.new()
 	frame.name = "Frame%d" % (_entries.size() + 1)
 	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	frame.add_child(route)
+	# Attach the frame first. Adding a Control to a detached Control can make its
+	# layout path query can_process() before either node is inside the tree.
 	_frames.add_child(frame)
+	frame.add_child(route)
 
 	_entries.append({"route": route, "frame": frame, "presentation": presentation})
 
@@ -163,10 +165,9 @@ func _layout_entry(entry: Dictionary) -> void:
 
 ## Full-bleed, no margin: on a 390px phone the old centred panels lost 24px to
 ## margins plus the scrollbar, which is what forced the text-wrapping hacks.
-func _fill(route: Control, viewport_size: Vector2) -> void:
+func _fill(route: Control, _viewport_size: Vector2) -> void:
 	route.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	route.custom_minimum_size = Vector2(0, 0)
-	route.size = viewport_size
 
 
 func _center(route: Control, viewport_size: Vector2, max_width: float, height_ratio: float) -> void:

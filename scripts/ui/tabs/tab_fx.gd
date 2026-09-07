@@ -150,14 +150,14 @@ func _build_compact_layout(container: Container) -> void:
 
 func _render_pool(host: Container) -> void:
 	for child in host.get_children():
-		host.remove_child(child)
+		child.hide()
 		child.queue_free()
 	_build_pool(host)
 
 
 func _render_tracker(host: Container) -> void:
 	for child in host.get_children():
-		host.remove_child(child)
+		child.hide()
 		child.queue_free()
 	_build_energy_tracker(host)
 
@@ -469,7 +469,7 @@ func _set_editing_powers(editing: bool) -> void:
 
 func _render_powers_panel_desktop(host: Container) -> void:
 	for child in host.get_children():
-		host.remove_child(child)
+		child.hide()
 		child.queue_free()
 
 	_picker = null
@@ -518,7 +518,7 @@ func _render_powers_panel_desktop(host: Container) -> void:
 
 func _render_powers_panel_mobile(host: Container) -> void:
 	for child in host.get_children():
-		host.remove_child(child)
+		child.hide()
 		child.queue_free()
 
 	_picker = null

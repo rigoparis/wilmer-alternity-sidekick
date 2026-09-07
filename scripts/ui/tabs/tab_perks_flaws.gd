@@ -195,7 +195,9 @@ func _open_catalog(kind: String) -> void:
 		for entry_id in chosen:
 			var parts := String(entry_id).split(TIER_SEPARATOR)
 			var id := parts[0]
-			var value := AlternityNum.as_int(parts[1] if parts.size() > 1 else 0)
+			var value := 0
+			if parts.size() > 1:
+				value = AlternityNum.as_int(parts[1])
 			if is_perk:
 				rules.set_perk_selected(c, id, value)
 			else:
@@ -281,7 +283,8 @@ func _budget_text(selected_ids: Array, kind: String) -> String:
 	var pending := 0
 	for entry_id in selected_ids:
 		var parts := String(entry_id).split(TIER_SEPARATOR)
-		pending += AlternityNum.as_int(parts[1] if parts.size() > 1 else 0)
+		if parts.size() > 1:
+			pending += AlternityNum.as_int(parts[1])
 
 	if is_perk:
 		var spent: int = rules.perk_points_used(raw)

@@ -88,7 +88,7 @@ func _make_flat_icon_btn(icon: Texture2D, min_size: Vector2, tooltip: String = "
 
 func _build() -> void:
 	for child in get_children():
-		remove_child(child)
+		child.hide()
 		child.queue_free()
 
 	var search := SearchField.new()
@@ -161,8 +161,8 @@ func _select_ability(ability: String) -> void:
 	if ability == _ability:
 		return
 	_ability = ability
-	for name in _ability_buttons:
-		_ability_buttons[name].button_pressed = name == ability
+	for ability_name in _ability_buttons:
+		_ability_buttons[ability_name].button_pressed = ability_name == ability
 	_refresh_list()
 
 
@@ -174,7 +174,7 @@ func _refresh_list() -> void:
 	if _list == null:
 		return
 	for child in _list.get_children():
-		_list.remove_child(child)
+		child.hide()
 		child.queue_free()
 
 	_reset_card_columns()
@@ -291,46 +291,45 @@ func _build_row(parent: Container, skill: Dictionary, is_broad: bool) -> void:
 			sep.custom_minimum_size = Vector2(0, 4)
 			parent.add_child(sep)
 
-		var row := HBoxContainer.new()
-		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.add_theme_constant_override("separation", Widgets.GAP_ROW)
-		parent.add_child(row)
+		var broad_row := HBoxContainer.new()
+		broad_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		broad_row.add_theme_constant_override("separation", Widgets.GAP_ROW)
+		parent.add_child(broad_row)
 
-		var check_btn := _make_flat_icon_btn(
+		var broad_check_btn := _make_flat_icon_btn(
 			ICON_CHECK if rank > 0 else ICON_UNCHECK,
 			Vector2(32, 32),
 			"Sell broad skill" if rank > 0 else "Buy broad skill"
 		)
-		check_btn.add_theme_color_override("icon_normal_color", palette.accent if rank > 0 else Color(palette.muted, 0.4))
-		check_btn.pressed.connect(func():
+		broad_check_btn.add_theme_color_override("icon_normal_color", palette.accent if rank > 0 else Color(palette.muted, 0.4))
+		broad_check_btn.pressed.connect(func():
 			if rank <= 0:
 				doc.apply(CharacterDoc.ALL, func(c): rules.set_skill_rank(c, skill_id, 1))
 			else:
 				doc.apply(CharacterDoc.ALL, func(c): rules.set_skill_rank(c, skill_id, 0))
 			change_requested.emit()
 		)
-		row.add_child(check_btn)
+		broad_row.add_child(broad_check_btn)
 
 		var full_label := String(rules.skill_label(skill))
-		var name_lbl := Label.new()
-		name_lbl.text = full_label
-		name_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		name_lbl.add_theme_color_override("font_color", palette.text)
-		name_lbl.add_theme_font_size_override("font_size", Widgets.FONT_BODY)
-		row.add_child(name_lbl)
+		var broad_name_lbl := Label.new()
+		broad_name_lbl.text = full_label
+		broad_name_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		broad_name_lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		broad_name_lbl.custom_minimum_size = Vector2(1, 0)
+		broad_name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		broad_name_lbl.add_theme_color_override("font_color", palette.text)
+		broad_name_lbl.add_theme_font_size_override("font_size", Widgets.FONT_BODY)
+		broad_row.add_child(broad_name_lbl)
 
-		var detail_btn := _make_flat_icon_btn(
+		var broad_detail_btn := _make_flat_icon_btn(
 			ICON_QUESTION,
 			Vector2(34, 34),
 			"View details for %s" % full_label
 		)
-		detail_btn.add_theme_color_override("icon_normal_color", Color(palette.muted, 0.8))
-		detail_btn.pressed.connect(func(): detail_requested.emit(skill))
-		row.add_child(detail_btn)
-
-		var slack := Control.new()
-		slack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.add_child(slack)
+		broad_detail_btn.add_theme_color_override("icon_normal_color", Color(palette.muted, 0.8))
+		broad_detail_btn.pressed.connect(func(): detail_requested.emit(skill))
+		broad_row.add_child(broad_detail_btn)
 
 		var cost_lbl := Label.new()
 		cost_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -350,7 +349,7 @@ func _build_row(parent: Container, skill: Dictionary, is_broad: bool) -> void:
 				var cost: int = rules.skill_cost(raw, skill)
 				cost_lbl.text = "Cost %d" % cost
 			cost_lbl.add_theme_color_override("font_color", palette.muted)
-		row.add_child(cost_lbl)
+		broad_row.add_child(cost_lbl)
 		return
 
 	# Specialty row
@@ -380,7 +379,7 @@ func _build_row(parent: Container, skill: Dictionary, is_broad: bool) -> void:
 
 	var name_box := VBoxContainer.new()
 	name_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	name_box.custom_minimum_size = Vector2(130, 0)
+	name_box.custom_minimum_size = Vector2(1, 0)
 	name_box.add_theme_constant_override("separation", 0)
 	row.add_child(name_box)
 
