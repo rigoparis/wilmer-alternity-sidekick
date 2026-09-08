@@ -69,6 +69,7 @@ signal leave_requested
 ## How much of the feed to keep. The GM's copy is the one that has to be
 ## complete; this is what a player scrolls through mid-session.
 const FEED_LENGTH := 60
+const RECONNECT_MAX_DELAY_MS := 10_000
 
 var transport: EnetTransport
 var identity: PlayerIdentity
@@ -106,6 +107,8 @@ var incoming_attacks: Array = []
 
 ## Checks the GM called for that nobody has resolved yet, oldest first.
 var incoming_checks: Array = []
+var _reconnect_due_msec: int = 0
+var _reconnect_attempts: int = 0
 
 
 func _init(
@@ -126,7 +129,9 @@ func _init(
 	transport.check_ruled.connect(_on_check_ruled)
 	transport.round_updated.connect(_on_round_updated)
 	transport.attack_received.connect(_on_attack_received)
-	transport.transport_error.connect(func(message: String): trouble.emit(message))
+	transport.pending_work_received.connect(_on_pending_work_received)
+	transport.player_connected.connect(_on_transport_connected)
+	transport.transport_error.connect(_on_transport_error)
 
 
 func campaign_id() -> String:
@@ -140,11 +145,24 @@ func is_connected_to_table() -> bool:
 ## Deliver whatever has arrived. Driven by whoever owns this -- the shell -- so
 ## the connection survives the player moving between tabs.
 func poll() -> void:
-	if transport != null:
-		transport.poll()
+	if transport == null:
+		return
+	transport.poll()
+	if _reconnect_due_msec <= 0 or Time.get_ticks_msec() < _reconnect_due_msec:
+		return
+	_reconnect_due_msec = 0
+	if transport.reconnect() != OK:
+		_schedule_reconnect()
 
 
 # --- The committed character -----------------------------------------------
+
+## Reattach the local hero during cold-start recovery without sending before
+## the transport has completed its handshake. _on_resumed_table_connected in
+## the shell calls commit() once the GM has supplied the campaign rules.
+func restore_character(character_doc: CharacterDoc) -> void:
+	doc = character_doc
+
 
 ## Bind a hero to this table and tell the GM about it.
 ##
@@ -253,9 +271,33 @@ func leave() -> void:
 	if transport != null:
 		transport.leave()
 		transport = null
+	_reconnect_due_msec = 0
+	_reconnect_attempts = 0
 
 
 # --- Incoming --------------------------------------------------------------
+
+func _on_transport_error(message: String) -> void:
+	trouble.emit(message)
+	_schedule_reconnect()
+	changed.emit()
+
+
+func _schedule_reconnect() -> void:
+	if transport == null or not transport.needs_reconnect() or _reconnect_due_msec > 0:
+		return
+	var delay := mini(1_000 * (1 << mini(_reconnect_attempts, 3)), RECONNECT_MAX_DELAY_MS)
+	_reconnect_attempts += 1
+	_reconnect_due_msec = Time.get_ticks_msec() + delay
+
+
+func _on_transport_connected(player_id: String, is_reconnect: bool) -> void:
+	_reconnect_due_msec = 0
+	_reconnect_attempts = 0
+	if identity != null and transport != null:
+		identity.remember(campaign_id(), player_id, transport.last_seen_seq(), campaign_name)
+	if is_reconnect:
+		changed.emit()
 
 func _on_event(event: Dictionary) -> void:
 	_absorb(event)
@@ -293,6 +335,8 @@ func dismiss_called_check(check: SkillCheck) -> void:
 	for i in incoming_checks.size():
 		if (incoming_checks[i] as SkillCheck).check_id == check.check_id:
 			incoming_checks.remove_at(i)
+			if transport != null:
+				transport.dismiss_check(check.check_id)
 			changed.emit()
 			return
 
@@ -330,6 +374,16 @@ func _on_round_updated(data: Dictionary) -> void:
 
 func _on_attack_received(data: Dictionary) -> void:
 	var attack := CombatAttack.from_dict(data)
+	var progress := identity.attack_progress(campaign_id(), attack.attack_id) if identity != null else {}
+	var resolved = progress.get("resolved", {}) if typeof(progress) == TYPE_DICTIONARY else {}
+	if typeof(resolved) == TYPE_DICTIONARY and not resolved.is_empty():
+		# The GM did not receive the previous result. Re-send the settled fact;
+		# never ask the player to absorb and apply the same damage again.
+		transport.send_attack_result(resolved)
+		return
+	for existing in incoming_attacks:
+		if (existing as CombatAttack).attack_id == attack.attack_id:
+			return
 	incoming_attacks.append(attack)
 	attack_arrived.emit(attack)
 	changed.emit()
@@ -355,9 +409,16 @@ func next_attack() -> CombatAttack:
 ## rolled against the character as the hit left them.
 func apply_attack(attack: CombatAttack, absorbed: int, parried: bool = false) -> Dictionary:
 	incoming_attacks.erase(attack)
+	var progress := identity.attack_progress(campaign_id(), attack.attack_id) if identity != null else {}
+	if not progress.is_empty():
+		changed.emit()
+		var stored = progress.get("outcome", {})
+		return stored.duplicate(true) if typeof(stored) == TYPE_DICTIONARY else {}
 	if doc == null or rules == null or not attack.hits() or parried:
 		# A parry that beat the attack stops it outright: no primary damage, so
 		# there is nothing to apply and nothing to save.
+		if identity != null:
+			identity.remember_attack_applied(campaign_id(), attack.to_dict(), absorbed, {}, parried)
 		changed.emit()
 		return {}
 
@@ -376,6 +437,8 @@ func apply_attack(attack: CombatAttack, absorbed: int, parried: bool = false) ->
 		))
 	if store != null:
 		store.save(doc)
+	if identity != null:
+		identity.remember_attack_applied(campaign_id(), attack.to_dict(), absorbed, outcome, parried)
 	# The GM's roster reads the character they hold, so it has to follow the
 	# damage or the badge will say Unhurt at somebody who is bleeding.
 	push_character()
@@ -394,6 +457,10 @@ func report_attack(
 	knocked_out: bool = false,
 	parried: bool = false
 ) -> void:
+	var progress := identity.attack_progress(campaign_id(), attack.attack_id) if identity != null else {}
+	if not progress.is_empty():
+		absorbed = AlternityNum.as_int(progress.get("absorbed", absorbed))
+		parried = bool(progress.get("parried", parried))
 	var down := knocked_out
 	if doc != null and rules != null:
 		down = down or rules.combat.is_knocked_out(doc.raw())
@@ -408,10 +475,22 @@ func report_attack(
 		"knocked_out": down,
 		"condition": rules.combat.condition_of(doc.raw()) if doc != null and rules != null else "",
 	})
+	if identity != null:
+		identity.remember_attack_resolved(campaign_id(), attack.to_dict())
 	if transport != null:
 		transport.send_attack_result(attack.to_dict())
 	attack_resolved.emit(attack)
 	changed.emit()
+
+
+func _on_pending_work_received(_checks: Array, attacks: Array) -> void:
+	if identity == null:
+		return
+	var ids: Array = []
+	for attack in attacks:
+		if typeof(attack) == TYPE_DICTIONARY:
+			ids.append(String(attack.get("attack_id", "")))
+	identity.reconcile_attacks(campaign_id(), ids)
 
 
 ## Whether an Amazing hit forces this character to check for consciousness.

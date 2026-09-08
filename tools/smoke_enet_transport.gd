@@ -41,6 +41,7 @@ func _run() -> void:
 	await _test_the_round_travels()
 	await _test_reconnect_replays_the_gap()
 	await _test_unknown_player_can_be_refused()
+	await _test_a_moved_table_is_not_joined_by_accident()
 	await _test_peer_ids_never_escape()
 
 	_teardown()
@@ -480,17 +481,24 @@ func _test_reconnect_replays_the_gap() -> void:
 	# The table carries on without them.
 	_host.broadcast_event(Session.EVENT_NOTE, "", {"text": "the door gives way"})
 	_host.broadcast_event(Session.EVENT_NOTE, "", {"text": "something moves inside"})
-	var missed_count: int = _session.last_seq() - seq_before
+	# A private line between the GM and itself is after the same sequence mark,
+	# but Alice was never entitled to receive it live and must not get it through
+	# reconnect replay either.
+	var gm_id := String(_session.gm_seat().get("player_id", ""))
+	_host.broadcast_event(Session.EVENT_CHAT, gm_id, {"text": "private planning", "to": gm_id})
+	var missed_count := 2
 
-	# Next week, a new process, a brand new peer id -- only the player_id
-	# survived, and that is what the host matches on.
+	# Next week, a new process and a typed address. The client does not know the
+	# campaign until the host introduces it, then selects the matching saved id.
 	_client = _track(Transport.new())
 	var welcomed := []
 	_client.player_connected.connect(func(id: String, is_reconnect: bool): welcomed.append([id, is_reconnect]))
 	var replayed := []
 	_client.events_replayed.connect(func(events: Array): replayed.append(events))
 
-	_client.join("127.0.0.1", PORT, player_id, "Alice", seq_before)
+	_client.join("127.0.0.1", PORT, "", "Alice", 0, {
+		_session.campaign_id: {"player_id": player_id, "last_seq": seq_before},
+	})
 	var back := await _pump_until(func(): return welcomed.size() > 0 and replayed.size() > 0)
 	check_true(back, "the player rejoins and is replayed to")
 	if not back:
@@ -508,9 +516,9 @@ func _test_reconnect_replays_the_gap() -> void:
 	)
 	check_eq(
 		String(events[events.size() - 1].get("payload", {}).get("text", "")), "something moves inside",
-		"and ends at the newest"
+		"and excludes private lines the player could not see live"
 	)
-	check_eq(_client.last_seen_seq(), _session.last_seq(), "the client is caught up")
+	check_eq(_client.last_seen_seq(), seq_before + 2, "the client advances through the visible replay")
 
 	# A client that never dropped asks from where it is and gets nothing, which
 	# is the case that a naive "replay everything" would get wrong.
@@ -564,6 +572,33 @@ func _test_unknown_player_can_be_refused() -> void:
 	_untrack(returning)
 
 	_host.allow_new_players = true
+
+
+## A saved address is not a promise about who is behind it.
+##
+## Cold-start recovery dials whatever the player last joined. If that machine is
+## now running a different campaign -- another GM on the same Wi-Fi, or the same
+## GM having moved on to another game -- resuming in the background must not
+## quietly seat the player at a table nobody invited them to.
+func _test_a_moved_table_is_not_joined_by_accident() -> void:
+	var seats_before: int = _session.seats.size()
+
+	var resuming = _track(Transport.new())
+	var refusals := []
+	var welcomes := []
+	resuming.transport_error.connect(func(message: String): refusals.append(message))
+	resuming.player_connected.connect(func(_id: String, _r: bool): welcomes.append(true))
+	resuming.join("127.0.0.1", PORT, "", "Alice", 0, {}, "not-the-campaign-that-is-here")
+
+	var refused := await _pump_until(func(): return refusals.size() > 0)
+	check_true(refused, "resuming onto a different campaign is refused")
+	check_eq(welcomes.size(), 0, "and the player is never welcomed there")
+	check_eq(_session.seats.size(), seats_before, "no unsolicited seat is created at the other table")
+	check_false(
+		resuming.can_reconnect(),
+		"and the retry loop stops rather than hammering a stranger's GM"
+	)
+	_untrack(resuming)
 
 
 ## A peer id is an implementation detail of one connection. Nothing above the

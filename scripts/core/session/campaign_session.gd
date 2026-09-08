@@ -17,7 +17,7 @@ extends RefCounted
 ##
 
 ## Bumped when the stored shape changes, so old campaign files can be migrated.
-const FORMAT_VERSION := 1
+const FORMAT_VERSION := 2
 
 # Event kinds recorded in the log.
 const EVENT_ROLL := "roll"
@@ -87,6 +87,13 @@ var optional_rules: Dictionary = {}
 ## not lose track of whose turn it is. It is also what gets sent to the players,
 ## so there is one copy and the GM's is it.
 var active_round: Dictionary = {}
+
+## Work that has not reached a settled fact yet. Unlike the event log, these are
+## current state: they disappear when answered and must survive a GM screen
+## rebuild, campaign reopen, or a player's reconnect.
+var pending_check_requests: Array = []
+var pending_called_checks: Dictionary = {}
+var pending_attacks: Dictionary = {}
 
 ## skill_id -> how many times the GM has called for or ruled on that skill.
 ##
@@ -194,6 +201,16 @@ func remove_seat(player_id: String) -> bool:
 	for i in seats.size():
 		if String(seats[i].get("player_id", "")) == player_id:
 			seats.remove_at(i)
+			for request_i in range(pending_check_requests.size() - 1, -1, -1):
+				var request = pending_check_requests[request_i]
+				if typeof(request) == TYPE_DICTIONARY and String(request.get("player_id", "")) == player_id:
+					pending_check_requests.remove_at(request_i)
+			for check_id in pending_called_checks.keys():
+				resolve_called_check(String(check_id), player_id)
+			for attack_id in pending_attacks.keys():
+				var pending = pending_attacks[attack_id]
+				if typeof(pending) == TYPE_DICTIONARY and String(pending.get("target_player_id", "")) == player_id:
+					pending_attacks.erase(attack_id)
 			return true
 	return false
 
@@ -263,6 +280,111 @@ func has_round() -> bool:
 ## finished round is a screenful of stale names.
 func clear_round() -> void:
 	active_round = {}
+
+
+# --- Pending network work -------------------------------------------------
+
+func queue_check_request(check: Dictionary) -> void:
+	var check_id := String(check.get("check_id", ""))
+	if check_id.is_empty():
+		return
+	for existing in pending_check_requests:
+		if typeof(existing) == TYPE_DICTIONARY and String(existing.get("check_id", "")) == check_id:
+			return
+	pending_check_requests.append(check.duplicate(true))
+
+
+func resolve_check_request(check_id: String) -> void:
+	for i in range(pending_check_requests.size() - 1, -1, -1):
+		var existing = pending_check_requests[i]
+		if typeof(existing) == TYPE_DICTIONARY and String(existing.get("check_id", "")) == check_id:
+			pending_check_requests.remove_at(i)
+
+
+func check_requests() -> Array:
+	return pending_check_requests.duplicate(true)
+
+
+## Keep a ruled GM check until every intended player rolls or dismisses it.
+func queue_called_check(check: Dictionary, target_player_id: String = "") -> void:
+	var check_id := String(check.get("check_id", ""))
+	if check_id.is_empty():
+		return
+	var waiting_for: Array = []
+	if not target_player_id.is_empty():
+		if has_seat(target_player_id):
+			waiting_for.append(target_player_id)
+	else:
+		for seat in seats:
+			if not bool(seat.get("is_gm", false)):
+				waiting_for.append(String(seat.get("player_id", "")))
+	if waiting_for.is_empty():
+		pending_called_checks.erase(check_id)
+		return
+	pending_called_checks[check_id] = {
+		"check": check.duplicate(true),
+		"waiting_for": waiting_for,
+	}
+
+
+func pending_checks_for(player_id: String) -> Array:
+	var out: Array = []
+	for check_id in pending_called_checks:
+		var entry = pending_called_checks[check_id]
+		if typeof(entry) != TYPE_DICTIONARY:
+			continue
+		var waiting = entry.get("waiting_for", [])
+		if typeof(waiting) != TYPE_ARRAY or not waiting.has(player_id):
+			continue
+		var check = entry.get("check", {})
+		if typeof(check) == TYPE_DICTIONARY:
+			out.append(check.duplicate(true))
+	return out
+
+
+func resolve_called_check(check_id: String, player_id: String) -> bool:
+	var entry = pending_called_checks.get(check_id, null)
+	if typeof(entry) != TYPE_DICTIONARY:
+		return false
+	var waiting = entry.get("waiting_for", [])
+	if typeof(waiting) != TYPE_ARRAY or not waiting.has(player_id):
+		return false
+	waiting.erase(player_id)
+	if waiting.is_empty():
+		pending_called_checks.erase(check_id)
+	else:
+		entry["waiting_for"] = waiting
+	return true
+
+
+func queue_attack(attack: Dictionary, target_player_id: String) -> void:
+	var attack_id := String(attack.get("attack_id", ""))
+	if attack_id.is_empty() or target_player_id.is_empty():
+		return
+	pending_attacks[attack_id] = {
+		"target_player_id": target_player_id,
+		"attack": attack.duplicate(true),
+	}
+
+
+func pending_attacks_for(player_id: String) -> Array:
+	var out: Array = []
+	for attack_id in pending_attacks:
+		var entry = pending_attacks[attack_id]
+		if typeof(entry) != TYPE_DICTIONARY or String(entry.get("target_player_id", "")) != player_id:
+			continue
+		var attack = entry.get("attack", {})
+		if typeof(attack) == TYPE_DICTIONARY:
+			out.append(attack.duplicate(true))
+	return out
+
+
+func resolve_attack(attack_id: String, player_id: String) -> bool:
+	var entry = pending_attacks.get(attack_id, null)
+	if typeof(entry) != TYPE_DICTIONARY or String(entry.get("target_player_id", "")) != player_id:
+		return false
+	pending_attacks.erase(attack_id)
+	return true
 
 
 # --- What this table checks ------------------------------------------------
@@ -373,6 +495,23 @@ func events_since(seq: int) -> Array:
 	var out: Array = []
 	for event in events:
 		if AlternityNum.as_int(event.get("seq", 0)) > seq:
+			out.append(event)
+	return out
+
+
+## Everything after `seq` that one player was entitled to receive live.
+##
+## Reconnect replay must obey the same privacy boundary as live delivery: table
+## events are public, while a private line belongs only to its author and its
+## addressee. Sending events_since() directly would reveal every missed whisper.
+func visible_events_since(player_id: String, seq: int) -> Array:
+	var out: Array = []
+	for event in events:
+		if AlternityNum.as_int(event.get("seq", 0)) <= seq:
+			continue
+		var payload = event.get("payload", {})
+		var to := String(payload.get("to", "")) if typeof(payload) == TYPE_DICTIONARY else ""
+		if to.is_empty() or to == player_id or String(event.get("player_id", "")) == player_id:
 			out.append(event)
 	return out
 
@@ -528,12 +667,15 @@ func to_dict() -> Dictionary:
 		"optional_rules": optional_rules.duplicate(true),
 		"check_counts": check_counts.duplicate(true),
 		"active_round": active_round.duplicate(true),
+		"pending_check_requests": pending_check_requests.duplicate(true),
+		"pending_called_checks": pending_called_checks.duplicate(true),
+		"pending_attacks": pending_attacks.duplicate(true),
 	}
 
 
 static func from_dict(data: Dictionary) -> CampaignSession:
 	var session := CampaignSession.new()
-	session.format_version = AlternityNum.as_int(data.get("format_version", 1), 1)
+	session.format_version = FORMAT_VERSION
 	session.campaign_id = String(data.get("campaign_id", new_id()))
 	session.display_name = String(data.get("display_name", "New Campaign"))
 	session.created_at = AlternityNum.as_int(data.get("created_at", 0))
@@ -552,4 +694,10 @@ static func from_dict(data: Dictionary) -> CampaignSession:
 
 	var fight = data.get("active_round", {})
 	session.active_round = fight.duplicate(true) if typeof(fight) == TYPE_DICTIONARY else {}
+	var requests = data.get("pending_check_requests", [])
+	session.pending_check_requests = requests.duplicate(true) if typeof(requests) == TYPE_ARRAY else []
+	var called = data.get("pending_called_checks", {})
+	session.pending_called_checks = called.duplicate(true) if typeof(called) == TYPE_DICTIONARY else {}
+	var attacks = data.get("pending_attacks", {})
+	session.pending_attacks = attacks.duplicate(true) if typeof(attacks) == TYPE_DICTIONARY else {}
 	return session

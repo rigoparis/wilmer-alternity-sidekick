@@ -39,7 +39,9 @@ development machine.
   interface rather than `MultiplayerAPI` and `@rpc` — there is no scene to
   replicate, and a scoped `MultiplayerAPI` per peer would need two node subtrees
   to talk to each other in one `SceneTree`, which is what makes the two-peer
-  test possible at all.
+  test possible at all. The host identifies its campaign before the player
+  presents a saved identity, so a typed-address reconnect finds the existing
+  seat instead of creating a duplicate.
 - **`core/session/lan_discovery.gd`** — UDP broadcast question, unicast answer,
   so nobody types an IP. Deliberately separate: it fails for boring reasons
   (guest-network client isolation, an unanswered firewall prompt, a phone on
@@ -84,7 +86,41 @@ ENet assigns peer ids randomly per connection, so a player returning next week
 gets a different one. The transport maps peer → `player_id` on handshake and
 exposes only the stable id upward. Reconnect is "match a returning peer to an
 existing seat", not "add a player". `PlayerIdentity` is what makes that survive
-a restart on the player's device.
+a restart on the player's device. A reconnect welcome also includes the current
+combat round before the table is considered connected, so pending initiative and
+fight membership are restored as one state rather than a later best-effort
+broadcast.
+
+### Mobile suspension and reconnect
+
+ENet allows three minutes without acknowledged traffic before abandoning a peer,
+which covers ordinary app switching better than its shorter default. If the
+socket is gone when the player returns, `TableSession` reopens it with exponential
+backoff while keeping the same table screen and stable identity. Only a genuine
+socket loss retries; a protocol mismatch or a refusal remains visible instead of
+looping forever. Android Back is handled by the shell and asks “Leave the table?”
+before disconnecting; it does not implicitly close the app or expose character
+selection underneath the live table.
+
+The player identity file also holds the last joined endpoint and local character
+binding. If Android kills the process, the next launch rebuilds the table session,
+reopens that hero and reconnects automatically. The host campaign id is checked
+before the client says hello, so an address later reused by a different campaign
+cannot silently create a seat there.
+
+### Pending checks and attacks are state
+
+Unanswered player check requests, ruled checks waiting for a player, and attacks
+waiting for their target are stored in the campaign header rather than only on a
+screen. The reconnect welcome includes only the pending work addressed to that
+stable player id. A roll, refusal, or attack result removes the corresponding
+item, and duplicate packets are idempotent.
+
+Attack application also has a small player-owned journal. If damage was saved but
+the result packet was lost, the returning device reuses the stored outcome and
+resends it; it never applies the same attack to the character twice. The journal
+is pruned after a later welcome confirms that the GM no longer considers the
+attack pending.
 
 ### Dice are client-authoritative, and results travel as facts
 
@@ -128,6 +164,10 @@ A player device is never told the seat list, so it cannot name the GM's
 real seat before logging, so a GM handover later does not leave a trail of
 messages addressed to a sentinel.
 
+Reconnect replay applies the same visibility rule as live delivery: public
+events are replayed to everyone, while a private message is replayed only to its
+author and recipient. Rejoining cannot reveal another player's private GM chat.
+
 ### Opening a table seats a GM
 
 A campaign created from the campaign list has no seats. A table with no GM seat
@@ -147,17 +187,17 @@ rebindable.
 
 | Suite | Checks | Covers |
 |---|---|---|
-| `smoke_campaign_session` | 82 | the document, reconnect flow, the replay window |
+| `smoke_campaign_session` | 109 | the document, reconnect flow, replay, and durable pending work |
 | `smoke_campaign_store` | 76 | the sidecar log, compaction, a lost log, rename |
-| `smoke_gm_screen` | 127 | M1's checkpoint, driven through the real shell, and who the GM can attack |
-| `smoke_enet_transport` | 115 | two peers over the loopback, handshake, reconnect, the check round trip |
+| `smoke_gm_screen` | 133 | M1's checkpoint, driven through the real shell, and who the GM can attack |
+| `smoke_enet_transport` | 118 | two peers over the loopback, typed-address identity recovery, a moved table refused, private replay, the check round trip |
 | `smoke_lan_discovery` | 26 | a busy port, foreign traffic, a departed host |
-| `smoke_table_session` | 141 | M2's checkpoint: two whole shells against each other, including an attack both halves of |
-| `smoke_character_sync` | 43 | the snapshot policy and the conflict rule |
+| `smoke_table_session` | 166 | two whole shells, automatic and cold-start reconnect, pending-work recovery, exactly-once damage, and Android Back confirmation |
+| `smoke_character_sync` | 47 | the snapshot policy and the conflict rule |
 | `smoke_skill_check` | 77 | the check document, both directions, the step total |
 | `smoke_die_shape` | 738 | every die read at every one of its numbers |
-| `smoke_dice_tray` | 64 | real physics: dice settle, in range, always answer |
-| `smoke_check_flow` | 45 | a check end to end through two shells and real dice |
+| `smoke_dice_tray` | 68 | real physics: dice settle, in range, always answer |
+| `smoke_check_flow` | 52 | a check end to end through two shells and real dice |
 
 Every one of these was checked by breaking the thing it claims to test and
 confirming it fails.
@@ -174,22 +214,30 @@ These are the things a development machine cannot settle.
    on the same host under Windows, so the suite asks `127.0.0.1` instead), and
    anything a router does to peer-to-peer traffic.
 
-2. **A release APK.** `permissions/internet` is set, but debug exports get
-   INTERNET implicitly for the remote debugger — so networking will appear to
-   work in testing and could fail only on the friends' devices. Export a release
-   APK and join a table from it at least once.
+2. **A release APK on real phones.** The release export itself is settled: a
+   signed release APK builds, and its manifest declares `INTERNET` and
+   `ACCESS_NETWORK_STATE` rather than inheriting INTERNET implicitly the way a
+   debug export does. What is still unproven is joining a table from that APK on
+   a real phone, backgrounding it past the three-minute timeout, and letting the
+   OS kill it to exercise cold-start recovery. Release signing also still uses
+   the debug keystore, which has to be replaced before public distribution.
 
-3. **Whether the host must be a desktop.** Hosting on the GM's phone means the
-   session dies when the app is backgrounded. Nothing in the code assumes either
-   way; the decision is about what to tell the group.
+3. **Whether the host must be a desktop.** A briefly suspended phone now has a
+   longer timeout and players automatically reconnect after a dropped socket.
+   Android may still kill a backgrounded GM process entirely; there is no host
+   migration or service keeping that table alive. The decision is about what to
+   tell the group and what real devices do under their battery policies.
 
 4. **When to compact.** `CampaignStore.compact()` exists and is tested, but
    nothing calls it automatically. A weekly campaign will not trouble the
    `DEFAULT_EVENT_TAIL` of 5000 for a long time, so this is a decision to make
    before it matters rather than a bug.
 
-5. **Rolls from the player table view.** Checks are rolled from the character
-   sheet, where a skill has already been chosen. The player table view still has
-   no roll button of its own, and a GM-called check arriving there is raised as
-   a signal but not yet shown to the player — `CheckRunner.check_arrived` has no
-   listener on that screen.
+5. **Two paths to the same roll.** A GM-called check is shown in both places a
+   player might be looking: the character sheet banner and the player table
+   view, which lists each called check with its own Roll and Dismiss buttons.
+   Both read `TableSession.incoming_checks`, so a check restored by a reconnect
+   appears wherever the player happens to be. What remains unsettled is that
+   `CheckRunner.check_arrived` still has no listener — the table view is driven
+   by `TableSession.check_arrived` instead — so that signal is currently dead
+   weight and should either be used or removed.
