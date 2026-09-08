@@ -1004,15 +1004,16 @@ func character_resistance_modifier(character: Dictionary, ability: String) -> in
 	# Skill Rank Benefits
 	var skill_bonus := 0
 	if ability == "STR":
-		# Only the two martial-arts skills. Blade, Bludgeon and Powered Weapon
-		# used to sit in this list as well, carrying the same +1/+2/+3 template
-		# copied from Power Martial Arts. Their genuine rank benefits are combat
-		# manoeuvres -- reaction parry, second and third strikes, disarms and
-		# damage -- and no passive resistance at all.
-		# Source: Player's Handbook p. 68 for the melee weapons, pp. 69-70 for
-		# the martial arts that do grant it.
+		# Every close-combat specialty that hardens the hero's Strength
+		# resistance modifier with the same +1/+2/+3 rank template: Blade,
+		# Bludgeon and Powered Weapon ("any Melee Weapons specialty skill
+		# provides an improvement to a hero's Strength resistance modifier. It
+		# improves by +1 at rank 4, by +1 again at rank 8, and by +1 again at
+		# rank 12" -- Player's Handbook p. 68), plus the two martial arts that
+		# carry the identical wording on pp. 69-70. They do not stack: the rule
+		# is a single modifier, so the best-qualifying specialty answers.
 		var max_melee_bonus := 0
-		for skill_id in [17, 20]: # Power Martial Arts, Defensive Martial Arts
+		for skill_id in [12, 13, 14, 17, 20]: # Blade, Bludgeon, Powered Weapon, Power Martial Arts, Defensive Martial Arts
 			var r := skill_rank(character, skill_id)
 			var b := 0
 			if r >= 12:

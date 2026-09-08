@@ -1047,19 +1047,25 @@ const RANK_BENEFIT_NOTES := {
 		12: "Running jump distance increases by another 1 meter. Source: Player's Handbook p. 67.",
 	},
 	12: {
-		4: "Reaction parry becomes available: an incoming melee or unarmed attack may be parried using the next available action. Source: Player's Handbook p. 68.",
+		4: "Strength resistance modifier improves by +1 for close-quarters defense, and reaction parry becomes available: an incoming melee or unarmed attack may be parried using the next available action. Source: Player's Handbook p. 68.",
 		6: "Double-strike becomes available: two attacks in one phase with one control die and two situation dice at +1 and +2 step penalties. Source: Player's Handbook p. 68.",
+		8: "Strength resistance modifier improves by another +1 (to +2) for close-quarters defense. Source: Player's Handbook p. 68.",
 		9: "Multistrike becomes available: three attacks in one phase, with +1, +2, and +3 step penalties on the situation dice. Source: Player's Handbook p. 68.",
+		12: "Strength resistance modifier improves by another +1 (to +3) for close-quarters defense. Source: Player's Handbook p. 68.",
 	},
 	13: {
-		4: "Reaction parry becomes available: an incoming melee or unarmed attack may be parried using the next available action. Source: Player's Handbook p. 68.",
+		4: "Strength resistance modifier improves by +1 for close-quarters defense, and reaction parry becomes available: an incoming melee or unarmed attack may be parried using the next available action. Source: Player's Handbook p. 68.",
 		6: "Double-strike becomes available: two attacks in one phase with one control die and two situation dice at +1 and +2 step penalties. Source: Player's Handbook p. 68.",
+		8: "Strength resistance modifier improves by another +1 (to +2) for close-quarters defense. Source: Player's Handbook p. 68.",
 		9: "Multistrike becomes available: three attacks in one phase, with +1, +2, and +3 step penalties on the situation dice. Source: Player's Handbook p. 68.",
+		12: "Strength resistance modifier improves by another +1 (to +3) for close-quarters defense. Source: Player's Handbook p. 68.",
 	},
 	14: {
-		4: "Reaction parry becomes available: an incoming melee or unarmed attack may be parried using the next available action. Source: Player's Handbook p. 68.",
+		4: "Strength resistance modifier improves by +1 for close-quarters defense, and reaction parry becomes available: an incoming melee or unarmed attack may be parried using the next available action. Source: Player's Handbook p. 68.",
 		6: "Double-strike becomes available: two attacks in one phase with one control die and two situation dice at +1 and +2 step penalties. Source: Player's Handbook p. 68.",
+		8: "Strength resistance modifier improves by another +1 (to +2) for close-quarters defense. Source: Player's Handbook p. 68.",
 		9: "Multistrike becomes available: three attacks in one phase, with +1, +2, and +3 step penalties on the situation dice. Source: Player's Handbook p. 68.",
+		12: "Strength resistance modifier improves by another +1 (to +3) for close-quarters defense. Source: Player's Handbook p. 68.",
 	},
 	16: {
 		4: "Knockout attempts impose a +1 step penalty on the opponent's Stamina-endurance check after an Amazing success. Source: Player's Handbook p. 69.",
@@ -1528,7 +1534,7 @@ const NON_FX_STRUCTURED_SECTIONS := {
 	],
 	11: [
 		{"kind": "text", "title": "Description", "body": "Measures proficiency with close-combat weaponry, from basic wooden clubs to advanced monomolecular-edged swords and energy blades."},
-		{"kind": "text", "title": "Specialty Skills", "body": "Blade: Edged and stabbing weapons (swords, daggers, axes, katanas).\nBludgeon: Blunt impact weapons (clubs, maces, quarterstaffs, flails).\nPowered Weapon: High-tech vibrating or energy-channeling weapons (chainswords, stun batons, star swords). Untrained use prohibited."},
+		{"kind": "text", "title": "Specialty Skills", "body": "Blade: Edged and stabbing weapons (swords, daggers, axes, katanas).\nBludgeon: Blunt impact weapons (clubs, maces, quarterstaffs, flails).\nPowered Weapon: High-tech vibrating or energy-channeling weapons (chainswords, stun batons, star swords)."},
 		{"kind": "text", "title": "Combat Profile", "body": "Attack Form: Hand-to-hand weapon combat rolls, applying Strength damage adjustments (Table P9).\nDefense Form: Active Reaction Parry at Rank 4, intercepting and deflecting physical attacks."},
 	],
 	12: [
@@ -1554,7 +1560,7 @@ const NON_FX_STRUCTURED_SECTIONS := {
 		{"kind": "text", "title": "Combat Profile", "body": "Attack Form: Close-quarters weapon strikes applying Strength damage adjustments (Table P9).\nDefense Form: Active Reaction Parry at Rank 4; passive close-quarters Strength resistance modifier bonus (+1 at Rank 4, +2 at Rank 8, +3 at Rank 12)."},
 	],
 	14: [
-		{"kind": "text", "title": "Description", "body": "High-tech vibrating or energy-channeling weapons (chainswords, stun batons, star swords). Untrained use prohibited."},
+		{"kind": "text", "title": "Description", "body": "High-tech vibrating or energy-channeling weapons (chainswords, stun batons, star swords)."},
 		{"kind": "ranks", "title": "Specialty Rank Benefits", "entries": [
 			{"rank": 4, "title": "Reaction Parry & Strength Resistance", "body": "Can actively attempt to parry incoming melee or unarmed attacks using next available phase action (parry roll must equal or exceed attacker's success tier to negate damage). Improves passive Strength resistance modifier by +1 for close-quarters defense."},
 			{"rank": 6, "title": "Double-Strike", "body": "Can swing twice in a single action against one or two targets in close-combat range. First strike rolled with +1 step penalty situation die; second strike with +2 step penalty situation die."},
