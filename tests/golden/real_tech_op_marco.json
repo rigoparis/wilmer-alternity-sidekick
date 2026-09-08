@@ -791,7 +791,8 @@
 		"starting_skill_budget": 77,
 		"validations": [
 			"Ability total must be 55 (campaign target); current total is 62.",
-			"Skill points are overspent by 21. Source: Player's Handbook Chapter 4 p. 34."
+			"Skill points are overspent by 21. Source: Player's Handbook Chapter 4 p. 34.",
+			"An FX Talent may purchase only one FX broad skill, and currently holds 2 (Brick, Druidism). Source: Beyond Science: A Guide to FX p. 6."
 		]
 	}
 }
