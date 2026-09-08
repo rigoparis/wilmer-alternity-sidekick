@@ -654,7 +654,8 @@ func _score_text(score: Dictionary) -> String:
 	]
 
 
-## Table P9: Strength & Unarmed Damage Adjustments. Source: Player's Handbook p. 34.
+## Table P9: Strength & Damage. Applies to unarmed attacks, melee weapons, and
+## thrown weapons alike (Player's Handbook p. 32). Table itself: p. 40.
 func strength_damage_bonus(score: int) -> int:
 	if score <= 6:
 		return -1

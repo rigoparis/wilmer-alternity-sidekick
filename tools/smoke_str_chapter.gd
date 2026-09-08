@@ -96,7 +96,8 @@ func _init() -> void:
 	_test_armor_operation()
 	_test_unarmed_damage()
 	_test_power_martial_arts_resistance()
-	_test_melee_weapons_grant_no_resistance()
+	_test_melee_weapons_grant_resistance()
+	_test_melee_weapon_strength_damage()
 	_test_heightened_ability()
 
 	finish()
@@ -289,30 +290,53 @@ func _test_power_martial_arts_resistance() -> void:
 		)
 
 
-## Blade, Bludgeon and Powered Weapon grant no passive resistance.
+## Blade, Bludgeon and Powered Weapon harden the hero's Strength resistance
+## modifier, exactly as the martial arts do.
 ##
-## All three carried the +1/+2/+3 template copied from Power Martial Arts, in
-## the calculation and in their rank benefit text, with a citation to the page
-## that describes their real benefits. Those are combat manoeuvres -- reaction
-## parry at rank 4, a second strike at 6, a third at 9, disarms and damage.
-## Source: Player's Handbook p. 68.
-func _test_melee_weapons_grant_no_resistance() -> void:
+## "At higher ranks, any Melee Weapons specialty skill provides an improvement
+## to a hero's Strength resistance modifier. It improves by +1 at rank 4, by +1
+## again at rank 8, and by +1 again at rank 12." -- Player's Handbook p. 68.
+##
+## A prior pass read that paragraph as a fabrication, stripped the bonus from
+## the engine and pinned the removal here with a citation to this same page.
+## The page says the opposite; this test now transcribes it.
+func _test_melee_weapons_grant_resistance() -> void:
+	var expected := {0: 0, 3: 0, 4: 1, 7: 1, 8: 2, 11: 2, 12: 3}
 	var melee := {"Blade": 12, "Bludgeon": 13, "Powered weapon": 14}
 	for name in melee:
-		for rank in [4, 8, 12]:
+		for rank in expected:
 			var character: Dictionary = _rules.default_character()
 			character["species_id"] = 0
 			character["abilities"]["STR"] = 10   # base modifier of 0
 			_rules.ensure_character_shape(character)
 			_rules.achievements.set_achievement_points(character, 200)
 			_rules.force_skill_rank(character, 11, 1)   # Melee Weapons broad
-			_rules.force_skill_rank(character, AlternityNum.as_int(melee[name]), rank)
+			if AlternityNum.as_int(rank) > 0:
+				_rules.force_skill_rank(character, AlternityNum.as_int(melee[name]), AlternityNum.as_int(rank))
 			check_eq(
-				_rules.character_resistance_modifier(character, "STR"), 0,
-				"%s rank %d grants no passive Strength resistance" % [name, rank]
+				_rules.character_resistance_modifier(character, "STR"),
+				AlternityNum.as_int(expected[rank]),
+				"%s rank %d gives a %+d step Strength resistance modifier" % [
+					name, AlternityNum.as_int(rank), AlternityNum.as_int(expected[rank]),
+				]
 			)
 
-		# The genuine benefits are still described.
+		# It does not stack with a martial-arts bonus: the rule is one modifier.
+		var stacked: Dictionary = _rules.default_character()
+		stacked["species_id"] = 0
+		stacked["abilities"]["STR"] = 10
+		_rules.ensure_character_shape(stacked)
+		_rules.achievements.set_achievement_points(stacked, 200)
+		_rules.force_skill_rank(stacked, 11, 1)
+		_rules.force_skill_rank(stacked, AlternityNum.as_int(melee[name]), 12)
+		_rules.force_skill_rank(stacked, SKILL_UNARMED_ATTACK, 1)
+		_rules.force_skill_rank(stacked, SKILL_POWER_MARTIAL_ARTS, 12)
+		check_eq(
+			_rules.character_resistance_modifier(stacked, "STR"), 3,
+			"%s rank 12 and Power Martial Arts rank 12 still total +3, not +6" % name
+		)
+
+		# The combat manoeuvres are still described alongside it.
 		var skill: Dictionary = _skill_named(String(name))
 		var benefits: Dictionary = _rules.skill_detail(skill).get("rank_benefits", {})
 		for rank in [4, 6, 9]:
@@ -320,6 +344,36 @@ func _test_melee_weapons_grant_no_resistance() -> void:
 				benefits.has(rank) or benefits.has(str(rank)),
 				"%s keeps its rank %d combat manoeuvre" % [name, rank]
 			)
+
+
+## A melee weapon's damage takes the wielder's Strength adjustment (Table P9),
+## the same as an unarmed or thrown attack. "A high Strength score provides a
+## bonus to the damage a hero inflicts when making an unarmed attack, using a
+## melee weapon, or using a thrown weapon." -- Player's Handbook p. 32.
+func _test_melee_weapon_strength_damage() -> void:
+	var cases := [
+		["STR 10, no adjustment", 10, "d4w/d4+1w/d4+2w"],
+		["STR 14, +2 adjustment", 14, "d4+2w/d4+3w/d4+4w"],
+		["STR 6, -1 adjustment", 6, "d4-1w/d4w/d4+1w"],
+	]
+	for spec in cases:
+		var character: Dictionary = _rules.default_character()
+		character["species_id"] = 0
+		character["abilities"]["STR"] = AlternityNum.as_int(spec[1])
+		_rules.ensure_character_shape(character)
+		_rules.force_skill_rank(character, 11, 1)   # Melee Weapons broad
+		# Rapier (weapon_core_076): base blade damage d4w/d4+1w/d4+2w.
+		_rules.equipment.add_equipment_to_character(character, "weapon_core_076")
+
+		var damage := ""
+		for form in _rules.equipment.attack_forms_for_character(character):
+			if String(form.get("name", "")) == "Rapier":
+				damage = String(form.get("damage", ""))
+				break
+		check_eq(
+			damage, String(spec[2]),
+			"a rapier at %s does %s" % [String(spec[0]), String(spec[2])]
+		)
 
 
 ## Heightened Ability raises the ability the player chose, and says nothing

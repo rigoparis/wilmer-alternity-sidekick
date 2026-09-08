@@ -6399,7 +6399,7 @@
                 "clip_size": "0",
                 "clip_cost": 0,
                 "hide": 2,
-                "strength_based": false,
+                "strength_based": true,
                 "melee": true,
                 "thrown": false,
                 "type": "LI/O"
@@ -6440,7 +6440,7 @@
                 "clip_size": "0",
                 "clip_cost": 0,
                 "hide": 1,
-                "strength_based": false,
+                "strength_based": true,
                 "melee": true,
                 "thrown": false,
                 "type": "LI/O"
@@ -6481,7 +6481,7 @@
                 "clip_size": "0",
                 "clip_cost": 0,
                 "hide": 1,
-                "strength_based": false,
+                "strength_based": true,
                 "melee": true,
                 "thrown": false,
                 "type": "LI/O"
@@ -6522,7 +6522,7 @@
                 "clip_size": "0",
                 "clip_cost": 0,
                 "hide": -1000,
-                "strength_based": false,
+                "strength_based": true,
                 "melee": true,
                 "thrown": false,
                 "type": "LI/O"
@@ -6563,7 +6563,7 @@
                 "clip_size": "0",
                 "clip_cost": 0,
                 "hide": 1,
-                "strength_based": false,
+                "strength_based": true,
                 "melee": true,
                 "thrown": false,
                 "type": "LI/O"
@@ -6604,7 +6604,7 @@
                 "clip_size": "0",
                 "clip_cost": 0,
                 "hide": -1000,
-                "strength_based": false,
+                "strength_based": true,
                 "melee": true,
                 "thrown": false,
                 "type": "LI/O"
@@ -6850,7 +6850,7 @@
                 "clip_size": "0",
                 "clip_cost": 0,
                 "hide": 2,
-                "strength_based": false,
+                "strength_based": true,
                 "melee": true,
                 "thrown": false,
                 "type": "LI/O"
@@ -6973,7 +6973,7 @@
                 "clip_size": "0",
                 "clip_cost": 0,
                 "hide": -1000,
-                "strength_based": false,
+                "strength_based": true,
                 "melee": true,
                 "thrown": false,
                 "type": "LI/O"
@@ -7014,7 +7014,7 @@
                 "clip_size": "0",
                 "clip_cost": 0,
                 "hide": 1,
-                "strength_based": false,
+                "strength_based": true,
                 "melee": true,
                 "thrown": false,
                 "type": "LI/O"
@@ -7137,7 +7137,7 @@
                 "clip_size": "0",
                 "clip_cost": 0,
                 "hide": -1000,
-                "strength_based": false,
+                "strength_based": true,
                 "melee": true,
                 "thrown": false,
                 "type": "LI/O"
@@ -7178,7 +7178,7 @@
                 "clip_size": "0",
                 "clip_cost": 0,
                 "hide": -1000,
-                "strength_based": false,
+                "strength_based": true,
                 "melee": true,
                 "thrown": false,
                 "type": "LI/O"
@@ -7219,7 +7219,7 @@
                 "clip_size": "0",
                 "clip_cost": 0,
                 "hide": -1000,
-                "strength_based": false,
+                "strength_based": true,
                 "melee": true,
                 "thrown": false,
                 "type": "LI/O"
@@ -7260,7 +7260,7 @@
                 "clip_size": "0",
                 "clip_cost": 0,
                 "hide": 1,
-                "strength_based": false,
+                "strength_based": true,
                 "melee": true,
                 "thrown": false,
                 "type": "LI/O"
@@ -7301,7 +7301,7 @@
                 "clip_size": "0",
                 "clip_cost": 0,
                 "hide": 1,
-                "strength_based": false,
+                "strength_based": true,
                 "melee": true,
                 "thrown": false,
                 "type": "LI/O"
