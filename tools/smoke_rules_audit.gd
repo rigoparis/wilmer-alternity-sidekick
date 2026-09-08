@@ -37,27 +37,28 @@ func _init() -> void:
 	var r8: Dictionary = rules.resolve_check(1, 15, 10, "+d20") # Nat 1 with +d20 is NOT Auto Success
 	assert_eq.call(r8.degree, "Failure", "Nat 1 with +d20 is not auto success when total 16 > 10")
 
-	# --- 2. Table P1: Profession Ability Minimums ---
+	# --- 2. Table P1: Profession Ability Minimums (PHB p. 30; a blank cell is no
+	#        requirement, so those are asserted as 0 to keep phantom minimums out) ---
 	print("Testing Table P1 Profession Minimums...")
 	var combat_spec: Dictionary = rules.get_profession_by_id(0) # Combat Spec
 	assert_eq.call(rules._as_int(combat_spec.get("ability_minimums", {}).get("STR", 0)), 11, "Combat Spec STR min 11")
-	assert_eq.call(rules._as_int(combat_spec.get("ability_minimums", {}).get("DEX", 0)), 9, "Combat Spec DEX min 9")
 	assert_eq.call(rules._as_int(combat_spec.get("ability_minimums", {}).get("CON", 0)), 9, "Combat Spec CON min 9")
+	assert_eq.call(rules._as_int(combat_spec.get("ability_minimums", {}).get("DEX", 0)), 0, "Combat Spec has no DEX minimum")
 
 	var tech_op: Dictionary = rules.get_profession_by_id(5) # Tech Op
 	assert_eq.call(rules._as_int(tech_op.get("ability_minimums", {}).get("INT", 0)), 11, "Tech Op INT min 11")
 	assert_eq.call(rules._as_int(tech_op.get("ability_minimums", {}).get("DEX", 0)), 9, "Tech Op DEX min 9")
-	assert_eq.call(rules._as_int(tech_op.get("ability_minimums", {}).get("CON", 0)), 9, "Tech Op CON min 9")
+	assert_eq.call(rules._as_int(tech_op.get("ability_minimums", {}).get("CON", 0)), 0, "Tech Op has no CON minimum")
 
 	var diplomat: Dictionary = rules.get_profession_by_id(2) # Diplomat
-	assert_eq.call(rules._as_int(diplomat.get("ability_minimums", {}).get("INT", 0)), 9, "Diplomat INT min 9")
 	assert_eq.call(rules._as_int(diplomat.get("ability_minimums", {}).get("WIL", 0)), 9, "Diplomat WIL min 9")
 	assert_eq.call(rules._as_int(diplomat.get("ability_minimums", {}).get("PER", 0)), 11, "Diplomat PER min 11")
+	assert_eq.call(rules._as_int(diplomat.get("ability_minimums", {}).get("INT", 0)), 0, "Diplomat has no INT minimum")
 
 	var free_agent: Dictionary = rules.get_profession_by_id(4) # Free Agent
 	assert_eq.call(rules._as_int(free_agent.get("ability_minimums", {}).get("DEX", 0)), 11, "Free Agent DEX min 11")
-	assert_eq.call(rules._as_int(free_agent.get("ability_minimums", {}).get("INT", 0)), 9, "Free Agent INT min 9")
 	assert_eq.call(rules._as_int(free_agent.get("ability_minimums", {}).get("WIL", 0)), 9, "Free Agent WIL min 9")
+	assert_eq.call(rules._as_int(free_agent.get("ability_minimums", {}).get("INT", 0)), 0, "Free Agent has no INT minimum")
 
 	var mindwalker: Dictionary = rules.get_profession_by_id(6) # Mindwalker
 	assert_eq.call(rules._as_int(mindwalker.get("ability_minimums", {}).get("WIL", 0)), 11, "Mindwalker WIL min 11")

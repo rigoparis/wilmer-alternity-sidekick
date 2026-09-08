@@ -177,6 +177,16 @@ func _test_basics_explains_origin() -> void:
 			"Basics shows what the profession is"
 		)
 	check_true(_any_label_contains(labels, "Requires"), "Basics states the profession requirements")
+	# Combat Spec's requirement is STR 11, CON 9 -- Table P1 (PHB p. 30) leaves
+	# every other cell blank, so the rendered line must not invent a third stat.
+	check_true(
+		_any_label_contains(labels, "STR 11  CON 9"),
+		"Basics shows the Combat Spec requirement as STR 11, CON 9"
+	)
+	check_false(
+		_any_label_contains(labels, "STR 11  DEX 9  CON 9"),
+		"Basics does not show the old phantom DEX 9 in the Combat Spec requirement line"
+	)
 
 	# Every generation button offered must actually roll. The removed third
 	# button passed the formula table in as if it were scores.

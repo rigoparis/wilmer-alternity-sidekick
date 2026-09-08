@@ -2781,14 +2781,13 @@ const PROFESSION_DEFINITIONS := [
 		"last_resort_bonus": 0,
 		"ability_minimums": {
 			"STR": 11,
-			"DEX": 9,
 			"CON": 9,
 		},
 		"notes": [
 			"Combat Specs rely on physical power and endurance to supplement their training in battle techniques. These warriors are walking arsenals who employ both technology and their own bodies as weapons. Source: Player's Handbook p. 30.",
 			"Action Check Score Increase: action check score increased by 3. Source: Player's Handbook p. 30.",
 			"Situation Bonus: choose one specialty skill under Armor Operation, Unarmed Attack, Heavy Weapons, Modern Ranged Weapons, Melee Weapons, or Primitive Ranged Weapons; its base situation die improves from +d0 to -d4. Source: Player's Handbook p. 30.",
-			"Profession requirements: STR 11, DEX 9, CON 9. Source: Player's Handbook Table P1 p. 30.",
+			"Profession requirements: STR 11, CON 9. Source: Player's Handbook Table P1 p. 30.",
 		],
 	},
 	{
@@ -2801,14 +2800,13 @@ const PROFESSION_DEFINITIONS := [
 		"ability_minimums": {
 			"WIL": 9,
 			"PER": 11,
-			"INT": 9,
 		},
 		"notes": [
 			"Diplomats are negotiators, political figures, managers, deal-makers, and any others who use interaction skills and personal resolve to accomplish their jobs. They specialize in getting things done through bargaining, heated discussion, and even guile. Source: Player's Handbook p. 31.",
 			"Action Check Score Increase: action check score increased by 1. Source: Player's Handbook p. 31.",
 			"Contacts or Resources: a Diplomat starts with contacts or resources as described in the Gamemaster Guide; the Gamemaster informs you of the details. Source: Player's Handbook p. 31.",
 			"Secondary Profession (Combat Spec): purchase skills from the secondary profession for list price -1 instead of list price. Source: Player's Handbook p. 31.",
-			"Profession requirements: PER 11, WIL 9, INT 9. Source: Player's Handbook Table P1 p. 30.",
+			"Profession requirements: PER 11, WIL 9. Source: Player's Handbook Table P1 p. 30.",
 		],
 	},
 	{
@@ -2821,14 +2819,13 @@ const PROFESSION_DEFINITIONS := [
 		"ability_minimums": {
 			"WIL": 9,
 			"PER": 11,
-			"INT": 9,
 		},
 		"notes": [
 			"Diplomats are negotiators, political figures, managers, deal-makers, and any others who use interaction skills and personal resolve to accomplish their jobs. They specialize in getting things done through bargaining, heated discussion, and even guile. Source: Player's Handbook p. 31.",
 			"Action Check Score Increase: action check score increased by 1. Source: Player's Handbook p. 31.",
 			"Contacts or Resources: a Diplomat starts with contacts or resources as described in the Gamemaster Guide; the Gamemaster informs you of the details. Source: Player's Handbook p. 31.",
 			"Secondary Profession (Free Agent): purchase skills from the secondary profession for list price -1 instead of list price. Source: Player's Handbook p. 31.",
-			"Profession requirements: PER 11, WIL 9, INT 9. Source: Player's Handbook Table P1 p. 30.",
+			"Profession requirements: PER 11, WIL 9. Source: Player's Handbook Table P1 p. 30.",
 		],
 	},
 	{
@@ -2841,14 +2838,13 @@ const PROFESSION_DEFINITIONS := [
 		"ability_minimums": {
 			"WIL": 9,
 			"PER": 11,
-			"INT": 9,
 		},
 		"notes": [
 			"Diplomats are negotiators, political figures, managers, deal-makers, and any others who use interaction skills and personal resolve to accomplish their jobs. They specialize in getting things done through bargaining, heated discussion, and even guile. Source: Player's Handbook p. 31.",
 			"Action Check Score Increase: action check score increased by 1. Source: Player's Handbook p. 31.",
 			"Contacts or Resources: a Diplomat starts with contacts or resources as described in the Gamemaster Guide; the Gamemaster informs you of the details. Source: Player's Handbook p. 31.",
 			"Secondary Profession (Tech Op): purchase skills from the secondary profession for list price -1 instead of list price. Source: Player's Handbook p. 31.",
-			"Profession requirements: PER 11, WIL 9, INT 9. Source: Player's Handbook Table P1 p. 30.",
+			"Profession requirements: PER 11, WIL 9. Source: Player's Handbook Table P1 p. 30.",
 		],
 	},
 	{
@@ -2861,7 +2857,6 @@ const PROFESSION_DEFINITIONS := [
 		"ability_minimums": {
 			"WIL": 9,
 			"PER": 11,
-			"INT": 9,
 		},
 		"notes": [
 			"Diplomats are negotiators, political figures, managers, deal-makers, and any others who use interaction skills and personal resolve to accomplish their jobs. They specialize in getting things done through bargaining, heated discussion, and even guile. Source: Player's Handbook p. 31.",
@@ -2869,7 +2864,7 @@ const PROFESSION_DEFINITIONS := [
 			"Contacts or Resources: a Diplomat starts with contacts or resources as described in the Gamemaster Guide; the Gamemaster informs you of the details. Source: Player's Handbook p. 31.",
 			"Secondary Profession (Mindwalker): purchase skills from the secondary profession for list price -1 instead of list price. Diplomats in a campaign that allows Mindwalkers can use that profession as their secondary profession. Source: Player's Handbook p. 31 and p. 227.",
 			"Gains access to psionic broad skills and uses full WIL for psionic energy points instead of one-half WIL. Source: Player's Handbook p. 22 and Chapter 14.",
-			"Profession requirements: PER 11, WIL 9, INT 9. Source: Player's Handbook Table P1 p. 30.",
+			"Profession requirements: PER 11, WIL 9. Source: Player's Handbook Table P1 p. 30.",
 		],
 	},
 	{
@@ -2881,7 +2876,6 @@ const PROFESSION_DEFINITIONS := [
 		"last_resort_bonus": 1,
 		"ability_minimums": {
 			"DEX": 11,
-			"INT": 9,
 			"WIL": 9,
 		},
 		"notes": [
@@ -2889,7 +2883,7 @@ const PROFESSION_DEFINITIONS := [
 			"Action Check Score Increase: action check score increased by 2. Source: Player's Handbook p. 31.",
 			"Resistance Bonus: choose one ability and improve its resistance modifier by 1 step (Constitution has no resistance modifier). Source: Player's Handbook p. 31-32.",
 			"Last Resort Bonus: maximum last resort points increased by 1, and a Free Agent can spend 2 last resort points to alter an action instead of the usual 1. Source: Player's Handbook p. 31.",
-			"Profession requirements: DEX 11, INT 9, WIL 9. Source: Player's Handbook Table P1 p. 30.",
+			"Profession requirements: DEX 11, WIL 9. Source: Player's Handbook Table P1 p. 30.",
 		],
 	},
 	{
@@ -2902,13 +2896,12 @@ const PROFESSION_DEFINITIONS := [
 		"ability_minimums": {
 			"INT": 11,
 			"DEX": 9,
-			"CON": 9,
 		},
 		"notes": [
 			"Tech Ops are operatives accomplished in the use of high-tech equipment or specialists trained to create or maintain high-tech equipment. They rely on natural genius, agility, and expert training, as well as the benefits of their technological devices. Source: Player's Handbook p. 32.",
 			"Action Check Score Increase: action check score increased by 1. Source: Player's Handbook p. 32.",
 			"Accelerated Learning: at every new achievement level a Tech Op receives the usual skill points plus extra points by level attained: +1 at levels 2-5, +2 at 6-10, +3 at 11-15, +4 at 16-20, +5 at 21+. Source: Player's Handbook p. 32.",
-			"Profession requirements: INT 11, DEX 9, CON 9. Source: Player's Handbook Table P1 p. 30.",
+			"Profession requirements: INT 11, DEX 9. Source: Player's Handbook Table P1 p. 30.",
 		],
 	},
 	{
@@ -2937,7 +2930,7 @@ const PROFESSION_DEFINITIONS := [
 		"secondary_code": "A",
 		"action_bonus": 1,
 		"last_resort_bonus": 0,
-		"ability_minimums": {"WIL": 9, "PER": 11, "INT": 9},
+		"ability_minimums": {"WIL": 9, "PER": 11},
 		"supplement": "beyond_science",
 		"adept_role": "secondary",
 		"advancement_profile": "diplomat",
@@ -2946,7 +2939,7 @@ const PROFESSION_DEFINITIONS := [
 			"Action Check Score Increase: action check score increased by 1. Source: Player's Handbook p. 31.",
 			"Contacts or Resources: a Diplomat starts with contacts or resources as described in the Gamemaster Guide. Source: Player's Handbook p. 31.",
 			"Secondary Profession (Adept): choose one FX broad skill; that broad skill and all its specialty skills cost list price -1. The hero has a Talent-sized FX energy pool rather than a primary Adept's full pool. Source: Beyond Science: A Guide to FX p. 6.",
-			"Profession requirements: PER 11, WIL 9, INT 9. Source: Player's Handbook Table P1 p. 30.",
+			"Profession requirements: PER 11, WIL 9. Source: Player's Handbook Table P1 p. 30.",
 		],
 	},
 	{
@@ -2956,7 +2949,7 @@ const PROFESSION_DEFINITIONS := [
 		"secondary_code": "C",
 		"action_bonus": 1,
 		"last_resort_bonus": 0,
-		"ability_minimums": {"STR": 11, "DEX": 9, "CON": 9},
+		"ability_minimums": {"STR": 11, "CON": 9},
 		"supplement": "beyond_science",
 		"adept_role": "primary",
 		"advancement_profile": "combat_spec",
@@ -2975,7 +2968,7 @@ const PROFESSION_DEFINITIONS := [
 		"secondary_code": "D",
 		"action_bonus": 1,
 		"last_resort_bonus": 0,
-		"ability_minimums": {"WIL": 9, "PER": 11, "INT": 9},
+		"ability_minimums": {"WIL": 9, "PER": 11},
 		"supplement": "beyond_science",
 		"adept_role": "primary",
 		"advancement_profile": "diplomat",
@@ -2994,7 +2987,7 @@ const PROFESSION_DEFINITIONS := [
 		"secondary_code": "F",
 		"action_bonus": 1,
 		"last_resort_bonus": 0,
-		"ability_minimums": {"DEX": 11, "INT": 9, "WIL": 9},
+		"ability_minimums": {"DEX": 11, "WIL": 9},
 		"supplement": "beyond_science",
 		"adept_role": "primary",
 		"advancement_profile": "free_agent",
@@ -3013,7 +3006,7 @@ const PROFESSION_DEFINITIONS := [
 		"secondary_code": "T",
 		"action_bonus": 1,
 		"last_resort_bonus": 0,
-		"ability_minimums": {"INT": 11, "DEX": 9, "CON": 9},
+		"ability_minimums": {"INT": 11, "DEX": 9},
 		"supplement": "beyond_science",
 		"adept_role": "primary",
 		"advancement_profile": "tech_op",
