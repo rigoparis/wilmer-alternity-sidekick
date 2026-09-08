@@ -215,21 +215,26 @@ func _test_cyber_tolerance() -> void:
 
 
 func _test_profession_minimums() -> void:
-	var expected := {
+	# Table P1 (PHB p. 30) prints a Constitution minimum for Combat Spec and
+	# Mindwalker only; the Adept mixes inherit their secondary profession's
+	# requirements, so Adept (Combat Spec) and Adept (Mindwalker) carry it too.
+	# Every other profession leaves the CON cell blank -- no requirement.
+	var requires_con := {
 		"Combat Spec": 9,
-		"Tech Op": 9,
 		"Mindwalker": 9,
+		"Adept (Combat Spec)": 9,
+		"Adept (Mindwalker)": 9,
 	}
 	for profession in AlternityRules.PROFESSION_DEFINITIONS:
 		var name := String(profession.get("name", ""))
 		var minimums: Dictionary = profession.get("ability_minimums", {})
-		if expected.has(name):
+		if requires_con.has(name):
 			check_eq(
 				AlternityNum.as_int(minimums.get("CON", 0)),
-				AlternityNum.as_int(expected[name]),
-				"%s requires CON %d" % [name, AlternityNum.as_int(expected[name])]
+				AlternityNum.as_int(requires_con[name]),
+				"%s requires CON %d" % [name, AlternityNum.as_int(requires_con[name])]
 			)
-		elif name.begins_with("Diplomat") or name == "Free Agent":
+		else:
 			check_false(
 				minimums.has("CON"),
 				"%s has no Constitution requirement" % name
