@@ -21,6 +21,9 @@ signal save_failed(file_name: String, reason: String)
 const SAVE_DIR := "user://"
 const LAST_OPENED_NAME := "last_character.txt"
 
+## Folder created under the user's Documents where saves must outlive the app.
+const SHARED_FOLDER := "WilmerAlternitySidekick"
+
 var _rules
 
 ## Directory this store reads and writes, always with a trailing slash.
@@ -30,11 +33,98 @@ var _rules
 var _dir: String = SAVE_DIR
 
 
-func _init(rules, directory: String = SAVE_DIR) -> void:
+## Where characters live by default on this platform.
+##
+## On Android `user://` is the app's private storage, which the system deletes
+## on uninstall. Every release up to v0.1.8 was signed with a freshly generated
+## key, so "update" meant "uninstall and reinstall" -- and players lost every
+## character they had. Saves go to shared Documents there instead: it survives
+## uninstall and is reachable from a file manager.
+##
+## Everywhere else `user://` already survives uninstall and is a normal folder,
+## so it is left alone.
+##
+## Falls back to `user://` whenever the shared folder cannot actually be written
+## -- on Android that means the storage permission was not granted. Saving
+## somewhere is always better than not saving.
+static func default_directory() -> String:
+	return resolve_directory(OS.get_name(), OS.get_system_dir(OS.SYSTEM_DIR_DOCUMENTS))
+
+
+## The save location for a given platform and Documents folder.
+##
+## Split out from default_directory() so the Android branch can be exercised
+## from a desktop run. Without this the one platform the whole change exists for
+## would be the one platform no suite covers.
+static func resolve_directory(platform: String, documents: String) -> String:
+	if platform != "Android":
+		return SAVE_DIR
+	if documents.strip_edges().is_empty():
+		return SAVE_DIR
+	var shared: String = documents.path_join(SHARED_FOLDER) + "/"
+	return shared if is_writable(shared) else SAVE_DIR
+
+
+## Whether a directory exists (or can be made) and accepts a file.
+##
+## Creating it is not enough to know: Android can report a shared directory as
+## present and still refuse every write into it.
+static func is_writable(dir_path: String) -> bool:
+	var absolute := ProjectSettings.globalize_path(dir_path)
+	DirAccess.make_dir_recursive_absolute(absolute)
+	if not DirAccess.dir_exists_absolute(absolute):
+		return false
+	var probe := dir_path + ".write_probe"
+	var file := FileAccess.open(probe, FileAccess.WRITE)
+	if file == null:
+		return false
+	file.close()
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(probe))
+	return true
+
+
+func _init(rules, directory: String = "") -> void:
 	_rules = rules
-	_dir = directory if directory.ends_with("/") else directory + "/"
+	var chosen: String = directory if not directory.is_empty() else default_directory()
+	_dir = chosen if chosen.ends_with("/") else chosen + "/"
 	if _dir != SAVE_DIR:
 		DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(_dir))
+
+
+## The directory actually in use, for the UI to show the player.
+func directory() -> String:
+	return _dir
+
+
+## Copy characters left in user:// into this store's directory.
+##
+## Called once at startup when the save location has moved, so an existing
+## install carries its heroes across rather than appearing empty. Copies rather
+## than moves, and never overwrites: if anything goes wrong the originals are
+## still where they were. Returns how many were brought over.
+func adopt_legacy_saves() -> int:
+	if _dir == SAVE_DIR:
+		return 0
+	var legacy := DirAccess.open(SAVE_DIR)
+	if legacy == null:
+		return 0
+
+	var adopted := 0
+	for file_name in legacy.get_files():
+		if not file_name.ends_with(".json"):
+			continue
+		if FileAccess.file_exists(_dir + file_name):
+			continue
+		var text := FileAccess.get_file_as_string(SAVE_DIR + file_name)
+		if text.is_empty():
+			continue
+		var out := FileAccess.open(_dir + file_name, FileAccess.WRITE)
+		if out == null:
+			continue
+		out.store_string(text)
+		out.close()
+		adopted += 1
+	return adopted
 
 
 func _last_opened_path() -> String:

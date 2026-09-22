@@ -84,6 +84,12 @@ func _ready() -> void:
 	rules = RulesScript.new()
 	rules.load_core_data()
 	store = CharacterStore.new(rules) if store_directory.is_empty() else CharacterStore.new(rules, store_directory)
+	# Only for the real save location: a test pointing at a scratch directory
+	# must not pull in the characters of whoever is running the tests.
+	if store_directory.is_empty():
+		var adopted := store.adopt_legacy_saves()
+		if adopted > 0:
+			print("Brought %d character(s) across to %s" % [adopted, store.directory()])
 	campaigns = CampaignStore.new() if campaign_directory.is_empty() else CampaignStore.new(campaign_directory)
 	# Who this device is at other people's tables. Kept beside the characters
 	# rather than with the campaigns: it describes the person, not the table.

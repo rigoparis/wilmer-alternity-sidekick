@@ -32,9 +32,96 @@ func _init() -> void:
 	_test_import_export()
 	_test_safe_filenames()
 	_test_real_fixtures_round_trip()
+	_test_save_location_and_adoption()
 	_wipe()
 
 	finish()
+
+
+## Where saves live, and that moving that location carries heroes across.
+##
+## Android deletes user:// on uninstall, and every release up to v0.1.8 forced
+## an uninstall by signing with a new key, so players lost everything. Saves
+## move to shared storage there. Two things have to hold or that change trades
+## one kind of loss for another: an unwritable target must fall back rather than
+## leave the app unable to save, and relocating must bring existing characters
+## with it.
+func _test_save_location_and_adoption() -> void:
+	# This suite runs on desktop, where user:// already outlives uninstall and
+	# is a perfectly reachable folder, so the location must not move.
+	check_eq(
+		Store.default_directory(), Store.SAVE_DIR,
+		"a desktop build keeps saving to user://"
+	)
+
+	# The Android branch, driven directly, because a desktop run never reaches
+	# it through default_directory() and it is the whole point of the change.
+	var docs := "user://__store_docs_test__"
+	check_eq(
+		Store.resolve_directory("Android", docs),
+		docs.path_join(Store.SHARED_FOLDER) + "/",
+		"Android saves into a named folder under Documents, which outlives uninstall"
+	)
+	check_eq(
+		Store.resolve_directory("Android", ""),
+		Store.SAVE_DIR,
+		"Android with no Documents folder falls back to user:// rather than nowhere"
+	)
+	check_eq(
+		Store.resolve_directory("Android", "/this/path/cannot/be/created"),
+		Store.SAVE_DIR,
+		"Android falls back to user:// when the shared folder refuses writes (permission denied)"
+	)
+	check_eq(
+		Store.resolve_directory("Windows", docs),
+		Store.SAVE_DIR,
+		"and no other platform is relocated"
+	)
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(docs.path_join(Store.SHARED_FOLDER)))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(docs))
+
+	var scratch := "user://__store_move_test__/"
+	check_true(Store.is_writable(scratch), "a directory it can create is writable")
+	# The engine logs "Could not create directory" here. That is the refusal
+	# being provoked, not a fault in the suite.
+	check_false(
+		Store.is_writable("/this/path/cannot/be/created/"),
+		"a directory it cannot write reports unwritable rather than throwing"
+	)
+
+	# A hero saved in the old location, then the location moves.
+	var legacy_name := ""
+	var doc := Doc.new(_rules)
+	doc.set_hero_name("Adopted Hero")
+	var legacy_store = Store.new(_rules, Store.SAVE_DIR)
+	var result: Dictionary = legacy_store.save(doc)
+	if check_true(bool(result.get("ok", false)), "the hero saves in the old location"):
+		legacy_name = String(result.get("file_name", ""))
+
+	var moved_store = Store.new(_rules, scratch)
+	var adopted: int = moved_store.adopt_legacy_saves()
+	check_true(adopted >= 1, "relocating adopts the heroes already saved")
+	check_true(
+		FileAccess.file_exists(scratch + legacy_name),
+		"and the adopted hero is readable in the new location"
+	)
+	check_true(
+		FileAccess.file_exists(Store.SAVE_DIR + legacy_name),
+		"while the original is left where it was, not moved"
+	)
+
+	# Running twice must not duplicate or clobber.
+	var again: int = moved_store.adopt_legacy_saves()
+	check_eq(again, 0, "a second startup adopts nothing, having nothing new to take")
+
+	# A store pointed at a scratch directory must never adopt: tests and the
+	# table-session sandbox would otherwise swallow the real save folder.
+	var isolated = Store.new(_rules, TEST_DIR)
+	check_eq(isolated.directory(), TEST_DIR, "an injected directory is used verbatim")
+
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(scratch + legacy_name))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(scratch))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(Store.SAVE_DIR + legacy_name))
 
 
 func _new_store():

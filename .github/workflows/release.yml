@@ -51,16 +51,59 @@ jobs:
           mkdir -p builds/windows
           godot --headless --path . --export-release "Windows Desktop" builds/windows/WilmerAlternitySidekick.exe
 
-      # Generate Debug Keystore for Android Export
-      - name: Generate Debug Keystore
+      # Restore the one signing key every release must share.
+      #
+      # This used to mint a fresh random keystore on every run. Android refuses
+      # to install an APK over one signed by a different key, so each release
+      # could only be installed by uninstalling the last -- which deletes the
+      # app's private storage and every character saved in it. Failing loudly
+      # on a missing secret is deliberate: silently generating a key again
+      # would destroy players' saves a second time.
+      - name: Restore Android signing key
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
-          keytool -keyalg RSA -genkeypair -alias androiddebugkey -keypass android -keystore debug.keystore -storepass android -dname "CN=Android Debug,O=Android,C=US" -validity 365
+          set -euo pipefail
+          if [ -z "${ANDROID_KEYSTORE_BASE64:-}" ]; then
+            echo "::error::ANDROID_KEYSTORE_BASE64 is not set. Refusing to sign with a throwaway key -- that is what wiped saves in v0.1.8. See docs/android-signing.md."
+            exit 1
+          fi
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -d > debug.keystore
+          if [ ! -s debug.keystore ]; then
+            echo "::error::Decoded keystore is empty. Re-create the secret with: base64 -w 0 release.keystore"
+            exit 1
+          fi
+          echo "Restored signing key ($(stat -c%s debug.keystore) bytes)"
 
       # Build Android APK
+      #
+      # The keystore path matches what the preset already points at; the alias
+      # and password come from secrets via the env vars Godot honours, so no
+      # credential is committed.
       - name: Export Android APK
+        env:
+          GODOT_ANDROID_KEYSTORE_RELEASE_PATH: debug.keystore
+          GODOT_ANDROID_KEYSTORE_RELEASE_USER: ${{ secrets.ANDROID_KEYSTORE_ALIAS }}
+          GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         run: |
           mkdir -p builds/android
           godot --headless --path . --export-release "Android APK" builds/android/WilmerAlternitySidekick.apk
+
+      # A release signed by an unexpected key is the failure that cost players
+      # their characters, so it is checked rather than assumed.
+      - name: Verify the APK is signed by the expected key
+        env:
+          EXPECTED_SHA256: ${{ secrets.ANDROID_KEYSTORE_SHA256 }}
+        run: |
+          set -euo pipefail
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -1)
+          "$APKSIGNER" verify --print-certs builds/android/WilmerAlternitySidekick.apk | tee certs.txt
+          ACTUAL=$(grep -i 'SHA-256 digest' certs.txt | head -1 | awk '{print $NF}')
+          echo "signing cert SHA-256: $ACTUAL"
+          if [ -n "${EXPECTED_SHA256:-}" ] && [ "$ACTUAL" != "$EXPECTED_SHA256" ]; then
+            echo "::error::APK is signed by $ACTUAL, expected $EXPECTED_SHA256. Installing this would force players to uninstall and lose their saves."
+            exit 1
+          fi
 
       # Create GitHub Release and upload assets
       - name: Create Release
