@@ -41,6 +41,11 @@ var _query := ""
 var _ability_bar: HBoxContainer
 var _list: VBoxContainer
 var _ability_buttons: Dictionary = {}
+
+## Whether rows put the skill name on a line of its own. Decided once per
+## refresh from the whole catalogue, so tabbing between abilities cannot change
+## the shape of the list under you.
+var _stacked: bool = false
 var _card_columns: Array[Container] = []
 
 ## Emitted with the skill record when someone asks to read one.
@@ -121,12 +126,12 @@ func _build() -> void:
 
 		_list = VBoxContainer.new()
 		_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		_list.add_theme_constant_override("separation", Widgets.GAP_ROW)
+		_list.add_theme_constant_override("separation", _row_separation())
 		margin.add_child(_list)
 	else:
 		_list = VBoxContainer.new()
 		_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		_list.add_theme_constant_override("separation", Widgets.GAP_ROW)
+		_list.add_theme_constant_override("separation", _row_separation())
 		add_child(_list)
 
 	_refresh_list()
@@ -170,9 +175,55 @@ func _select_ability(ability: String) -> void:
 ##
 ## This is what makes the old focus-restoration dance unnecessary: the field is
 ## a sibling that is never torn down, so the caret is never lost.
+## What the row spends on everything that is not the skill name: an 18px indent,
+## the 32px buy box, two 34px steppers, a 48px rank readout, a 34px detail
+## button, and six gaps between them.
+const ROW_CONTROLS_WIDTH := 248.0
+
+
+## Whether this catalogue needs its names on their own line.
+##
+## The answer differs by mode and by phone, which is why it is measured rather
+## than decided here: at 390px ordinary skills overrun the name column 31% of the
+## time and stay on one line, while the same list on a 360px phone overruns 60%
+## and does stack.
+##
+## Every skill this mode can show is weighed, not just the ability on screen, so
+## switching ability does not restack the list.
+func _should_stack() -> bool:
+	if _ctx == null or _ctx.is_wide_layout or _ctx.rules == null:
+		return false
+	var rules: AlternityRules = _ctx.rules
+	var names: Array = []
+	for broad in rules.skills:
+		if rules.is_psionic_skill(broad) != (_mode == Mode.PSIONIC):
+			continue
+		names.append(String(broad.get("name", "")))
+		for spec in broad.get("specialties", []):
+			if typeof(spec) == TYPE_DICTIONARY:
+				names.append(String(spec.get("name", "")))
+	return Widgets.should_stack_names(self, names, ROW_CONTROLS_WIDTH)
+
+
+## How far apart two entries sit in the list.
+##
+## Wider on a phone, where an entry is two rows -- its name and, under that, its
+## rank controls. Grouping is read from relative distance, so the 2px holding a
+## name to its own controls only says "these belong together" while the step to
+## the next entry is plainly bigger. At the flat GAP_ROW the two gaps were close
+## enough that which entry a "+" would raise stopped being obvious.
+func _row_separation() -> int:
+	return 18 if _stacked else Widgets.GAP_ROW
+
+
 func _refresh_list() -> void:
 	if _list == null:
 		return
+	# Before the rows, and re-applied here rather than only where the list was
+	# created: that runs during setup, when the catalogue has not been measured
+	# and _stacked is still false.
+	_stacked = _should_stack()
+	_list.add_theme_constant_override("separation", _row_separation())
 	for child in _list.get_children():
 		child.hide()
 		child.queue_free()
@@ -359,10 +410,30 @@ func _build_row(parent: Container, skill: Dictionary, is_broad: bool) -> void:
 		return
 
 	# Specialty row
+	var stacked := _stacked
+
 	var row := HBoxContainer.new()
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_theme_constant_override("separation", Widgets.GAP_ROW)
 	parent.add_child(row)
+
+	var control_row := row
+	if stacked:
+		control_row = HBoxContainer.new()
+		control_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		control_row.add_theme_constant_override("separation", Widgets.GAP_ROW)
+		parent.add_child(control_row)
+
+		# Indented to start exactly under the name -- 18px of indent plus the
+		# 32px buy box -- and NOT expanded to push them right. Right-aligned,
+		# the controls sat alone across the card from the name they belong to,
+		# equidistant from the row above and the row below, and which power a
+		# "+" would raise stopped being obvious. Left-aligned under the name
+		# they read as the same item.
+		var control_indent := Control.new()
+		control_indent.custom_minimum_size = Vector2(50, 0)
+		control_row.add_child(control_indent)
+
 
 	var indent := Control.new()
 	indent.custom_minimum_size = Vector2(18, 0)
@@ -408,6 +479,8 @@ func _build_row(parent: Container, skill: Dictionary, is_broad: bool) -> void:
 
 	var sub_lbl := Label.new()
 	sub_lbl.text = sub_text
+	sub_lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	sub_lbl.custom_minimum_size = Vector2(1, 0)
 	sub_lbl.add_theme_color_override("font_color", palette.muted)
 	sub_lbl.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
 	name_box.add_child(sub_lbl)
@@ -421,7 +494,7 @@ func _build_row(parent: Container, skill: Dictionary, is_broad: bool) -> void:
 		doc.apply(CharacterDoc.ALL, func(c): rules.set_skill_rank(c, skill_id, rank - 1))
 		change_requested.emit()
 	)
-	row.add_child(minus_btn)
+	control_row.add_child(minus_btn)
 
 	var rank_lbl := Label.new()
 	rank_lbl.name = "RankLabel"
@@ -431,7 +504,7 @@ func _build_row(parent: Container, skill: Dictionary, is_broad: bool) -> void:
 	rank_lbl.custom_minimum_size = Vector2(48, 0)
 	rank_lbl.add_theme_color_override("font_color", palette.text if rank > 0 else palette.muted)
 	rank_lbl.add_theme_font_size_override("font_size", Widgets.FONT_DETAIL)
-	row.add_child(rank_lbl)
+	control_row.add_child(rank_lbl)
 
 	var plus_btn := _make_flat_icon_btn(ICON_PLUS, Vector2(34, 34), "Increase rank")
 	plus_btn.disabled = (rank >= max_rank)
@@ -439,7 +512,7 @@ func _build_row(parent: Container, skill: Dictionary, is_broad: bool) -> void:
 		doc.apply(CharacterDoc.ALL, func(c): rules.set_skill_rank(c, skill_id, rank + 1))
 		change_requested.emit()
 	)
-	row.add_child(plus_btn)
+	control_row.add_child(plus_btn)
 
 	var detail_btn := _make_flat_icon_btn(
 		ICON_QUESTION,
@@ -448,7 +521,7 @@ func _build_row(parent: Container, skill: Dictionary, is_broad: bool) -> void:
 	)
 	detail_btn.add_theme_color_override("icon_normal_color", Color(palette.muted, 0.8))
 	detail_btn.pressed.connect(func(): detail_requested.emit(skill))
-	row.add_child(detail_btn)
+	control_row.add_child(detail_btn)
 
 
 func _score_label(score: Dictionary, palette: ThemePalette) -> Label:

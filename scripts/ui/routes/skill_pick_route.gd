@@ -235,6 +235,13 @@ func _matches(skill: Dictionary) -> bool:
 func _build_row(skill: Dictionary) -> void:
 	var button := Button.new()
 	button.text = _rules.skill_label(skill)
+	# Trimmed rather than allowed to set the page width: a full specialty name
+	# ("Acrobatics - Defensive Martial Arts") wants 269px, and the route is 390px
+	# wide on a phone before its own margins. Safe to clip here only because the
+	# button expands to fill the row below -- clip_text takes the text out of the
+	# minimum size, so a button left to hug its own text would vanish.
+	button.clip_text = true
+	button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.custom_minimum_size = Vector2(0, 36)

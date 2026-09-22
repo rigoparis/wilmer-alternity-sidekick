@@ -26,6 +26,18 @@ extends VBoxContainer
 @warning_ignore("unused_signal")
 signal save_requested
 
+## This tab rebuilt into a different shape, so what has_custom_scroll() reports
+## may have changed with it.
+##
+## A tab picks its layout at build time, and one that scrolls its own panels
+## asks the sheet to stop scrolling underneath it. A tab whose layout can change
+## without the sheet rebuilding -- FX drops to a single column when the window
+## is too narrow to hold two -- has to say so, or the sheet keeps the scroll
+## arrangement of a layout that is no longer on screen and the content below the
+## fold becomes unreachable.
+@warning_ignore("unused_signal")
+signal layout_changed
+
 var ctx: SheetContext
 
 ## Set when a watched section changed while this tab was hidden.

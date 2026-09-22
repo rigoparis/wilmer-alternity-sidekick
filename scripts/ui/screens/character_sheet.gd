@@ -69,6 +69,10 @@ var _title: Label
 var _status: Label
 var _tab_bar: HBoxContainer
 var _content_scroll: ScrollContainer
+
+## Inner scrolls switched off to rescue a tab that did not fit, kept so the tab
+## gets them back the moment there is room again.
+var _flattened_scrolls: Array[ScrollContainer] = []
 var _content_host: VBoxContainer
 
 var _buttons: Dictionary = {}
@@ -146,6 +150,8 @@ func _build() -> void:
 	_build_header(root_box)
 	_build_incoming_banner(root_box)
 	_build_tab_bar(root_box)
+
+	get_viewport().size_changed.connect(_apply_scroll_mode)
 
 	_content_scroll = ScrollContainer.new()
 	_content_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -908,6 +914,7 @@ func _select_tab(id: String) -> void:
 		tab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		tab.size_flags_vertical = Control.SIZE_EXPAND_FILL
 		tab.save_requested.connect(_save)
+		tab.layout_changed.connect(_apply_scroll_mode)
 		_content_host.add_child(tab)
 		tab.bind(_ctx)
 		_instances[id] = tab
@@ -915,11 +922,109 @@ func _select_tab(id: String) -> void:
 	for tab_id in _instances:
 		_instances[tab_id].visible = tab_id == id
 
-	var active_tab = _instances.get(id)
-	if active_tab != null and active_tab.has_method("has_custom_scroll") and active_tab.has_custom_scroll():
-		_content_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	else:
-		_content_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	_apply_scroll_mode()
+
+
+## Mirror the active tab's scroll contract onto the sheet's own scroll.
+##
+## A tab that scrolls its own panels must not also sit inside a scrolling one:
+## the two nest and the inner becomes a trap you cannot drag out of.
+##
+## Re-applied on `layout_changed` as well as on selection, because a tab may
+## answer differently after a resize -- FX scrolls its own columns only while
+## there is room to have columns at all.
+func _apply_scroll_mode() -> void:
+	if _content_scroll == null or not is_instance_valid(_content_scroll):
+		return
+	# Back to what the tab asked for before judging whether it can have it, so the
+	# decision is always made from the tab's own arrangement and a window that
+	# grows gets the inner scrolls back.
+	_restore_flattened_scrolls()
+	var active_tab = _instances.get(_active_id)
+	var custom: bool = (
+		active_tab != null
+		and active_tab.has_method("has_custom_scroll")
+		and active_tab.has_custom_scroll()
+	)
+	_content_scroll.vertical_scroll_mode = (
+		ScrollContainer.SCROLL_MODE_DISABLED if custom else ScrollContainer.SCROLL_MODE_AUTO
+	)
+	# A tab asks to scroll its own panels from what it knows at build time, which
+	# does not include how much height the chrome above it left. Where the sum
+	# does not come out, the sheet keeps its scroll and the tab gets a second
+	# scrollbar rather than a lost edge.
+	#
+	# Deferred because the answer depends on a minimum size that the switch above
+	# has just invalidated: asked now it reports the previous layout's, which is
+	# how the first version of this check passed on a sheet that was visibly
+	# hanging off the screen.
+	if custom:
+		_keep_scroll_if_tab_overruns.call_deferred()
+
+
+func _keep_scroll_if_tab_overruns() -> void:
+	await get_tree().process_frame
+	if not is_instance_valid(_content_scroll):
+		return
+	if _content_scroll.vertical_scroll_mode != ScrollContainer.SCROLL_MODE_DISABLED:
+		return
+	if not _taller_than_the_window():
+		return
+
+	# One scrollbar, not two. The tab's inner scrolls were there to spare the
+	# sheet from scrolling; now that the sheet has to anyway, leaving them on
+	# nests a 200px viewport inside a scrolling page and a drag that started in
+	# the catalog never reaches the page. Forbidding a ScrollContainer its axis
+	# makes it report the full height of what it holds, so the panels simply grow
+	# and the sheet scrolls the lot.
+	var active_tab = _instances.get(_active_id)
+	if active_tab != null and is_instance_valid(active_tab):
+		for inner in _vertical_scrolls_within(active_tab):
+			inner.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+			_flattened_scrolls.append(inner)
+
+	_content_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+
+
+func _vertical_scrolls_within(node: Node, found: Array[ScrollContainer] = []) -> Array[ScrollContainer]:
+	for child in node.get_children():
+		if child is ScrollContainer:
+			var inner := child as ScrollContainer
+			if inner.vertical_scroll_mode != ScrollContainer.SCROLL_MODE_DISABLED:
+				found.append(inner)
+		_vertical_scrolls_within(child, found)
+	return found
+
+
+func _restore_flattened_scrolls() -> void:
+	for inner in _flattened_scrolls:
+		if is_instance_valid(inner):
+			inner.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	_flattened_scrolls.clear()
+
+
+## Whether honouring the active tab's scroll contract pushes the content past the
+## bottom of the screen.
+##
+## Switching the content scroll off is what makes that possible: a
+## ScrollContainer forbidden from scrolling an axis reports its content's whole
+## minimum along it, so the tab's minimum height passes straight up through the
+## sheet and the window is simply overrun. At 1080p there is slack and nothing
+## shows. At 1366x768 the Psionics tab wants 662px under a 131px header, the
+## sheet lays out 793px into 768, and the bottom 25px of the catalog card -- 75px
+## of it once the catalog is open -- is drawn past the edge of the display with
+## nothing able to scroll down to it.
+##
+## Measured as what the scroll needs against what is left under the header,
+## rather than as the sheet's own minimum: the sheet's children are anchored
+## rather than laid out by a container, so the sheet reports no minimum at all
+## and an earlier version of this check quietly always said no.
+func _taller_than_the_window() -> bool:
+	var window_height := get_viewport_rect().size.y
+	if window_height <= 0.0:
+		return false
+	var available := window_height - _content_scroll.get_global_rect().position.y
+	return _content_scroll.get_combined_minimum_size().y > available + 1.0
 
 
 ## Whether a registry entry applies to the current character.

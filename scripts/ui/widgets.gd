@@ -35,6 +35,58 @@ const FONT_CAPTION := 12
 
 
 ## A titled panel. The container returned is where content goes.
+## Width a catalog row spends before its name gets any: the sheet's margins, the
+## card's, and the panel border.
+const ROW_CHROME := 50.0
+
+## How much of a catalog has to overrun the name column before every row in it
+## is worth a second line.
+##
+## Below this, truncation is the exception and tapping the row still tells you
+## what it is. Above it, truncation is the rule and the list stops working as a
+## catalog -- seven consecutive FX powers reading "Call the sk...", "Child of
+## th...", "Kinship of ..." name nothing.
+const STACK_THRESHOLD := 0.4
+
+
+## Whether a catalog's rows should give the name a line of its own.
+##
+## Asked of the catalogue and the window rather than decided per tab, because
+## "does this need it" is a different answer for different content on different
+## phones, and hardcoding either half gets one of them wrong. Measured at 390px:
+## FX powers overrun 43% of the time and stack, ordinary skills 31% and stay on
+## one line. The same skills on a 360px phone overrun 60% and do stack; FX on a
+## 412px one drops to 22% and does not.
+##
+## Answered for the whole catalogue, not the visible page of it, so the layout
+## does not change under you as you tab between abilities or schools.
+##
+## `sample` supplies the font actually in use; `controls_width` is what the row
+## spends on everything that is not the name.
+static func should_stack_names(
+	sample: Control,
+	names: Array,
+	controls_width: float,
+	threshold: float = STACK_THRESHOLD
+) -> bool:
+	if sample == null or not sample.is_inside_tree() or names.is_empty():
+		return false
+	var budget := sample.get_viewport_rect().size.x - ROW_CHROME - controls_width
+	if budget <= 0.0:
+		return true
+	var font: Font = sample.get_theme_font("font")
+	if font == null:
+		return false
+	var overrunning := 0
+	for entry in names:
+		var text := String(entry)
+		if text.is_empty():
+			continue
+		if font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_BODY).x > budget:
+			overrunning += 1
+	return float(overrunning) / float(names.size()) >= threshold
+
+
 static func section(parent: Container, title: String, palette: ThemePalette) -> VBoxContainer:
 	var panel := PanelContainer.new()
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -54,6 +106,12 @@ static func section(parent: Container, title: String, palette: ThemePalette) -> 
 	if not title.is_empty():
 		var label := Label.new()
 		label.text = title
+		# Wraps. A card is as wide as its widest unwrappable child, and the sheet
+		# never scrolls sideways, so a long title took the card's right edge off
+		# a phone screen -- "Optional Rule: Uncapped Monetary Awards" alone asks
+		# for 375px, more than a 390px phone has to give.
+		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		label.custom_minimum_size = Vector2(1, 0)
 		label.add_theme_color_override("font_color", palette.text)
 		label.add_theme_font_size_override("font_size", FONT_SECTION_TITLE)
 		box.add_child(label)

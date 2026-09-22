@@ -830,6 +830,14 @@ func _add_stat_cell(parent: Container, label_text: String, value_text: String, p
 
 	var val := Label.new()
 	val.text = value_text
+	# The cell that takes the leftover width is also the one that gets the long
+	# readings -- "Ord 1d4 hrs, Good 1d6 hrs, Amazing 24 hrs" is 267px on one line,
+	# and on a 360px phone that alone laid the card out past the right edge of a
+	# sheet that does not scroll sideways. Wrapping is the house rule for mobile
+	# labels (AGENTS.md section 5) and this cell had missed it.
+	if expand:
+		val.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		val.custom_minimum_size = Vector2(1, 0)
 	val.add_theme_color_override("font_color", palette.text)
 	val.add_theme_font_size_override("font_size", Widgets.FONT_DETAIL)
 	cell.add_child(val)

@@ -19,18 +19,57 @@ extends SheetTab
 
 const DETAIL_ROUTE := preload("res://scenes/ui/routes/skill_detail_route.tscn")
 
+## Narrower than this and the tab stacks instead of splitting into columns.
+##
+## The two columns have real minimum widths -- roughly 324px for the FX card and
+## 347px for the powers table, so about 680px together -- and the sheet gives a
+## tab eight tenths of the window. Below ~880px the row is laid out wider than
+## the screen and the right column is simply off it, while ctx.is_wide_layout
+## turns true at 520px. Splitting on that alone put the catalog past the right
+## edge and the FX Energy card past the bottom on every window between the two.
+const TWO_COLUMN_WIDTH := 900.0
+
 
 var _pool_host: Container
 var _tracker_host: Container
 var _selected_host: Container
 var _picker: FxPicker
 var _editing_powers: bool = false
+var _two_column: bool = false
 
 
-## Declares custom scroll handling only on wide (desktop) layouts so the outer sheet
-## can scroll naturally on mobile devices without inner scroll traps.
+## Whether there is room to put the catalog beside the FX card rather than under it.
+func _use_two_columns() -> bool:
+	if ctx == null or not ctx.is_valid() or not ctx.is_wide_layout or not is_inside_tree():
+		return false
+	# Without FX there is only the one short card offering the talent, not two
+	# panels that scroll themselves, so the sheet keeps its own scroll.
+	if not ctx.rules.fx.is_fx_active(ctx.doc.raw()):
+		return false
+	return get_viewport_rect().size.x >= TWO_COLUMN_WIDTH
+
+
+## Declares custom scroll handling only while the tab is actually in two columns,
+## because that is the only layout that scrolls its own panels. Stacked, the tab
+## is one tall strip and needs the sheet's scroll -- on a phone, and equally in a
+## desktop window too narrow to hold the columns.
 func has_custom_scroll() -> bool:
-	return ctx != null and ctx.is_wide_layout
+	return _use_two_columns()
+
+
+func _ready() -> void:
+	# The shell rebuilds a screen only when the compact breakpoint is crossed, so
+	# nothing else would notice the window passing this tab's own threshold.
+	get_viewport().size_changed.connect(_on_viewport_resized)
+
+
+func _on_viewport_resized() -> void:
+	if ctx == null or not ctx.is_valid() or _use_two_columns() == _two_column:
+		return
+	if is_visible_in_tree():
+		refresh(true)
+	else:
+		_needs_rebuild = true
 
 
 func watched_sections() -> Array:
@@ -52,6 +91,11 @@ func unbind() -> void:
 ## active category tab, search filter, and scroll position.
 func _rebuild() -> void:
 	var is_active := ctx.rules.fx.is_fx_active(ctx.doc.raw())
+	# Hosts built for the other layout cannot be re-rendered in place: they hang
+	# off a column that is about to stop existing.
+	if _use_two_columns() != _two_column:
+		super._rebuild()
+		return
 	if _pool_host != null and is_instance_valid(_pool_host) \
 			and _selected_host != null and is_instance_valid(_selected_host) and is_active:
 		_render_pool(_pool_host)
@@ -61,12 +105,12 @@ func _rebuild() -> void:
 			if _picker != null and is_instance_valid(_picker):
 				_picker.refresh_skills()
 			else:
-				if ctx.is_wide_layout:
+				if _two_column:
 					_render_powers_panel_desktop(_selected_host)
 				else:
 					_render_powers_panel_mobile(_selected_host)
 		else:
-			if ctx.is_wide_layout:
+			if _two_column:
 				_render_powers_panel_desktop(_selected_host)
 			else:
 				_render_powers_panel_mobile(_selected_host)
@@ -80,11 +124,19 @@ func build(container: Container) -> void:
 	_selected_host = null
 	_picker = null
 
+	var two_column := _use_two_columns()
+	var split_changed := two_column != _two_column
+	_two_column = two_column
+	# Deferred so the sheet reads the finished layout rather than this half-built
+	# one when it re-applies its own scroll mode.
+	if split_changed:
+		layout_changed.emit.call_deferred()
+
 	if not ctx.rules.fx.is_fx_active(ctx.doc.raw()):
 		_build_pool(container)
 		return
 
-	if ctx.is_wide_layout:
+	if two_column:
 		_build_wide_layout(container)
 	else:
 		_build_compact_layout(container)
@@ -98,13 +150,26 @@ func _build_wide_layout(container: Container) -> void:
 	columns_row.add_theme_constant_override("separation", Widgets.GAP_SECTION)
 	container.add_child(columns_row)
 
-	# Left column: FX Pool card on top, FX Energy tracker card below it
+	# Left column: FX Pool card on top, FX Energy tracker card below it.
+	#
+	# In its own scroll, because this column is the tall one -- pool, practitioner
+	# type, campaign scale, primary school, the drain metrics and then the whole
+	# energy tracker -- and a tab in two columns switches the sheet's scroll off.
+	# Without this the card simply ran past the bottom of the window with nothing
+	# left to scroll it: the rest buttons were on screen but below the edge.
+	var left_scroll := ScrollContainer.new()
+	left_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	left_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	left_scroll.size_flags_stretch_ratio = 1.0
+	left_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	columns_row.add_child(left_scroll)
+
+	# Fills the width but not the height: a child stretched to the scroll's own
+	# height never overflows it, and so never scrolls.
 	var left := VBoxContainer.new()
 	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	left.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	left.size_flags_stretch_ratio = 1.0
 	left.add_theme_constant_override("separation", Widgets.GAP_SECTION)
-	columns_row.add_child(left)
+	left_scroll.add_child(left)
 
 	_pool_host = VBoxContainer.new()
 	_pool_host.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -220,7 +285,18 @@ func _build_pool(container: Container) -> void:
 			str(maxi(0, rules.fx.total_energy_pool(doc.raw()) - drain)), palette
 		)
 
-	Widgets.metric(box, "Skill points spent on FX", str(rules.fx.fx_skill_purchase_points_used(doc.raw())), palette)
+	# The same budget bar the Skills and Achievements tabs carry. Powers are bought
+	# out of the one skill-point pool, and the question standing over this whole
+	# tab is "have I got room for another power" -- which a bare total spent on FX
+	# cannot answer without knowing what the budget was.
+	var summary := doc.summary()
+	var sp_used := AlternityNum.as_int(summary.get("skill_points_used", 0))
+	var sp_left := AlternityNum.as_int(summary.get("skill_points_remaining", 0))
+	Widgets.progress_metric(box, "Skill points", sp_used, sp_used + sp_left, palette)
+	Widgets.metric(
+		box, "Spent on FX",
+		"%d SP" % rules.fx.fx_skill_purchase_points_used(doc.raw()), palette
+	)
 
 	# Each entry is a {name, description} dictionary. Passing one to String()
 	# has no valid constructor and took the whole tab down for any hero with a
@@ -451,7 +527,7 @@ func _build_scale_picker(parent: Container) -> void:
 func _set_editing_powers(editing: bool) -> void:
 	_editing_powers = editing
 	if _selected_host != null and is_instance_valid(_selected_host):
-		if ctx.is_wide_layout:
+		if _two_column:
 			_render_powers_panel_desktop(_selected_host)
 		else:
 			_render_powers_panel_mobile(_selected_host)

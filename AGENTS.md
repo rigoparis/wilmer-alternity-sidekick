@@ -56,6 +56,27 @@ scenes/ui/                    the .tscn files for the above
 - **Desktop (Default)**: `1280x720` (Landscape).
 - **Mobile (`.mobile` suffix)**: ``390x844` on mobile (`1280x720` is the desktop default)` (Portrait).
 - **Warning**: `window/handheld/orientation` in `project.godot` must be `1` (Integer Enum for Portrait). A string value like `"portrait"` will fail parser. Never use external `override.cfg`.
+- **A tab that scrolls itself must still fit.** `SheetTab.has_custom_scroll()` returning true
+  switches the sheet's own scroll off. A `ScrollContainer` forbidden an axis reports its
+  content's whole minimum along it, so the tab's minimum height then passes straight up and
+  the sheet is laid out past the bottom of the window with nothing able to scroll to it.
+  `CharacterSheetScreen._apply_scroll_mode()` checks the sum and keeps the sheet's scroll
+  when it does not come out; a tab whose layout can change without the shell rebuilding must
+  emit `layout_changed` so that check runs again.
+- **Nothing sets a minimum width from its own text on a narrow phone.** The sheet never
+  scrolls sideways, so a label, stepper or dropdown that refuses to wrap or trim widens the
+  card until its right edge is off the screen. Give secondary text
+  `OVERRUN_TRIM_ELLIPSIS` or `AUTOWRAP_WORD_SMART` plus `custom_minimum_size = Vector2(1, 0)`,
+  and let rows of controls flow rather than box.
+- **`tools/smoke_responsive_layout.gd` is the check for all of the above.** It drives the real
+  shell over seven window sizes and asserts that nothing is drawn where no scroll can reach
+  it, across every screen (character select, campaign select, table join, GM screen), every
+  sheet tab in both view and catalog mode, and every route in `scenes/ui/routes/`. Run it
+  after any layout change: these defects render fine and pass every other suite.
+- **Test the client area, not the panel.** `1366x728` is in that matrix because a maximised
+  window on the commonest laptop panel gets 768 less about 40px of Windows title bar. Testing
+  1366x768 hands the layout 40px it will never have on that machine, which is most of the
+  margin these defects live in. Add a new target's real client height, not its screen height.
 
 ---
 
