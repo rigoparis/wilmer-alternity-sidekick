@@ -30,6 +30,12 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          # The action defaults to "tools platform-tools". The legacy "tools"
+          # package was dropped from the SDK repository, so sdkmanager now exits
+          # 1 with "Failed to find package 'tools'" and takes the build with it.
+          # Everything the Godot export needs is already on the runner image.
+          packages: 'platform-tools'
 
       # Setup Godot
       - name: Setup Godot Engine
