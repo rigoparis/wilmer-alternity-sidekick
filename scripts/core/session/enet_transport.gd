@@ -359,7 +359,9 @@ func poll() -> void:
 
 	_peer.poll()
 
-	while _peer.get_available_packet_count() > 0:
+	# Re-checked each turn: handling a packet can tear the session down --
+	# leave() drops the peer -- and the condition would then dereference null.
+	while _peer != null and _peer.get_available_packet_count() > 0:
 		# Peer first, then the packet: get_packet_peer() reports the sender of
 		# the packet still queued, and reading the packet advances past it.
 		var from_peer := _peer.get_packet_peer()
