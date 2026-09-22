@@ -2520,8 +2520,10 @@ func _validate_dark_matter_psionic_energy(character: Dictionary, messages: Array
 
 ## The FX rules Dark*Matter substitutes for the Beyond Science ones.
 ##
-## Ordinary Dark*Matter FX Talents enter through a perk. A GM-approved Adept
-## instead follows the explicit Adept crossover rules below.
+## A hero wishing to use FX simply chooses to be an FX talent -- there is no perk
+## to buy. What the setting does impose is a single broad skill. A GM-approved
+## Adept instead follows the explicit Adept crossover rules below.
+## Source: Dark Matter Campaign Setting p. 76.
 func _validate_dark_matter_fx(character: Dictionary, messages: Array) -> void:
 	var held: Array = []
 	for broad in fx.get_broad_skills():
@@ -2533,15 +2535,12 @@ func _validate_dark_matter_fx(character: Dictionary, messages: Array) -> void:
 	if held.is_empty():
 		return
 
-	var gateway := ""
-	for perk_id in DARK_MATTER_FX_PERKS:
-		if is_perk_selected(character, String(perk_id)):
-			gateway = String(perk_id)
-			break
 	var is_adept := fx.is_fx_adept(character)
-	if gateway.is_empty() and not is_adept:
+	if not is_adept and held.size() > DARK_MATTER_FX_TALENT_MAX_BROADS:
+		held.sort()
 		messages.append(
-			"Dark*Matter has no Adept profession; FX requires the Faith or Arcane Magic perk. Source: Dark Matter Campaign Setting, Chapter 3: Heroes of Dark Matter."
+			"A Dark*Matter FX talent may buy only %d FX broad skill, and this hero holds %d (%s). Source: Dark Matter Campaign Setting p. 76."
+			% [DARK_MATTER_FX_TALENT_MAX_BROADS, held.size(), ", ".join(held)]
 		)
 
 	var selected: Dictionary = character.get("fx", {}).get("selected_skills", {})

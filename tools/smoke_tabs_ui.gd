@@ -23,6 +23,7 @@ const TAB_FX := preload("res://scenes/ui/tabs/tab_fx.tscn")
 const TAB_SKILLS := preload("res://scenes/ui/tabs/tab_skills.tscn")
 const TAB_PSIONICS := preload("res://scenes/ui/tabs/tab_psionics.tscn")
 const TAB_EQUIPMENT := preload("res://scenes/ui/tabs/tab_equipment.tscn")
+const TAB_PERKS_FLAWS := preload("res://scenes/ui/tabs/tab_perks_flaws.tscn")
 const OPTIONAL_RULES_ROUTE := preload("res://scenes/ui/routes/optional_rules_route.tscn")
 const SkillPickerScript := preload("res://scripts/ui/widgets/skill_picker.gd")
 const FxPickerScript := preload("res://scripts/ui/widgets/fx_picker.gd")
@@ -56,6 +57,7 @@ func _run() -> void:
 	await _test_dark_matter_equipment_requisition()
 	await _test_custom_ability_target_spinbox()
 	await _test_durability_dazed_markers()
+	await _test_perks_flaws_rows_show_value_and_source()
 
 	finish()
 
@@ -400,6 +402,43 @@ func _test_permanent_fx_effects_render() -> void:
 ## Buttons count: their label is content a reader sees, and several of the
 ## things these tests assert about (generation methods, catalog actions) are
 ## rendered as buttons rather than labels.
+## A taken perk or flaw must print the points it actually costs or grants, and
+## the rulebook page it came from.
+##
+## Both halves were wrong and neither showed up in any suite. The flaw rows read
+## the "cost" key, which only perk rows carry -- flaw rows carry "bonus" -- so
+## every flaw rendered "+0 SP" while the budget above it totalled them
+## correctly. And the citation the data had carried all along was never drawn at
+## all, which is what makes a wrong page number invisible.
+func _test_perks_flaws_rows_show_value_and_source() -> void:
+	var doc := Doc.new(_rules)
+	doc.set_species_id(0)
+	doc.set_profession_id(0)
+	doc.apply(CharacterDoc.ALL, func(c):
+		_rules.set_perk_selected(c, "danger_sense", 4)
+		_rules.set_flaw_selected(c, "bad_luck", 6))
+
+	var tab = _mount(TAB_PERKS_FLAWS, doc, true)
+	await process_frame
+
+	var labels := _labels_in(tab)
+	check_true(_any_label_contains(labels, "Danger Sense"), "the taken perk is listed")
+	check_true(_any_label_contains(labels, "4 SP"), "the perk prints its cost")
+
+	check_true(_any_label_contains(labels, "Bad Luck"), "the taken flaw is listed")
+	check_true(_any_label_contains(labels, "+6 SP"), "the flaw prints the points it grants")
+	check_false(_any_label_contains(labels, "+0 SP"), "no taken flaw renders as +0 SP")
+
+	# The citation, verbatim from the definition, so a page correction shows up
+	# on the sheet rather than only in the data.
+	var perk_source := String(_rules.get_perk_by_id("danger_sense").get("source", ""))
+	var flaw_source := String(_rules.get_flaw_by_id("bad_luck").get("source", ""))
+	check_true(_any_label_contains(labels, perk_source), "the perk shows its source (%s)" % perk_source)
+	check_true(_any_label_contains(labels, flaw_source), "the flaw shows its source (%s)" % flaw_source)
+
+	tab.queue_free()
+
+
 func _labels_in(node: Node) -> Array:
 	var out: Array = []
 	for child in node.get_children():

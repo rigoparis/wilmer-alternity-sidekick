@@ -133,7 +133,10 @@ func _build_selected_row(parent: Container, entry: Dictionary, kind: String) -> 
 	var is_perk := kind == "perk"
 	var definition: Dictionary = entry.get("definition", entry)
 	var entry_id := String(definition.get("id", entry.get("id", "")))
-	var value := AlternityNum.as_int(entry.get("value", entry.get("cost", 0)))
+	# Perk rows carry "cost", flaw rows carry "bonus" -- reading only "cost" made
+	# every taken flaw render "+0 SP" while the budget above it totalled them
+	# correctly.
+	var value := AlternityNum.as_int(entry.get("value", entry.get("cost" if is_perk else "bonus", 0)))
 
 	var row := HBoxContainer.new()
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -160,6 +163,12 @@ func _build_selected_row(parent: Container, entry: Dictionary, kind: String) -> 
 	remove.custom_minimum_size = Vector2(84, 36)
 	remove.pressed.connect(func(): _remove(kind, entry_id))
 	row.add_child(remove)
+
+	# Under the row rather than in it, so the name/cost/remove columns keep their
+	# widths on a phone.
+	var source := String(definition.get("source", ""))
+	if not source.is_empty():
+		Widgets.muted_text(parent, source, palette, Widgets.FONT_CAPTION)
 
 
 func _remove(kind: String, entry_id: String) -> void:
@@ -243,6 +252,7 @@ func _catalog_entries(kind: String) -> Array:
 				"id": "%s%s%d" % [id, TIER_SEPARATOR, value],
 				"name": display,
 				"summary": summary_text,
+				"source": String(definition.get("source", "")),
 				"meta": ("%d SP" % value) if is_perk else ("+%d SP" % value),
 				"taken": taken,
 			})
