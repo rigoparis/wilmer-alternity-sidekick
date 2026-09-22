@@ -53,6 +53,115 @@ func _init() -> void:
 	for gid in graded_core:
 		check_eq(rules.get_flaw_by_id(gid).get("bonus_options"), [2, 4, 6], "%s follows 2/4/6 SP ladder" % gid)
 
+	print("--- 1b. Core flaw citations match the printed layout ---")
+	# Read off the scans. Table P27 is on Player's Handbook p. 107 -- not p. 108,
+	# which is where every one of these used to point -- and the descriptions run
+	# pp. 107-109. The Gamemaster Guide's flaw entries are on pp. 86-87; its
+	# p. 88 is the Chapter 6 opener, so the "p. 88" these used to cite was a page
+	# with no flaw on it.
+	var phb_pages := {
+		"alien_artifact_flaw": "p. 107", "bad_luck": "p. 107", "clueless": "p. 107",
+		"clumsy": "p. 107", "code_of_honor": "p. 107-108", "delicate": "p. 108",
+		"dirt_poor": "p. 108", "forgetful": "p. 108", "fragile": "p. 108",
+		"infamy": "p. 108", "oblivious": "p. 108", "obsessed": "p. 108",
+		"old_injury": "p. 108", "phobia": "p. 108-109", "poor_looks": "p. 109",
+		"powerful_enemy": "p. 109", "primitive": "p. 109", "slow": "p. 109",
+		"spineless": "p. 109", "temper": "p. 109",
+	}
+	var gmg_pages := {
+		"alien_artifact_flaw": 86, "bad_luck": 86, "clueless": 86, "clumsy": 86,
+		"code_of_honor": 86, "delicate": 86, "dirt_poor": 86, "forgetful": 87,
+		"fragile": 87, "infamy": 87, "oblivious": 87, "obsessed": 87,
+		"old_injury": 87, "phobia": 87, "poor_looks": 87, "powerful_enemy": 87,
+		"primitive": 87, "slow": 87, "spineless": 87, "temper": 87,
+	}
+	for flaw_id in phb_pages:
+		var source := String(rules.get_flaw_by_id(flaw_id).get("source", ""))
+		check_true(
+			source.begins_with("Player's Handbook %s, Table P27" % phb_pages[flaw_id]),
+			"%s cites Player's Handbook %s -- got \"%s\"" % [flaw_id, phb_pages[flaw_id], source]
+		)
+		check_true(
+			source.contains("Gamemaster Guide p. %d" % gmg_pages[flaw_id]),
+			"%s cites Gamemaster Guide p. %d -- got \"%s\"" % [flaw_id, gmg_pages[flaw_id], source]
+		)
+		check_false(
+			source.contains("Gamemaster Guide p. 88") or source.contains(", 88."),
+			"%s does not cite Gamemaster Guide p. 88, which opens Chapter 6" % flaw_id
+		)
+
+	# Table P27 prints an em dash in Alien Artifact's Ability column; "Special"
+	# there was its perk twin's Type column bleeding across.
+	check_eq(String(rules.get_flaw_by_id("alien_artifact_flaw").get("ability", "")), "—",
+		"alien artifact flaw ability column is an em dash")
+
+	# Starting funds live on Table P30, which is on p. 129.
+	check_true(
+		String(rules.get_flaw_by_id("dirt_poor").get("source", "")).contains("Table P30 p. 129"),
+		"dirt poor cites Table P30 at p. 129"
+	)
+
+	print("--- 1c. Supplement flaw citations match the printed layout ---")
+	# Every one of these pointed a page late as well. Verified pages: Table D3 is
+	# on Dark Matter p. 60 with descriptions pp. 60-61; Table F2 is on Beyond
+	# Science p. 5 with descriptions pp. 5-6; Table D22 is on Dataware p. 78 with
+	# descriptions pp. 78-80.
+	var supplement_sources := {
+		"abductee": "Dark Matter Campaign Setting p. 60; Table D3.",
+		"criminal_record": "Dark Matter Campaign Setting p. 60; Table D3.",
+		"dilettante": "Dark Matter Campaign Setting p. 60; Table D3.",
+		"divided_loyalty": "Dark Matter Campaign Setting p. 60-61; Table D3.",
+		"illiterate": "Dark Matter Campaign Setting p. 61; Table D3.",
+		"implants": "Dark Matter Campaign Setting p. 61; Table D3.",
+		"possessed": "Dark Matter Campaign Setting p. 61; Table D3.",
+		"rampant_paranoia": "Dark Matter Campaign Setting p. 61; Table D3.",
+		"rebellious": "Dark Matter Campaign Setting p. 61; Table D3.",
+		"wild_talent": "Dark Matter Campaign Setting p. 61; Table D3.",
+		"fixed_fx_recovery": "Beyond Science: A Guide to FX p. 5; Table F2.",
+		"inhibited_fx_recovery": "Beyond Science: A Guide to FX p. 5; Table F2.",
+		"fx_require_recharging": "Beyond Science: A Guide to FX p. 5; Table F2.",
+		"fx_susceptibility": "Beyond Science: A Guide to FX p. 6; Table F2.",
+		"slow_fx_energy_recovery": "Beyond Science: A Guide to FX p. 6; Table F2.",
+		"asimov_circuits": "Dataware p. 78; Table D22.",
+		"command_circuitry": "Dataware p. 78; Table D22.",
+		"doublespeak": "Dataware p. 78; Table D22.",
+		"fragile_robot": "Dataware p. 78; Table D22.",
+		"honesty": "Dataware p. 78; Table D22.",
+		"incomplete_coding": "Dataware p. 78-79; Table D22.",
+		"inferior_tech": "Dataware p. 79; Table D22.",
+		"memory_lapse": "Dataware p. 79; Table D22.",
+		"overheat": "Dataware p. 79; Table D22.",
+		"secret_orders": "Dataware p. 79; Table D22.",
+		"short_circuit": "Dataware p. 79; Table D22.",
+		"unarmored": "Dataware p. 80; Table D22.",
+	}
+	for flaw_id in supplement_sources:
+		check_eq(
+			String(rules.get_flaw_by_id(flaw_id).get("source", "")),
+			supplement_sources[flaw_id],
+			"%s citation" % flaw_id
+		)
+
+	# Table D22 carries its own Fragile at +4 CON, distinct from the core +3 one.
+	# They must not share an id: flaws_by_id is keyed by id, so one would
+	# silently replace the other and a character could never take the robot one.
+	var core_fragile: Dictionary = rules.get_flaw_by_id("fragile")
+	var robot_fragile: Dictionary = rules.get_flaw_by_id("fragile_robot")
+	check_eq(core_fragile.get("bonus_options"), [3], "the core Fragile is +3 SP")
+	check_eq(String(core_fragile.get("supplement", "")), "", "and is not a supplement flaw")
+	check_eq(robot_fragile.get("bonus_options"), [4], "the robot Fragile is +4 SP")
+	check_eq(robot_fragile.get("supplement"), "dataware", "and comes from Dataware")
+	check_eq(String(robot_fragile.get("ability", "")), "CON", "robot Fragile is CON")
+
+	# Wild Talent already shipped; this guards against it being "added" twice.
+	check_eq(rules.get_flaw_by_id("wild_talent").get("bonus_options"), [6], "wild talent is +6 SP")
+	check_eq(String(rules.get_flaw_by_id("wild_talent").get("ability", "")), "WIL", "wild talent is WIL")
+
+	var seen_ids: Dictionary = {}
+	for flaw_id in rules.flaws_by_id:
+		check_false(seen_ids.has(String(flaw_id)), "flaw id '%s' is unique" % flaw_id)
+		seen_ids[String(flaw_id)] = true
+
 	print("--- 2. Testing Dark Matter Flaws (Table D3) ---")
 	var dm_flaw_ids := [
 		"abductee", "criminal_record", "dilettante", "divided_loyalty",

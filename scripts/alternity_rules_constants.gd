@@ -66,12 +66,18 @@ const DARK_MATTER_PEP_PURCHASE_MIN_LEVEL := 6
 const DARK_MATTER_FX_TALENT_TOP_RANK := 6
 const DARK_MATTER_FX_TALENT_OTHER_RANK := 3
 
-## The perks that make somebody an FX talent in Dark*Matter.
+## How many FX broad skills a Dark*Matter FX talent may buy.
 ##
-## Ordinary Dark*Matter FX Talents enter through one of these perks. Adepts are
-## independently selectable and use their profession rules instead.
-## Source: Dark Matter Campaign Setting, Chapter 3: Heroes of Dark Matter.
-const DARK_MATTER_FX_PERKS := ["faith", "arcane_magic"]
+## "An FX talent may purchase only a single FX broad skill. This can be done
+## either during hero creation or later during the hero's career."
+## Source: Dark Matter Campaign Setting p. 76.
+##
+## Replaces a DARK_MATTER_FX_PERKS gate that required a "Faith or Arcane Magic"
+## perk. No such Arcane Magic perk exists -- Table D2 (p. 59) lists every
+## Dark*Matter perk and it is not among them -- and p. 76 makes being an FX
+## talent a choice rather than a purchase. Adepts remain the GM-approved
+## exception and follow their own profession rules.
+const DARK_MATTER_FX_TALENT_MAX_BROADS := 1
 
 ## What a talent pays above the listed cost for an FX or psionic skill.
 ##
@@ -1918,7 +1924,7 @@ const PERK_DEFINITIONS := [
 		"id": "alien_artifact",
 		"name": "Alien Artifact",
 		"cost_options": [8],
-		"ability": "Special",
+		"ability": "—",
 		"activation": "Special",
 		"summary": "A GM-designed alien item, experiment, or process gives the hero a useful benefit, but it is rare, coveted, and carries a downside.",
 		"source": "Player's Handbook p. 103-104; Table P26.",
@@ -1930,7 +1936,7 @@ const PERK_DEFINITIONS := [
 		"ability": "DEX",
 		"activation": "Active",
 		"summary": "Reduces off-hand or two-weapon penalties: the primary hand has no penalty and the off-hand action has a +2 step penalty.",
-		"source": "Player's Handbook p. 103-104; Table P26.",
+		"source": "Player's Handbook p. 104; Table P26.",
 	},
 	{
 		"id": "animal_friend",
@@ -1948,7 +1954,7 @@ const PERK_DEFINITIONS := [
 		"ability": "PER",
 		"activation": "Conscious",
 		"summary": "The hero is famous in an agreed circle. A perk check can modify Personality-based checks in a scene from a penalty on bad results to bonuses on success; the base check improves at achievement levels 5, 10, and 15.",
-		"source": "Player's Handbook p. 104-105; Table P26.",
+		"source": "Player's Handbook p. 104; Table P26.",
 	},
 	{
 		"id": "concentration",
@@ -1957,7 +1963,7 @@ const PERK_DEFINITIONS := [
 		"ability": "INT",
 		"activation": "Conscious",
 		"summary": "The hero spends an action concentrating on a stated next task. Success grants a -1, -2, or -3 step bonus; interruption loses the bonus.",
-		"source": "Player's Handbook p. 105; Table P26.",
+		"source": "Player's Handbook p. 104; Table P26.",
 	},
 	{
 		"id": "danger_sense",
@@ -1966,7 +1972,7 @@ const PERK_DEFINITIONS := [
 		"ability": "WIL",
 		"activation": "Active",
 		"summary": "The hero anticipates danger and receives a -2 step bonus to Awareness-intuition checks.",
-		"source": "Player's Handbook p. 105; Table P26.",
+		"source": "Player's Handbook p. 104; Table P26.",
 	},
 	{
 		"id": "faith",
@@ -1975,7 +1981,7 @@ const PERK_DEFINITIONS := [
 		"ability": "WIL",
 		"activation": "Conscious",
 		"summary": "The hero has deep faith in a belief, power, nation, or similar tenet. A qualifying Faith check can improve the degree of success of a later skill check; repeated use in an adventure becomes harder.",
-		"source": "Player's Handbook p. 105; Table P26.",
+		"source": "Player's Handbook p. 104; Table P26.",
 	},
 	{
 		"id": "filthy_rich",
@@ -1984,7 +1990,7 @@ const PERK_DEFINITIONS := [
 		"ability": "PER",
 		"activation": "Conscious",
 		"summary": "The hero starts wealthy and may gain access to funds with a perk check. Revealing status can modify Personality-based checks, but the GM can invert the effect where wealth is a liability.",
-		"source": "Player's Handbook p. 105-106; Table P26.",
+		"source": "Player's Handbook p. 104-105; Table P26.",
 	},
 	{
 		"id": "fists_of_iron",
@@ -1993,7 +1999,7 @@ const PERK_DEFINITIONS := [
 		"ability": "STR",
 		"activation": "Active",
 		"summary": "Adds +1 damage to successful Unarmed Attack checks. The 5-point improved version requires power martial arts and can increase damage further based on a perk check.",
-		"source": "Player's Handbook p. 106; Table P26.",
+		"source": "Player's Handbook p. 105; Table P26.",
 	},
 	{
 		"id": "fortitude",
@@ -2002,7 +2008,7 @@ const PERK_DEFINITIONS := [
 		"ability": "CON",
 		"activation": "Active",
 		"summary": "The hero receives a -1 step bonus to Stamina-endurance checks.",
-		"source": "Player's Handbook p. 106; Table P26.",
+		"source": "Player's Handbook p. 105; Table P26.",
 	},
 	{
 		"id": "good_luck",
@@ -2011,7 +2017,7 @@ const PERK_DEFINITIONS := [
 		"ability": "WIL",
 		"activation": "Conscious",
 		"summary": "Once per scene before another action, a Good Luck check modifies that next activity. Poor results can impose bad luck; better results grant bonuses.",
-		"source": "Player's Handbook p. 106; Table P26.",
+		"source": "Player's Handbook p. 105; Table P26.",
 	},
 	{
 		"id": "great_looks",
@@ -2020,7 +2026,7 @@ const PERK_DEFINITIONS := [
 		"ability": "PER",
 		"activation": "Active",
 		"summary": "When appearance helps an encounter, the hero gains a -1 step bonus to Personality-based skill checks, subject to GM and cultural context.",
-		"source": "Player's Handbook p. 106; Table P26.",
+		"source": "Player's Handbook p. 105; Table P26.",
 	},
 	{
 		"id": "heightened_ability",
@@ -2029,7 +2035,7 @@ const PERK_DEFINITIONS := [
 		"ability": "Special",
 		"activation": "Active",
 		"summary": "Raises one Ability Score by 1, without exceeding the species maximum; update derived values as needed.",
-		"source": "Player's Handbook p. 106; Table P26.",
+		"source": "Player's Handbook p. 105; Table P26.",
 	},
 	{
 		"id": "observant",
@@ -2038,7 +2044,7 @@ const PERK_DEFINITIONS := [
 		"ability": "WIL",
 		"activation": "Active",
 		"summary": "The hero gains a -1 step bonus to Awareness-perception checks.",
-		"source": "Player's Handbook p. 106; Table P26.",
+		"source": "Player's Handbook p. 105; Table P26.",
 	},
 	{
 		"id": "photo_memory",
@@ -2047,7 +2053,7 @@ const PERK_DEFINITIONS := [
 		"ability": "INT",
 		"activation": "Conscious",
 		"summary": "A perk check can let the hero recall details such as names, faces, documents, or other remembered information; the GM sets the situation die.",
-		"source": "Player's Handbook p. 106; Table P26.",
+		"source": "Player's Handbook p. 105; Table P26.",
 	},
 	{
 		"id": "powerful_ally",
@@ -2056,7 +2062,7 @@ const PERK_DEFINITIONS := [
 		"ability": "PER",
 		"activation": "Conscious",
 		"summary": "The hero has an agreed ally. A perk check determines the quality of aid if the hero can contact the ally and the ally can respond.",
-		"source": "Player's Handbook p. 106; Table P26.",
+		"source": "Player's Handbook p. 105; Table P26.",
 	},
 	{
 		"id": "psionic_awareness",
@@ -2065,7 +2071,7 @@ const PERK_DEFINITIONS := [
 		"ability": "INT",
 		"activation": "Active",
 		"summary": "If psionics are allowed, the hero may receive an Intelligence feat check to notice psionic power use nearby.",
-		"source": "Player's Handbook p. 106; Table P26.",
+		"source": "Player's Handbook p. 105; Table P26.",
 	},
 	{
 		"id": "reflexes",
@@ -2074,7 +2080,7 @@ const PERK_DEFINITIONS := [
 		"ability": "DEX",
 		"activation": "Active",
 		"summary": "The hero's Dexterity resistance modifier improves by 1 step.",
-		"source": "Player's Handbook p. 107; Table P26.",
+		"source": "Player's Handbook p. 106; Table P26.",
 	},
 	{
 		"id": "reputation",
@@ -2083,7 +2089,7 @@ const PERK_DEFINITIONS := [
 		"ability": "WIL",
 		"activation": "Active",
 		"summary": "A known reputation can grant a situation die bonus to agreed encounter skills. The base check improves at achievement levels 5, 10, and 15.",
-		"source": "Player's Handbook p. 107; Table P26.",
+		"source": "Player's Handbook p. 106; Table P26.",
 	},
 	{
 		"id": "tough_as_nails",
@@ -2092,7 +2098,7 @@ const PERK_DEFINITIONS := [
 		"ability": "STR",
 		"activation": "Active",
 		"summary": "The hero's Strength resistance modifier improves by 1 step.",
-		"source": "Player's Handbook p. 107; Table P26.",
+		"source": "Player's Handbook p. 106; Table P26.",
 	},
 	{
 		"id": "vigor",
@@ -2101,7 +2107,7 @@ const PERK_DEFINITIONS := [
 		"ability": "CON",
 		"activation": "Active",
 		"summary": "Raises a durability rating: 2 points for +1 stun, 3 points for +1 wound, or 4 points for +1 mortal and +1 fatigue. Each listed benefit can be bought once.",
-		"source": "Player's Handbook p. 107; Table P26.",
+		"source": "Player's Handbook p. 106-107; Table P26.",
 	},
 	{
 		"id": "willpower",
@@ -2110,20 +2116,10 @@ const PERK_DEFINITIONS := [
 		"ability": "WIL",
 		"activation": "Active",
 		"summary": "The hero's Will resistance modifier improves by 1 step.",
-		"source": "Player's Handbook p. 108; Table P26.",
+		"source": "Player's Handbook p. 107; Table P26.",
 	},
 
-	# Dark Matter Perks (Dark Matter Campaign Setting Chapter 3 p. 60-61, Table D2)
-	{
-		"id": "arcane_magic",
-		"name": "Arcane Magic",
-		"cost_options": [5],
-		"ability": "INT",
-		"activation": "Active",
-		"setting": "Dark Matter",
-		"summary": "The hero is an arcane FX talent and may buy a school of magic and its spells. Under standard Dark*Matter rules this perk is the path into arcane FX; a talent pays 1 skill point above the listed cost for every FX skill.",
-		"source": "Dark Matter Campaign Setting, Chapter 3: Heroes of Dark Matter.",
-	},
+	# Dark Matter Perks (Dark Matter Campaign Setting Chapter 3 p. 59-60, Table D2)
 	{
 		"id": "gearhead",
 		"name": "Gearhead",
@@ -2132,7 +2128,7 @@ const PERK_DEFINITIONS := [
 		"activation": "Active",
 		"setting": "Dark Matter",
 		"summary": "Natural affinity with mechanical systems. Gains a -1 step bonus to all Technical Science-repair and juryrig skill checks.",
-		"source": "Dark Matter Campaign Setting p. 60; Table D2.",
+		"source": "Dark Matter Campaign Setting p. 59; Table D2.",
 	},
 	{
 		"id": "hidden_identity",
@@ -2142,17 +2138,17 @@ const PERK_DEFINITIONS := [
 		"activation": "Active",
 		"setting": "Dark Matter",
 		"summary": "Hidden or false identity. 3 SP: no database records, transactions in cash only (incompatible with Criminal Record). 6 SP: complete false identity.",
-		"source": "Dark Matter Campaign Setting p. 60; Table D2.",
+		"source": "Dark Matter Campaign Setting p. 59; Table D2.",
 	},
 	{
 		"id": "high_tech",
 		"name": "High Tech",
 		"cost_options": [4],
-		"ability": "Special",
+		"ability": "—",
 		"activation": "Special",
 		"setting": "Dark Matter",
 		"summary": "The hero owns an object of advanced (PL 6) technology that functions normally until a Critical Failure damages it.",
-		"source": "Dark Matter Campaign Setting p. 60; Table D2.",
+		"source": "Dark Matter Campaign Setting p. 59; Table D2.",
 	},
 	{
 		"id": "networked",
@@ -2162,7 +2158,7 @@ const PERK_DEFINITIONS := [
 		"activation": "Active",
 		"setting": "Dark Matter",
 		"summary": "The hero gains a -1 step bonus to the use of contacts or allegiances.",
-		"source": "Dark Matter Campaign Setting p. 60; Table D2.",
+		"source": "Dark Matter Campaign Setting p. 59; Table D2.",
 	},
 	{
 		"id": "second_sight",
@@ -2172,7 +2168,7 @@ const PERK_DEFINITIONS := [
 		"activation": "Conscious",
 		"setting": "Dark Matter",
 		"summary": "Allows the hero to see through illusions and visual trickery (psionic illusions, FX phantasms, holograms), granting a -1 step bonus on resistance checks or a Will feat check.",
-		"source": "Dark Matter Campaign Setting p. 60; Table D2.",
+		"source": "Dark Matter Campaign Setting p. 59; Table D2.",
 	},
 	{
 		"id": "superior_talent",
@@ -2182,7 +2178,7 @@ const PERK_DEFINITIONS := [
 		"activation": "Active",
 		"setting": "Dark Matter",
 		"summary": "For heroes with psionic talents. 4 SP: purchase 2 psionic broad skills and up to 2 specialty skills each. 6 SP: purchase up to 4 specialty skills of a single broad skill.",
-		"source": "Dark Matter Campaign Setting p. 60; Table D2.",
+		"source": "Dark Matter Campaign Setting p. 59; Table D2.",
 	},
 	{
 		"id": "well_traveled",
@@ -2192,193 +2188,220 @@ const PERK_DEFINITIONS := [
 		"activation": "Conscious",
 		"setting": "Dark Matter",
 		"summary": "The hero may make a perk check in remote or foreign locations to remember an acquaintance who can act as a contact (+1 step penalty to solicit help).",
-		"source": "Dark Matter Campaign Setting p. 60-61; Table D2.",
+		"source": "Dark Matter Campaign Setting p. 59-60; Table D2.",
 	},
 
-	# Beyond Science FX Perks (Beyond Science: A Guide to FX Chapter 1 p. 6, Table F1)
+	# Beyond Science FX Perks (Beyond Science: A Guide to FX Chapter 1 p. 4-5, Table F1)
+	#
+	# Table F1 lists exactly five FX perks and p. 4 says "the following perks are
+	# new to this book", so the table is the complete set. Six entries that used
+	# to sit here -- Combat Master, Efficient FX Energy, Extended FX Duration,
+	# Improved FX Area, Improved FX Range and Increased FX Energy -- appear
+	# nowhere in the book and have been removed. Enlarging an FX energy pool is
+	# an achievement point cost (15/10/5 per point by campaign level, p. 4), not
+	# a perk.
+	#
+	# All five may only be bought by an Adept or an FX talent, and the four
+	# italicised in Table F1 (every one but Mentor) only at character creation.
 	{
-		"id": "combat_master",
-		"name": "Combat Master",
-		"cost_options": [5],
-		"ability": "Special",
+		"id": "fx_awareness",
+		"name": "FX Awareness",
+		"cost_options": [3],
+		"ability": "INT",
 		"activation": "Active",
 		"supplement": "beyond_science",
-		"summary": "Allows an FX hero to select combat specialty skills from Modern Ranged Weapons or Melee Weapons without taking the broad skill.",
-		"source": "Beyond Science: A Guide to FX p. 6; Table F1.",
+		"summary": "Like Psionic Awareness, a perk check recognises that a type of FX is being used nearby. The player picks one type to be aware of: Arcane Magic, Faith, or Super Power.",
+		"source": "Beyond Science: A Guide to FX p. 4; Table F1.",
 	},
 	{
-		"id": "efficient_fx_energy",
-		"name": "Efficient FX Energy",
+		"id": "fx_mastery",
+		"name": "FX Mastery",
 		"cost_options": [4],
-		"ability": "WIL",
+		"ability": "Varies",
 		"activation": "Active",
 		"supplement": "beyond_science",
-		"summary": "Reduces the FX energy point cost of all FX powers by 1 (minimum 1 FX point).",
-		"source": "Beyond Science: A Guide to FX p. 6; Table F1.",
-	},
-	{
-		"id": "extended_fx_duration",
-		"name": "Extended FX Duration",
-		"cost_options": [4],
-		"ability": "WIL",
-		"activation": "Active",
-		"supplement": "beyond_science",
-		"summary": "Doubles the duration of all maintained or sustained FX powers.",
-		"source": "Beyond Science: A Guide to FX p. 6; Table F1.",
-	},
-	{
-		"id": "fast_fx_recovery",
-		"name": "Fast FX Recovery",
-		"cost_options": [4],
-		"ability": "WIL",
-		"activation": "Active",
-		"supplement": "beyond_science",
-		"summary": "FX energy recovers at twice the normal rate: recovery checks every 30 minutes, or 4 hours of rest for full pool.",
-		"source": "Beyond Science: A Guide to FX p. 6; Table F1.",
+		"summary": "The hero has mastered one particular FX specialty skill and has a -1 step bonus to the use of that specialty skill.",
+		"source": "Beyond Science: A Guide to FX p. 4; Table F1.",
 	},
 	{
 		"id": "fx_resistance",
 		"name": "FX Resistance",
-		"cost_options": [3, 6, 9],
-		"ability": "WIL",
+		"cost_options": [5],
+		"ability": "Varies",
 		"activation": "Active",
 		"supplement": "beyond_science",
-		"summary": "Grants a +2 step bonus to resistance modifier against 1 (3 SP), 2 (6 SP), or 3 (9 SP) types of FX.",
-		"source": "Beyond Science: A Guide to FX p. 6; Table F1.",
+		"summary": "Provides a +2 resistance modifier against one sort of FX: Arcane Magic, Faith, or Super Power.",
+		"source": "Beyond Science: A Guide to FX p. 4; Table F1.",
 	},
 	{
-		"id": "improved_fx_area",
-		"name": "Improved FX Area",
+		"id": "mentor",
+		"name": "Mentor",
 		"cost_options": [4],
+		"ability": "PER",
+		"activation": "Conscious",
+		"supplement": "beyond_science",
+		"summary": "A variation of Powerful Ally. The hero has a mentor in her FX specialty who can advise, assist with ceremonies or rituals, or use the Teach skill to help her advance.",
+		"source": "Beyond Science: A Guide to FX p. 5; Table F1.",
+	},
+	{
+		"id": "rapid_fx_recovery",
+		"name": "Rapid FX Recovery",
+		"cost_options": [5],
 		"ability": "WIL",
 		"activation": "Active",
 		"supplement": "beyond_science",
-		"summary": "Increases the area of effect of all area-affecting FX powers by 50%.",
-		"source": "Beyond Science: A Guide to FX p. 6; Table F1.",
+		"summary": "The character regains FX energy at double the normal rate: a Resolve-mental resolve check every 30 minutes instead of every hour, and only 4 hours of rest to fully restore the pool.",
+		"source": "Beyond Science: A Guide to FX p. 5; Table F1.",
 	},
+	# Dataware Robot Perks (Dataware Chapter 6 p. 76-78, Table D21)
+	#
+	# Table D21 holds 22 rows, but 10 are core Player's Handbook perks marked
+	# with an asterisk and merely made available to robots; only the 12 below are
+	# new. Seven entries that used to sit here -- Adaptive Programming, Composite
+	# Structure, Environmental Shielding, Heavy Chassis, Modular Mounts,
+	# Overclocked and Reinforced Casing -- are in no book. Chassis weight,
+	# durability, armour and environmental sealing are bought as robot parts on
+	# Table D19 (p. 75), not as perks.
+	#
+	# "pl" is the table's Progress Level requirement. Nothing enforces it yet.
 	{
-		"id": "improved_fx_range",
-		"name": "Improved FX Range",
-		"cost_options": [4],
-		"ability": "WIL",
-		"activation": "Active",
-		"supplement": "beyond_science",
-		"summary": "Increases the range of all ranged FX powers by 50%.",
-		"source": "Beyond Science: A Guide to FX p. 6; Table F1.",
-	},
-	{
-		"id": "increased_fx_energy",
-		"name": "Increased FX Energy",
-		"cost_options": [3, 6, 9],
-		"ability": "WIL",
-		"activation": "Active",
-		"supplement": "beyond_science",
-		"summary": "Increases the hero's FX energy pool by +2 (3 SP), +4 (6 SP), or +6 (9 SP) points.",
-		"source": "Beyond Science: A Guide to FX p. 6; Table F1.",
-	},
-
-	# Dataware Robot Perks (Dataware Chapter 6 p. 78, Table D21)
-	{
-		"id": "adaptive_programming",
-		"name": "Adaptive Programming",
-		"cost_options": [4],
-		"ability": "INT",
-		"activation": "Active",
-		"supplement": "dataware",
-		"summary": "The robot can learn non-robotics skills at standard costs without cross-career penalties.",
-		"source": "Dataware p. 78; Table D21.",
-	},
-	{
-		"id": "composite_structure",
-		"name": "Composite Structure",
+		"id": "detachable_system",
+		"name": "Detachable System",
 		"cost_options": [3],
 		"ability": "CON",
-		"activation": "Active",
+		"activation": "Conscious",
+		"pl": 6,
 		"supplement": "dataware",
-		"summary": "Lightweight composite internal frame reduces chassis weight by 25% without sacrificing durability.",
-		"source": "Dataware p. 78; Table D21.",
+		"summary": "A wireless relay connects one component part to the central processor, so the part can detach and still be used normally. Each purchase adds one more part; the robot needs a wireless data port.",
+		"source": "Dataware p. 76; Table D21.",
 	},
 	{
-		"id": "environmental_shielding",
-		"name": "Environmental Shielding",
-		"cost_options": [4],
-		"ability": "CON",
+		"id": "emancipated",
+		"name": "Emancipated",
+		"cost_options": [5],
+		"ability": "PER",
 		"activation": "Active",
+		"pl": 7,
 		"supplement": "dataware",
-		"summary": "Internal components are sealed against vacuum, radiation, corrosive atmospheres, and extreme temperatures.",
-		"source": "Dataware p. 78; Table D21.",
+		"summary": "The robot is legally a free sentient rather than property, and takes no more orders from above than any other hero. It either goes rogue or is freed by its owner; the player spends the SP either way.",
+		"source": "Dataware p. 76; Table D21.",
 	},
 	{
-		"id": "heavy_chassis",
-		"name": "Heavy Chassis",
+		"id": "fuzzy_logic",
+		"name": "Fuzzy Logic",
 		"cost_options": [4],
-		"ability": "CON",
-		"activation": "Active",
+		"ability": "PER",
+		"activation": "Conscious",
+		"pl": 7,
 		"supplement": "dataware",
-		"summary": "Reinforced heavy chassis adds +2 to wound and stun durability ratings.",
-		"source": "Dataware p. 78; Table D21.",
+		"summary": "More flexibility than most robots in interpreting commands. The robot may lie via a Will feat check at a -1 step bonus, but cannot directly contradict its owner, and the lies are verbal only.",
+		"source": "Dataware p. 76; Table D21.",
 	},
 	{
 		"id": "hidden_system",
 		"name": "Hidden System",
-		"cost_options": [2],
+		"cost_options": [4],
+		"ability": "DEX",
+		"activation": "Conscious",
+		"supplement": "dataware",
+		"summary": "An important tool, sensor, or weapon is concealed inside the robot casing.",
+		"source": "Dataware p. 76-77; Table D21.",
+	},
+	{
+		"id": "language_module",
+		"name": "Language Module",
+		"cost_options": [6],
+		"ability": "INT",
+		"activation": "Conscious",
+		"pl": 8,
+		"supplement": "dataware",
+		"summary": "The robot speaks and understands the common human and alien languages. Each further language costs 1 advancement point, and switching between them takes an action.",
+		"source": "Dataware p. 77; Table D21.",
+	},
+	{
+		"id": "lightweight_alloy",
+		"name": "Lightweight Alloy",
+		"cost_options": [3],
 		"ability": "DEX",
 		"activation": "Active",
 		"supplement": "dataware",
-		"summary": "One weapon, tool, or sensor array is concealed within internal compartments (+2 step penalty for others to detect). Incompatible with Unarmored.",
-		"source": "Dataware p. 78; Table D21.",
+		"summary": "Chassis and major systems weigh 25% less. Adds 4 points to Dexterity for calculating movement and action check Scores only -- not for skill checks or ability feats -- and cuts Weight Value by 25%.",
+		"source": "Dataware p. 77; Table D21.",
 	},
 	{
-		"id": "modular_mounts",
-		"name": "Modular Mounts",
-		"cost_options": [3],
-		"ability": "INT",
-		"activation": "Active",
-		"supplement": "dataware",
-		"summary": "Quick-swap modular sockets allow equipment and tools to be swapped in minutes rather than hours.",
-		"source": "Dataware p. 78; Table D21.",
-	},
-	{
-		"id": "overclocked",
-		"name": "Overclocked",
+		"id": "memory_implants",
+		"name": "Memory Implants",
 		"cost_options": [4],
-		"ability": "INT",
+		"ability": "PER",
 		"activation": "Active",
+		"pl": 8,
 		"supplement": "dataware",
-		"summary": "Overclocked processors grant a -1 step bonus to initiative rolls and reaction checks.",
-		"source": "Dataware p. 78; Table D21.",
+		"summary": "A false memory of childhood and youth gives greater emotional depth. Adds 2 to Personality, which may exceed the normal limit for its PL. Discovering the memories are false costs a Will feat check or 1 Personality permanently.",
+		"source": "Dataware p. 77; Table D21.",
 	},
 	{
-		"id": "reinforced_casing",
-		"name": "Reinforced Casing",
-		"cost_options": [4],
+		"id": "nanite_self_repair",
+		"name": "Nanite Self-repair",
+		"cost_options": [4, 7, 10],
+		"ability": "CON",
+		"activation": "Active",
+		"pl": 7,
+		"supplement": "dataware",
+		"summary": "A nanotech subsystem repairs damage in real time given pure raw materials. 4 SP: wounds, with assistance for mortal damage. 7 SP: wounds and mortal damage unassisted. 10 SP: also rebuilds entire destroyed subsystems.",
+		"source": "Dataware p. 77; Table D21.",
+	},
+	{
+		"id": "redundant_systems",
+		"name": "Redundant Systems",
+		"cost_options": [6],
 		"ability": "CON",
 		"activation": "Active",
 		"supplement": "dataware",
-		"summary": "Adds +1 point of natural armor protection against ordinary damage types.",
-		"source": "Dataware p. 78; Table D21.",
+		"summary": "Duplicate systems, memory buffers and generators. The robot never suffers knockdown from stun damage, and permanently spends one slot of active memory monitoring the redundancy.",
+		"source": "Dataware p. 77; Table D21.",
 	},
 	{
-		"id": "self_repair",
-		"name": "Self Repair",
+		"id": "remote_backups",
+		"name": "Remote Backups",
+		"cost_options": [5],
+		"ability": "INT",
+		"activation": "Active",
+		"supplement": "dataware",
+		"summary": "Memory is stored somewhere distant and downloaded at every recharge. Even if the robot is melted to scrap, its personality and memories can be put into a new body, minus the days since the last backup.",
+		"source": "Dataware p. 77; Table D21.",
+	},
+	{
+		"id": "self_editing_program",
+		"name": "Self-Editing Program",
 		"cost_options": [4],
+		"ability": "INT",
+		"activation": "Conscious",
+		"pl": 6,
+		"supplement": "dataware",
+		"summary": "The robot rewrites its own programming, shutting down while it does so. A successful check abandons one broad skill for another; specialties under the old broad skill are lost. It must first observe the desired skill for a day per skill point.",
+		"source": "Dataware p. 77-78; Table D21.",
+	},
+	{
+		"id": "superior_tech",
+		"name": "Superior Tech",
+		"cost_options": [5],
 		"ability": "CON",
 		"activation": "Active",
 		"supplement": "dataware",
-		"summary": "Internal nano-repair systems automatically restore 1 stun or wound point per hour of low-power rest.",
+		"summary": "A prototype with one system rated one Progress Level above the general market. If that part is destroyed it cannot be replaced except by Nanite Self-repair; a Technical Science-juryrig roll keeps it working until the next failure.",
 		"source": "Dataware p. 78; Table D21.",
 	},
 ]
 
 const FLAW_DEFINITIONS := [
-	# Core Flaws (Player's Handbook Chapter 7 p. 108-111, Table P27; Gamemaster Guide Chapter 5 p. 82-88)
+	# Core Flaws (Player's Handbook Chapter 5 p. 107-109, Table P27; Gamemaster Guide Chapter 5 p. 86-87)
 	{
 		"id": "alien_artifact_flaw",
 		"name": "Alien Artifact",
 		"bonus_options": [5],
-		"ability": "Special",
+		"ability": "—",
 		"summary": "A GM-designed alien item, experiment, or process that is mostly a disadvantage, though it also has an unrelated positive side. Highly coveted and rare.",
-		"source": "Player's Handbook p. 108-109, Table P27; Gamemaster Guide p. 83, 87, 164-175.",
+		"source": "Player's Handbook p. 107, Table P27; Gamemaster Guide p. 86; Chapter 12: Alien Artifacts from p. 164.",
 	},
 	{
 		"id": "bad_luck",
@@ -2386,7 +2409,7 @@ const FLAW_DEFINITIONS := [
 		"bonus_options": [6],
 		"ability": "WIL",
 		"summary": "The hero suffers a Critical Failure when the control die shows 19 or 20.",
-		"source": "Player's Handbook p. 108, Table P27; Gamemaster Guide p. 83.",
+		"source": "Player's Handbook p. 107, Table P27; Gamemaster Guide p. 86.",
 	},
 	{
 		"id": "clueless",
@@ -2394,7 +2417,7 @@ const FLAW_DEFINITIONS := [
 		"bonus_options": [2, 4, 6],
 		"ability": "INT",
 		"summary": "The GM secretly chooses a non-profession specialty skill the hero overestimates. The bonus option sets a +1, +2, or +3 step penalty to that skill.",
-		"source": "Player's Handbook p. 108, Table P27; Gamemaster Guide p. 83-84.",
+		"source": "Player's Handbook p. 107, Table P27; Gamemaster Guide p. 86.",
 	},
 	{
 		"id": "clumsy",
@@ -2405,7 +2428,7 @@ const FLAW_DEFINITIONS := [
 		"bonus_options": [5],
 		"ability": "DEX",
 		"summary": "The hero has poor coordination and an unsteady hand, taking a +1 step penalty to all Dexterity-based skill checks and Dexterity feat checks.",
-		"source": "Player's Handbook p. 108, Table P27; Gamemaster Guide p. 84.",
+		"source": "Player's Handbook p. 107, Table P27; Gamemaster Guide p. 86.",
 	},
 	{
 		"id": "code_of_honor",
@@ -2413,7 +2436,7 @@ const FLAW_DEFINITIONS := [
 		"bonus_options": [3],
 		"ability": "WIL",
 		"summary": "The hero follows a binding ethical code agreed with the GM with real restrictions and consequences. Achievement awards can be reduced if the flaw is not roleplayed.",
-		"source": "Player's Handbook p. 108-109, Table P27; Gamemaster Guide p. 84, 87.",
+		"source": "Player's Handbook p. 107-108, Table P27; Gamemaster Guide p. 86.",
 	},
 	{
 		"id": "delicate",
@@ -2421,7 +2444,7 @@ const FLAW_DEFINITIONS := [
 		"bonus_options": [3],
 		"ability": "STR",
 		"summary": "Successful Unarmed Attack checks inflict 1 stun on the hero. If current stun drops below half, the hero cannot use Unarmed Attack until recovering enough stun.",
-		"source": "Player's Handbook p. 109, Table P27; Gamemaster Guide p. 84.",
+		"source": "Player's Handbook p. 108, Table P27; Gamemaster Guide p. 86.",
 	},
 	{
 		"id": "dirt_poor",
@@ -2429,7 +2452,7 @@ const FLAW_DEFINITIONS := [
 		"bonus_options": [5],
 		"ability": "PER",
 		"summary": "The hero begins play with only 1 die of starting funds (e.g. 1d6 for Combat Spec instead of 5d6), has a creditor or obligation set by the GM, and takes a +1 step penalty to Personality-based checks when dealing upward socially or financially.",
-		"source": "Player's Handbook p. 109, Table P27, Table P30 p. 132; Gamemaster Guide p. 84, 87-88.",
+		"source": "Player's Handbook p. 108, Table P27, Table P30 p. 129; Gamemaster Guide p. 86-87.",
 	},
 	{
 		"id": "forgetful",
@@ -2437,7 +2460,7 @@ const FLAW_DEFINITIONS := [
 		"bonus_options": [5],
 		"ability": "INT",
 		"summary": "The hero has trouble recalling details and takes a +1 step penalty to all Intelligence-based skill checks.",
-		"source": "Player's Handbook p. 109, Table P27; Gamemaster Guide p. 84, 88.",
+		"source": "Player's Handbook p. 108, Table P27; Gamemaster Guide p. 87.",
 	},
 	{
 		"id": "fragile",
@@ -2445,7 +2468,7 @@ const FLAW_DEFINITIONS := [
 		"bonus_options": [3],
 		"ability": "CON",
 		"summary": "Damage hampers the hero, imposing a +1 step penalty to Stamina-endurance skill checks made as a result of damage suffered.",
-		"source": "Player's Handbook p. 109, Table P27; Gamemaster Guide p. 84, 88.",
+		"source": "Player's Handbook p. 108, Table P27; Gamemaster Guide p. 87.",
 	},
 	{
 		"id": "infamy",
@@ -2453,7 +2476,7 @@ const FLAW_DEFINITIONS := [
 		"bonus_options": [2, 4, 6],
 		"ability": "PER",
 		"summary": "The hero is publicly known for a minor (2 SP, +1 step), moderate (4 SP, +2 steps), or severe (6 SP, +3 steps) criminal or evil act, taking that penalty to Personality-based skill checks when recognized.",
-		"source": "Player's Handbook p. 109, Table P27; Gamemaster Guide p. 84, 88.",
+		"source": "Player's Handbook p. 108, Table P27; Gamemaster Guide p. 87.",
 	},
 	{
 		"id": "oblivious",
@@ -2461,7 +2484,7 @@ const FLAW_DEFINITIONS := [
 		"bonus_options": [4],
 		"ability": "WIL",
 		"summary": "The hero has trouble noticing details and takes a +1 step penalty to Awareness-perception checks (and Investigate-search or track when perceptiveness plays a role).",
-		"source": "Player's Handbook p. 109, Table P27; Gamemaster Guide p. 85, 88.",
+		"source": "Player's Handbook p. 108, Table P27; Gamemaster Guide p. 87.",
 	},
 	{
 		"id": "obsessed",
@@ -2469,7 +2492,7 @@ const FLAW_DEFINITIONS := [
 		"bonus_options": [2, 4, 6],
 		"ability": "INT",
 		"summary": "An agreed trigger distracts the hero. The bonus option sets a +1 (2 SP), +2 (4 SP), or +3 (6 SP) step penalty to actions not related to the obsession.",
-		"source": "Player's Handbook p. 109, Table P27; Gamemaster Guide p. 85, 88.",
+		"source": "Player's Handbook p. 108, Table P27; Gamemaster Guide p. 87.",
 	},
 	{
 		"id": "old_injury",
@@ -2477,7 +2500,7 @@ const FLAW_DEFINITIONS := [
 		"bonus_options": [2, 4, 6],
 		"ability": "STR",
 		"summary": "An agreed physical trigger (run, jump, dodge, close-quarters attack) can flare once per scene: 1 wound (2 SP), 2 wound + 1 stun (4 SP), or 3 wound + 1 stun (6 SP). Armor does not reduce damage; removal requires a medical procedure.",
-		"source": "Player's Handbook p. 109, Table P27; Gamemaster Guide p. 85, 88.",
+		"source": "Player's Handbook p. 108, Table P27; Gamemaster Guide p. 87.",
 	},
 	{
 		"id": "phobia",
@@ -2485,7 +2508,7 @@ const FLAW_DEFINITIONS := [
 		"bonus_options": [2, 4, 6],
 		"ability": "WIL",
 		"summary": "An agreed broad irrational fear hampers the hero: +1 step penalty to all actions (2 SP), +2 step penalty (4 SP), or freezes/flees (6 SP) while in effect.",
-		"source": "Player's Handbook p. 109-110, Table P27; Gamemaster Guide p. 85, 88.",
+		"source": "Player's Handbook p. 108-109, Table P27; Gamemaster Guide p. 87.",
 	},
 	{
 		"id": "poor_looks",
@@ -2493,7 +2516,7 @@ const FLAW_DEFINITIONS := [
 		"bonus_options": [3],
 		"ability": "PER",
 		"summary": "When appearance hurts an encounter, the hero takes a +1 step penalty to Personality-based skill checks, subject to GM and cultural context.",
-		"source": "Player's Handbook p. 110, Table P27; Gamemaster Guide p. 85, 88.",
+		"source": "Player's Handbook p. 109, Table P27; Gamemaster Guide p. 87.",
 	},
 	{
 		"id": "powerful_enemy",
@@ -2501,7 +2524,7 @@ const FLAW_DEFINITIONS := [
 		"bonus_options": [2, 4, 6],
 		"ability": "PER",
 		"summary": "The hero has a far-reaching enemy (minor 2 SP, moderate 4 SP, truly powerful 6 SP). The bonus option determines how often, how broadly, and through what subordinates the enemy affects the hero.",
-		"source": "Player's Handbook p. 110, Table P27; Gamemaster Guide p. 85, 88.",
+		"source": "Player's Handbook p. 109, Table P27; Gamemaster Guide p. 87.",
 	},
 	{
 		"id": "primitive",
@@ -2509,7 +2532,7 @@ const FLAW_DEFINITIONS := [
 		"bonus_options": [2, 4, 6],
 		"ability": "INT",
 		"summary": "The hero struggles with modern technology of higher Progress Levels, taking a +1 (2 SP), +2 (4 SP), or +3 (6 SP) step penalty when using it, with awe/terror for d4+1 time units on unseen wonders at 6 SP.",
-		"source": "Player's Handbook p. 110, Table P27; Gamemaster Guide p. 86, 88.",
+		"source": "Player's Handbook p. 109, Table P27; Gamemaster Guide p. 87.",
 	},
 	{
 		"id": "slow",
@@ -2517,7 +2540,7 @@ const FLAW_DEFINITIONS := [
 		"bonus_options": [6],
 		"ability": "DEX",
 		"summary": "The hero has reduced reaction time and takes a +1 step penalty to action checks (and a +2 step penalty in contests of pure reaction time).",
-		"source": "Player's Handbook p. 110, Table P27; Gamemaster Guide p. 86.",
+		"source": "Player's Handbook p. 109, Table P27; Gamemaster Guide p. 87.",
 	},
 	{
 		"id": "spineless",
@@ -2525,7 +2548,7 @@ const FLAW_DEFINITIONS := [
 		"bonus_options": [2, 4, 6],
 		"ability": "WIL",
 		"summary": "The hero's Will resistance modifier is reduced by 1, 2, or 3 steps based on the selected bonus option, and takes a +1, +2, or +3 step penalty to Resolve-mental resolve checks regarding character or courage.",
-		"source": "Player's Handbook p. 110, Table P27; Gamemaster Guide p. 86.",
+		"source": "Player's Handbook p. 109, Table P27; Gamemaster Guide p. 87.",
 	},
 	{
 		"id": "temper",
@@ -2533,10 +2556,10 @@ const FLAW_DEFINITIONS := [
 		"bonus_options": [2, 4, 6],
 		"ability": "WIL",
 		"summary": "An agreed trigger sets off the hero: gruff/mean +1 step penalty (2 SP), unthinking +2 step penalty (4 SP), or berserk rage +3 step penalty (6 SP) to actions until calm.",
-		"source": "Player's Handbook p. 110, Table P27; Gamemaster Guide p. 86, 88.",
+		"source": "Player's Handbook p. 109, Table P27; Gamemaster Guide p. 87.",
 	},
 
-	# Dark Matter Flaws (Dark Matter Campaign Setting Chapter 3 p. 61-62, Table D3)
+	# Dark Matter Flaws (Dark Matter Campaign Setting Chapter 3 p. 60-61, Table D3)
 	{
 		"id": "abductee",
 		"name": "Abductee",
@@ -2544,7 +2567,7 @@ const FLAW_DEFINITIONS := [
 		"ability": "CON",
 		"setting": "Dark Matter",
 		"summary": "The hero was abducted by aliens and subjected to tests. In the presence of the abductor alien species, must make a Resolve-mental resolve check each round to declare fight (attacks d4 rounds) or flight (flees d12 rounds, suffering 1 fatigue); on a Critical Failure, disappears for d4 days or battles to death.",
-		"source": "Dark Matter Campaign Setting p. 61; Table D3.",
+		"source": "Dark Matter Campaign Setting p. 60; Table D3.",
 	},
 	{
 		"id": "criminal_record",
@@ -2553,7 +2576,7 @@ const FLAW_DEFINITIONS := [
 		"ability": "PER",
 		"setting": "Dark Matter",
 		"summary": "The hero has a felony conviction on file with all law enforcement agencies. Distrusted, difficult to gain employment, activities and fingerprints tracked. Incompatible with Hidden Identity (3 pt).",
-		"source": "Dark Matter Campaign Setting p. 61; Table D3.",
+		"source": "Dark Matter Campaign Setting p. 60; Table D3.",
 	},
 	{
 		"id": "dilettante",
@@ -2562,7 +2585,7 @@ const FLAW_DEFINITIONS := [
 		"ability": "WIL",
 		"setting": "Dark Matter",
 		"summary": "The hero may not have any skill rank greater than his current achievement level, nor purchase rank benefits early.",
-		"source": "Dark Matter Campaign Setting p. 61; Table D3.",
+		"source": "Dark Matter Campaign Setting p. 60; Table D3.",
 	},
 	{
 		"id": "divided_loyalty",
@@ -2571,7 +2594,7 @@ const FLAW_DEFINITIONS := [
 		"ability": "PER",
 		"setting": "Dark Matter",
 		"summary": "The hero owes deep loyalty to an outside organization, conspiracy, or person, and must place that loyalty ahead of other obligations when the GM triggers it.",
-		"source": "Dark Matter Campaign Setting p. 61-62; Table D3.",
+		"source": "Dark Matter Campaign Setting p. 60-61; Table D3.",
 	},
 	{
 		"id": "illiterate",
@@ -2580,7 +2603,7 @@ const FLAW_DEFINITIONS := [
 		"ability": "INT",
 		"setting": "Dark Matter",
 		"summary": "The hero cannot read or write. Cannot purchase or use untrained any skills requiring literacy (Business, Investigate-research, Science skills) or read text/screens.",
-		"source": "Dark Matter Campaign Setting p. 62; Table D3.",
+		"source": "Dark Matter Campaign Setting p. 61; Table D3.",
 	},
 	{
 		"id": "implants",
@@ -2589,7 +2612,7 @@ const FLAW_DEFINITIONS := [
 		"ability": "CON",
 		"setting": "Dark Matter",
 		"summary": "The hero is tracked by an implanted device in the spine or a major artery with an explosive failsafe, allowing enemies to monitor location and health.",
-		"source": "Dark Matter Campaign Setting p. 62; Table D3.",
+		"source": "Dark Matter Campaign Setting p. 61; Table D3.",
 	},
 	{
 		"id": "possessed",
@@ -2598,7 +2621,7 @@ const FLAW_DEFINITIONS := [
 		"ability": "WIL",
 		"setting": "Dark Matter",
 		"summary": "The hero is host to a spirit entity (+4 SP neutral/harmless, +8 SP hostile). Whenever rendered unconscious (loss of stun/fatigue) or failing Stamina-endurance from Amazing damage, the spirit seizes control under GM direction. Exorcised or daily Resolve check to regain control.",
-		"source": "Dark Matter Campaign Setting p. 62; Table D3.",
+		"source": "Dark Matter Campaign Setting p. 61; Table D3.",
 	},
 	{
 		"id": "rampant_paranoia",
@@ -2607,7 +2630,7 @@ const FLAW_DEFINITIONS := [
 		"ability": "PER",
 		"setting": "Dark Matter",
 		"summary": "Persecution complex. Must make a Personality feat check when trusting someone; failure imposes a +1 step penalty to all actions for d6 hours; Critical Failure induces a delusional state until a successful daily Resolve-mental resolve check.",
-		"source": "Dark Matter Campaign Setting p. 62; Table D3.",
+		"source": "Dark Matter Campaign Setting p. 61; Table D3.",
 	},
 	{
 		"id": "rebellious",
@@ -2616,7 +2639,7 @@ const FLAW_DEFINITIONS := [
 		"ability": "PER",
 		"setting": "Dark Matter",
 		"summary": "The hero takes a +2 step penalty to Personality-based skill checks when dealing with law enforcement or government agencies.",
-		"source": "Dark Matter Campaign Setting p. 62; Table D3.",
+		"source": "Dark Matter Campaign Setting p. 61; Table D3.",
 	},
 	{
 		"id": "wild_talent",
@@ -2625,10 +2648,10 @@ const FLAW_DEFINITIONS := [
 		"ability": "WIL",
 		"setting": "Dark Matter",
 		"summary": "For heroes with psionic talents. The hero has limited control: if dazed or failing Stamina-endurance or any Resolve check, must make a Will feat check or psionic power erupts uncontrollably for d4 phases, losing 1 psionic energy point per phase.",
-		"source": "Dark Matter Campaign Setting p. 62; Table D3.",
+		"source": "Dark Matter Campaign Setting p. 61; Table D3.",
 	},
 
-	# Beyond Science FX Flaws (Beyond Science: A Guide to FX Chapter 1 p. 6-7, Table F2)
+	# Beyond Science FX Flaws (Beyond Science: A Guide to FX Chapter 1 p. 5-6, Table F2)
 	{
 		"id": "fixed_fx_recovery",
 		"name": "Fixed FX Recovery",
@@ -2636,7 +2659,7 @@ const FLAW_DEFINITIONS := [
 		"ability": "WIL",
 		"supplement": "beyond_science",
 		"summary": "The hero cannot regain FX energy on an hourly basis. Instead, all FX energy points return once per day at a specific chosen time.",
-		"source": "Beyond Science: A Guide to FX p. 6; Table F2.",
+		"source": "Beyond Science: A Guide to FX p. 5; Table F2.",
 	},
 	{
 		"id": "inhibited_fx_recovery",
@@ -2645,7 +2668,7 @@ const FLAW_DEFINITIONS := [
 		"ability": "WIL",
 		"supplement": "beyond_science",
 		"summary": "Sensitive to a material within 100 meters (1 SP rare, 3 SP uncommon, 5 SP common), preventing all FX energy recovery while in its presence.",
-		"source": "Beyond Science: A Guide to FX p. 6; Table F2.",
+		"source": "Beyond Science: A Guide to FX p. 5; Table F2.",
 	},
 	{
 		"id": "fx_require_recharging",
@@ -2654,7 +2677,7 @@ const FLAW_DEFINITIONS := [
 		"ability": "WIL",
 		"supplement": "beyond_science",
 		"summary": "FX energy does not recover naturally. Only a specific daily ritual, event, or power source (taking 1 minute to 1 hour) restores the FX energy pool.",
-		"source": "Beyond Science: A Guide to FX p. 6; Table F2.",
+		"source": "Beyond Science: A Guide to FX p. 5; Table F2.",
 	},
 	{
 		"id": "fx_susceptibility",
@@ -2663,7 +2686,7 @@ const FLAW_DEFINITIONS := [
 		"ability": "WIL",
 		"supplement": "beyond_science",
 		"summary": "Vulnerable to FX powers. Grants a -2 step penalty to resistance modifier against 1 (3 SP), 2 (6 SP), or 3 (9 SP) types of FX (Arcane Magic, Faith, Super Power).",
-		"source": "Beyond Science: A Guide to FX p. 7; Table F2.",
+		"source": "Beyond Science: A Guide to FX p. 6; Table F2.",
 	},
 	{
 		"id": "slow_fx_energy_recovery",
@@ -2672,10 +2695,10 @@ const FLAW_DEFINITIONS := [
 		"ability": "WIL",
 		"supplement": "beyond_science",
 		"summary": "FX energy recovers at half normal rate: recovery rolls occur every 2 hours instead of 1 hour, and 16 hours of rest are required for full pool recovery.",
-		"source": "Beyond Science: A Guide to FX p. 7; Table F2.",
+		"source": "Beyond Science: A Guide to FX p. 6; Table F2.",
 	},
 
-	# Dataware Robot Flaws (Dataware Chapter 6 p. 79-81, Table D22)
+	# Dataware Robot Flaws (Dataware Chapter 6 p. 78-80, Table D22)
 	{
 		"id": "asimov_circuits",
 		"name": "Asimov Circuits",
@@ -2683,7 +2706,7 @@ const FLAW_DEFINITIONS := [
 		"ability": "WIL",
 		"supplement": "dataware",
 		"summary": "The robot must prioritize the survival of its creator species and cannot use lethal force or permit villains of that species to come to harm through inaction.",
-		"source": "Dataware p. 79; Table D22.",
+		"source": "Dataware p. 78; Table D22.",
 	},
 	{
 		"id": "command_circuitry",
@@ -2692,7 +2715,7 @@ const FLAW_DEFINITIONS := [
 		"ability": "WIL",
 		"supplement": "dataware",
 		"summary": "Anyone with a comm link, operating frequency, and passcodes can issue orders the robot cannot disobey unless self-destructive.",
-		"source": "Dataware p. 79; Table D22.",
+		"source": "Dataware p. 78; Table D22.",
 	},
 	{
 		"id": "doublespeak",
@@ -2701,7 +2724,16 @@ const FLAW_DEFINITIONS := [
 		"ability": "PER",
 		"supplement": "dataware",
 		"summary": "The robot repeats words or phrases in speech, taking a +1 step penalty to all Personality skill checks and feats. On Critical Failure, stutters or repeats last action.",
-		"source": "Dataware p. 79; Table D22.",
+		"source": "Dataware p. 78; Table D22.",
+	},
+	{
+		"id": "fragile_robot",
+		"name": "Fragile",
+		"bonus_options": [4],
+		"ability": "CON",
+		"supplement": "dataware",
+		"summary": "Poor construction. A +1 step penalty to Stamina-endurance checks made due to combat damage, and a +2 step penalty to resistance rolls against water, electricity and other environmental damage. Repairs take a +1 step penalty without Technical Science-robotics.",
+		"source": "Dataware p. 78; Table D22.",
 	},
 	{
 		"id": "honesty",
@@ -2710,7 +2742,7 @@ const FLAW_DEFINITIONS := [
 		"ability": "PER",
 		"supplement": "dataware",
 		"summary": "The robot cannot lie and is compelled to state embarrassing truths on failed Personality checks. A Will feat is required to lie; Critical Failure causes a processor overload knockout.",
-		"source": "Dataware p. 79; Table D22.",
+		"source": "Dataware p. 78; Table D22.",
 	},
 	{
 		"id": "incomplete_coding",
@@ -2719,7 +2751,7 @@ const FLAW_DEFINITIONS := [
 		"ability": "INT",
 		"supplement": "dataware",
 		"summary": "Faulty code. 2 SP: Marginal results lose action for clarification, Critical Failure enters loop until Will check or repair. 4 SP: Marginal executes wrong harmless action, Critical Failure executes wrong harmful action.",
-		"source": "Dataware p. 79-80; Table D22.",
+		"source": "Dataware p. 78-79; Table D22.",
 	},
 	{
 		"id": "inferior_tech",
@@ -2728,7 +2760,7 @@ const FLAW_DEFINITIONS := [
 		"ability": "CON",
 		"supplement": "dataware",
 		"summary": "The robot has a fatigue rating like biological heroes. A Critical Failure on any STR, DEX, or CON skill check inflicts 1 fatigue point.",
-		"source": "Dataware p. 80; Table D22.",
+		"source": "Dataware p. 79; Table D22.",
 	},
 	{
 		"id": "memory_lapse",
@@ -2737,7 +2769,7 @@ const FLAW_DEFINITIONS := [
 		"ability": "INT",
 		"supplement": "dataware",
 		"summary": "Faulty memory processors impose a +1 step penalty to all Intelligence-based skill checks.",
-		"source": "Dataware p. 80; Table D22.",
+		"source": "Dataware p. 79; Table D22.",
 	},
 	{
 		"id": "overheat",
@@ -2746,7 +2778,7 @@ const FLAW_DEFINITIONS := [
 		"ability": "CON",
 		"supplement": "dataware",
 		"summary": "Conditions that would cause human fatigue require a Stamina-endurance check; failure causes processor overheating and emergency shutdown knockout.",
-		"source": "Dataware p. 80; Table D22.",
+		"source": "Dataware p. 79; Table D22.",
 	},
 	{
 		"id": "secret_orders",
@@ -2755,7 +2787,7 @@ const FLAW_DEFINITIONS := [
 		"ability": "WIL",
 		"supplement": "dataware",
 		"summary": "Hidden hardcoded instructions override all other commands (including Asimov circuits and command bolts) when triggered.",
-		"source": "Dataware p. 80; Table D22.",
+		"source": "Dataware p. 79; Table D22.",
 	},
 	{
 		"id": "short_circuit",
@@ -2764,7 +2796,7 @@ const FLAW_DEFINITIONS := [
 		"ability": "INT",
 		"supplement": "dataware",
 		"summary": "A core processor short circuit inflicts 2 stun damage on any Critical Failure, and drains battery power at 1.5x normal rate.",
-		"source": "Dataware p. 80; Table D22.",
+		"source": "Dataware p. 79; Table D22.",
 	},
 	{
 		"id": "unarmored",
@@ -2773,7 +2805,7 @@ const FLAW_DEFINITIONS := [
 		"ability": "CON",
 		"supplement": "dataware",
 		"summary": "Chassis is uncovered with no protective casing. Suffers full combat damage, hazard step penalties, and cannot take the Hidden System perk.",
-		"source": "Dataware p. 81; Table D22.",
+		"source": "Dataware p. 80; Table D22.",
 	},
 ]
 

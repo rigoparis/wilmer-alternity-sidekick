@@ -37,6 +37,11 @@ var _query := ""
 
 var _list: VBoxContainer
 var _category_buttons: Dictionary = {}
+
+## Whether rows put the power name on a line of its own. Decided once per
+## refresh from the whole catalogue, so tabbing between schools cannot change
+## the shape of the list under you.
+var _stacked: bool = false
 var _card_columns: Array[Container] = []
 
 
@@ -118,12 +123,12 @@ func _build() -> void:
 
 		_list = VBoxContainer.new()
 		_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		_list.add_theme_constant_override("separation", Widgets.GAP_ROW)
+		_list.add_theme_constant_override("separation", _row_separation())
 		margin.add_child(_list)
 	else:
 		_list = VBoxContainer.new()
 		_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		_list.add_theme_constant_override("separation", Widgets.GAP_ROW)
+		_list.add_theme_constant_override("separation", _row_separation())
 		add_child(_list)
 
 	_refresh_list()
@@ -169,9 +174,50 @@ func _select_category(category: String) -> void:
 
 
 ## Rebuild only the list, never the search field, so the caret is never lost.
+## What the row spends on everything that is not the power name: an 18px indent,
+## the 32px buy box, two 34px steppers, a 48px rank readout, a 34px detail
+## button, and six gaps between them.
+const ROW_CONTROLS_WIDTH := 248.0
+
+
+## Whether this catalogue needs its names on their own line.
+##
+## Never on a wide layout: the desktop column has the width, and the two-column
+## FX tab would have to be measured against the column rather than the window.
+## On a phone the picker fills the card, so the window is the right measure.
+##
+## Every power the hero could browse is weighed, not just the school on screen,
+## so switching category does not restack the list.
+func _should_stack() -> bool:
+	if _ctx == null or _ctx.is_wide_layout:
+		return false
+	var names: Array = []
+	for broad in _ctx.rules.fx.get_broad_skills_for_character(_ctx.doc.raw()):
+		var broad_name := String(broad.get("name", ""))
+		for power in _ctx.rules.fx.get_specialty_skills_for_broad_and_character(broad_name, _ctx.doc.raw()):
+			names.append(String(power.get("name", "")))
+	return Widgets.should_stack_names(self, names, ROW_CONTROLS_WIDTH)
+
+
+## How far apart two entries sit in the list.
+##
+## Wider on a phone, where an entry is two rows -- its name and, under that, its
+## rank controls. Grouping is read from relative distance, so the 2px holding a
+## name to its own controls only says "these belong together" while the step to
+## the next entry is plainly bigger. At the flat GAP_ROW the two gaps were close
+## enough that which entry a "+" would raise stopped being obvious.
+func _row_separation() -> int:
+	return 18 if _stacked else Widgets.GAP_ROW
+
+
 func _refresh_list() -> void:
 	if _list == null:
 		return
+	# Before the rows, and re-applied here rather than only where the list was
+	# created: that runs during setup, when the catalogue has not been measured
+	# and _stacked is still false.
+	_stacked = _should_stack()
+	_list.add_theme_constant_override("separation", _row_separation())
 	for child in _list.get_children():
 		child.hide()
 		child.queue_free()
@@ -335,10 +381,30 @@ func _build_row(parent: Container, skill: Dictionary, is_broad: bool) -> void:
 	item_container.add_theme_constant_override("separation", 2)
 	parent.add_child(item_container)
 
+	var stacked := _stacked
+
 	var row := HBoxContainer.new()
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_theme_constant_override("separation", Widgets.GAP_ROW)
 	item_container.add_child(row)
+
+	var control_row := row
+	if stacked:
+		control_row = HBoxContainer.new()
+		control_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		control_row.add_theme_constant_override("separation", Widgets.GAP_ROW)
+		item_container.add_child(control_row)
+
+		# Indented to start exactly under the name -- 18px of indent plus the
+		# 32px buy box -- and NOT expanded to push them right. Right-aligned,
+		# the controls sat alone across the card from the name they belong to,
+		# equidistant from the row above and the row below, and which power a
+		# "+" would raise stopped being obvious. Left-aligned under the name
+		# they read as the same item.
+		var control_indent := Control.new()
+		control_indent.custom_minimum_size = Vector2(50, 0)
+		control_row.add_child(control_indent)
+
 
 	var indent := Control.new()
 	indent.custom_minimum_size = Vector2(18, 0)
@@ -383,6 +449,12 @@ func _build_row(parent: Container, skill: Dictionary, is_broad: bool) -> void:
 
 	var sub_lbl := Label.new()
 	sub_lbl.text = sub_text
+	# Ellipsis and a 1px floor, the same as the name above it. Without them this
+	# line's natural width -- "Next rank 5 SP" -- became the name column's minimum,
+	# and the row's 248px of fixed controls plus that came to more than a 360px
+	# phone has to give, taking the right edge of the card off the screen.
+	sub_lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	sub_lbl.custom_minimum_size = Vector2(1, 0)
 	sub_lbl.add_theme_color_override("font_color", palette.muted)
 	sub_lbl.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
 	name_box.add_child(sub_lbl)
@@ -396,7 +468,7 @@ func _build_row(parent: Container, skill: Dictionary, is_broad: bool) -> void:
 		doc.apply([CharacterDoc.FX], func(c): rules.fx.remove_fx_skill(c, skill_name))
 		change_requested.emit()
 	)
-	row.add_child(minus_btn)
+	control_row.add_child(minus_btn)
 
 	var rank_lbl := Label.new()
 	rank_lbl.name = "RankLabel"
@@ -406,7 +478,7 @@ func _build_row(parent: Container, skill: Dictionary, is_broad: bool) -> void:
 	rank_lbl.custom_minimum_size = Vector2(48, 0)
 	rank_lbl.add_theme_color_override("font_color", palette.text if rank > 0 else palette.muted)
 	rank_lbl.add_theme_font_size_override("font_size", Widgets.FONT_DETAIL)
-	row.add_child(rank_lbl)
+	control_row.add_child(rank_lbl)
 
 	var plus_btn := _make_flat_icon_btn(ICON_PLUS, Vector2(34, 34), "Increase rank")
 	plus_btn.disabled = (rank >= max_rank)
@@ -414,7 +486,7 @@ func _build_row(parent: Container, skill: Dictionary, is_broad: bool) -> void:
 		doc.apply([CharacterDoc.FX], func(c): rules.fx.add_fx_skill(c, skill_name))
 		change_requested.emit()
 	)
-	row.add_child(plus_btn)
+	control_row.add_child(plus_btn)
 
 	var detail_btn := _make_flat_icon_btn(
 		ICON_QUESTION,
@@ -423,7 +495,7 @@ func _build_row(parent: Container, skill: Dictionary, is_broad: bool) -> void:
 	)
 	detail_btn.add_theme_color_override("icon_normal_color", Color(palette.muted, 0.8))
 	detail_btn.pressed.connect(func(): detail_requested.emit(skill))
-	row.add_child(detail_btn)
+	control_row.add_child(detail_btn)
 
 	if owned and rules.fx.can_fx_skill_be_permanent(skill_name):
 		var perm_row := HBoxContainer.new()
@@ -452,6 +524,11 @@ func _score_label(score: Dictionary, palette: ThemePalette) -> Label:
 		AlternityNum.as_int(score.get("amazing", 0)),
 	]
 	label.tooltip_text = "Current check score: Ordinary / Good / Amazing"
+	# Sized like the rest of the name column: secondary text that may be trimmed
+	# on a narrow phone rather than widen the row past the screen. The tooltip
+	# carries the full reading either way.
+	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	label.custom_minimum_size = Vector2(1, 0)
 	label.add_theme_color_override("font_color", palette.muted)
 	label.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
 	return label

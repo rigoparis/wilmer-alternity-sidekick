@@ -54,7 +54,10 @@ func _run() -> void:
 	await _test_an_attack_lands()
 	await _test_defending()
 	await _test_the_scene_ends()
+	await _test_automatic_reconnect()
+	await _test_back_from_table_confirms()
 	await _test_reconnect_loses_nothing()
+	await _test_cold_start_recovers_pending_work()
 	await _test_leaving_closes_the_table()
 
 	_teardown()
@@ -573,6 +576,7 @@ func _test_an_attack_lands() -> void:
 	var shrugged: CombatAttack = _table().next_attack()
 	check_false(shrugged.hits(), "and says plainly that it missed")
 	_table().apply_attack(shrugged, 0)
+	_table().report_attack(shrugged, 0, {})
 	check_eq(
 		AlternityNum.as_int(_table().doc.raw().get("damage", {}).get("wound", 0)), before + 4,
 		"applying a miss marks nothing"
@@ -785,10 +789,52 @@ func _test_the_scene_ends() -> void:
 
 # --- Reconnect -------------------------------------------------------------
 
+func _test_automatic_reconnect() -> void:
+	var table = _table()
+	var transport = table.transport
+	var seats_before: int = _gm_screen().session().seats.size()
+	# Model the socket Android leaves behind after suspending the process beyond
+	# its timeout. The TableSession must reopen this same transport, so every
+	# signal consumer and the visible character sheet remains attached.
+	transport._peer.close()
+	var scheduled := await _wait_for(func(): return table._reconnect_due_msec > 0)
+	check_true(scheduled, "a dropped socket schedules a reconnect")
+	if not scheduled:
+		return
+	# Do not make a regression test wait on wall-clock backoff.
+	table._reconnect_due_msec = Time.get_ticks_msec()
+	var restored := await _wait_for(func(): return table.is_connected_to_table())
+	check_true(restored, "the table reconnects without leaving the character sheet")
+	check_true(table.transport == transport, "reconnect keeps the existing session wiring")
+	check_eq(_gm_screen().session().seats.size(), seats_before, "automatic reconnect does not add a seat")
+
+
+func _test_back_from_table_confirms() -> void:
+	var before = _table()
+	check_false(
+		bool(ProjectSettings.get_setting("application/config/quit_on_go_back", true)),
+		"Android Back does not auto-quit before the shell can handle it"
+	)
+	_player_shell._handle_back()
+	await process_frame
+	check_eq(_player_shell.router.depth(), 1, "Back at a table asks before disconnecting")
+	check_true(_table() == before, "the table remains connected while the question is open")
+	var route = _player_shell.router._host.top_route()
+	if route != null:
+		route.close(null)
+	await process_frame
+	check_true(_table() == before, "choosing Stay keeps the player at the table")
+
+
 ## Phase M2's checkpoint: a mid-session reconnect that loses nothing.
 func _test_reconnect_loses_nothing() -> void:
 	var table = _table()
 	var campaign_id: String = _gm_screen().session().campaign_id
+	# Leave while initiative is still owed. Rejoining has to restore this current
+	# state, not merely the event history.
+	_gm_screen()._on_start_combat_pressed()
+	var rolling := await _wait_for(func(): return table.active_round != null and table.owes_action_check())
+	check_true(rolling, "initiative is waiting when the player disconnects")
 	var seq_before: int = AlternityNum.as_int(
 		_player_shell.identity.for_campaign(campaign_id).get("last_seq", 0)
 	)
@@ -819,7 +865,7 @@ func _test_reconnect_loses_nothing() -> void:
 	# The same device, a brand new peer id. Only the stored player_id survived,
 	# and it is what the host matches on.
 	_commit_hero()
-	join._join("127.0.0.1", Transport.DEFAULT_PORT, campaign_id, "The Verge")
+	join._join("127.0.0.1", Transport.DEFAULT_PORT, "", "")
 	var back := await _wait_for(func(): return _table() != null and _table().doc != null)
 	check_true(back, "the player rejoins")
 	if not back:
@@ -832,6 +878,8 @@ func _test_reconnect_loses_nothing() -> void:
 	)
 
 	var rejoined = _table()
+	check_true(rejoined.active_round != null, "the current fight arrives in the reconnect welcome")
+	check_true(rejoined.owes_action_check(), "the returning player is prompted for the initiative still owed")
 	var caught_up := await _wait_for(func(): return rejoined.events.size() >= missed)
 	check_true(caught_up, "and is sent what they missed")
 	if not caught_up:
@@ -849,6 +897,83 @@ func _test_reconnect_loses_nothing() -> void:
 		_gm_screen().session().last_seq(),
 		"and the device is caught up for next time"
 	)
+	_gm_screen()._on_end_combat_pressed()
+	await _wait_for(func(): return _table().active_round == null)
+
+
+func _test_cold_start_recovers_pending_work() -> void:
+	var gm = _gm_screen()
+	var session = gm.session()
+	var called := SkillCheck.call_for("Awareness", 1, "Something moved", 1)
+	called.player_id = _joined_player_id
+	session.queue_called_check(called.to_dict(), _joined_player_id)
+	gm.transport().send_ruling(called.to_dict(), _joined_player_id)
+
+	var attack := CombatAttack.declare(
+		_joined_player_id, "A raider", "Knife", "Good", 2, "s", "li", "O"
+	)
+	gm.transport().send_attack(attack.to_dict(), _joined_player_id)
+	_gm_shell.campaigns.save(session)
+	check_eq(session.pending_checks_for(_joined_player_id).size(), 1, "the GM persists a called check")
+	check_eq(session.pending_attacks_for(_joined_player_id).size(), 1, "the GM persists an unanswered attack")
+
+	var saved_table: Dictionary = _player_shell.identity.active_table()
+	var character_file := String(saved_table.get("character_file", ""))
+	check_false(character_file.is_empty(), "the player persists which local hero was at the table")
+	_player_shell.queue_free()
+	_player_shell = null
+	await process_frame
+	await process_frame
+
+	_player_shell = _new_shell(PLAYER_DIR, PLAYER_CAMPAIGNS)
+	var resumed := await _wait_for(func():
+		return _table() != null and _table().is_connected_to_table() and _table().doc != null)
+	check_true(resumed, "a new app process automatically rejoins the last table")
+	if not resumed:
+		return
+	check_eq(_gm_screen().session().seats.size(), 2, "cold-start recovery keeps the same seat")
+	check_eq(_table().doc.source_file, character_file, "and reopens the committed local hero")
+	check_eq(_table().incoming_checks.size(), 1, "the unanswered GM check is restored")
+	check_eq(_table().incoming_attacks.size(), 1, "the unanswered attack is restored")
+
+	_table().dismiss_called_check(_table().incoming_checks[0])
+	var dismissed := await _wait_for(func():
+		return _gm_screen().session().pending_checks_for(_joined_player_id).is_empty())
+	check_true(dismissed, "dismissing a restored check clears the GM's durable copy")
+
+	var before := AlternityNum.as_int(_table().doc.raw().get("damage", {}).get("stun", 0))
+	var pending: CombatAttack = _table().next_attack()
+	var outcome: Dictionary = _table().apply_attack(pending, 1)
+	var after := AlternityNum.as_int(_table().doc.raw().get("damage", {}).get("stun", 0))
+	check_true(after >= before, "the restored attack is applied on the owning device")
+
+	# Simulate Android killing the process after damage was saved but before its
+	# result reached the GM. The next process must not apply that damage twice.
+	_player_shell.queue_free()
+	_player_shell = null
+	await process_frame
+	await process_frame
+	_player_shell = _new_shell(PLAYER_DIR, PLAYER_CAMPAIGNS)
+	var resumed_again := await _wait_for(func():
+		return _table() != null and _table().is_connected_to_table() and not _table().incoming_attacks.is_empty())
+	check_true(resumed_again, "an interrupted attack resolution is offered again")
+	if not resumed_again:
+		return
+	var resent: CombatAttack = _table().next_attack()
+	var recovered_outcome: Dictionary = _table().apply_attack(resent, 99)
+	check_eq(
+		AlternityNum.as_int(recovered_outcome.get("primary_damage", -1)),
+		AlternityNum.as_int(outcome.get("primary_damage", -2)),
+		"the saved outcome is reused after restart"
+	)
+	check_eq(
+		AlternityNum.as_int(_table().doc.raw().get("damage", {}).get("stun", 0)), after,
+		"and the same attack cannot damage the hero twice"
+	)
+	_table().report_attack(resent, 99, recovered_outcome)
+	var settled := await _wait_for(func():
+		return _gm_screen().session().pending_attacks_for(_joined_player_id).is_empty())
+	check_true(settled, "the recovered result settles the GM's pending attack")
 
 
 func _test_leaving_closes_the_table() -> void:

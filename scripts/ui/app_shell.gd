@@ -23,6 +23,7 @@ const CAMPAIGN_SELECT_SCREEN := preload("res://scenes/ui/screens/campaign_select
 const GM_SCREEN := preload("res://scenes/ui/screens/gm_screen.tscn")
 const TABLE_JOIN_SCREEN := preload("res://scenes/ui/screens/table_join.tscn")
 const COMMIT_CHARACTER_ROUTE := preload("res://scenes/ui/routes/commit_character_route.tscn")
+const CONFIRM_ROUTE := preload("res://scenes/ui/routes/confirm_route.tscn")
 
 ## Controls remember their desktop mouse filter while touch-pass mode is active.
 ## This matters in the editor: switching the helper off must restore deliberate
@@ -115,6 +116,13 @@ func _ready() -> void:
 
 	_is_wide = _compute_is_wide()
 	_show_select()
+
+	# Android may kill a backgrounded process even though the player never left
+	# the table. Rebuild that local navigation state before ordinary last-opened
+	# character recovery, then let TableSession's retry loop find the GM.
+	if _resume_last_table():
+		_update_mouse_filters_for_touch(self, _touch_pass_enabled)
+		return
 
 	# Reopen whatever was last in use, matching the old launch behaviour.
 	var last := store.last_opened()
@@ -303,7 +311,71 @@ func _on_table_joined(transport: EnetTransport, campaign_name: String) -> void:
 	if doc != null:
 		table.commit(doc)
 		store.set_last_opened(doc.source_file)
+		identity.remember_active_character(doc.source_file)
 	_open_sheet(doc if doc != null else CharacterDoc.new(rules))
+
+
+## Recreate the last player table after an operating-system process kill.
+func _resume_last_table() -> bool:
+	var saved := identity.active_table()
+	var address := String(saved.get("address", "")).strip_edges()
+	if address.is_empty():
+		return false
+	var port := AlternityNum.as_int(saved.get("port", EnetTransport.DEFAULT_PORT), EnetTransport.DEFAULT_PORT)
+	var transport := EnetTransport.new()
+	table = TableSession.new(transport, identity, store, rules, String(saved.get("campaign_name", "")))
+	table.leave_requested.connect(_leave_table)
+	transport.player_connected.connect(_on_resumed_table_connected)
+	checks.use_transport(transport)
+	set_process(true)
+
+	var character_file := String(saved.get("character_file", ""))
+	var doc: CharacterDoc = store.load_doc(character_file) if not character_file.is_empty() else null
+	if doc != null:
+		table.restore_character(doc)
+		store.set_last_opened(doc.source_file)
+	_open_sheet(doc if doc != null else CharacterDoc.new(rules))
+
+	transport.join(
+		address,
+		port,
+		"",
+		identity.player_name() if not identity.player_name().is_empty() else "Player",
+		0,
+		identity.reconnect_claims(),
+		String(saved.get("campaign_id", ""))
+	)
+	return true
+
+
+func _on_resumed_table_connected(_player_id: String, _is_reconnect: bool) -> void:
+	if table == null or table.transport == null:
+		return
+	var current_doc := table.doc
+	if current_doc != null:
+		table.commit(current_doc)
+	else:
+		_choose_resumed_hero.call_deferred()
+	identity.remember_active_table(
+		table.transport.remote_address(),
+		table.transport.remote_port(),
+		table.campaign_id(),
+		table.campaign_name,
+		current_doc.source_file if current_doc != null else ""
+	)
+
+
+func _choose_resumed_hero() -> void:
+	if table == null or not table.is_connected_to_table():
+		return
+	var current := table
+	var doc := await _choose_committed_hero(table.campaign_name)
+	if not is_instance_valid(self) or table != current or doc == null:
+		return
+	table.commit(doc)
+	store.set_last_opened(doc.source_file)
+	identity.remember_active_character(doc.source_file)
+	_open_sheet(doc)
 
 
 ## Which hero is being played here, and make one if there is none.
@@ -338,6 +410,7 @@ func _leave_table() -> void:
 	if table != null:
 		table.leave()
 		table = null
+	identity.clear_active_table()
 	checks.use_transport(null)
 	set_process(false)
 	_show_campaigns()
@@ -431,16 +504,17 @@ func _notification(what: int) -> void:
 func _handle_back() -> void:
 	if router != null and router.handle_back_request():
 		return
+	# A player's table is hosted inside their character sheet. Treating it as an
+	# ordinary sheet used to reveal the character list while leaving the socket
+	# stranded, and Android's default Back handling could then close the app.
+	if table != null:
+		_confirm_leave_table()
+		return
 	if _sheet != null and is_instance_valid(_sheet):
 		_on_sheet_closed()
 		return
 	if _gm != null and is_instance_valid(_gm):
 		_on_gm_closed()
-		return
-	# Backing out while at a table has to close the connection, not just change
-	# screens -- the shell owns it now, so nothing else will.
-	if table != null:
-		_leave_table()
 		return
 	if _table_join != null and is_instance_valid(_table_join):
 		_show_campaigns()
@@ -450,6 +524,20 @@ func _handle_back() -> void:
 		return
 	# At the character list there is nowhere further back, so honour the quit.
 	get_tree().quit()
+
+
+func _confirm_leave_table() -> void:
+	var current := table
+	var confirmed = await router.push(CONFIRM_ROUTE, {
+		"palette": _palette,
+		"title": "Leave the table?",
+		"message": "You will disconnect from the GM. Your character and campaign identity stay saved, so you can rejoin later.",
+		"confirm_text": "Leave table",
+		"cancel_text": "Stay",
+	})
+	if not is_instance_valid(self) or confirmed != true or table != current:
+		return
+	_leave_table()
 
 
 ## Escape does what Android back does.

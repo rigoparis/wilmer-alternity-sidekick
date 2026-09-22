@@ -220,7 +220,8 @@ func _join(address: String, port: int, campaign_id: String, campaign_name: Strin
 		port,
 		String(known.get("player_id", "")),
 		player_name,
-		AlternityNum.as_int(known.get("last_seq", 0))
+		AlternityNum.as_int(known.get("last_seq", 0)),
+		_identity.reconnect_claims()
 	)
 	if result != OK:
 		_transport = null
@@ -237,6 +238,12 @@ func _on_welcomed(player_id: String, is_reconnect: bool) -> void:
 	if _joining_name.is_empty():
 		_joining_name = _transport.campaign_name()
 	_identity.remember(campaign_id, player_id, 0, _joining_name)
+	_identity.remember_active_table(
+		_transport.remote_address(),
+		_transport.remote_port(),
+		campaign_id,
+		_joining_name
+	)
 	_status.text = "Welcome back." if is_reconnect else "You are at the table."
 	_status.add_theme_color_override("font_color", _palette.accent)
 

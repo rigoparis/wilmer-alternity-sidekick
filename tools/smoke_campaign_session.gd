@@ -23,6 +23,7 @@ func _init() -> void:
 	_test_ap_awards()
 	_test_persistence()
 	_test_replay_window()
+	_test_pending_work()
 
 	finish()
 
@@ -324,3 +325,46 @@ func _test_replay_window() -> void:
 		"appending after a trim continues the sequence rather than restarting"
 	)
 	check_eq(session.trim_events(50), 0, "trimming to more than is held does nothing")
+
+
+func _test_pending_work() -> void:
+	var session := Session.new("Interrupted table")
+	var gm := session.add_seat("GM")
+	var alice := session.add_seat("Alice")
+	var bob := session.add_seat("Bob")
+	session.set_gm(gm)
+
+	var requested := SkillCheck.new(alice, SkillCheck.ORIGIN_PLAYER)
+	requested.skill_label = "Awareness"
+	session.queue_check_request(requested.to_dict())
+	session.queue_check_request(requested.to_dict())
+	check_eq(session.check_requests().size(), 1, "a retried check request is stored once")
+
+	requested.rule(2, "Dark corridor")
+	session.resolve_check_request(requested.check_id)
+	session.queue_called_check(requested.to_dict(), alice)
+	check_eq(session.check_requests().size(), 0, "ruling removes the GM's waiting request")
+	check_eq(session.pending_checks_for(alice).size(), 1, "the ruled check waits for its player")
+	check_eq(session.pending_checks_for(bob).size(), 0, "an addressed check is private to its player")
+
+	var called := SkillCheck.call_for("Action check", 0)
+	session.queue_called_check(called.to_dict())
+	check_eq(session.pending_checks_for(alice).size(), 2, "a table-wide call waits for Alice too")
+	check_eq(session.pending_checks_for(bob).size(), 1, "and independently waits for Bob")
+	check_true(session.resolve_called_check(called.check_id, alice), "Alice can settle her copy")
+	check_eq(session.pending_checks_for(alice).size(), 1, "which removes only Alice from the table call")
+	check_eq(session.pending_checks_for(bob).size(), 1, "while Bob still owes it")
+
+	var attack := CombatAttack.declare(alice, "Raider", "Rifle", "Good", 5, "w", "hi", "O")
+	session.queue_attack(attack.to_dict(), alice)
+	check_eq(session.pending_attacks_for(alice).size(), 1, "an unresolved attack stays with its target")
+	check_eq(session.pending_attacks_for(bob).size(), 0, "and is not exposed to another player")
+	check_false(session.resolve_attack(attack.attack_id, bob), "another seat cannot settle Alice's attack")
+	check_true(session.resolve_attack(attack.attack_id, alice), "the addressed seat can settle it")
+
+	var persisted_attack := CombatAttack.declare(bob, "Raider", "Knife", "Ordinary", 2, "w", "li", "O")
+	session.queue_attack(persisted_attack.to_dict(), bob)
+	var restored := Session.from_dict(JSON.parse_string(JSON.stringify(session.to_dict())))
+	check_eq(restored.pending_checks_for(bob).size(), 1, "pending checks survive campaign reload")
+	check_eq(restored.pending_attacks_for(bob).size(), 1, "pending attacks survive campaign reload")
+	check_eq(restored.format_version, Session.FORMAT_VERSION, "older documents migrate to the current shape")

@@ -110,6 +110,10 @@ func setup(
 	_rules = rules
 	_router = router
 	_palette = palette
+	_pending_checks.clear()
+	for stored_check in _session.check_requests():
+		if typeof(stored_check) == TYPE_DICTIONARY:
+			_pending_checks.append(SkillCheck.from_dict(stored_check))
 	# The fight lives on the campaign, so a screen rebuilt for a theme change or
 	# reopened next week picks it back up rather than losing whose turn it is.
 	_adopt_stored_round()
@@ -856,7 +860,8 @@ func _roll_damage(entry: String, attack: CombatAttack) -> int:
 func _send_attack(attack: CombatAttack) -> void:
 	if _hosting and _transport != null:
 		_transport.send_attack(attack.to_dict(), attack.target_player_id)
-	if not attack.hits() or not _hosting or _transport == null:
+		_store.save(_session)
+	else:
 		_session.append_attack(attack.target_player_id, attack.to_dict())
 		_store.save(_session)
 	refresh()
@@ -1449,7 +1454,15 @@ func _allow_narrow(button: Button) -> void:
 
 func _on_check_requested(_player_id: String, data: Dictionary) -> void:
 	var check := SkillCheck.from_dict(data)
-	_pending_checks.append(check)
+	_session.queue_check_request(check.to_dict())
+	var exists := false
+	for pending in _pending_checks:
+		if (pending as SkillCheck).check_id == check.check_id:
+			exists = true
+			break
+	if not exists:
+		_pending_checks.append(check)
+	_store.save(_session)
 	_render_checks()
 	_render_status()
 
@@ -1464,11 +1477,14 @@ func _drop_pending(check: SkillCheck) -> void:
 func _on_rule_pressed(check: SkillCheck, step: int, reason: String = "") -> void:
 	check.rule(step, reason)
 	_drop_pending(check)
+	_session.resolve_check_request(check.check_id)
+	_session.queue_called_check(check.to_dict(), check.player_id)
 	# Ruling on a skill is the GM deciding it matters right now, which is what
 	# the shortcuts are trying to predict.
 	_note_check_skill(check.skill_id)
 	if _transport != null:
 		_transport.send_ruling(check.to_dict(), check.player_id)
+	_store.save(_session)
 	_render_checks()
 	_render_status()
 	_render_shortcuts()
@@ -1492,8 +1508,10 @@ func _on_rule_with_steps_pressed(check: SkillCheck) -> void:
 func _on_refuse_check_pressed(check: SkillCheck) -> void:
 	check.cancel("The GM says no.")
 	_drop_pending(check)
+	_session.resolve_check_request(check.check_id)
 	if _transport != null:
 		_transport.send_ruling(check.to_dict(), check.player_id)
+	_store.save(_session)
 	_render_checks()
 	_render_status()
 
@@ -1543,6 +1561,7 @@ func _call_check_for(skill: Dictionary) -> void:
 	if _transport != null and _hosting:
 		# Empty recipient means the whole table.
 		_transport.send_ruling(check_call.to_dict())
+	_session.queue_called_check(check_call.to_dict())
 
 	_note_check_skill(skill_id)
 	# Logged because it is something the GM did, and it stands whether or not
@@ -1762,6 +1781,7 @@ func _toggle_hosting() -> void:
 		_transport.event_received.connect(_on_networked_event)
 		_transport.character_received.connect(_on_character_received)
 		_transport.check_requested.connect(_on_check_requested)
+		_transport.check_dismissed.connect(_on_check_dismissed)
 		_transport.action_check_received.connect(_on_action_check_received)
 		_transport.attack_resolved.connect(_on_attack_resolved)
 		_transport.defence_declared.connect(_on_defence_declared)
@@ -1787,9 +1807,6 @@ func _toggle_hosting() -> void:
 
 func _stop_hosting() -> void:
 	_hosting = false
-	# Nobody is waiting on a ruling any more, and a queue left standing would
-	# offer to answer players who are no longer connected.
-	_pending_checks.clear()
 	if _transport != null:
 		_transport.leave()
 	if _discovery != null:
@@ -1830,10 +1847,8 @@ func _on_player_connected(_player_id: String, is_reconnect: bool) -> void:
 	# A first-time join was seated by the handshake, so the campaign changed on
 	# disk. A reconnect only touched last_seen, which is still worth keeping.
 	_store.save(_session)
-	# Somebody arriving mid-fight gets the board straight away. The round is sent
-	# whole, so there is nothing else they need to catch up.
-	if _fight != null and _transport != null:
-		_transport.send_round(_fight.to_dict())
+	# The current fight travels in the addressed welcome packet. Broadcasting it
+	# here made reconnect catch-up a second, timing-dependent operation.
 	if not is_reconnect:
 		_summary_cache.clear()
 	refresh()
@@ -1847,10 +1862,27 @@ func _on_player_disconnected(_player_id: String) -> void:
 ##
 ## Flushed rather than saved: no seat changed, and the log is the one part of a
 ## campaign that must not wait for an explicit save.
-func _on_networked_event(_event: Dictionary) -> void:
-	_store.flush_events(_session)
+func _on_networked_event(event: Dictionary) -> void:
+	var saved_state := false
+	if String(event.get("kind", "")) == CampaignSession.EVENT_ROLL:
+		var payload = event.get("payload", {})
+		if typeof(payload) == TYPE_DICTIONARY:
+			var check = payload.get("check", {})
+			if typeof(check) == TYPE_DICTIONARY:
+				saved_state = _session.resolve_called_check(
+					String(check.get("check_id", "")),
+					String(event.get("player_id", ""))
+				)
+	if saved_state:
+		_store.save(_session)
+	else:
+		_store.flush_events(_session)
 	_render_feed()
 	_render_status()
+
+
+func _on_check_dismissed(_player_id: String, _check_id: String) -> void:
+	_store.save(_session)
 
 
 ## A player committed a character, or sent an updated copy of one.

@@ -1,5 +1,5 @@
 class_name NumberStepper
-extends HBoxContainer
+extends HFlowContainer
 ##
 ## Minus / value / plus, clamped to a range.
 ##
@@ -10,6 +10,14 @@ extends HBoxContainer
 ##
 ## Emits only when the value actually changes, so a caller can connect it
 ## straight to a document mutation without filtering no-op presses.
+##
+## Flows rather than boxes. The label is deliberately allowed neither to wrap nor
+## to ellipsize (see setup), so on one line the row's minimum width is the whole
+## label plus 128px of controls -- "Achievement points earned" came to 325px, and
+## three cards carrying a stepper were consequently laid out wider than a 360px
+## phone, taking the right edge of the sheet off the screen where nothing scrolls
+## sideways to reach it. Flowing drops the label to its own line when the row is
+## that tight, and is an ordinary single row everywhere there is room.
 ##
 
 signal value_changed(new_value: int)
@@ -32,7 +40,8 @@ var _step: int = 1
 
 
 func _init() -> void:
-	add_theme_constant_override("separation", Widgets.GAP_ROW)
+	add_theme_constant_override("h_separation", Widgets.GAP_ROW)
+	add_theme_constant_override("v_separation", Widgets.GAP_TIGHT)
 	# Sized to its contents. A stepper that stretched to the full row width left
 	# a gap between the label and the buttons that made them read as unrelated.
 	size_flags_horizontal = Control.SIZE_SHRINK_BEGIN

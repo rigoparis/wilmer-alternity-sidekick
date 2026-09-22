@@ -18,7 +18,7 @@ extends RefCounted
 ## name.
 ##
 
-const FORMAT_VERSION := 1
+const FORMAT_VERSION := 3
 const FILE_NAME := "player_identity.json"
 
 ## Directory this reads and writes, always with a trailing slash. Injectable for
@@ -29,6 +29,11 @@ var _player_name: String = ""
 
 ## campaign_id -> {player_id, last_seq, campaign_name, joined_at}.
 var _campaigns: Dictionary = {}
+var _active_table: Dictionary = {}
+## campaign_id -> attack_id -> {attack, absorbed, outcome, parried, resolved}.
+## This is the player's idempotency record: character damage must never be
+## applied twice just because the result packet was lost during reconnect.
+var _attack_progress: Dictionary = {}
 
 
 func _init(directory: String = "user://") -> void:
@@ -66,6 +71,137 @@ func for_campaign(campaign_id: String) -> Dictionary:
 
 func player_id_for(campaign_id: String) -> String:
 	return String(for_campaign(campaign_id).get("player_id", ""))
+
+
+## The minimum identity material a transport may use after a host tells it
+## which campaign is at the other end.
+##
+## A typed address does not carry a campaign id. Passing these claims into the
+## transport lets it wait for the host's table introduction, then present only
+## the matching campaign's stable id. The whole identity document never crosses
+## the wire.
+func reconnect_claims() -> Dictionary:
+	var claims := {}
+	for campaign_id in _campaigns:
+		var known = _campaigns[campaign_id]
+		if typeof(known) != TYPE_DICTIONARY:
+			continue
+		var player_id := String(known.get("player_id", ""))
+		if player_id.is_empty():
+			continue
+		claims[campaign_id] = {
+			"player_id": player_id,
+			"last_seq": AlternityNum.as_int(known.get("last_seq", 0)),
+		}
+	return claims
+
+
+## The last table this device deliberately joined. This is local navigation
+## state, not campaign authority: it contains only how to reconnect and which
+## local character file to reopen.
+func active_table() -> Dictionary:
+	return _active_table.duplicate(true)
+
+
+func remember_active_table(
+	address: String,
+	port: int,
+	campaign_id: String = "",
+	campaign_name: String = "",
+	character_file: String = ""
+) -> void:
+	if address.strip_edges().is_empty():
+		return
+	var previous := _active_table
+	_active_table = {
+		"address": address.strip_edges(),
+		"port": port,
+		"campaign_id": campaign_id if not campaign_id.is_empty() else String(previous.get("campaign_id", "")),
+		"campaign_name": campaign_name if not campaign_name.is_empty() else String(previous.get("campaign_name", "")),
+		"character_file": character_file if not character_file.is_empty() else String(previous.get("character_file", "")),
+	}
+	_save()
+
+
+func remember_active_character(character_file: String) -> void:
+	if _active_table.is_empty() or character_file.is_empty():
+		return
+	_active_table["character_file"] = character_file
+	_save()
+
+
+func clear_active_table() -> void:
+	if _active_table.is_empty():
+		return
+	_active_table.clear()
+	_save()
+
+
+func remember_attack_applied(
+	campaign_id: String,
+	attack: Dictionary,
+	absorbed: int,
+	outcome: Dictionary,
+	parried: bool
+) -> void:
+	var attack_id := String(attack.get("attack_id", ""))
+	if campaign_id.is_empty() or attack_id.is_empty():
+		return
+	var campaign = _attack_progress.get(campaign_id, {})
+	if typeof(campaign) != TYPE_DICTIONARY:
+		campaign = {}
+	campaign[attack_id] = {
+		"attack": attack.duplicate(true),
+		"absorbed": absorbed,
+		"outcome": outcome.duplicate(true),
+		"parried": parried,
+		"resolved": {},
+	}
+	_attack_progress[campaign_id] = campaign
+	_save()
+
+
+func remember_attack_resolved(campaign_id: String, attack: Dictionary) -> void:
+	var attack_id := String(attack.get("attack_id", ""))
+	if campaign_id.is_empty() or attack_id.is_empty():
+		return
+	var campaign = _attack_progress.get(campaign_id, {})
+	if typeof(campaign) != TYPE_DICTIONARY:
+		campaign = {}
+	var progress = campaign.get(attack_id, {})
+	if typeof(progress) != TYPE_DICTIONARY:
+		progress = {}
+	progress["resolved"] = attack.duplicate(true)
+	campaign[attack_id] = progress
+	_attack_progress[campaign_id] = campaign
+	_save()
+
+
+func attack_progress(campaign_id: String, attack_id: String) -> Dictionary:
+	var campaign = _attack_progress.get(campaign_id, {})
+	if typeof(campaign) != TYPE_DICTIONARY:
+		return {}
+	var progress = campaign.get(attack_id, {})
+	return progress.duplicate(true) if typeof(progress) == TYPE_DICTIONARY else {}
+
+
+## The GM's welcome lists every attack it still considers outstanding. Anything
+## absent was acknowledged and can leave the local idempotency journal.
+func reconcile_attacks(campaign_id: String, pending_attack_ids: Array) -> void:
+	var campaign = _attack_progress.get(campaign_id, {})
+	if typeof(campaign) != TYPE_DICTIONARY:
+		return
+	var changed := false
+	for attack_id in campaign.keys():
+		if not pending_attack_ids.has(String(attack_id)):
+			campaign.erase(attack_id)
+			changed = true
+	if campaign.is_empty():
+		_attack_progress.erase(campaign_id)
+	else:
+		_attack_progress[campaign_id] = campaign
+	if changed:
+		_save()
 
 
 ## Record the id a GM issued for a campaign.
@@ -138,6 +274,10 @@ func _load() -> void:
 	_player_name = String(data.get("player_name", ""))
 	var stored = data.get("campaigns", {})
 	_campaigns = stored.duplicate(true) if typeof(stored) == TYPE_DICTIONARY else {}
+	var active = data.get("active_table", {})
+	_active_table = active.duplicate(true) if typeof(active) == TYPE_DICTIONARY else {}
+	var attacks = data.get("attack_progress", {})
+	_attack_progress = attacks.duplicate(true) if typeof(attacks) == TYPE_DICTIONARY else {}
 
 
 func _save() -> void:
@@ -149,5 +289,7 @@ func _save() -> void:
 		"format_version": FORMAT_VERSION,
 		"player_name": _player_name,
 		"campaigns": _campaigns,
+		"active_table": _active_table,
+		"attack_progress": _attack_progress,
 	}, "\t"))
 	file.close()

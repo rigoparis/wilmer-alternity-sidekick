@@ -38,7 +38,7 @@ var _empty_note: Label
 ## props:
 ##   palette      ThemePalette
 ##   title        String
-##   entries      Array of { id, name, summary, meta, taken, disabled, reason }
+##   entries      Array of { id, name, summary, source, meta, taken, disabled, reason }
 ##   budget_fn    Callable(Array selected_ids) -> String, optional
 func configure(props: Dictionary) -> void:
 	_palette = props.get("palette", ThemePalette.new())
@@ -217,6 +217,10 @@ func _build_row(entry: Dictionary) -> void:
 	var summary := String(entry.get("summary", ""))
 	if not summary.is_empty():
 		Widgets.muted_text(box, summary, _palette, Widgets.FONT_CAPTION)
+
+	var source := String(entry.get("source", ""))
+	if not source.is_empty():
+		Widgets.muted_text(box, source, _palette, Widgets.FONT_CAPTION)
 
 	var reason := String(entry.get("reason", ""))
 	if taken:

@@ -28,7 +28,7 @@ extends NetTransport
 
 ## Bumped when the message shapes change. A peer speaking a different version is
 ## refused with a reason rather than left to misparse packets.
-const PROTOCOL_VERSION := 1
+const PROTOCOL_VERSION := 2
 
 ## The port the GM hosts on unless told otherwise. Chosen in the dynamic range,
 ## clear of anything registered.
@@ -36,8 +36,17 @@ const DEFAULT_PORT := 47811
 
 const MAX_CLIENTS := 16
 
+## ENet normally drops a peer after at most 30 seconds without acknowledging
+## reliable traffic. Mobile apps stop polling while Android suspends them, so a
+## quick switch to messages could look like a dead device. Keep the adaptive
+## timeout behaviour, but give a suspended table member a three-minute ceiling.
+const PEER_TIMEOUT_LIMIT := 32
+const PEER_TIMEOUT_MIN_MS := 15_000
+const PEER_TIMEOUT_MAX_MS := 180_000
+
 # Message kinds. The client speaks the first three; the host speaks the rest.
 const MSG_HELLO := "hello"
+const MSG_TABLE_INFO := "table_info"
 const MSG_ROLL := "roll"
 const MSG_CHAT := "chat"
 
@@ -58,6 +67,7 @@ const MSG_CHARACTER := "character"
 ## request in front of it, which is exactly what a ruling already is.
 const MSG_CHECK_REQUEST := "check_request"
 const MSG_CHECK_RULING := "check_ruling"
+const MSG_CHECK_DISMISS := "check_dismiss"
 
 ## The fight. The host owns the round and sends it whole on every change; a
 ## player device answers with its action check when one is owed.
@@ -121,6 +131,13 @@ var _campaign_optional_rules: Dictionary = {}
 var _table_seats: Array = []
 var _since_seq: int = 0
 var _handshaken: bool = false
+## Campaign id -> {player_id, last_seq}. Kept on the client only. A manual IP
+## join cannot choose the right claim until the host identifies its campaign.
+var _reconnect_claims: Dictionary = {}
+var _expected_campaign_id: String = ""
+var _remote_address: String = ""
+var _remote_port: int = DEFAULT_PORT
+var _disconnect_reported: bool = false
 
 
 ## `tree` is optional. Given one, the transport polls itself every frame; given
@@ -171,27 +188,68 @@ func join(
 	port: int = DEFAULT_PORT,
 	player_id: String = "",
 	player_name: String = "",
-	since_seq: int = 0
+	since_seq: int = 0,
+	reconnect_claims: Dictionary = {},
+	expected_campaign_id: String = ""
 ) -> Error:
-	leave()
+	_close_peer()
 
-	var peer := ENetMultiplayerPeer.new()
-	var result := peer.create_client(address, port)
-	if result != OK:
-		transport_error.emit("Could not reach %s:%d (error %d)" % [address, port, result])
-		return result
-
-	_peer = peer
 	_role = Role.PLAYER
+	_remote_address = address
+	_remote_port = port
 	_local_player_id = player_id
 	_local_player_name = player_name
 	_since_seq = since_seq
+	_reconnect_claims = reconnect_claims.duplicate(true)
+	_expected_campaign_id = expected_campaign_id
 	_handshaken = false
+	return _open_client()
+
+
+## Reopen the last player connection without replacing this transport object.
+## TableSession's signal wiring therefore survives a dropped socket.
+func reconnect() -> Error:
+	if _role != Role.PLAYER or _remote_address.is_empty():
+		return ERR_UNCONFIGURED
+	_close_peer()
+	_handshaken = false
+	return _open_client()
+
+
+func can_reconnect() -> bool:
+	return _role == Role.PLAYER and not _remote_address.is_empty()
+
+
+func remote_address() -> String:
+	return _remote_address
+
+
+func remote_port() -> int:
+	return _remote_port
+
+
+## A refusal can arrive over a healthy socket (for example, when app versions
+## differ). Only retry when the socket itself is gone or could not be opened.
+func needs_reconnect() -> bool:
+	return can_reconnect() and (
+		_peer == null
+		or _peer.get_connection_status() == MultiplayerPeer.CONNECTION_DISCONNECTED
+	)
+
+
+func _open_client() -> Error:
+	var peer := ENetMultiplayerPeer.new()
+	var result := peer.create_client(_remote_address, _remote_port)
+	if result != OK:
+		transport_error.emit("Could not reach %s:%d (error %d)" % [_remote_address, _remote_port, result])
+		return result
+	_peer = peer
 	_bind_peer()
 	return OK
 
 
 func _bind_peer() -> void:
+	_disconnect_reported = false
 	_peer.set_transfer_mode(MultiplayerPeer.TRANSFER_MODE_RELIABLE)
 	_peer.peer_connected.connect(_on_peer_connected)
 	_peer.peer_disconnected.connect(_on_peer_disconnected)
@@ -200,6 +258,21 @@ func _bind_peer() -> void:
 
 
 func leave() -> void:
+	_close_peer()
+	_remote_address = ""
+	_remote_port = DEFAULT_PORT
+	_local_player_id = ""
+	_local_player_name = ""
+	_campaign_id = ""
+	_campaign_name = ""
+	_campaign_optional_rules.clear()
+	_table_seats.clear()
+	_since_seq = 0
+	_reconnect_claims.clear()
+	_expected_campaign_id = ""
+
+
+func _close_peer() -> void:
 	if _tree != null and _tree.process_frame.is_connected(poll):
 		_tree.process_frame.disconnect(poll)
 	if _peer != null:
@@ -209,7 +282,6 @@ func leave() -> void:
 	_peer_to_player.clear()
 	_player_to_peer.clear()
 	_handshaken = false
-	_since_seq = 0
 
 
 func is_connected_to_table() -> bool:
@@ -282,11 +354,14 @@ func poll() -> void:
 		# Local state is kept: the whole point of a stable player_id is that
 		# rejoining resumes rather than restarts.
 		_handshaken = false
+		_report_disconnect()
 		return
 
 	_peer.poll()
 
-	while _peer.get_available_packet_count() > 0:
+	# Re-checked each turn: handling a packet can tear the session down --
+	# leave() drops the peer -- and the condition would then dereference null.
+	while _peer != null and _peer.get_available_packet_count() > 0:
 		# Peer first, then the packet: get_packet_peer() reports the sender of
 		# the packet still queued, and reading the packet advances past it.
 		var from_peer := _peer.get_packet_peer()
@@ -334,6 +409,7 @@ func send_attack(attack: Dictionary, to_player_id: String) -> void:
 	if _role != Role.GM:
 		push_error("EnetTransport.send_attack is the host's job")
 		return
+	_session.queue_attack(attack, to_player_id)
 	var target := AlternityNum.as_int(_player_to_peer.get(to_player_id, 0))
 	if target > 0:
 		_send_to_peer(target, {"kind": MSG_ATTACK, "attack": attack})
@@ -379,6 +455,13 @@ func request_check(check: Dictionary) -> void:
 	if _role == Role.GM:
 		return
 	_send_to_host({"kind": MSG_CHECK_REQUEST, "check": check})
+
+
+## Tell the GM that a durable called-check prompt was deliberately declined.
+func dismiss_check(check_id: String) -> void:
+	if _role == Role.GM or check_id.is_empty():
+		return
+	_send_to_host({"kind": MSG_CHECK_DISMISS, "check_id": check_id})
 
 
 ## Answer a request, or call for a check unprompted.
@@ -489,7 +572,11 @@ func _handle_as_host(from_peer: int, message: Dictionary) -> void:
 			if player_id.is_empty():
 				return
 			var resolved: Dictionary = message.get("attack", {}) if typeof(message.get("attack")) == TYPE_DICTIONARY else {}
-			attack_resolved.emit(player_id, resolved)
+			# Only the addressed seat can settle a pending attack, and a repeated
+			# result is ignored. This makes reconnect retries idempotent instead of
+			# logging or applying the same hit twice.
+			if _session.resolve_attack(String(resolved.get("attack_id", "")), player_id):
+				attack_resolved.emit(player_id, resolved)
 		MSG_DEFENCE:
 			var player_id := String(_peer_to_player.get(from_peer, ""))
 			if player_id.is_empty():
@@ -516,6 +603,13 @@ func _handle_as_host(from_peer: int, message: Dictionary) -> void:
 			# else and have the GM's ruling go to them.
 			check["player_id"] = player_id
 			check_requested.emit(player_id, check)
+		MSG_CHECK_DISMISS:
+			var player_id := String(_peer_to_player.get(from_peer, ""))
+			if player_id.is_empty():
+				return
+			var check_id := String(message.get("check_id", ""))
+			if _session.resolve_called_check(check_id, player_id):
+				check_dismissed.emit(player_id, check_id)
 		MSG_CHARACTER:
 			var player_id := String(_peer_to_player.get(from_peer, ""))
 			if player_id.is_empty():
@@ -607,13 +701,19 @@ func _handle_hello(from_peer: int, message: Dictionary) -> void:
 		# merely differently configured -- their numbers are wrong for this table.
 		"optional_rules": _session.get_campaign_optional_rules(),
 		"seats": _session.public_seats(),
+		# Current state belongs in the welcome, not in a later broadcast. A
+		# returning player is not fully reconnected until they know the fight the
+		# GM is currently running.
+		"round": _session.current_round(),
+		"pending_checks": _session.pending_checks_for(player_id),
+		"pending_attacks": _session.pending_attacks_for(player_id),
 	})
 
 	# Replay what they missed. A first-time joiner asks from 0 and gets the tail
 	# the host still holds, which is history rather than state -- their seat
 	# already carries the AP and the character binding.
 	var since := AlternityNum.as_int(message.get("since_seq", 0))
-	var missed := _session.events_since(since)
+	var missed := _session.visible_events_since(player_id, since)
 	if not missed.is_empty():
 		_send_to_peer(from_peer, {"kind": MSG_REPLAY, "events": missed})
 
@@ -636,23 +736,33 @@ func _resolve_recipient(to: String) -> String:
 
 
 func _on_peer_connected(peer_id: int) -> void:
-	# Nothing to do until they say who they are. The socket is up; the seat is
-	# not decided until the hello arrives.
-	if _role == Role.PLAYER and peer_id == MultiplayerPeer.TARGET_PEER_SERVER:
-		_send_to_host({
-			"kind": MSG_HELLO,
+	_configure_peer(peer_id)
+	# The host introduces the table before the client identifies itself. This is
+	# what makes a typed-address reconnect safe: only the host knows which saved
+	# campaign identity the client should present.
+	if _role == Role.GM:
+		_send_to_peer(peer_id, {
+			"kind": MSG_TABLE_INFO,
 			"protocol": PROTOCOL_VERSION,
-			"player_id": _local_player_id,
-			"player_name": _local_player_name,
-			"since_seq": _since_seq,
+			"campaign_id": _session.campaign_id,
+			"campaign_name": _session.display_name,
 		})
+
+
+func _configure_peer(peer_id: int) -> void:
+	if _peer == null:
+		return
+	var remote := _peer.get_peer(peer_id)
+	if remote == null:
+		return
+	remote.set_timeout(PEER_TIMEOUT_LIMIT, PEER_TIMEOUT_MIN_MS, PEER_TIMEOUT_MAX_MS)
 
 
 func _on_peer_disconnected(peer_id: int) -> void:
 	if _role == Role.PLAYER:
 		if peer_id == MultiplayerPeer.TARGET_PEER_SERVER:
 			_handshaken = false
-			transport_error.emit("Lost the connection to the GM.")
+			_report_disconnect()
 		return
 
 	var player_id := String(_peer_to_player.get(peer_id, ""))
@@ -666,10 +776,41 @@ func _on_peer_disconnected(peer_id: int) -> void:
 	player_disconnected.emit(player_id)
 
 
+func _report_disconnect() -> void:
+	if _disconnect_reported:
+		return
+	_disconnect_reported = true
+	transport_error.emit("Lost the connection to the GM. Reconnecting...")
+
+
 # --- Client handlers -------------------------------------------------------
 
 func _handle_as_client(message: Dictionary) -> void:
 	match String(message.get("kind", "")):
+		MSG_TABLE_INFO:
+			if AlternityNum.as_int(message.get("protocol", 0)) != PROTOCOL_VERSION:
+				transport_error.emit("This app is a different version from the GM's.")
+				return
+			_campaign_id = String(message.get("campaign_id", ""))
+			_campaign_name = String(message.get("campaign_name", ""))
+			if not _expected_campaign_id.is_empty() and _campaign_id != _expected_campaign_id:
+				# A saved IP can later belong to another campaign. Never turn a
+				# background resume into an unsolicited new seat at that table.
+				_remote_address = ""
+				_close_peer()
+				transport_error.emit("The GM is hosting a different campaign now. Leave this table and join it deliberately if you want to switch.")
+				return
+			var known = _reconnect_claims.get(_campaign_id, {})
+			if _local_player_id.is_empty() and typeof(known) == TYPE_DICTIONARY:
+				_local_player_id = String(known.get("player_id", ""))
+				_since_seq = AlternityNum.as_int(known.get("last_seq", _since_seq))
+			_send_to_host({
+				"kind": MSG_HELLO,
+				"protocol": PROTOCOL_VERSION,
+				"player_id": _local_player_id,
+				"player_name": _local_player_name,
+				"since_seq": _since_seq,
+			})
 		MSG_WELCOME:
 			_local_player_id = String(message.get("player_id", _local_player_id))
 			_local_player_name = String(message.get("player_name", _local_player_name))
@@ -681,6 +822,23 @@ func _handle_as_client(message: Dictionary) -> void:
 			_table_seats = s_list.duplicate(true) if typeof(s_list) == TYPE_ARRAY else []
 			_handshaken = true
 			player_connected.emit(_local_player_id, bool(message.get("is_reconnect", false)))
+			var round_data = message.get("round", {})
+			if typeof(round_data) == TYPE_DICTIONARY:
+				round_updated.emit(round_data)
+			var pending_checks = message.get("pending_checks", [])
+			var pending_attacks = message.get("pending_attacks", [])
+			pending_work_received.emit(
+				pending_checks if typeof(pending_checks) == TYPE_ARRAY else [],
+				pending_attacks if typeof(pending_attacks) == TYPE_ARRAY else []
+			)
+			if typeof(pending_checks) == TYPE_ARRAY:
+				for check in pending_checks:
+					if typeof(check) == TYPE_DICTIONARY:
+						check_ruled.emit(check)
+			if typeof(pending_attacks) == TYPE_ARRAY:
+				for attack in pending_attacks:
+					if typeof(attack) == TYPE_DICTIONARY:
+						attack_received.emit(attack)
 		MSG_DENIED:
 			_handshaken = false
 			transport_error.emit(String(message.get("reason", "The GM refused the connection.")))

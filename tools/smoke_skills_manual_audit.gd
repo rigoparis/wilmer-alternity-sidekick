@@ -107,7 +107,6 @@ func _test_fx_catalog_and_structures(rules: AlternityRules) -> void:
 func _test_fx_attack_and_defense_forms(rules: AlternityRules) -> void:
 	var hero: Dictionary = rules.default_character()
 	rules.ensure_character_shape(hero)
-	rules.set_perk_selected(hero, "arcane_magic", 3)
 	rules.fx.add_fx_skill(hero, "Pyromancy")
 	rules.fx.add_fx_skill(hero, "Fiery bolt")
 	hero["fx"]["selected_skills"]["Fiery bolt"] = 3

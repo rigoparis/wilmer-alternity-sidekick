@@ -110,6 +110,12 @@ signal check_requested(player_id: String, check: Dictionary)
 @warning_ignore("unused_signal")
 signal check_ruled(check: Dictionary)
 
+## A player deliberately declined a durable GM-called check.
+signal check_dismissed(player_id: String, check_id: String)
+
+## The authoritative unresolved work included in a reconnect welcome.
+signal pending_work_received(checks: Array, attacks: Array)
+
 ## A player pushed their character's current numbers.
 ##
 ## A snapshot, taken when the character changes -- not a live view. The player's

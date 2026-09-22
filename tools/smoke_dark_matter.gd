@@ -33,7 +33,7 @@ func _init() -> void:
 	_test_humans_only()
 	_test_no_mindwalker_career()
 	_test_psionics_come_through_a_perk()
-	_test_fx_comes_through_a_perk()
+	_test_fx_talent_is_a_choice_not_a_perk()
 	_test_fx_talent_rank_caps()
 	_test_talent_surcharges()
 	_test_the_new_skills()
@@ -139,33 +139,53 @@ func _test_psionics_come_through_a_perk() -> void:
 	)
 
 
-## "Human spellcasters must buy the Faith or Arcane Magic perks to act as FX Talents."
-func _test_fx_comes_through_a_perk() -> void:
-	var school := _first_fx_broad_name()
-	if not check(school != "", "an FX school ships"):
+## Being an FX talent is a choice, not a purchase -- but it buys exactly one school.
+##
+## "Instead, heroes wishing to utilize Arcane Magic or Faith FX must choose to be
+## an FX talent, as follows: [...] An FX talent may purchase only a single FX
+## broad skill." -- Dark Matter Campaign Setting p. 76.
+##
+## This replaces a test that asserted the opposite: that FX required a "Faith or
+## Arcane Magic" perk. No Arcane Magic perk exists -- Table D2 on p. 59 lists
+## every perk in the setting and it is not there -- so the gate, its error
+## message and the perk backing it were all invented, and this suite was what
+## kept them alive.
+func _test_fx_talent_is_a_choice_not_a_perk() -> void:
+	var schools := _fx_broad_names()
+	if not check(schools.size() >= 2, "at least two FX schools ship"):
 		return
 
-	var without := _hero("Dark*Matter")
-	_rules.fx.add_fx_skill(without, school)
-	check_true(
-		_complains_about(without, "Faith or Arcane Magic perk"),
-		"FX without a gateway perk is refused in Dark*Matter"
+	# One school, no perk of any kind: legal.
+	var talent := _hero("Dark*Matter")
+	_rules.fx.add_fx_skill(talent, String(schools[0]))
+	check_false(
+		_complains_about(talent, "perk"),
+		"a Dark*Matter FX talent needs no perk to hold a school"
+	)
+	check_false(
+		_complains_about(talent, "only 1 FX broad skill"),
+		"and one school is within the cap"
 	)
 
-	for perk_id in AlternityRules.DARK_MATTER_FX_PERKS:
-		var allowed := _hero("Dark*Matter")
-		_rules.fx.add_fx_skill(allowed, school)
-		_rules.set_perk_selected(allowed, String(perk_id), 5)
-		check_false(
-			_complains_about(allowed, "Faith or Arcane Magic perk"),
-			"the %s perk opens FX in Dark*Matter" % String(perk_id)
-		)
+	# A second school is what the setting actually forbids.
+	var greedy := _hero("Dark*Matter")
+	_rules.fx.add_fx_skill(greedy, String(schools[0]))
+	_rules.fx.add_fx_skill(greedy, String(schools[1]))
+	check_true(
+		_complains_about(greedy, "only 1 FX broad skill"),
+		"a second FX broad skill is refused (DM p. 76)"
+	)
 
-	# Arcane Magic is Dark*Matter's own perk and must not leak into Core.
-	var arcane := _rules.get_perk_by_id("arcane_magic")
-	check_true(not arcane.is_empty(), "the Arcane Magic perk ships")
-	check_false(_rules.is_entry_available(_hero("Core"), arcane), "and is hidden in Core")
-	check_true(_rules.is_entry_available(_hero("Dark*Matter"), arcane), "and offered in Dark*Matter")
+	# And the fabricated perk is gone for good.
+	check_true(
+		_rules.get_perk_by_id("arcane_magic").is_empty(),
+		"the invented Arcane Magic perk no longer ships"
+	)
+	for perk in AlternityRules.PERK_DEFINITIONS:
+		check_ne(
+			String(perk.get("name", "")), "Arcane Magic",
+			"no perk is named Arcane Magic"
+		)
 
 
 ## "Ranks are strictly capped at rank 6 in one specialty skill and rank 3 in all others."
@@ -636,7 +656,6 @@ func _test_core_is_untouched() -> void:
 
 func _dm_caster(school: String) -> Dictionary:
 	var c := _hero("Dark*Matter")
-	_rules.set_perk_selected(c, "arcane_magic", 5)
 	_rules.fx.set_fx_talent(c, true)
 	_rules.fx.add_fx_skill(c, school)
 	return c
@@ -651,6 +670,16 @@ func _first_psionic_broad_id() -> int:
 		if _rules.is_psionic_skill(skill) and String(skill.get("type", "")) == "broad":
 			return AlternityNum.as_int(skill.get("id", -1), -1)
 	return -1
+
+
+## Every settingless FX school, so a test can reach for a second one.
+func _fx_broad_names() -> Array:
+	var out: Array = []
+	for broad in _rules.fx.get_broad_skills():
+		var name := String(broad.get("name", ""))
+		if String(broad.get("setting", "")).is_empty() and not name.is_empty():
+			out.append(name)
+	return out
 
 
 func _first_fx_broad_name() -> String:
