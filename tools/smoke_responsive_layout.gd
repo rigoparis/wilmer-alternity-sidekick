@@ -103,6 +103,17 @@ func _check_screens(where: String) -> void:
 		await process_frame
 	_assert_reachable_under(_shell, "%s/character select" % where)
 
+	# The storage notice is Android-only, and Android is the narrow case it has
+	# to fit. Force it on rather than leave it to a platform no suite runs on.
+	_shell._select.force_storage_notice = true
+	_shell._select.refresh()
+	for _i in 4:
+		await process_frame
+	var notice: Control = _shell._select.find_child("StorageNotice", true, false)
+	if notice == null or not notice.is_visible_in_tree():
+		fail("%s: the character list did not show the storage notice" % where)
+	_assert_reachable_under(_shell, "%s/character select with storage notice" % where)
+
 	_shell._show_campaigns()
 	for _i in 12:
 		await process_frame
@@ -219,6 +230,8 @@ func _route_specs(doc) -> Array:
 			"title": String(detail.get("name", "Skill")), "can_roll": true}},
 		{"name": "import character", "scene": load("res://scenes/ui/routes/import_character_route.tscn"), "props": {
 			"palette": palette, "store": _shell.store}},
+		{"name": "export character", "scene": load("res://scenes/ui/routes/export_character_route.tscn"), "props": {
+			"palette": palette, "store": _shell.store, "doc": doc}},
 		{"name": "ap award", "scene": load("res://scenes/ui/routes/ap_award_route.tscn"), "props": {
 			"palette": palette, "mode": "award", "amount": 3, "maximum": 20,
 			"title": "Award achievement points", "message": "For getting the party off the station.",

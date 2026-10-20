@@ -32,6 +32,17 @@ var _palette: ThemePalette
 var _list: VBoxContainer
 var _empty_note: Label
 
+## Shows the storage notice whatever the platform. For tests: the notice is
+## Android-only and no suite runs there.
+var force_storage_notice: bool = false
+
+var _storage_notice: PanelContainer
+var _storage_detail: Label
+var _storage_moved: Label
+## Set while the player is away granting storage access, so coming back to the
+## app knows to look again.
+var _awaiting_storage: bool = false
+
 
 func setup(rules, store: CharacterStore, router: UiRouter, palette: ThemePalette) -> void:
 	_rules = rules
@@ -77,6 +88,7 @@ func _build() -> void:
 
 	_build_banner(column)
 	_build_actions(column)
+	_build_storage_notice(column)
 
 	_empty_note = Widgets.muted_text(
 		column,
@@ -151,6 +163,107 @@ func _build_actions(parent: Container) -> void:
 	bar.add_child(campaigns)
 
 
+## Shown on Android while heroes are kept where uninstalling deletes them.
+##
+## Players lost every hero in v0.1.8 because their saves lived in the app's
+## private storage. Shared Documents survives an uninstall, but on Android 11+
+## the app can only read it back with All files access, which the system never
+## grants by itself -- so the player is asked here, once, rather than the app
+## quietly saving somewhere that only looks safe.
+func _build_storage_notice(parent: Container) -> void:
+	_storage_notice = PanelContainer.new()
+	_storage_notice.name = "StorageNotice"
+	_storage_notice.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_storage_notice.add_theme_stylebox_override("panel", Widgets.flat_style(_palette.surface, _palette.warning, 8))
+	parent.add_child(_storage_notice)
+
+	var margin := MarginContainer.new()
+	for side in ["left", "right", "top", "bottom"]:
+		margin.add_theme_constant_override("margin_" + side, Widgets.PAD_PANEL)
+	_storage_notice.add_child(margin)
+
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", Widgets.GAP_ROW)
+	margin.add_child(box)
+
+	Widgets.text(box, "Your heroes are not safe from an uninstall yet", _palette, Widgets.FONT_SECTION_TITLE, _palette.warning)
+	Widgets.muted_text(
+		box,
+		"They are kept inside the app, and Android deletes them if the app is uninstalled. Allow file access and they are saved in Documents/%s instead, where they survive a reinstall." % CharacterStore.SHARED_FOLDER,
+		_palette
+	)
+
+	var allow := Button.new()
+	allow.name = "KeepHeroesButton"
+	allow.text = "Keep heroes on this phone"
+	allow.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	allow.custom_minimum_size = Vector2(0, 44)
+	allow.add_theme_stylebox_override("normal", Widgets.flat_style(_palette.surface_soft, _palette.accent, 6))
+	allow.pressed.connect(_on_keep_heroes_pressed)
+	box.add_child(allow)
+
+	_storage_detail = Widgets.muted_text(box, "", _palette, Widgets.FONT_CAPTION)
+	_storage_detail.visible = false
+
+	_storage_moved = Widgets.text(parent, "", _palette, Widgets.FONT_CAPTION, _palette.accent)
+	_storage_moved.visible = false
+
+
+func _refresh_storage_notice() -> void:
+	if _storage_notice == null:
+		return
+	_storage_notice.visible = force_storage_notice or CharacterStore.is_lost_on_uninstall(OS.get_name(), _store.directory())
+
+
+func _on_keep_heroes_pressed() -> void:
+	_awaiting_storage = true
+	_storage_detail.visible = false
+	# On Android 11+ All files access is a settings page, not a dialog: the call
+	# opens it and the only word back is the app resuming. On Android 10 and
+	# below it is a no-op that returns true, and the older write permission is
+	# asked for with an ordinary dialog instead, which does report back.
+	if OS.request_permission(CharacterStore.MANAGE_STORAGE):
+		if OS.request_permission(CharacterStore.WRITE_STORAGE):
+			_check_storage_access()
+
+
+func _ready() -> void:
+	if not get_tree().on_request_permissions_result.is_connected(_on_permission_result):
+		get_tree().on_request_permissions_result.connect(_on_permission_result)
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_RESUMED and _awaiting_storage:
+		_check_storage_access()
+
+
+func _on_permission_result(_permission: String, _granted: bool) -> void:
+	if _awaiting_storage:
+		_check_storage_access()
+
+
+## Move the saves if access was granted, or say what to do instead if not.
+func _check_storage_access() -> void:
+	if _store == null:
+		return
+	var asked := _awaiting_storage
+	_awaiting_storage = false
+	var target := CharacterStore.default_directory()
+	if target == _store.directory():
+		if asked:
+			_storage_detail.text = "File access was not granted, so heroes stay inside the app. Before uninstalling, open each hero and use Share to save a copy."
+			_storage_detail.visible = true
+		return
+
+	var brought := _store.relocate(target)
+	_storage_moved.text = "Heroes are now saved in Documents/%s%s." % [
+		CharacterStore.SHARED_FOLDER,
+		"" if brought == 0 else " (%d brought across)" % brought,
+	]
+	_storage_moved.visible = true
+	refresh()
+
+
 ## One side of the reading gutter on a wide screen.
 func _gutter() -> Control:
 	var spacer := Control.new()
@@ -173,6 +286,7 @@ func refresh() -> void:
 		child.hide()
 		child.queue_free()
 
+	_refresh_storage_notice()
 	var saved: Array = _store.list()
 	_empty_note.visible = saved.is_empty()
 	for entry in saved:

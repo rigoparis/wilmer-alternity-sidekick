@@ -98,9 +98,13 @@ jobs:
           set -euo pipefail
           APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -1)
           "$APKSIGNER" verify --print-certs builds/android/WilmerAlternitySidekick.apk | tee certs.txt
-          ACTUAL=$(grep -i 'SHA-256 digest' certs.txt | head -1 | awk '{print $NF}')
+          # apksigner prints lowercase hex; keytool prints AB:CD:... Compare
+          # them stripped and lowercased so either form of the secret works.
+          normalise() { tr -d ': \r\n' | tr 'A-F' 'a-f'; }
+          ACTUAL=$(grep -i 'SHA-256 digest' certs.txt | head -1 | awk '{print $NF}' | normalise)
+          EXPECTED=$(printf '%s' "${EXPECTED_SHA256:-}" | normalise)
           echo "signing cert SHA-256: $ACTUAL"
-          if [ -n "${EXPECTED_SHA256:-}" ] && [ "$ACTUAL" != "$EXPECTED_SHA256" ]; then
+          if [ -n "$EXPECTED" ] && [ "$ACTUAL" != "$EXPECTED" ]; then
             echo "::error::APK is signed by $ACTUAL, expected $EXPECTED_SHA256. Installing this would force players to uninstall and lose their saves."
             exit 1
           fi

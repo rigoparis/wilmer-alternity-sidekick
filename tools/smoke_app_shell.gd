@@ -39,6 +39,7 @@ func _run() -> void:
 	await _test_tab_availability()
 	await _test_cybertech_edits()
 	await _test_perks_catalog()
+	await _test_share_exports_a_file()
 	await _test_back_leaves_sheet()
 	await _test_delete_confirm()
 	await _test_escape_unwinds()
@@ -399,6 +400,51 @@ func _test_delete_confirm() -> void:
 	await screen._on_delete_pressed(file_name, "Hero")
 	check_eq(_shell.store.list().size(), 0, "confirming deletes the character")
 	check_eq(_shell.router.depth(), 0, "the dialog closed")
+
+
+## Share opens the export route, and the file it saves imports as the same hero.
+##
+## That round trip is how a player carries heroes across a reinstall, so it is
+## checked end to end. The system picker cannot run headless; its callback is
+## invoked directly with a scratch path, the way the picker would hand one back.
+func _test_share_exports_a_file() -> void:
+	var sheet = _sheet_screen()
+	if not check(sheet != null, "the sheet is open to share from"):
+		return
+	var doc = sheet.document()
+	var depth_before: int = _shell.router.depth()
+
+	sheet._share()
+	for _i in 3:
+		await process_frame
+	var route = _shell.router._host.top_route()
+	if not check(route != null and route.has_method("_on_file_chosen"), "Share opens the export route"):
+		return
+	check_true(route.find_child("SaveFileButton", true, false) != null, "the export route offers saving a file")
+	check_true(route.find_child("CopyTextButton", true, false) != null, "and copying the text")
+
+	var path := TEST_DIR + "exported_hero.json"
+	route._on_file_chosen(false, PackedStringArray(), 0, _shell.store.export_json(doc))
+	check_false(FileAccess.file_exists(path), "cancelling the picker writes nothing")
+
+	route._on_file_chosen(true, PackedStringArray([path]), 0, _shell.store.export_json(doc))
+	if check_true(FileAccess.file_exists(path), "choosing a place writes the hero there"):
+		var imported = _shell.store.import_json(FileAccess.get_file_as_string(path))
+		check_true(imported != null, "the saved file imports")
+		if imported != null:
+			check_eq(imported.get_hero_name(), doc.get_hero_name(), "as the same hero")
+		DirAccess.remove_absolute(path)
+
+	check_eq(
+		route.display_name("content://com.android.externalstorage.documents/document/primary%3ADownload%2FHero.json"),
+		"Hero.json",
+		"an Android picker URI is reported by its file name"
+	)
+
+	route.close(null)
+	for _i in 3:
+		await process_frame
+	check_eq(_shell.router.depth(), depth_before, "the export route closes")
 
 
 ## Escape does what Android back does.

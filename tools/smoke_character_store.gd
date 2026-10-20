@@ -57,28 +57,60 @@ func _test_save_location_and_adoption() -> void:
 	# The Android branch, driven directly, because a desktop run never reaches
 	# it through default_directory() and it is the whole point of the change.
 	var docs := "user://__store_docs_test__"
+	var all_files := PackedStringArray([Store.MANAGE_STORAGE])
+	var legacy_write := PackedStringArray([Store.WRITE_STORAGE])
 	check_eq(
-		Store.resolve_directory("Android", docs),
+		Store.resolve_directory("Android", docs, all_files),
 		docs.path_join(Store.SHARED_FOLDER) + "/",
-		"Android saves into a named folder under Documents, which outlives uninstall"
+		"Android with All files access saves into a named folder under Documents, which outlives uninstall"
 	)
 	check_eq(
-		Store.resolve_directory("Android", ""),
+		Store.resolve_directory("Android", docs, legacy_write),
+		docs.path_join(Store.SHARED_FOLDER) + "/",
+		"and so does Android 10 and below with the older write permission"
+	)
+	# The folder is writable here, which is exactly the trap: Android 11+ lets
+	# any app create files in Documents, then hides them from the next install.
+	check_eq(
+		Store.resolve_directory("Android", docs),
+		Store.SAVE_DIR,
+		"Android without storage access stays in user:// even though the folder accepts writes"
+	)
+	check_eq(
+		Store.resolve_directory("Android", docs, PackedStringArray(["android.permission.INTERNET"])),
+		Store.SAVE_DIR,
+		"and unrelated permissions do not count as storage access"
+	)
+	check_eq(
+		Store.resolve_directory("Android", "", all_files),
 		Store.SAVE_DIR,
 		"Android with no Documents folder falls back to user:// rather than nowhere"
 	)
 	check_eq(
-		Store.resolve_directory("Android", "/this/path/cannot/be/created"),
+		Store.resolve_directory("Android", "/this/path/cannot/be/created", all_files),
 		Store.SAVE_DIR,
-		"Android falls back to user:// when the shared folder refuses writes (permission denied)"
+		"Android falls back to user:// when the shared folder refuses writes"
 	)
 	check_eq(
-		Store.resolve_directory("Windows", docs),
+		Store.resolve_directory("Windows", docs, all_files),
 		Store.SAVE_DIR,
 		"and no other platform is relocated"
 	)
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(docs.path_join(Store.SHARED_FOLDER)))
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(docs))
+
+	check_true(
+		Store.is_lost_on_uninstall("Android", Store.SAVE_DIR),
+		"Android saves in user:// are flagged as lost on uninstall"
+	)
+	check_false(
+		Store.is_lost_on_uninstall("Android", docs.path_join(Store.SHARED_FOLDER) + "/"),
+		"Android saves in shared Documents are not"
+	)
+	check_false(
+		Store.is_lost_on_uninstall("Windows", Store.SAVE_DIR),
+		"and desktop user:// is not, since uninstalling leaves it alone"
+	)
 
 	var scratch := "user://__store_move_test__/"
 	check_true(Store.is_writable(scratch), "a directory it can create is writable")
@@ -119,13 +151,40 @@ func _test_save_location_and_adoption() -> void:
 	var isolated = Store.new(_rules, TEST_DIR)
 	check_eq(isolated.directory(), TEST_DIR, "an injected directory is used verbatim")
 
-	DirAccess.remove_absolute(ProjectSettings.globalize_path(scratch + legacy_name))
-	DirAccess.remove_absolute(ProjectSettings.globalize_path(scratch))
+	# Granting storage access while the app is open moves the live store, the
+	# same object every screen holds, and brings the heroes along.
+	var granted_dir := "user://__store_relocate_test__/"
+	var live = Store.new(_rules, Store.SAVE_DIR)
+	check_eq(live.relocate(Store.SAVE_DIR), 0, "relocating to where the store already is does nothing")
+	var brought: int = live.relocate(granted_dir.trim_suffix("/"))
+	check_eq(live.directory(), granted_dir, "relocating points the same store at the new folder, with a trailing slash")
+	check_true(brought >= 1, "and brings the heroes saved in user:// across")
+	check_true(
+		live.list().any(func(entry): return String(entry.get("file_name", "")) == legacy_name),
+		"so the moved hero is in the list straight away"
+	)
+	check_true(
+		FileAccess.file_exists(Store.SAVE_DIR + legacy_name),
+		"while the original stays in user://"
+	)
+
+	# Both stores adopted every hero in user://, the tester's own included, so
+	# clear the folders out entirely rather than only the hero made here.
+	_remove_dir(granted_dir)
+	_remove_dir(scratch)
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(Store.SAVE_DIR + legacy_name))
 
 
 func _new_store():
 	return Store.new(_rules, TEST_DIR)
+
+
+func _remove_dir(path: String) -> void:
+	var dir := DirAccess.open(path)
+	if dir != null:
+		for file_name in dir.get_files():
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(path + file_name))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 
 
 func _wipe() -> void:

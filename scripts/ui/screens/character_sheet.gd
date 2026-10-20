@@ -40,6 +40,7 @@ const TAB_TABLE := preload("res://scenes/ui/tabs/tab_table.tscn")
 
 const OPTIONAL_RULES_ROUTE := preload("res://scenes/ui/routes/optional_rules_route.tscn")
 const THEME_ROUTE := preload("res://scenes/ui/routes/theme_route.tscn")
+const EXPORT_ROUTE := preload("res://scenes/ui/routes/export_character_route.tscn")
 const TAB_CYBERTECH := preload("res://scenes/ui/tabs/tab_cybertech.tscn")
 const TAB_PERKS_FLAWS := preload("res://scenes/ui/tabs/tab_perks_flaws.tscn")
 
@@ -1173,66 +1174,20 @@ func _open_theme() -> void:
 	})
 
 
-## Hand the character to whatever the platform uses for sharing.
+## Hand the character to the player, as a file or as text.
 ##
-## Writes next to the save rather than opening a dialog on mobile: Android has
-## no usable native save picker here, and a file the person can find beats a
-## dialog that never appears.
-## Hand the character to the person, somewhere they can actually reach it.
-##
-## The rewrite had reduced this to a clipboard copy plus a file in user://,
-## which on Android is inside the app sandbox and on desktop is buried under
-## AppData -- neither is a place you can send a file to a friend from.
-##
-## Restores the two paths the old flow used: a native Save dialog where the
-## platform has one, so the file lands wherever you choose; and Downloads plus
-## a shell_open on Android, which is what makes it reachable from the share
-## sheet. The clipboard copy is kept as well, since pasting the JSON straight
-## into chat is the quickest way to pass a hero around.
+## The choice lives in the export route: saving a .json through the system
+## picker, which on Android needs no storage permission, or copying the JSON to
+## paste into a chat. Either is what Import Hero takes back, which is how a
+## player keeps their heroes across a reinstall.
 func _share() -> void:
-	if _store == null or _ctx == null or _ctx.doc == null:
+	if _store == null or _ctx == null or _ctx.doc == null or _ctx.router == null:
 		return
-	var text := _store.export_json(_ctx.doc)
-	DisplayServer.clipboard_set(text)
-
-	var file_name := CharacterStore.file_name_for(_ctx.doc)
-
-	if DisplayServer.has_feature(DisplayServer.FEATURE_NATIVE_DIALOG):
-		var on_chosen := func(accepted: bool, paths: PackedStringArray, _filter: int) -> void:
-			if not is_instance_valid(self):
-				return
-			if not accepted or paths.is_empty():
-				_set_status("Copied to clipboard", _ctx.palette.muted)
-				return
-			var chosen := String(paths[0])
-			if _write(chosen, text):
-				_set_status("Saved to %s" % chosen.get_file(), _ctx.palette.accent)
-			else:
-				_set_status("Could not write %s" % chosen.get_file(), _ctx.palette.warning)
-		DisplayServer.file_dialog_show(
-			"Save Character", "", file_name, false,
-			DisplayServer.FILE_DIALOG_MODE_SAVE_FILE, ["*.json"], on_chosen
-		)
-		return
-
-	# No native dialog: Android and anywhere else headless-ish. Downloads is the
-	# one directory the system file picker and the share sheet both see.
-	var downloads := OS.get_system_dir(OS.SYSTEM_DIR_DOWNLOADS)
-	var path := "%s/shared_%s" % [downloads, file_name] if not downloads.is_empty() else "user://shared_" + file_name
-	if _write(path, text):
-		OS.shell_open(ProjectSettings.globalize_path(path))
-		_set_status("Saved to %s" % path.get_file(), _ctx.palette.accent)
-	else:
-		_set_status("Copied to clipboard", _ctx.palette.muted)
-
-
-func _write(path: String, text: String) -> bool:
-	var file := FileAccess.open(path, FileAccess.WRITE)
-	if file == null:
-		return false
-	file.store_string(text)
-	file.close()
-	return true
+	await _ctx.router.push(EXPORT_ROUTE, {
+		"palette": _ctx.palette,
+		"store": _store,
+		"doc": _ctx.doc,
+	})
 
 
 func _set_status(message: String, color: Color) -> void:

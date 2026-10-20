@@ -24,6 +24,12 @@ const LAST_OPENED_NAME := "last_character.txt"
 ## Folder created under the user's Documents where saves must outlive the app.
 const SHARED_FOLDER := "WilmerAlternitySidekick"
 
+## Either of these lets the app read back, after a reinstall, files it wrote to
+## shared storage. Android 11+ only has All files access; Android 10 and below
+## only has the older write permission (the export caps it at SDK 29).
+const MANAGE_STORAGE := "android.permission.MANAGE_EXTERNAL_STORAGE"
+const WRITE_STORAGE := "android.permission.WRITE_EXTERNAL_STORAGE"
+
 var _rules
 
 ## Directory this store reads and writes, always with a trailing slash.
@@ -44,25 +50,50 @@ var _dir: String = SAVE_DIR
 ## Everywhere else `user://` already survives uninstall and is a normal folder,
 ## so it is left alone.
 ##
-## Falls back to `user://` whenever the shared folder cannot actually be written
-## -- on Android that means the storage permission was not granted. Saving
-## somewhere is always better than not saving.
+## Falls back to `user://` until the player grants storage access, and whenever
+## the shared folder cannot actually be written. Saving somewhere is always
+## better than not saving.
 static func default_directory() -> String:
-	return resolve_directory(OS.get_name(), OS.get_system_dir(OS.SYSTEM_DIR_DOCUMENTS))
+	return resolve_directory(
+		OS.get_name(),
+		OS.get_system_dir(OS.SYSTEM_DIR_DOCUMENTS),
+		OS.get_granted_permissions()
+	)
 
 
-## The save location for a given platform and Documents folder.
+## The save location for a given platform, Documents folder and set of granted
+## permissions.
 ##
 ## Split out from default_directory() so the Android branch can be exercised
 ## from a desktop run. Without this the one platform the whole change exists for
 ## would be the one platform no suite covers.
-static func resolve_directory(platform: String, documents: String) -> String:
+##
+## Being able to write the folder is not enough on Android 11+. Any app may
+## create files in Documents without a permission, but it owns only what this
+## install created: after an uninstall the same files are there and the new
+## install cannot read them. A write probe would pass, the heroes would vanish
+## from the list after a reinstall, and saving one under the same name would
+## fail. So the folder is used only once storage access has been granted.
+static func resolve_directory(platform: String, documents: String, granted: PackedStringArray = PackedStringArray()) -> String:
 	if platform != "Android":
+		return SAVE_DIR
+	if not has_storage_access(granted):
 		return SAVE_DIR
 	if documents.strip_edges().is_empty():
 		return SAVE_DIR
 	var shared: String = documents.path_join(SHARED_FOLDER) + "/"
 	return shared if is_writable(shared) else SAVE_DIR
+
+
+## Whether the granted permissions let saves in shared storage outlive the app.
+static func has_storage_access(granted: PackedStringArray) -> bool:
+	return granted.has(MANAGE_STORAGE) or granted.has(WRITE_STORAGE)
+
+
+## Whether saving to `directory` on `platform` means losing every hero when the
+## app is uninstalled. Only Android's user:// is deleted that way.
+static func is_lost_on_uninstall(platform: String, directory: String) -> bool:
+	return platform == "Android" and directory == SAVE_DIR
 
 
 ## Whether a directory exists (or can be made) and accepts a file.
@@ -94,6 +125,22 @@ func _init(rules, directory: String = "") -> void:
 ## The directory actually in use, for the UI to show the player.
 func directory() -> String:
 	return _dir
+
+
+## Move this store to `directory` and bring the heroes saved in user:// with it.
+##
+## For the moment storage access is granted while the app is running. Moves the
+## store in place rather than replacing it, because the shell, the screens and
+## the sheet all hold this object. Returns how many heroes were brought over;
+## moving to where it already is does nothing.
+func relocate(directory: String) -> int:
+	var target: String = directory if directory.ends_with("/") else directory + "/"
+	if target == _dir:
+		return 0
+	_dir = target
+	if _dir != SAVE_DIR:
+		DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(_dir))
+	return adopt_legacy_saves()
 
 
 ## Copy characters left in user:// into this store's directory.
