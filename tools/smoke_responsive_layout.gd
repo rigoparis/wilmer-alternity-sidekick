@@ -124,7 +124,11 @@ func _check_screens(where: String) -> void:
 		await process_frame
 	_assert_reachable_under(_shell, "%s/table join" % where)
 
-	_shell._open_campaign(CampaignSession.new("Fixture Table"))
+	var campaign := CampaignSession.new("Fixture Table")
+	var npc: Dictionary = _shell.rules.default_character()
+	npc["hero_name"] = "Captain with a long name for narrow screens"
+	campaign.add_npc(npc)
+	_shell._open_campaign(campaign)
 	for _i in 14:
 		await process_frame
 	_assert_reachable_under(_shell, "%s/gm screen" % where)
@@ -200,6 +204,8 @@ func _route_specs(doc) -> Array:
 		if entries.size() >= 60:
 			break
 
+	var npc_session := CampaignSession.new("NPC layout")
+	var npc_id := npc_session.add_npc(doc.to_dict())
 	var check := SkillCheck.call_for("Athletics", 0, "Climbing the hull")
 	var first_skill: Dictionary = {}
 	var detail: Dictionary = {}
@@ -208,7 +214,38 @@ func _route_specs(doc) -> Array:
 		first_skill = skills[0]
 		detail = rules.skill_detail(first_skill, raw)
 
+	var participants: Array = []
+	var fight := ActionRound.new()
+	for i in 10:
+		var id := "layout_" + str(i)
+		var actor_name := "An exceptionally long participant name " + str(i)
+		participants.append({"id": id, "name": actor_name, "kind": ActionRound.KIND_NPC})
+		fight.add_combatant(id, actor_name, 3, ActionRound.KIND_NPC)
+	var controllers: Array = []
+	for state in [ActionRound.STATE_ROLLING, ActionRound.STATE_ACTIVE, ActionRound.STATE_FINISHED]:
+		var campaign := CampaignSession.new("Encounter layout")
+		var copy := ActionRound.from_dict(fight.to_dict())
+		if state != ActionRound.STATE_ROLLING:
+			for entry in copy.combatants:
+				copy.record_check(entry.id, "Amazing", 12, 3)
+		copy.state = state
+		campaign.set_round(copy.to_dict())
+		var gm := GmScreen.new()
+		_shell.add_child(gm)
+		gm.setup(campaign, CampaignStore.new(STORE_DIR + "encounters/"), _shell.store, rules, _shell.router, palette)
+		gm.hide()
+		controllers.append(gm)
+
 	return [
+		{"name": "participants", "scene": load("res://scenes/ui/routes/encounter_participants_route.tscn"), "props": {"palette": palette, "participants": participants}},
+		{"name": "encounter rolling", "scene": load("res://scenes/ui/routes/encounter_route.tscn"), "props": {"palette": palette, "controller": controllers[0]}},
+		{"name": "encounter active", "scene": load("res://scenes/ui/routes/encounter_route.tscn"), "props": {"palette": palette, "controller": controllers[1]}},
+		{"name": "encounter finished", "scene": load("res://scenes/ui/routes/encounter_route.tscn"), "props": {"palette": palette, "controller": controllers[2]}},
+		{"name": "NPC sheet", "scene": load("res://scenes/ui/routes/npc_sheet_route.tscn"), "props": {
+			"session": npc_session, "npc_id": npc_id, "store": CampaignStore.new(STORE_DIR + "npc_campaigns/"),
+			"rules": rules, "router": _shell.router, "palette": palette}},
+		{"name": "roll detail", "scene": load("res://scenes/ui/routes/roll_detail_route.tscn"), "props": {
+			"palette": palette, "event": {"payload": {"character_name": "An exceptionally long NPC name to exercise narrow phone layouts", "check": check.to_dict(), "dice": [{"notation": "2d6+3", "dice": [2, 6], "total": 11}]}}}},
 		{"name": "confirm", "scene": load("res://scenes/ui/routes/confirm_route.tscn"), "props": {
 			"palette": palette, "title": "Delete hero?",
 			"message": "This cannot be undone, and the character file is removed from this device.",
@@ -240,7 +277,7 @@ func _route_specs(doc) -> Array:
 			"palette": palette, "rules": rules, "title": "Call for a check", "shortcuts": []}},
 		{"name": "check step", "scene": load("res://scenes/ui/routes/check_step_route.tscn"), "props": {
 			"palette": palette, "rules": rules, "note": "Wet rock, and in the dark.",
-			"title": "Athletics", "confirm_text": "Roll", "check": check}},
+			"title": "Athletics", "confirm_text": "Roll", "check": check, "recipients": [{"id": "p1", "name": "A very long character name for a recipient"}]}},
 		{"name": "check waiting", "scene": load("res://scenes/ui/routes/check_waiting_route.tscn"), "props": {
 			"palette": palette, "title": "Waiting on the table", "check": check}},
 		{"name": "combat attack", "scene": load("res://scenes/ui/routes/combat_attack_route.tscn"), "props": {

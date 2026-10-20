@@ -574,9 +574,10 @@ func _on_banner_roll_pressed() -> void:
 
 		BannerType.ACTION_CHECK:
 			if _ctx != null and _ctx.table != null and _ctx.checks != null:
+				var round_id := _ctx.table.active_round.round_id if _ctx.table.active_round != null else ""
 				var rolled = await _ctx.checks.run_action_check(_ctx.doc)
 				if is_instance_valid(self) and rolled != null:
-					_ctx.table.send_action_check(rolled)
+					_ctx.table.send_action_check(rolled, round_id)
 			_refresh_incoming_banner()
 			_refresh_tab_badges()
 
@@ -651,6 +652,7 @@ func _resolve_attack_from_banner(attack: CombatAttack) -> void:
 	if _ctx == null or _ctx.table == null or _ctx.checks == null or _ctx.doc == null:
 		return
 
+	attack.details["armor_rolls"] = []
 	var absorbed := 0
 	for layer in _ctx.rules.combat.armor_layers(_ctx.doc.raw(), attack.impact_type):
 		var rolled: int = await _ctx.checks.roll_notation(
@@ -661,6 +663,7 @@ func _resolve_attack_from_banner(attack: CombatAttack) -> void:
 			return
 		if rolled < 0:
 			return
+		attack.details["armor_rolls"].append(_ctx.checks.last_notation.duplicate(true))
 		absorbed = maxi(absorbed, rolled)
 
 	var knockout: Dictionary = _ctx.table.knockout_check_for(attack)
@@ -672,6 +675,8 @@ func _resolve_attack_from_banner(attack: CombatAttack) -> void:
 		if not is_instance_valid(self):
 			return
 
+	if bool(knockout.get("required", false)):
+		attack.details["knockout_check"] = _ctx.checks.last_check.duplicate(true)
 	_ctx.table.report_attack(attack, absorbed, outcome, down)
 	_save()
 	_refresh_header()

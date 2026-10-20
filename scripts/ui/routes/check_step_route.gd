@@ -27,6 +27,8 @@ var _confirm_text: String = "Set"
 var _stepper: NumberStepper
 var _reason_field: LineEdit
 var _preview: Label
+var _recipients: Array = []
+var _recipient: OptionButton
 
 
 func configure(props: Dictionary) -> void:
@@ -35,6 +37,7 @@ func configure(props: Dictionary) -> void:
 	_note = String(props.get("note", ""))
 	_title = String(props.get("title", _title))
 	_confirm_text = String(props.get("confirm_text", _confirm_text))
+	_recipients = props.get("recipients", [])
 
 	var data = props.get("check", {})
 	_check = Check.from_dict(data) if typeof(data) == TYPE_DICTIONARY else Check.new()
@@ -63,6 +66,20 @@ func _build() -> void:
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", Widgets.GAP_SECTION)
 	margin.add_child(box)
+	if not _recipients.is_empty():
+		Widgets.muted_text(box, "Ask for a check from", _palette)
+		_recipient = OptionButton.new()
+		_recipient.name = "CheckRecipient"
+		_recipient.fit_to_longest_item = false
+		_recipient.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		_recipient.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_recipient.custom_minimum_size = Vector2(1, 42)
+		_recipient.add_item("Everyone")
+		_recipient.set_item_metadata(0, "")
+		for entry in _recipients:
+			_recipient.add_item(String(entry.get("name", "Character")))
+			_recipient.set_item_metadata(_recipient.item_count - 1, String(entry.get("id", "")))
+		box.add_child(_recipient)
 
 	var heading := Label.new()
 	heading.text = _title
@@ -170,4 +187,5 @@ func _submit() -> void:
 		"step": _stepper.value(),
 		"reason": _reason_field.text.strip_edges(),
 		"check_id": _check.check_id,
+		"target_player_id": String(_recipient.get_selected_metadata()) if _recipient != null else "",
 	})

@@ -179,6 +179,8 @@ func _build_validations(container: Container, summary: Dictionary) -> void:
 func _build_core_panel(container: Container, summary: Dictionary) -> void:
 	var palette := ctx.palette
 	var box := Widgets.section(container, "Core Attributes", palette)
+	if not String(ctx.doc.raw().get("portrait", "")).is_empty():
+		PortraitView.add_to(box, String(ctx.doc.raw().get("portrait", "")), ctx.doc.get_hero_name(), palette, 96)
 
 	_build_abilities_content(box, summary)
 	Widgets.separator(box, palette)

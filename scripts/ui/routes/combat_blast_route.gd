@@ -261,7 +261,7 @@ func _build_targets(parent: Container) -> void:
 		box.add_theme_constant_override("separation", Widgets.GAP_TIGHT)
 		_targets_body.add_child(box)
 
-		var name_line := String(entry.get("name", "Someone"))
+		var name_line := String(entry.get("name", "Character"))
 		if bool(entry.get("dodging", false)):
 			name_line += "   (dodging -- drops a band)"
 		elif not String(entry.get("dodge_degree", "")).is_empty():
@@ -346,7 +346,7 @@ func caught() -> Array:
 			continue
 		out.append({
 			"player_id": player_id,
-			"name": String(entry.get("name", "Someone")),
+			"name": String(entry.get("name", "Character")),
 			"zone": final_zone,
 			"declared_zone": zone,
 		})

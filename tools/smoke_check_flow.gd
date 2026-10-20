@@ -282,6 +282,10 @@ func _test_player_asks_and_gm_rules() -> void:
 		if String(event.get("kind", "")) == Session.EVENT_ROLL:
 			logged = event
 	var carried: Dictionary = logged.get("payload", {}).get("check", {})
+	var recorded: Dictionary = carried.get("result", {})
+	check_true(recorded.get("control", {}).get("dice", []).size() == 1, "logged control includes the physical d20 face")
+	check_true(recorded.get("situation", {}).has("dice"), "logged situation includes individual faces")
+	check_eq(String(recorded.get("control", {}).get("source", "")), "physical", "log keeps physical source provenance")
 	check_false(carried.is_empty(), "carrying the whole check, not just a total")
 	check_eq(AlternityNum.as_int(carried.get("gm_step", 0)), 2, "including what the GM added")
 	check_false(String(carried.get("result", {}).get("degree", "")).is_empty(), "and the degree it came to")
@@ -291,7 +295,7 @@ func _test_player_asks_and_gm_rules() -> void:
 	await process_frame
 	var line := String(gm._feed_list.get_child(0).text)
 	check_true(line.contains(resolved.degree()), "the GM's feed shows the degree -- got '%s'" % line)
-	check_true(line.contains("Alice"), "and who rolled it")
+	check_true(line.contains(_doc.get_hero_name()), "and the character who rolled it")
 
 
 func _test_gm_refuses() -> void:

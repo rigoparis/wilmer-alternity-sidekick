@@ -32,10 +32,15 @@ const STATE_RESOLVED := "resolved"
 const DAMAGE_TYPES := {"s": "stun", "w": "wound", "m": "mortal", "f": "fatigue"}
 
 var attack_id: String = ""
+var action_id: String = ""
 var state: String = STATE_SENT
 
-## Who is swinging. Free text: the GM is running an enemy that has no sheet.
-var attacker_name: String = "Someone"
+## Combat round and phase this attack was declared in, or empty outside combat.
+var round_id: String = ""
+var phase: String = ""
+
+## Roll-time attacker name. The optional stable NPC id is kept in details.
+var attacker_name: String = "Character"
 
 ## The seat this lands on. A stable player_id, never a peer id.
 var target_player_id: String = ""
@@ -66,6 +71,9 @@ var pinned: bool = false
 
 ## What the target's device made of it. See resolve().
 var result: Dictionary = {}
+
+## Immutable roll-time evidence, carried through target resolution.
+var details: Dictionary = {}
 
 var at: int = 0
 
@@ -135,6 +143,9 @@ func to_dict() -> Dictionary:
 	return {
 		"format_version": FORMAT_VERSION,
 		"attack_id": attack_id,
+		"action_id": action_id,
+		"round_id": round_id,
+		"phase": phase,
 		"state": state,
 		"attacker_name": attacker_name,
 		"target_player_id": target_player_id,
@@ -149,6 +160,7 @@ func to_dict() -> Dictionary:
 		"from_rear": from_rear,
 		"pinned": pinned,
 		"result": result.duplicate(true),
+		"details": details.duplicate(true),
 		"at": at,
 	}
 
@@ -156,8 +168,11 @@ func to_dict() -> Dictionary:
 static func from_dict(data: Dictionary) -> CombatAttack:
 	var attack := CombatAttack.new()
 	attack.attack_id = String(data.get("attack_id", attack.attack_id))
+	attack.action_id = String(data.get("action_id", ""))
+	attack.round_id = String(data.get("round_id", ""))
+	attack.phase = String(data.get("phase", ""))
 	attack.state = String(data.get("state", STATE_SENT))
-	attack.attacker_name = String(data.get("attacker_name", "Someone"))
+	attack.attacker_name = String(data.get("attacker_name", "Character"))
 	attack.target_player_id = String(data.get("target_player_id", ""))
 	attack.weapon_name = String(data.get("weapon_name", ""))
 	attack.impact_type = String(data.get("impact_type", "hi"))
@@ -170,6 +185,8 @@ static func from_dict(data: Dictionary) -> CombatAttack:
 	attack.from_rear = bool(data.get("from_rear", false))
 	attack.pinned = bool(data.get("pinned", false))
 	attack.at = AlternityNum.as_int(data.get("at", 0))
+	var evidence = data.get("details", {})
+	attack.details = evidence.duplicate(true) if evidence is Dictionary else {}
 	var stored = data.get("result", {})
 	attack.result = stored.duplicate(true) if typeof(stored) == TYPE_DICTIONARY else {}
 	return attack
@@ -178,6 +195,9 @@ static func from_dict(data: Dictionary) -> CombatAttack:
 ## One line for a feed, readable without knowing the payload shape.
 func describe() -> String:
 	var weapon := weapon_name if not weapon_name.is_empty() else "an attack"
+	var target := String(details.get("target_name", ""))
+	if not target.is_empty():
+		weapon += " against " + target
 	if not hits():
 		return "%s missed with %s" % [attacker_name, weapon]
 

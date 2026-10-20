@@ -33,6 +33,7 @@ extends Control
 
 ## Leave the campaign and return to the campaign list.
 signal closed
+signal encounter_changed
 
 ## How much of the log the feed shows. The log itself is unbounded; this is not.
 const FEED_LENGTH := 60
@@ -77,6 +78,8 @@ var _pending_checks: Array = []
 ## The fight in progress, or null. Held here for convenience; the campaign is
 ## where it actually lives, so a screen rebuild picks it back up.
 var _fight: ActionRound
+var _closing_in_flight: bool = false
+
 var _combat_body: VBoxContainer
 
 var _title: Label
@@ -84,6 +87,9 @@ var _status: Label
 var _checks_list: VBoxContainer
 var _checks_note: Label
 var _shortcut_row: GridContainer
+var _npc_list: VBoxContainer
+var _last_hit: Dictionary = {}
+var _last_blast_roll: Dictionary = {}
 var _roster_list: VBoxContainer
 var _roster_note: Label
 var _chat_field: LineEdit
@@ -141,6 +147,7 @@ func _build() -> void:
 	_build_combat(column)
 	_build_checks(column)
 	_build_roster(column)
+	_build_npcs(column)
 	_build_chat(column)
 
 	var feed := Widgets.section(column, "Session log", _palette)
@@ -212,6 +219,22 @@ func _build_combat(parent: Container) -> void:
 func _render_combat() -> void:
 	if _combat_body == null:
 		return
+	if _fight == null:
+		_render_combat_controls()
+	else:
+		for child in _combat_body.get_children():
+			child.hide()
+			child.queue_free()
+		var heading := Widgets.text(_combat_body, _fight.describe(), _palette)
+		heading.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		heading.custom_minimum_size.x = 1
+		_combat_body.add_child(_small_button("Open encounter", _open_encounter))
+	encounter_changed.emit()
+
+
+func _render_combat_controls() -> void:
+	if _combat_body == null:
+		return
 	for child in _combat_body.get_children():
 		child.hide()
 		child.queue_free()
@@ -219,7 +242,7 @@ func _render_combat() -> void:
 	if _fight == null:
 		var note := Widgets.muted_text(
 			_combat_body,
-			"No fight running. Starting one asks every player for an action check.",
+			"Choose participants to start an encounter.",
 			_palette,
 			Widgets.FONT_CAPTION
 		)
@@ -240,11 +263,84 @@ func _render_combat() -> void:
 	else:
 		_render_acting_order()
 
+	var unresolved: Array = []
+	var prepared: Array = []
+	var has_offline_prepared := false
+	if _fight.state == ActionRound.STATE_ACTIVE:
+		unresolved = _session.unresolved_attacks_for_phase(_fight.round_id, _fight.phase())
+		prepared = _session.prepared_attacks_for_phase(_fight.round_id, _fight.phase())
+		if not unresolved.is_empty():
+			var warn_box := VBoxContainer.new()
+			warn_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			warn_box.add_theme_constant_override("separation", Widgets.GAP_ROW)
+			var warn_title := Widgets.text(warn_box, "Phase resolution pending:", _palette, Widgets.FONT_CAPTION, _palette.warning)
+			warn_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			warn_title.custom_minimum_size = Vector2(1, 0)
+			for entry in unresolved:
+				var target_id := String(entry.get("target_player_id", ""))
+				var target_name := _player_name(target_id)
+				var atk_dict: Dictionary = entry.get("attack", {})
+				var aid := String(atk_dict.get("attack_id", ""))
+				var is_conn := _transport != null and _transport.is_player_connected(target_id)
+				if is_conn:
+					var l := Widgets.muted_text(warn_box, "  * %s -- rolling defense / armor" % target_name, _palette, Widgets.FONT_DETAIL)
+					l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+					l.custom_minimum_size = Vector2(1, 0)
+				else:
+					var row := HBoxContainer.new()
+					row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+					var l := Label.new()
+					l.text = "  * %s (offline) -- defense pending" % target_name
+					l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+					l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+					l.custom_minimum_size = Vector2(1, 0)
+					l.add_theme_color_override("font_color", _palette.warning)
+					l.add_theme_font_size_override("font_size", Widgets.FONT_DETAIL)
+					row.add_child(l)
+					var dismiss_btn := _small_button("Dismiss", _on_dismiss_attack_pressed.bind(aid, target_id))
+					dismiss_btn.clip_text = false
+					dismiss_btn.custom_minimum_size = Vector2(88, 32)
+					dismiss_btn.size_flags_horizontal = Control.SIZE_SHRINK_END
+					dismiss_btn.tooltip_text = "Dismiss pending attack"
+					row.add_child(dismiss_btn)
+					warn_box.add_child(row)
+			_combat_body.add_child(warn_box)
+		elif not prepared.is_empty():
+			for entry in prepared:
+				var target_id := String(entry.get("target_player_id", ""))
+				if _transport != null and not _transport.is_player_connected(target_id):
+					has_offline_prepared = true
+					var l := Widgets.muted_text(
+						_combat_body,
+						"  * %s (offline) -- damage staged, awaiting reconnect to commit." % _player_name(target_id),
+						_palette,
+						Widgets.FONT_DETAIL
+					)
+					l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+					l.custom_minimum_size = Vector2(1, 0)
+
+	if _fight.state == ActionRound.STATE_ACTIVE:
+		if _closing_in_flight or (_session != null and _session.is_phase_closing()):
+			var closing_box := VBoxContainer.new()
+			closing_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			var closing_label := Widgets.text(closing_box, "Awaiting phase commit acknowledgment from players...", _palette, Widgets.FONT_CAPTION, _palette.warning)
+			closing_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			closing_label.custom_minimum_size = Vector2(1, 0)
+			_combat_body.add_child(closing_box)
+
+		if _status != null and _status.text.contains("Cannot advance"):
+			var err_box := VBoxContainer.new()
+			err_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			var err_label := Widgets.text(err_box, _status.text, _palette, Widgets.FONT_CAPTION, _palette.warning)
+			err_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			err_label.custom_minimum_size = Vector2(1, 0)
+			_combat_body.add_child(err_box)
+
 	var actions := GridContainer.new()
-	actions.columns = 2
+	actions.columns = 2 if _is_wide() else 1
 	actions.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	actions.add_theme_constant_override("h_separation", Widgets.GAP_ROW)
-	actions.add_theme_constant_override("v_separation", Widgets.GAP_ROW)
+	actions.add_theme_constant_override("h_separation", 12)
+	actions.add_theme_constant_override("v_separation", 12)
 	_combat_body.add_child(actions)
 
 	if _fight.state == ActionRound.STATE_ROLLING:
@@ -258,8 +354,23 @@ func _render_combat() -> void:
 		again.add_theme_stylebox_override("normal", Widgets.flat_style(_palette.surface_soft, _palette.accent, 6))
 		actions.add_child(again)
 	else:
-		var advance := _small_button("End %s phase" % _fight.phase_name(), _on_advance_phase_pressed)
-		advance.add_theme_stylebox_override("normal", Widgets.flat_style(_palette.surface_soft, _palette.accent, 6))
+		var advance_btn_text := "End %s phase" % _fight.phase_name()
+		if _session != null and _session.is_phase_closing():
+			advance_btn_text = "Retry closing phase"
+		if _closing_in_flight:
+			advance_btn_text = "Closing %s phase..." % _fight.phase_name()
+		var advance := _small_button(advance_btn_text, _on_advance_phase_pressed)
+		if _closing_in_flight:
+			advance.disabled = true
+			advance.tooltip_text = "Phase commit is in flight..."
+		elif not unresolved.is_empty():
+			advance.disabled = true
+			advance.tooltip_text = "Cannot advance phase while defenses are pending."
+		elif has_offline_prepared:
+			advance.disabled = true
+			advance.tooltip_text = "Cannot advance phase until offline participants reconnect to commit damage."
+		else:
+			advance.add_theme_stylebox_override("normal", Widgets.flat_style(_palette.surface_soft, _palette.accent, 6))
 		actions.add_child(advance)
 
 	var blast := _small_button("Something goes off", _on_blast_pressed)
@@ -268,8 +379,12 @@ func _render_combat() -> void:
 	var stop := _small_button("End combat", _on_end_combat_pressed)
 	stop.add_theme_color_override("font_color", _palette.warning)
 	actions.add_child(stop)
+	for button in actions.get_children():
+		button.custom_minimum_size.y = 44
 
-	_combat_body.add_child(_end_scene_button())
+	var end_scene := _end_scene_button()
+	end_scene.custom_minimum_size.y = 44
+	_combat_body.add_child(end_scene)
 
 
 func _render_waiting_for_checks() -> void:
@@ -279,13 +394,13 @@ func _render_waiting_for_checks() -> void:
 		return
 
 	for player_id in owed:
-		var row := HBoxContainer.new()
+		var row := VBoxContainer.new()
 		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_theme_constant_override("separation", Widgets.GAP_ROW)
 		_combat_body.add_child(row)
 
 		var name_label := Label.new()
-		name_label.text = "%s has not rolled" % String(_fight.combatant(String(player_id)).get("name", "Someone"))
+		name_label.text = "%s has not rolled" % String(_fight.combatant(String(player_id)).get("name", "Character"))
 		name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		name_label.custom_minimum_size = Vector2(1, 0)
@@ -299,6 +414,18 @@ func _render_waiting_for_checks() -> void:
 		roll_for.custom_minimum_size = Vector2(112, 32)
 		roll_for.size_flags_horizontal = Control.SIZE_SHRINK_END
 		row.add_child(roll_for)
+		if _fight.combatant(String(player_id)).get("kind") == ActionRound.KIND_NPC:
+			var placement := OptionButton.new()
+			placement.fit_to_longest_item = false
+			placement.add_item("Place manually in phase...")
+			for phase in ActionRound.PHASES:
+				placement.add_item(String(ActionRound.PHASE_NAMES[phase]))
+			placement.item_selected.connect(func(index: int):
+				if index > 0 and _fight != null:
+					var score: Dictionary = _summary_of(_combat_snapshot(String(player_id))).get("action_check", {})
+					_fight.place_npc(String(player_id), ActionRound.PHASES[index - 1], AlternityNum.as_int(score.get("ordinary", 0)))
+					_publish_round())
+			row.add_child(placement)
 
 
 ## Who acts in this phase, in the order they act.
@@ -318,9 +445,20 @@ func _render_acting_order() -> void:
 		acting_ids[String(entry.get("id", ""))] = true
 		var line := "%d. %s   (score %d)" % [
 			order_position,
-			String(entry.get("name", "Someone")),
+			String(entry.get("name", "Character")),
 			AlternityNum.as_int(entry.get("check_score", 0)),
 		]
+		var entry_id := String(entry.get("id", ""))
+		var phase_st := _fight.status_in_phase(entry_id, _fight.phase())
+		if _fight.current_actor().get("id", "") == entry_id:
+			line += "   [Acting now]"
+		elif phase_st == ActionRound.STATUS_WAITING:
+			line += "   [Up next]"
+		elif phase_st == ActionRound.STATUS_COMPLETED:
+			line += "   [Acted]"
+		elif phase_st == ActionRound.STATUS_POSTPONED:
+			line += "   [Postponed]"
+
 		# Somebody dropped this phase is still finishing what they declared, and
 		# saying so is the difference between a bug and the rule.
 		if bool(entry.get("pending_out", false)):
@@ -328,6 +466,13 @@ func _render_acting_order() -> void:
 		if not String(entry.get("dodge", "")).is_empty():
 			line += "   dodging (%s)" % String(entry.get("dodge", ""))
 		_combat_row(line, String(entry.get("id", "")))
+		if order_position > 1:
+			var previous: Dictionary = acting[order_position - 2]
+			if _fight.tied(entry, previous):
+				var resolve := _small_button("Resolve tie: move up", _on_resolve_tie_pressed.bind(
+					String(entry["id"]), String(previous["id"]), _fight.round_id, _fight.phase()))
+				resolve.custom_minimum_size.y = 44
+				_combat_body.add_child(resolve)
 
 	# Everyone else still on their feet. They are not acting this phase, and they
 	# are still standing there to be shot at -- an attack is aimed at whoever the
@@ -341,7 +486,7 @@ func _render_acting_order() -> void:
 	if not bystanders.is_empty():
 		Widgets.muted_text(_combat_body, "Also on the field", _palette, Widgets.FONT_CAPTION)
 		for entry in bystanders:
-			var waiting := "   %s" % String(entry.get("name", "Someone"))
+			var waiting := "   %s" % String(entry.get("name", "Character"))
 			if not String(entry.get("dodge", "")).is_empty():
 				waiting += "   dodging (%s)" % String(entry.get("dodge", ""))
 			_combat_row(waiting, String(entry.get("id", "")))
@@ -350,7 +495,7 @@ func _render_acting_order() -> void:
 	for entry in _fight.combatants:
 		if bool(entry.get("out", false)):
 			sidelined.append("%s (%s)" % [
-				String(entry.get("name", "someone")),
+				String(entry.get("name", "character")),
 				String(entry.get("out_reason", "out")),
 			])
 	if not sidelined.is_empty():
@@ -361,7 +506,6 @@ func _render_acting_order() -> void:
 		note.custom_minimum_size = Vector2(1, 0)
 
 
-## One combatant: what they are doing, and the button that shoots at them.
 ## One combatant: what they are doing, how many actions they have left, and the
 ## button that shoots at them.
 ##
@@ -389,49 +533,70 @@ func _combat_row(line: String, player_id: String) -> void:
 		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	outer.add_child(label)
 
-	var controls := HBoxContainer.new()
+	var controls := HFlowContainer.new()
 	controls.size_flags_horizontal = Control.SIZE_EXPAND_FILL if not wide else Control.SIZE_SHRINK_END
-	controls.add_theme_constant_override("separation", Widgets.GAP_TIGHT)
+	controls.add_theme_constant_override("h_separation", Widgets.GAP_TIGHT)
+	controls.add_theme_constant_override("v_separation", Widgets.GAP_TIGHT)
 	outer.add_child(controls)
 
-	# How many actions they have this round, and the dial that changes it.
-	# Nothing in the app can know everything that costs an action -- reloading,
-	# being restrained, an argument with the GM -- so the GM sets the number.
-	controls.add_child(_dial_button(preload("res://assets/minus-square.svg"), player_id, -1, _fight.actions_of(player_id) <= 0))
+	var stepper := HBoxContainer.new()
+	stepper.add_theme_constant_override("separation", Widgets.GAP_TIGHT)
+	stepper.add_child(_dial_button(preload("res://assets/minus-square.svg"), player_id, -1, _fight.actions_of(player_id) <= 0))
 
 	var count := Label.new()
-	count.text = "%d" % _fight.actions_of(player_id)
+	count.text = "%d" % _fight.actions_remaining(player_id)
 	count.custom_minimum_size = Vector2(24, 0)
 	count.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	count.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	count.add_theme_color_override("font_color", _palette.muted)
 	count.add_theme_font_size_override("font_size", Widgets.FONT_DETAIL)
-	controls.add_child(count)
+	stepper.add_child(count)
 
-	controls.add_child(_dial_button(preload("res://assets/add-square.svg"), player_id, 1))
+	stepper.add_child(_dial_button(preload("res://assets/add-square.svg"), player_id, 1))
 
 	var actions_label := Label.new()
-	actions_label.text = "actions"
+	actions_label.text = "left"
 	actions_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	actions_label.add_theme_color_override("font_color", _palette.muted)
 	actions_label.add_theme_font_size_override("font_size", Widgets.FONT_CAPTION)
-	if wide:
-		# In a shrink-to-fit row an expanding label collapses to nothing, which
-		# leaves the dial as two unlabelled buttons around a bare number.
-		actions_label.size_flags_horizontal = Control.SIZE_SHRINK_END
-	else:
-		actions_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		actions_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-		actions_label.custom_minimum_size = Vector2(1, 0)
-	controls.add_child(actions_label)
+	stepper.add_child(actions_label)
+	controls.add_child(stepper)
+
+
+	if _fight != null and _fight.state == ActionRound.STATE_ACTIVE:
+		var st := _fight.status_in_phase(player_id, _fight.phase())
+		var cur_round_id := _fight.round_id
+		var cur_phase := _fight.phase()
+		if st == ActionRound.STATUS_WAITING:
+			var act_btn := _small_button("Done", _on_act_pressed.bind(player_id, cur_round_id, cur_phase))
+			act_btn.clip_text = false
+			act_btn.custom_minimum_size = Vector2(72, 32)
+			act_btn.size_flags_horizontal = Control.SIZE_SHRINK_END
+			controls.add_child(act_btn)
+
+			var post_btn := _small_button("Pass", _on_pass_pressed.bind(player_id, cur_round_id, cur_phase))
+			post_btn.clip_text = false
+			post_btn.custom_minimum_size = Vector2(72, 32)
+			post_btn.size_flags_horizontal = Control.SIZE_SHRINK_END
+			controls.add_child(post_btn)
+		elif st == ActionRound.STATUS_COMPLETED or st == ActionRound.STATUS_POSTPONED:
+			var action_type: String = String(_fight.combatant(player_id).get("action_type_" + cur_phase, ""))
+			if action_type != "attack":
+				var undo_btn := _small_button("Undo", _on_undo_pressed.bind(player_id, cur_round_id, cur_phase))
+				undo_btn.clip_text = false
+				undo_btn.custom_minimum_size = Vector2(72, 32)
+				undo_btn.size_flags_horizontal = Control.SIZE_SHRINK_END
+				undo_btn.tooltip_text = "Undo manual %s" % ("Done" if st == ActionRound.STATUS_COMPLETED else "Pass")
+				controls.add_child(undo_btn)
 
 	var attack := _small_button("Attack", _on_attack_pressed.bind(player_id))
 	attack.custom_minimum_size = Vector2(80, 32)
 	attack.size_flags_horizontal = Control.SIZE_SHRINK_END
 	# Nothing to attack with until the target's device has sent a character: the
 	# armor, the toughness and the resistance all come off their sheet.
-	attack.disabled = not CharacterSnapshot.is_usable(_session.committed_character(player_id))
+	attack.disabled = not CharacterSnapshot.is_usable(_combat_snapshot(player_id))
 	controls.add_child(attack)
+
 
 
 ## One end of the actions dial.
@@ -470,28 +635,158 @@ func _on_actions_pressed(player_id: String, delta: int) -> void:
 ## The GM's own seat is not in it, and neither is anyone who has not committed a
 ## character -- there is nothing to roll an action check with.
 func _on_start_combat_pressed() -> void:
-	var fight := ActionRound.new(1)
+	if _router == null:
+		return
+	var candidates: Array = []
 	for seat in _session.seats:
 		if bool(seat.get("is_gm", false)):
 			continue
-		var player_id := String(seat.get("player_id", ""))
-		var snapshot := _session.committed_character(player_id)
-		if not CharacterSnapshot.is_usable(snapshot):
-			continue
-		var summary := _summary_of(snapshot)
-		fight.add_combatant(
-			player_id,
-			String(seat.get("player_name", "Someone")),
-			AlternityNum.as_int(summary.get("action_check", {}).get("actions", 1), 1)
-		)
-
-	if fight.combatants.is_empty():
-		_status.text = "Nobody has committed a character to fight with."
-		_status.add_theme_color_override("font_color", _palette.warning)
+		var id := String(seat.get("player_id", ""))
+		var snapshot := _combat_snapshot(id)
+		if CharacterSnapshot.is_usable(snapshot):
+			var summary := _summary_of(snapshot)
+			candidates.append({"id": id, "name": _session.character_name_for(id),
+				"kind": ActionRound.KIND_PLAYER,
+				"actions": AlternityNum.as_int(summary.get("action_check", {}).get("actions", 1), 1),
+				"portrait": String(CharacterSnapshot.character_of(snapshot).get("portrait", ""))})
+	for id in _session.npcs:
+		var doc := CharacterDoc.from_dict(_rules, _session.npcs[id])
+		var score: Dictionary = _rules.action_check(doc.raw())
+		candidates.append({"id": id, "name": doc.get_hero_name(), "kind": ActionRound.KIND_NPC,
+			"actions": AlternityNum.as_int(score.get("actions", 1), 1),
+			"portrait": String(doc.raw().get("portrait", ""))})
+	if candidates.is_empty():
+		_status.text = "Add an NPC or have a player commit a character first."
 		return
-
+	var selected = await _router.push(preload("res://scenes/ui/routes/encounter_participants_route.tscn"), {
+		"palette": _palette, "participants": candidates})
+	if not is_instance_valid(self) or typeof(selected) != TYPE_ARRAY or selected.is_empty():
+		return
+	var fight := ActionRound.new(1)
+	for entry in selected:
+		fight.add_combatant(entry["id"], entry["name"], entry["actions"], entry["kind"])
+		fight.combatant(entry["id"])["portrait"] = entry["portrait"]
 	_fight = fight
 	_publish_round()
+	_open_encounter()
+
+
+func _open_encounter() -> void:
+	if _router != null:
+		await _router.push(preload("res://scenes/ui/routes/encounter_route.tscn"), {"palette": _palette, "controller": self})
+
+
+func encounter_round() -> ActionRound:
+	return _fight
+
+
+func encounter_controls(container: VBoxContainer) -> void:
+	var original := _combat_body
+	_combat_body = container
+	_render_combat_controls()
+	_combat_body = original
+
+
+func _on_resolve_tie_pressed(id: String, other_id: String, expected_round: String, expected_phase: String) -> void:
+	if _fight == null or _fight.round_id != expected_round or _fight.phase() != expected_phase:
+		return
+	if _fight.resolve_tie_before(id, other_id):
+		_publish_round()
+
+
+func _on_act_pressed(player_id: String, expected_round_id: String, expected_phase: String) -> void:
+	if _fight == null or _fight.round_id != expected_round_id or _fight.phase() != expected_phase:
+		return
+	if _closing_in_flight or (_session != null and _session.is_phase_closing()):
+		return
+	if not _fight.can_act_in(player_id, expected_phase):
+		return
+	if _fight.act(player_id, expected_phase):
+		var combatant := _fight.combatant(player_id)
+		if not combatant.is_empty():
+			combatant["action_type_" + expected_phase] = "manual"
+		_session.append_event(CampaignSession.EVENT_NOTE, player_id, {
+			"text": "%s took an action in %s phase" % [_player_name(player_id), _fight.phase_name()],
+		})
+		_store.save(_session)
+		_publish_round()
+		refresh()
+
+
+func _on_pass_pressed(player_id: String, expected_round_id: String, expected_phase: String) -> void:
+	if _fight == null or _fight.round_id != expected_round_id or _fight.phase() != expected_phase:
+		return
+	if _closing_in_flight or (_session != null and _session.is_phase_closing()):
+		return
+	if _fight.postpone(player_id, expected_phase):
+		var combatant := _fight.combatant(player_id)
+		if not combatant.is_empty():
+			combatant["action_type_" + expected_phase] = "manual"
+		_session.append_event(CampaignSession.EVENT_NOTE, player_id, {
+			"text": "%s passed in %s phase" % [_player_name(player_id), _fight.phase_name()],
+		})
+		_store.save(_session)
+		_publish_round()
+		refresh()
+
+
+func _on_undo_pressed(player_id: String, expected_round_id: String, expected_phase: String) -> void:
+	if _fight == null or _fight.round_id != expected_round_id or _fight.phase() != expected_phase:
+		return
+	if _closing_in_flight or (_session != null and _session.is_phase_closing()):
+		return
+	var combatant := _fight.combatant(player_id)
+	if combatant.is_empty():
+		return
+	var action_type := String(combatant.get("action_type_" + expected_phase, ""))
+	if action_type == "attack":
+		return
+	if _fight.undo_action(player_id, expected_phase):
+		combatant.erase("action_type_" + expected_phase)
+		for cmd in _fight.processed_commands.keys():
+			var cmd_info = _fight.processed_commands[cmd]
+			if cmd_info is Dictionary and String(cmd_info.get("player_id", "")) == player_id and String(cmd_info.get("phase", "")) == expected_phase:
+				_fight.erase_command(cmd)
+		_session.append_event(CampaignSession.EVENT_NOTE, player_id, {
+			"text": "Undo action decision for %s in %s phase" % [_player_name(player_id), _fight.phase_name()],
+		})
+		_store.save(_session)
+		_publish_round()
+		refresh()
+
+
+func _on_dismiss_attack_pressed(attack_id: String, target_player_id: String) -> void:
+	var target_name := _player_name(target_player_id)
+	var answer = await _router.push(preload("res://scenes/ui/routes/confirm_route.tscn"), {
+		"palette": _palette,
+		"title": "Dismiss pending attack?",
+		"message": "Dismiss unresolved attack on offline participant %s? The attacker's action remains spent, and this will be logged as GM-dismissed (not a miss)." % target_name,
+		"confirm_text": "Dismiss attack",
+	})
+	if not is_instance_valid(self) or answer != true:
+		return
+	if _session == null:
+		return
+	if _transport != null and _transport.is_player_connected(target_player_id):
+		_status.text = "%s reconnected while confirmation was pending; cannot dismiss." % target_name
+		_status.add_theme_color_override("font_color", _palette.warning)
+		refresh()
+		return
+	var current_entry: Dictionary = _session.pending_attacks.get(attack_id, {})
+	if current_entry.is_empty() or String(current_entry.get("status", "pending")) != "pending":
+		_status.text = "Attack was resolved while confirmation was pending; cannot dismiss."
+		_status.add_theme_color_override("font_color", _palette.warning)
+		refresh()
+		return
+	if _session.dismiss_pending_attack(attack_id):
+		if _hosting and _transport != null:
+			_transport.send_cancel_attack(attack_id, target_player_id)
+		_session.append_event(CampaignSession.EVENT_NOTE, target_player_id, {
+			"text": "GM dismissed unresolved attack against %s (offline). Attacker action remains spent." % target_name,
+		})
+		_store.save(_session)
+		_broadcast_recent()
+		refresh()
 
 
 func _on_start_round_pressed() -> void:
@@ -501,20 +796,95 @@ func _on_start_round_pressed() -> void:
 
 
 func _on_advance_phase_pressed() -> void:
-	if _fight == null:
+	if _fight == null or _closing_in_flight:
 		return
+	var target_round := _fight.round_id
+	var target_phase := _fight.phase()
+	if _session.is_phase_closing():
+		target_round = String(_session.closing_state.get("round_id", target_round))
+		target_phase = String(_session.closing_state.get("phase", target_phase))
+
+	var unresolved := _session.unresolved_attacks_for_phase(target_round, target_phase)
+	if not unresolved.is_empty():
+		_status.text = "Cannot advance phase: unresolved attacks remain."
+		_status.add_theme_color_override("font_color", _palette.warning)
+		refresh()
+		return
+
+	_closing_in_flight = true
+	var closing_info: Dictionary = {}
+	if _session.is_phase_closing():
+		closing_info = _session.closing_state
+	else:
+		closing_info = _session.begin_phase_closing(target_round, target_phase)
+	if not bool(_store.save(_session).get("ok", false)):
+		_closing_in_flight = false
+		_status.text = "Cannot save phase closure. Retry after resolving the storage error."
+		refresh()
+		return
+
+	var op_id := String(closing_info.get("operation_id", ""))
+	var expected_ids: Array = closing_info.get("pending_attack_ids", []).duplicate()
+	if not expected_ids.is_empty() and (not _hosting or _transport == null):
+		_closing_in_flight = false
+		_status.text = "Host the table and reconnect participants before retrying phase closure."
+		refresh()
+		return
+	if not expected_ids.is_empty() and _hosting and _transport != null:
+		_transport.send_phase_commit(target_round, target_phase, op_id, expected_ids)
+		var wait_count := 0
+		while is_instance_valid(self) and not _session.is_closing_complete(op_id) and wait_count < 30:
+			await get_tree().create_timer(0.1).timeout
+			wait_count += 1
+		if not is_instance_valid(self) or _fight == null:
+			_closing_in_flight = false
+			return
+		if not _session.is_closing_complete(op_id):
+			_closing_in_flight = false
+			_status.text = "Awaiting phase commit acknowledgment from players..."
+			_status.add_theme_color_override("font_color", _palette.warning)
+			refresh()
+			return
+
+	var remaining_unresolved := _session.unresolved_attacks_for_phase(target_round, target_phase)
+	if not remaining_unresolved.is_empty():
+		_closing_in_flight = false
+		_status.text = "Cannot advance phase: unresolved attacks remain."
+		_status.add_theme_color_override("font_color", _palette.warning)
+		refresh()
+		return
+
+	var previous_round := _fight.to_dict()
+	var previous_closing := _session.closing_state.duplicate(true)
+	var previous_npcs := _session.npcs.duplicate(true)
+	var previous_staged := _session.staged_npc_attacks.duplicate(true)
+	_commit_staged_npc_attacks(false)
+	_session.finish_phase_closing()
 	_fight.advance_phase()
-	_publish_round()
+	if not _publish_round():
+		_fight = ActionRound.from_dict(previous_round)
+		_session.set_round(previous_round)
+		_session.closing_state = previous_closing
+		_session.npcs = previous_npcs
+		_session.staged_npc_attacks = previous_staged
+	_closing_in_flight = false
+	refresh()
 
 
 func _on_next_round_pressed() -> void:
-	if _fight == null:
+	if _fight == null or not _fight.is_finished() or _closing_in_flight or _session.is_phase_closing():
 		return
+	_commit_staged_npc_attacks()
 	_fight = _fight.next_round()
 	_publish_round()
 
 
 func _on_end_combat_pressed() -> void:
+	if _session != null and (_session.is_phase_closing() or not _session.pending_attacks.is_empty()):
+		_status.text = "Resolve pending attacks and finish phase closure before ending combat."
+		refresh()
+		return
+	_commit_staged_npc_attacks()
 	_fight = null
 	_session.clear_round()
 	_store.save(_session)
@@ -541,6 +911,10 @@ func _end_scene_button() -> Button:
 ## should be replayed. Each device applies it to its own character; nothing here
 ## writes to a sheet.
 func _on_end_scene_pressed() -> void:
+	for id in _session.npcs:
+		var doc := CharacterDoc.from_dict(_rules, _session.npcs[id])
+		doc.apply([CharacterDoc.DAMAGE], func(c): return _rules.combat.end_scene(c))
+		_session.npcs[id] = doc.to_dict()
 	_session.append_event(CampaignSession.EVENT_SCENE_END, "", {
 		"text": "The scene ended. Stun clears and anybody it knocked out wakes up.",
 	})
@@ -556,7 +930,8 @@ func _on_end_scene_pressed() -> void:
 func _on_roll_for_pressed(player_id: String) -> void:
 	if _fight == null or _router == null:
 		return
-	var snapshot := _session.committed_character(player_id)
+	var round_id := _fight.round_id
+	var snapshot := _combat_snapshot(player_id)
 	var summary := _summary_of(snapshot)
 	if summary.is_empty():
 		return
@@ -579,7 +954,12 @@ func _on_roll_for_pressed(player_id: String) -> void:
 	if not is_instance_valid(self) or typeof(outcome) != TYPE_DICTIONARY or not outcome.has("check"):
 		return
 	var rolled := SkillCheck.from_dict(outcome["check"])
+	var payload: Dictionary = outcome.duplicate(true)
+	payload["character_name"] = CharacterSnapshot.hero_name_of(snapshot)
+	_session.append_roll(player_id, payload)
+	_broadcast_recent()
 	_record_action_check(player_id, {
+		"round_id": round_id,
 		"degree": rolled.degree(),
 		"check_score": rolled.ordinary,
 		"roll": AlternityNum.as_int(rolled.result.get("total", 0)),
@@ -599,23 +979,49 @@ func _on_roll_for_pressed(player_id: String) -> void:
 ## something a body does whether or not its owner is paying attention, and the
 ## GM holds their committed character.
 func _on_attack_pressed(player_id: String) -> void:
+	var declared_round := _fight.round_id if _fight != null and _fight.state == ActionRound.STATE_ACTIVE else ""
+	var declared_phase := _fight.phase() if not declared_round.is_empty() else ""
+	if _closing_in_flight or (_session != null and _session.is_phase_closing()):
+		_status.text = "Cannot launch attack while phase is closing."
+		_status.add_theme_color_override("font_color", _palette.warning)
+		return
 	if _router == null:
 		return
-	var snapshot := _session.committed_character(player_id)
+	var snapshot := _combat_snapshot(player_id)
 	if not CharacterSnapshot.is_usable(snapshot):
 		_status.text = "%s has not committed a character yet." % _player_name(player_id)
 		_status.add_theme_color_override("font_color", _palette.warning)
 		return
 	var target: Dictionary = CharacterSnapshot.character_of(snapshot)
+	var attackers: Dictionary = {}
+	for id in _session.npcs:
+		if _fight != null and _fight.state == ActionRound.STATE_ACTIVE and _fight.has_combatant(id):
+			if _fight.can_act_in(id, _fight.phase()):
+				attackers[id] = _session.npcs[id]
+		elif _session.npcs.has(player_id) or (_fight != null and _fight.has_combatant(id)) or _fight == null or _fight.state != ActionRound.STATE_ACTIVE:
+			attackers[id] = _session.npcs[id]
+
+	if _fight != null and _fight.state == ActionRound.STATE_ACTIVE and attackers.is_empty():
+		_status.text = "No NPCs have an action available in %s phase." % _fight.phase_name()
+		_status.add_theme_color_override("font_color", _palette.warning)
+		return
 
 	var declaration = await _router.push(COMBAT_ATTACK_ROUTE, {
 		"palette": _palette,
 		"rules": _rules,
 		"target_id": player_id,
-		"target_name": _player_name(player_id),
+		"target_name": CharacterSnapshot.hero_name_of(snapshot),
+		"npcs": attackers,
 	})
 	if not is_instance_valid(self) or typeof(declaration) != TYPE_DICTIONARY:
 		return
+
+	var attacker_id := String(declaration.get("attacker_id", ""))
+	if _fight != null and _fight.state == ActionRound.STATE_ACTIVE and not attacker_id.is_empty() and _fight.has_combatant(attacker_id):
+		if not _fight.can_act_in(attacker_id, _fight.phase()):
+			_status.text = "Action already spent or unavailable in %s phase." % _fight.phase_name()
+			_status.add_theme_color_override("font_color", _palette.warning)
+			return
 
 	var defence: Dictionary = _rules.combat.target_defence(
 		target,
@@ -638,6 +1044,8 @@ func _on_attack_pressed(player_id: String) -> void:
 		dodge_step = _rules.combat.dodge_step(_fight.dodge_of(player_id))
 		steps += dodge_step
 
+	declaration["target_defence"] = defence.duplicate(true)
+	declaration["dodge_step"] = dodge_step
 	var degree := await _roll_to_hit(declaration, steps)
 	if not is_instance_valid(self) or degree.is_empty():
 		return
@@ -656,7 +1064,7 @@ func _on_attack_pressed(player_id: String) -> void:
 	])
 	var attack := CombatAttack.declare(
 		player_id,
-		String(declaration.get("attacker_name", "Someone")),
+		String(declaration.get("attacker_name", "Character")),
 		String(declaration.get("weapon_name", "an attack")),
 		degree,
 		0,
@@ -664,6 +1072,12 @@ func _on_attack_pressed(player_id: String) -> void:
 		String(split.get("impact", "hi")),
 		String(split.get("firepower", "O"))
 	)
+	attack.details = declaration.duplicate(true)
+	attack.round_id = declared_round
+	attack.phase = declared_phase
+	attack.details["to_hit"] = _last_hit.duplicate(true)
+	attack.details["target_toughness"] = _rules.combat.toughness_of(target)
+	attack.details["rolled_degree"] = degree
 	attack.is_melee = bool(declaration.get("is_melee", false))
 	attack.sees_attacker = bool(declaration.get("sees_attacker", true))
 	attack.from_rear = bool(declaration.get("from_rear", false))
@@ -684,27 +1098,31 @@ func _on_attack_pressed(player_id: String) -> void:
 		var entry: String = _rules.combat.damage_entry_for(String(declaration.get("damage_text", "")), effective)
 		attack.damage_type = _rules.combat.damage_track_of(entry)
 		attack.damage = await _roll_damage(entry, attack)
-		if not is_instance_valid(self):
+		if not is_instance_valid(self) or attack.damage < 0:
 			return
 
-	_send_attack(attack)
+	await _send_attack(attack)
 
 
 ## The attack roll itself. Returns the degree, or "" if the GM walked away.
 ##
-## The attacker has no character sheet, so their Good and Amazing come off the
-## one score the GM gave, the same halving and quartering a sheet does.
+## The score comes from the selected NPC or the manual attacker declaration.
 func _roll_to_hit(declaration: Dictionary, steps: int) -> String:
+	_last_hit = {}
 	var score: int = AlternityNum.as_int(declaration.get("attack_score", 0))
-	var to_hit := SkillCheck.new(String(declaration.get("target_id", "")), SkillCheck.ORIGIN_GM)
+	var to_hit := SkillCheck.new(String(declaration.get("attacker_id", "")), SkillCheck.ORIGIN_GM)
 	to_hit.skill_label = "%s attacks with %s" % [
-		String(declaration.get("attacker_name", "Someone")),
+		String(declaration.get("attacker_name", "Character")),
 		String(declaration.get("weapon_name", "an attack")),
 	]
 	to_hit.ordinary = score
 	to_hit.good = int(floor(score / 2.0))
 	to_hit.amazing = int(floor(score / 4.0))
 	to_hit.player_step = steps
+	to_hit.reason = String(declaration.get("reason", ""))
+	to_hit.step_breakdown = declaration.get("step_breakdown", []).duplicate(true)
+	to_hit.step_breakdown.append({"label": "Target resistance", "steps": declaration.get("target_defence", {}).get("resistance_step", 0)})
+	to_hit.step_breakdown.append({"label": "Target dodge", "steps": declaration.get("dodge_step", 0)})
 
 	var outcome = await _router.push(DICE_TRAY_ROUTE, {
 		"palette": _palette,
@@ -714,6 +1132,7 @@ func _roll_to_hit(declaration: Dictionary, steps: int) -> String:
 	})
 	if not is_instance_valid(self) or typeof(outcome) != TYPE_DICTIONARY or not outcome.has("check"):
 		return ""
+	_last_hit = outcome.duplicate(true)
 	return SkillCheck.from_dict(outcome["check"]).degree()
 
 
@@ -726,6 +1145,8 @@ func _roll_to_hit(declaration: Dictionary, steps: int) -> String:
 func _on_blast_pressed() -> void:
 	if _fight == null or _router == null:
 		return
+	var declared_round := _fight.round_id
+	var declared_phase := _fight.phase()
 
 	var standing: Array = []
 	for entry in _fight.standing():
@@ -735,7 +1156,7 @@ func _on_blast_pressed() -> void:
 			is_dodging_success = _rules.combat.dodge_step(dodge_deg) > 0
 		standing.append({
 			"id": String(entry.get("id", "")),
-			"name": String(entry.get("name", "Someone")),
+			"name": String(entry.get("name", "Character")),
 			"dodging": is_dodging_success,
 			"dodge_degree": dodge_deg,
 		})
@@ -758,7 +1179,9 @@ func _on_blast_pressed() -> void:
 		var total := await _roll_blast_band(entry, String(blast.get("weapon_name", "")), zone)
 		if not is_instance_valid(self):
 			return
-		rolled_by_zone[zone] = {"total": total, "entry": entry}
+		if total < 0:
+			return
+		rolled_by_zone[zone] = {"total": total, "entry": entry, "dice": _last_blast_roll.duplicate(true)}
 
 	for target in blast.get("targets", []):
 		var zone := String(target.get("zone", ""))
@@ -777,10 +1200,13 @@ func _on_blast_pressed() -> void:
 		# is resisted by armor and by where you were standing, and by nothing
 		# else. Saying so on the attack keeps the target from being offered a
 		# parry against an explosion.
+		attack.round_id = declared_round
+		attack.phase = declared_phase
+		attack.details = {"blast": blast.duplicate(true), "damage_roll": band.get("dice", {}), "target_name": _player_name(attack.target_player_id)}
 		attack.sees_attacker = true
 		attack.from_rear = false
 		attack.is_melee = false
-		_send_attack(attack)
+		await _send_attack(attack)
 
 
 ## One band's worth of damage. Everybody in it takes the same roll.
@@ -796,7 +1222,8 @@ func _roll_blast_band(entry: String, weapon_name: String, zone: String) -> int:
 		"allow_reroll": true,
 	})
 	if not is_instance_valid(self) or typeof(rolled) != TYPE_DICTIONARY:
-		return 0
+		return -1
+	_last_blast_roll = rolled.duplicate(true)
 	return maxi(0, AlternityNum.as_int(rolled.get("total", 0)))
 
 
@@ -818,11 +1245,13 @@ func _roll_weapon_failure(declaration: Dictionary) -> void:
 	if not is_instance_valid(self) or typeof(rolled) != TYPE_DICTIONARY:
 		return
 
+	declaration["weapon_failure_roll"] = rolled.duplicate(true)
 	var failure: Dictionary = _rules.combat.weapon_failure(
 		AlternityNum.as_int(rolled.get("total", 1), 1), is_firearm
 	)
+	declaration["weapon_failure"] = failure.duplicate(true)
 	var text := "%s rolled a natural 20 with the %s: %s. %s" % [
-		String(declaration.get("attacker_name", "Someone")),
+		String(declaration.get("attacker_name", "Character")),
 		String(declaration.get("weapon_name", "weapon")),
 		String(failure.get("result", "")).replace("_", " "),
 		String(failure.get("detail", "")),
@@ -849,7 +1278,8 @@ func _roll_damage(entry: String, attack: CombatAttack) -> int:
 		"allow_reroll": true,
 	})
 	if not is_instance_valid(self) or typeof(rolled) != TYPE_DICTIONARY:
-		return 0
+		return -1
+	attack.details["damage_roll"] = rolled.duplicate(true)
 	return maxi(0, AlternityNum.as_int(rolled.get("total", 0)))
 
 
@@ -858,10 +1288,37 @@ func _roll_damage(entry: String, attack: CombatAttack) -> int:
 ## A miss travels too. The log gets its line when the answer comes back, so it
 ## can say both halves at once -- except for a miss, which has no second half.
 func _send_attack(attack: CombatAttack) -> void:
+	if not attack.round_id.is_empty():
+		if _fight == null or _fight.state != ActionRound.STATE_ACTIVE or _fight.round_id != attack.round_id or _fight.phase() != attack.phase:
+			_status.text = "The attack's phase has changed. Resolve it with the GM before continuing."
+			return
+	if _closing_in_flight or (_session != null and _session.is_phase_closing()):
+		_status.text = "Cannot send attack while phase is closing."
+		_status.add_theme_color_override("font_color", _palette.warning)
+		return
+	if _fight != null and _fight.state == ActionRound.STATE_ACTIVE:
+		attack.round_id = _fight.round_id
+		attack.phase = _fight.phase()
+		attack.action_id = CampaignSession.new_id()
+		var attacker_id := String(attack.details.get("attacker_id", ""))
+		if not attacker_id.is_empty() and _fight.has_combatant(attacker_id):
+			if not _fight.can_act_in(attacker_id, _fight.phase()):
+				_status.text = "Action already spent or unavailable in %s phase." % _fight.phase_name()
+				_status.add_theme_color_override("font_color", _palette.warning)
+				return
+			_fight.act(attacker_id, _fight.phase())
+			var combatant := _fight.combatant(attacker_id)
+			if not combatant.is_empty():
+				combatant["action_type_" + _fight.phase()] = "attack"
+			_publish_round()
+	if _session.npcs.has(attack.target_player_id):
+		await _resolve_npc_attack(attack)
+		return
 	if _hosting and _transport != null:
 		_transport.send_attack(attack.to_dict(), attack.target_player_id)
 		_store.save(_session)
 	else:
+		_session.queue_attack(attack.to_dict(), attack.target_player_id)
 		_session.append_attack(attack.target_player_id, attack.to_dict())
 		_store.save(_session)
 	refresh()
@@ -873,8 +1330,19 @@ func _on_attack_resolved(player_id: String, data: Dictionary) -> void:
 	# The seat the answer came from wins over the one written on the attack: a
 	# device can only answer for itself.
 	attack.target_player_id = player_id
+	var is_combat_phase := _fight != null and _fight.state == ActionRound.STATE_ACTIVE
+	_session.resolve_attack(attack.attack_id, player_id, is_combat_phase, data)
 	_session.append_attack(player_id, attack.to_dict())
 	_store.save(_session)
+	_broadcast_recent()
+	if _fight != null:
+		var res: Dictionary = attack.result
+		if bool(res.get("knocked_out", false)) or bool(res.get("endurance_failed", false)):
+			var reason: String = String(res.get("condition", ""))
+			if reason.is_empty():
+				reason = "unconscious (endurance check failed)" if bool(res.get("endurance_failed", false)) else "knocked out"
+			_fight.knock_out(player_id, reason)
+			_publish_round()
 	refresh()
 
 
@@ -894,12 +1362,88 @@ func _on_defence_declared(player_id: String, defence: Dictionary) -> void:
 	_publish_round()
 
 
+func _on_postpone_declared(player_id: String, round_id: String, phase_id: String, command_id: String) -> void:
+	if _fight == null or _fight.round_id != round_id or _fight.phase() != phase_id:
+		return
+	if _closing_in_flight or (_session != null and _session.is_phase_closing()):
+		return
+	if not command_id.is_empty():
+		if _fight.is_command_processed(command_id):
+			return
+		_fight.record_command(command_id, {"player_id": player_id, "phase": phase_id, "action": "postpone"})
+	if _fight.postpone(player_id, phase_id):
+		var combatant := _fight.combatant(player_id)
+		if not combatant.is_empty():
+			combatant["action_type_" + phase_id] = "postpone"
+		_session.append_event(CampaignSession.EVENT_NOTE, player_id, {
+			"text": "%s postponed their action in %s phase" % [_player_name(player_id), _fight.phase_name()],
+		})
+		_store.save(_session)
+		_publish_round()
+		refresh()
+
+
+func _on_phase_committed_received(player_id: String, data: Dictionary) -> void:
+	if _session == null or not _session.is_phase_closing():
+		return
+	var op_id := String(data.get("operation_id", ""))
+	var closing_op := _session.closing_operation_id()
+	if op_id != closing_op:
+		return
+	var exp_round := String(_session.closing_state.get("round_id", ""))
+	var exp_phase := String(_session.closing_state.get("phase", ""))
+	if not exp_round.is_empty() and String(data.get("round_id", "")) != exp_round:
+		return
+	if not exp_phase.is_empty() and String(data.get("phase", "")) != exp_phase:
+		return
+
+	var attack_ids: Array = data.get("attack_ids", [])
+	var expected_player_attacks: Dictionary = _session.closing_state.get("expected_player_attacks", {})
+	var expected_for_player: Array = expected_player_attacks.get(player_id, [])
+	var pending_before := _session.pending_attacks.duplicate(true)
+	var closing_before := _session.closing_state.duplicate(true)
+	var round_before := _fight.to_dict() if _fight != null else {}
+
+	var accepted_count := 0
+	for aid in attack_ids:
+		var aid_str := String(aid)
+		if not expected_for_player.has(aid_str):
+			continue
+		if _session.commit_attack(aid_str, player_id):
+			accepted_count += 1
+		elif expected_for_player.has(aid_str):
+			accepted_count += 1
+			_session.acknowledge_closing_attack(closing_op, aid_str)
+
+	if accepted_count > 0:
+		if bool(data.get("knocked_out", false)):
+			if _fight != null:
+				_fight.knock_out(player_id, String(data.get("condition", "knocked out")))
+
+	if _fight != null:
+		_session.set_round(_fight.to_dict())
+	if not bool(_store.save(_session).get("ok", false)):
+		_session.pending_attacks = pending_before
+		_session.closing_state = closing_before
+		if not round_before.is_empty():
+			_fight = ActionRound.from_dict(round_before)
+			_session.set_round(round_before)
+		_status.text = "Cannot save phase acknowledgment. Retry after resolving the storage error."
+		return
+	if _fight != null and _hosting and _transport != null:
+		_transport.send_round(_fight.to_dict())
+	refresh()
+
+
+
 func _on_action_check_received(player_id: String, result: Dictionary) -> void:
 	_record_action_check(player_id, result)
 
 
 func _record_action_check(player_id: String, result: Dictionary) -> void:
-	if _fight == null:
+	if _fight == null or _fight.state != ActionRound.STATE_ROLLING:
+		return
+	if result.has("round_id") and String(result["round_id"]) != _fight.round_id:
 		return
 	_fight.record_check(
 		player_id,
@@ -915,14 +1459,17 @@ func _record_action_check(player_id: String, result: Dictionary) -> void:
 ##
 ## One place, because the campaign's copy and the players' copies must never
 ## disagree about whose turn it is.
-func _publish_round() -> void:
+func _publish_round() -> bool:
 	if _fight == null:
-		return
+		return false
 	_session.set_round(_fight.to_dict())
-	_store.save(_session)
+	if not bool(_store.save(_session).get("ok", false)):
+		_status.text = "Cannot save combat state. Resolve the storage error and retry."
+		return false
 	if _hosting and _transport != null:
 		_transport.send_round(_fight.to_dict())
 	refresh()
+	return true
 
 
 ## Checks waiting on the GM, the call button, and the shortcuts.
@@ -1029,6 +1576,7 @@ func refresh() -> void:
 	_render_shortcuts()
 	_render_combat()
 	_render_roster()
+	_render_npcs()
 	_render_chat_targets()
 	_render_feed()
 
@@ -1087,7 +1635,7 @@ func _build_pending_check(check: SkillCheck) -> void:
 	box.add_theme_constant_override("separation", Widgets.GAP_TIGHT)
 	margin.add_child(box)
 
-	var who := String(_session.seat_for(check.player_id).get("player_name", "Someone"))
+	var who := _session.character_name_for(check.player_id)
 	var heading := Widgets.text(box, "%s is waiting to roll %s" % [who, check.skill_label], _palette, Widgets.FONT_BODY, _palette.warning)
 	heading.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	heading.custom_minimum_size = Vector2(1, 0)
@@ -1156,7 +1704,7 @@ func _render_roster() -> void:
 
 func _build_roster_card(seat: Dictionary) -> void:
 	var player_id := String(seat.get("player_id", ""))
-	var snapshot := _session.committed_character(player_id)
+	var snapshot := _combat_snapshot(player_id)
 	var has_character := CharacterSnapshot.is_usable(snapshot)
 	var connected: bool = _hosting and _transport != null and _transport.connected_players().has(player_id)
 
@@ -1183,6 +1731,16 @@ func _build_roster_card(seat: Dictionary) -> void:
 	top.add_theme_constant_override("separation", Widgets.GAP_ROW)
 	box.add_child(top)
 
+	if has_character:
+		var portrait := PortraitView.add_to(
+			top,
+			String(CharacterSnapshot.character_of(snapshot).get("portrait", "")),
+			CharacterSnapshot.hero_name_of(snapshot),
+			_palette,
+			48
+		)
+		portrait.name = "RosterPortrait"
+
 	# The hero's name is the button, so the affordance and the label are the same
 	# thing. A card that is silently clickable is a card nobody clicks.
 	var open_sheet := Button.new()
@@ -1207,7 +1765,7 @@ func _build_roster_card(seat: Dictionary) -> void:
 	top.add_child(ap)
 
 	var subtitle := "%s%s" % [
-		String(seat.get("player_name", "Someone")),
+		String(seat.get("player_name", "Character")),
 		"  -  connected" if connected else "",
 	]
 	Widgets.muted_text(box, subtitle, _palette, Widgets.FONT_CAPTION)
@@ -1293,10 +1851,11 @@ func _metric(parent: Container, metric_name: String, value: String) -> void:
 
 ## The rules-derived summary of a committed character, cached for this render.
 func _summary_of(snapshot: Dictionary) -> Dictionary:
-	var key := String(snapshot.get("hero_name", "")) + "@" + str(snapshot.get("taken_at", 0))
+	var character := CharacterSnapshot.character_of(snapshot)
+	# Different NPCs may deliberately share a name and a snapshot timestamp.
+	var key := str(character.hash())
 	if _summary_cache.has(key):
 		return _summary_cache[key]
-	var character := CharacterSnapshot.character_of(snapshot)
 	var summary: Dictionary = _rules.summary(character) if not character.is_empty() else {}
 	_summary_cache[key] = summary
 	return summary
@@ -1353,6 +1912,8 @@ func _render_feed() -> void:
 		row.add_theme_color_override("font_color", _palette.text)
 		row.add_theme_font_size_override("font_size", Widgets.FONT_DETAIL)
 		_feed_list.add_child(row)
+		if String(event.get("kind", "")) in [CampaignSession.EVENT_ROLL, CampaignSession.EVENT_ATTACK, CampaignSession.EVENT_CHECK]:
+			_feed_list.add_child(_small_button("Open breakdown", _open_roll_detail.bind(event)))
 
 
 ## One line of log, readable without knowing the payload shape.
@@ -1360,6 +1921,9 @@ func _describe_event(event: Dictionary) -> String:
 	var kind := String(event.get("kind", ""))
 	var who := _player_name(String(event.get("player_id", "")))
 	var payload: Dictionary = event.get("payload", {}) if typeof(event.get("payload")) == TYPE_DICTIONARY else {}
+	var hero := String(payload.get("character_name", ""))
+	if not hero.is_empty():
+		who = hero
 	var stamp := _time_of(AlternityNum.as_int(event.get("at", 0)))
 
 	match kind:
@@ -1404,7 +1968,7 @@ func _describe_event(event: Dictionary) -> String:
 		CampaignSession.EVENT_ATTACK:
 			return "%s  %s" % [stamp, CombatAttack.from_dict(payload).describe()]
 		CampaignSession.EVENT_CHECK:
-			return "%s  the GM called for %s" % [stamp, SkillCheck.from_dict(payload).describe()]
+			return "%s  the GM asked %s for %s" % [stamp, String(payload.get("target_name", "Everyone")), SkillCheck.from_dict(payload).describe()]
 		CampaignSession.EVENT_JOIN:
 			return "%s  %s joined" % [stamp, who]
 		CampaignSession.EVENT_NOTE:
@@ -1420,12 +1984,7 @@ func _time_of(unix: int) -> String:
 
 
 func _player_name(player_id: String) -> String:
-	if player_id.is_empty():
-		return "the table"
-	var seat := _session.seat_for(player_id)
-	# A removed seat still has events in the log; showing a raw 32-hex id would
-	# be unreadable, so say plainly that they are gone.
-	return String(seat.get("player_name", "a departed player")) if not seat.is_empty() else "a departed player"
+	return _session.character_name_for(player_id)
 
 
 func _small_button(label: String, handler: Callable) -> Button:
@@ -1543,6 +2102,11 @@ func _on_call_check_pressed() -> void:
 
 func _call_check_for(skill: Dictionary) -> void:
 	var skill_id := AlternityNum.as_int(skill.get("id", -1), -1)
+	var recipients: Array = []
+	for seat in _session.seats:
+		if not bool(seat.get("is_gm", false)):
+			var id := String(seat.get("player_id", ""))
+			recipients.append({"id": id, "name": _session.character_name_for(id)})
 	# Avoid Object.call's inherited name so the check stays strongly inferred.
 	var check_call := SkillCheck.call_for(_rules.skill_label(skill), 0, "", skill_id)
 
@@ -1551,23 +2115,28 @@ func _call_check_for(skill: Dictionary) -> void:
 		"rules": _rules,
 		"check": check_call.to_dict(),
 		"title": "How hard is it?",
-		"confirm_text": "Ask the table",
+		"confirm_text": "Request check",
+		"recipients": recipients,
 	})
 	if not is_instance_valid(self) or typeof(chosen) != TYPE_DICTIONARY:
 		return
 
 	check_call.gm_step = clampi(AlternityNum.as_int(chosen.get("step", 0)), SkillCheck.MIN_STEP, SkillCheck.MAX_STEP)
 	check_call.reason = String(chosen.get("reason", ""))
+	var recipient := String(chosen.get("target_player_id", ""))
 	if _transport != null and _hosting:
 		# Empty recipient means the whole table.
-		_transport.send_ruling(check_call.to_dict())
-	_session.queue_called_check(check_call.to_dict())
+		_transport.send_ruling(check_call.to_dict(), recipient)
+	_session.queue_called_check(check_call.to_dict(), recipient)
 
 	_note_check_skill(skill_id)
 	# Logged because it is something the GM did, and it stands whether or not
 	# anybody answers it. A player's own request is not logged: if they roll, the
 	# roll carries the check, and if they change their mind nothing happened.
-	_session.append_event(CampaignSession.EVENT_CHECK, "", check_call.to_dict())
+	var call_payload := check_call.to_dict()
+	call_payload["target_name"] = "Everyone" if recipient.is_empty() else _session.character_name_for(recipient)
+	_session.append_event(CampaignSession.EVENT_CHECK, "", call_payload)
+	_broadcast_recent()
 	_store.save(_session)
 	_render_feed()
 	_render_shortcuts()
@@ -1588,7 +2157,7 @@ func _on_open_sheet_pressed(player_id: String) -> void:
 	await _router.push(CHARACTER_VIEW_ROUTE, {
 		"palette": _palette,
 		"rules": _rules,
-		"snapshot": _session.committed_character(player_id),
+		"snapshot": _combat_snapshot(player_id),
 		"player": String(seat.get("player_name", "")),
 	})
 
@@ -1785,7 +2354,10 @@ func _toggle_hosting() -> void:
 		_transport.action_check_received.connect(_on_action_check_received)
 		_transport.attack_resolved.connect(_on_attack_resolved)
 		_transport.defence_declared.connect(_on_defence_declared)
+		_transport.postpone_declared.connect(_on_postpone_declared)
+		_transport.phase_committed_received.connect(_on_phase_committed_received)
 		_transport.transport_error.connect(_on_transport_error)
+
 
 	if _transport.host(_session, EnetTransport.DEFAULT_PORT) != OK:
 		# The reason is already on screen, put there by _on_transport_error.
@@ -1890,10 +2462,16 @@ func _on_check_dismissed(_player_id: String, _check_id: String) -> void:
 ## Saved because the character lives on the seat: a GM who reopens the campaign
 ## next week should still see the sheet, rather than an empty row until that
 ## player happens to connect again.
-func _on_character_received(_player_id: String, _snapshot: Dictionary) -> void:
+func _on_character_received(player_id: String, snapshot: Dictionary) -> void:
 	_store.save(_session)
 	_summary_cache.clear()
+	if _fight != null and _fight.has_combatant(player_id):
+		var raw_char: Dictionary = CharacterSnapshot.character_of(snapshot)
+		if _rules != null and (_rules.combat.is_dead(raw_char) or _rules.combat.is_dying(raw_char) or _rules.combat.is_knocked_out(raw_char)):
+			_fight.knock_out(player_id, _rules.combat.condition_of(raw_char))
+			_publish_round()
 	_render_roster()
+	_render_npcs()
 
 
 func _on_transport_error(message: String) -> void:
@@ -1907,3 +2485,160 @@ func _exit_tree() -> void:
 	# Leaving the screen closes the table. A socket outliving the screen that owns
 	# it would keep answering for a campaign nobody is looking at.
 	_stop_hosting()
+
+
+# --- Campaign-owned NPCs ---------------------------------------------------
+
+func _combat_snapshot(id: String) -> Dictionary:
+	if _session.npcs.has(id):
+		return CharacterSnapshot.of_doc(CharacterDoc.from_dict(_rules, _session.npcs[id]))
+	return _session.committed_character(id)
+
+
+func _build_npcs(parent: Container) -> void:
+	var section := Widgets.section(parent, "GM characters / NPCs", _palette)
+	section.add_child(_small_button("Add NPC", _add_npc))
+	_npc_list = VBoxContainer.new()
+	section.add_child(_npc_list)
+
+
+func _render_npcs() -> void:
+	if _npc_list == null:
+		return
+	for child in _npc_list.get_children():
+		child.hide()
+		child.queue_free()
+	for id in _session.npcs:
+		var row := VBoxContainer.new()
+		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_npc_list.add_child(row)
+		var npc_name := String(_session.npcs[id].get("hero_name", "NPC"))
+		var head := HBoxContainer.new()
+		head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		head.add_theme_constant_override("separation", Widgets.GAP_ROW)
+		row.add_child(head)
+		PortraitView.add_to(head, String(_session.npcs[id].get("portrait", "")), npc_name, _palette, 48)
+		var open := _small_button(npc_name + " - sheet / checks", _open_npc.bind(id))
+		open.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		open.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		head.add_child(open)
+		row.add_child(_small_button("Attack this NPC", _on_attack_pressed.bind(id)))
+		if _fight != null and _fight.combatant(id).is_empty():
+			row.add_child(_small_button("Join combat", _join_npc.bind(id)))
+		var remove := _small_button("Remove", _remove_npc.bind(id))
+		remove.disabled = _fight != null and not _fight.combatant(id).is_empty()
+		row.add_child(remove)
+
+
+func _add_npc() -> void:
+	var doc := CharacterDoc.new(_rules)
+	doc.apply([CharacterDoc.META, CharacterDoc.OPTIONAL_RULES], func(c):
+		c["hero_name"] = "New NPC"
+		c["optional_rules"].merge(_session.get_campaign_optional_rules(), true))
+	var id := _session.add_npc(doc.to_dict())
+	_store.save(_session)
+	await _open_npc(id)
+
+
+func _open_npc(id: String) -> void:
+	await _router.push(preload("res://scenes/ui/routes/npc_sheet_route.tscn"), {
+		"session": _session, "store": _store, "npc_id": id,
+		"rules": _rules, "router": _router, "palette": _palette, "transport": _transport,
+	})
+	if is_instance_valid(self):
+		refresh()
+
+
+func _join_npc(id: String) -> void:
+	if _fight == null or not _session.npcs.has(id):
+		return
+	var doc := CharacterDoc.from_dict(_rules, _session.npcs[id])
+	var score: Dictionary = _rules.action_check(doc.raw())
+	_fight.add_combatant(id, doc.get_hero_name(), AlternityNum.as_int(score.get("actions", 1), 1), ActionRound.KIND_NPC)
+	_fight.combatant(id)["portrait"] = String(doc.raw().get("portrait", ""))
+	_publish_round()
+
+
+func _remove_npc(id: String) -> void:
+	var answer = await _router.push(preload("res://scenes/ui/routes/confirm_route.tscn"), {
+		"palette": _palette, "title": "Remove NPC", "message": "Remove this NPC from the campaign? Recorded rolls remain in the log.",
+		"confirm_text": "Remove",
+	})
+	if not is_instance_valid(self) or answer != true:
+		return
+	if _fight != null and not _fight.combatant(id).is_empty():
+		return
+	_session.remove_npc(id)
+	_store.save(_session)
+	refresh()
+
+
+func _open_roll_detail(event: Dictionary) -> void:
+	await _router.push(preload("res://scenes/ui/routes/roll_detail_route.tscn"), {
+		"palette": _palette, "event": event, "summary": _describe_event(event),
+	})
+
+
+func _resolve_npc_attack(attack: CombatAttack) -> void:
+	var id := attack.target_player_id
+	var doc := CharacterDoc.from_dict(_rules, _session.npcs[id])
+	var local := TableSession.new(null, null, null, _rules)
+	local.doc = doc
+	local.rules = _rules
+	var runner := CheckRunner.new(_rules, _router, _palette)
+	var absorbed := 0
+	attack.details["armor_rolls"] = []
+	if attack.hits():
+		for layer in _rules.combat.armor_layers(doc.raw(), attack.impact_type):
+			var rolled := await runner.roll_notation(String(layer.get("notation", "")), String(layer.get("name", "Armor")))
+			if not is_instance_valid(self) or rolled < 0:
+				return
+			attack.details["armor_rolls"].append(runner.last_notation.duplicate(true))
+			absorbed = maxi(absorbed, rolled)
+	var knockout := local.knockout_check_for(attack)
+	var outcome := local.apply_attack(attack, absorbed)
+	var down := false
+	if bool(knockout.get("required", false)) and not bool(outcome.get("negated", false)):
+		var skill: Dictionary = _rules.get_skill_by_id(AlternityNum.as_int(knockout.get("skill_id", -1)))
+		var check := SkillCheck.call_for(_rules.skill_label(skill), 0, String(knockout.get("reason", "")))
+		var rolled = await runner.run_called(check, doc, skill)
+		if not is_instance_valid(self):
+			return
+		if rolled != null:
+			down = not rolled.is_success()
+			attack.details["knockout_check"] = rolled.to_dict()
+	local.report_attack(attack, absorbed, outcome, down)
+	if _fight != null and _fight.state == ActionRound.STATE_ACTIVE:
+		_session.stage_npc_attack({
+			"npc_id": id,
+			"attack": attack.to_dict(),
+			"absorbed": absorbed,
+			"down": down,
+			"outcome": outcome,
+		})
+		_session.append_attack(id, attack.to_dict())
+		_store.save(_session)
+		_broadcast_recent()
+		refresh()
+		return
+
+	_session.npcs[id] = doc.to_dict()
+	_session.append_attack(id, attack.to_dict())
+	_store.save(_session)
+	_broadcast_recent()
+	if _fight != null and bool(attack.result.get("knocked_out", false)):
+		_fight.knock_out(id, String(attack.result.get("condition", "knocked out")))
+		_publish_round()
+	refresh()
+
+
+func _commit_staged_npc_attacks(persist: bool = true) -> void:
+	if _session == null:
+		return
+	var knockouts := _session.commit_staged_npc_attacks(_rules)
+	for ko in knockouts:
+		if _fight != null:
+			_fight.knock_out(String(ko.get("npc_id", "")), String(ko.get("condition", "knocked out")))
+	if persist:
+		_store.save(_session)
+		_broadcast_recent()

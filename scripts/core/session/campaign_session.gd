@@ -94,6 +94,8 @@ var active_round: Dictionary = {}
 var pending_check_requests: Array = []
 var pending_called_checks: Dictionary = {}
 var pending_attacks: Dictionary = {}
+var cancelled_attacks: Dictionary = {}
+var closing_state: Dictionary = {}
 
 ## skill_id -> how many times the GM has called for or ruled on that skill.
 ##
@@ -224,7 +226,8 @@ func public_seats() -> Array:
 		list.append({
 			"player_id": String(s.get("player_id", "")),
 			"player_name": String(s.get("player_name", "Player")),
-			"character_name": String(char_data.get("name", "")),
+			"character_name": String(char_data.get("hero_name", "")),
+			"portrait": String(char_data.get("portrait", "")),
 			"is_gm": bool(s.get("is_gm", false)),
 		})
 	return list
@@ -364,14 +367,19 @@ func queue_attack(attack: Dictionary, target_player_id: String) -> void:
 	pending_attacks[attack_id] = {
 		"target_player_id": target_player_id,
 		"attack": attack.duplicate(true),
+		"status": "pending",
+		"round_id": String(attack.get("round_id", "")),
+		"phase": String(attack.get("phase", "")),
 	}
 
 
-func pending_attacks_for(player_id: String) -> Array:
+func pending_attacks_for(player_id: String, include_prepared: bool = false) -> Array:
 	var out: Array = []
 	for attack_id in pending_attacks:
 		var entry = pending_attacks[attack_id]
 		if typeof(entry) != TYPE_DICTIONARY or String(entry.get("target_player_id", "")) != player_id:
+			continue
+		if not include_prepared and String(entry.get("status", "pending")) != "pending":
 			continue
 		var attack = entry.get("attack", {})
 		if typeof(attack) == TYPE_DICTIONARY:
@@ -379,12 +387,132 @@ func pending_attacks_for(player_id: String) -> Array:
 	return out
 
 
-func resolve_attack(attack_id: String, player_id: String) -> bool:
+func resolve_attack(attack_id: String, player_id: String, is_combat_phase: bool = false, resolved_data: Dictionary = {}) -> bool:
 	var entry = pending_attacks.get(attack_id, null)
 	if typeof(entry) != TYPE_DICTIONARY or String(entry.get("target_player_id", "")) != player_id:
 		return false
+	if is_combat_phase:
+		entry["status"] = "prepared"
+		entry["resolved"] = resolved_data.duplicate(true)
+		pending_attacks[attack_id] = entry
+	else:
+		pending_attacks.erase(attack_id)
+	return true
+
+
+func commit_attack(attack_id: String, player_id: String = "") -> bool:
+	var entry = pending_attacks.get(attack_id, null)
+	if typeof(entry) != TYPE_DICTIONARY:
+		return false
+	if not player_id.is_empty() and String(entry.get("target_player_id", "")) != player_id:
+		return false
+	pending_attacks.erase(attack_id)
+	if not closing_state.is_empty():
+		var pending: Array = closing_state.get("pending_attack_ids", [])
+		pending.erase(attack_id)
+		closing_state["pending_attack_ids"] = pending
+	return true
+
+
+func dismiss_pending_attack(attack_id: String) -> bool:
+	var entry = pending_attacks.get(attack_id, null)
+	if typeof(entry) != TYPE_DICTIONARY:
+		return false
+	if String(entry.get("status", "pending")) != "pending":
+		# As required, an already-resolved hit awaiting damage commit cannot be dismissed!
+		return false
+	cancelled_attacks[attack_id] = entry.duplicate(true)
 	pending_attacks.erase(attack_id)
 	return true
+
+
+func is_attack_cancelled(attack_id: String) -> bool:
+	return cancelled_attacks.has(attack_id)
+
+
+func begin_phase_closing(round_id: String, phase: String, operation_id: String = "") -> Dictionary:
+	var op_id := operation_id if not operation_id.is_empty() else new_id()
+	var prepared_ids: Array = []
+	var player_map: Dictionary = {}
+	for entry in prepared_attacks_for_phase(round_id, phase):
+		var aid: String = String(entry.get("attack_id", ""))
+		var target_pid: String = String(entry.get("target_player_id", ""))
+		if not aid.is_empty():
+			prepared_ids.append(aid)
+			if not target_pid.is_empty():
+				var list: Array = player_map.get(target_pid, [])
+				list.append(aid)
+				player_map[target_pid] = list
+	closing_state = {
+		"operation_id": op_id,
+		"round_id": round_id,
+		"phase": phase,
+		"started_at": int(Time.get_unix_time_from_system()),
+		"pending_attack_ids": prepared_ids,
+		"expected_player_attacks": player_map,
+	}
+	return closing_state.duplicate(true)
+
+
+func is_phase_closing() -> bool:
+	return not closing_state.is_empty()
+
+
+func closing_operation_id() -> String:
+	return String(closing_state.get("operation_id", ""))
+
+
+func acknowledge_closing_attack(operation_id: String, attack_id: String) -> void:
+	if String(closing_state.get("operation_id", "")) == operation_id:
+		var pending: Array = closing_state.get("pending_attack_ids", [])
+		pending.erase(attack_id)
+		closing_state["pending_attack_ids"] = pending
+
+
+func is_closing_complete(operation_id: String = "") -> bool:
+	if closing_state.is_empty():
+		return true
+	if not operation_id.is_empty() and String(closing_state.get("operation_id", "")) != operation_id:
+		return false
+	var pending: Array = closing_state.get("pending_attack_ids", [])
+	return pending.is_empty()
+
+
+func finish_phase_closing() -> void:
+	closing_state.clear()
+
+
+func cancel_phase_closing() -> void:
+	closing_state.clear()
+
+
+func unresolved_attacks_for_phase(round_id: String, phase: String) -> Array:
+	var out: Array = []
+	for attack_id in pending_attacks:
+		var entry = pending_attacks[attack_id]
+		if typeof(entry) != TYPE_DICTIONARY:
+			continue
+		if String(entry.get("round_id", "")) == round_id and String(entry.get("phase", "")) == phase:
+			if String(entry.get("status", "pending")) == "pending":
+				out.append(entry.duplicate(true))
+	return out
+
+
+func prepared_attacks_for_phase(round_id: String, phase: String) -> Array:
+	var out: Array = []
+	for attack_id in pending_attacks:
+		var entry = pending_attacks[attack_id]
+		if typeof(entry) != TYPE_DICTIONARY:
+			continue
+		var atk = entry.get("attack", {}) if typeof(entry.get("attack")) == TYPE_DICTIONARY else {}
+		var ent_round := String(entry.get("round_id", atk.get("round_id", "")))
+		var ent_phase := String(entry.get("phase", atk.get("phase", "")))
+		if ent_round == round_id and ent_phase == phase:
+			if String(entry.get("status", "pending")) == "prepared":
+				var item: Dictionary = entry.duplicate(true)
+				item["attack_id"] = attack_id
+				out.append(item)
+	return out
 
 
 # --- What this table checks ------------------------------------------------
@@ -430,6 +558,19 @@ func most_checked(limit: int = 6) -> Array:
 ## Append one event. Stamps time and a monotonic sequence number so the log
 ## stays ordered even when two events share a timestamp.
 func append_event(kind: String, player_id: String, payload: Dictionary) -> Dictionary:
+	payload = payload.duplicate(true)
+	if npcs.has(player_id):
+		payload["npc"] = true
+		var revealed := false
+		for entry in current_round().get("combatants", []):
+			if String(entry.get("id", "")) == player_id:
+				revealed = true
+		if not revealed:
+			payload["gm_only"] = true
+	if String(payload.get("character_name", "")).strip_edges().is_empty():
+		var seat := seat_for(player_id)
+		if npcs.has(player_id) or player_id.is_empty() or bool(seat.get("is_gm", false)) or not CharacterSnapshot.hero_name_of(seat.get("character_snapshot", {})).is_empty():
+			payload["character_name"] = character_name_for(player_id)
 	_last_seq += 1
 	var event := {
 		"seq": _last_seq,
@@ -440,6 +581,19 @@ func append_event(kind: String, player_id: String, payload: Dictionary) -> Dicti
 	}
 	events.append(event)
 	return event
+
+
+## Public identity only; never expose a character sheet to identify a log entry.
+func character_name_for(player_id: String) -> String:
+	if player_id.is_empty():
+		return "GM"
+	if npcs.has(player_id):
+		return String(npcs[player_id].get("hero_name", "NPC"))
+	var seat := seat_for(player_id)
+	if bool(seat.get("is_gm", false)):
+		return "GM"
+	var hero := CharacterSnapshot.hero_name_of(seat.get("character_snapshot", {})).strip_edges()
+	return hero if not hero.is_empty() else String(seat.get("player_name", "Departed character"))
 
 
 ## Record a completed roll. Takes the serialized RollResult, which is what
@@ -511,9 +665,27 @@ func visible_events_since(player_id: String, seq: int) -> Array:
 			continue
 		var payload = event.get("payload", {})
 		var to := String(payload.get("to", "")) if typeof(payload) == TYPE_DICTIONARY else ""
+		if typeof(payload) == TYPE_DICTIONARY and bool(payload.get("gm_only", false)):
+			continue
 		if to.is_empty() or to == player_id or String(event.get("player_id", "")) == player_id:
-			out.append(event)
+			out.append(public_event(event))
 	return out
+
+
+static func public_event(event: Dictionary) -> Dictionary:
+	var copy := event.duplicate(true)
+	var payload: Dictionary = copy.get("payload", {})
+	if bool(payload.get("npc", false)):
+		_redact_npc_scores(payload)
+	return copy
+
+
+static func _redact_npc_scores(data: Dictionary) -> void:
+	for key in ["ordinary", "good", "amazing", "player_step", "step_breakdown", "check_score", "character", "character_snapshot"]:
+		data.erase(key)
+	for value in data.values():
+		if value is Dictionary:
+			_redact_npc_scores(value)
 
 
 ## Highest sequence number issued, whether or not that event is still in memory.
@@ -656,6 +828,59 @@ func get_campaign_optional_rules() -> Dictionary:
 
 # --- Persistence -----------------------------------------------------------
 
+## NPCs belong to the host campaign, never to player seats.
+var npcs: Dictionary = {}
+var staged_npc_attacks: Array = []
+
+func add_npc(character: Dictionary) -> String:
+	var id := "npc_" + new_id()
+	npcs[id] = character.duplicate(true)
+	return id
+
+func remove_npc(id: String) -> bool:
+	return npcs.erase(id)
+
+func stage_npc_attack(attack_data: Dictionary) -> void:
+	staged_npc_attacks.append(attack_data.duplicate(true))
+
+func clear_staged_npc_attacks() -> void:
+	staged_npc_attacks.clear()
+
+func commit_staged_npc_attacks(rules: AlternityRules) -> Array:
+	var knockouts: Array = []
+	if staged_npc_attacks.is_empty():
+		return knockouts
+	for staged in staged_npc_attacks:
+		var id: String = String(staged.get("npc_id", ""))
+		var attack_dict: Dictionary = staged.get("attack", {})
+		var attack := CombatAttack.from_dict(attack_dict)
+		var absorbed: int = AlternityNum.as_int(staged.get("absorbed", 0))
+		var down: bool = bool(staged.get("down", false))
+		if not npcs.has(id) or attack == null:
+			continue
+		var doc := CharacterDoc.from_dict(rules, npcs[id])
+		if attack.hits():
+			var toughness: String = rules.combat.toughness_of(doc.raw())
+			doc.apply([CharacterDoc.DAMAGE], func(character):
+				return rules.apply_damage(
+					character,
+					attack.damage,
+					attack.track_name(),
+					absorbed,
+					attack.firepower,
+					toughness
+				)
+			)
+			npcs[id] = doc.to_dict()
+			var is_ko: bool = down or bool(rules.combat.is_knocked_out(doc.raw()))
+			if is_ko:
+				knockouts.append({
+					"npc_id": id,
+					"condition": rules.combat.condition_of(doc.raw())
+				})
+	staged_npc_attacks.clear()
+	return knockouts
+
 func to_dict() -> Dictionary:
 	return {
 		"format_version": format_version,
@@ -663,6 +888,8 @@ func to_dict() -> Dictionary:
 		"display_name": display_name,
 		"created_at": created_at,
 		"seats": seats.duplicate(true),
+		"npcs": npcs.duplicate(true),
+		"staged_npc_attacks": staged_npc_attacks.duplicate(true),
 		"events": events.duplicate(true),
 		"optional_rules": optional_rules.duplicate(true),
 		"check_counts": check_counts.duplicate(true),
@@ -670,6 +897,8 @@ func to_dict() -> Dictionary:
 		"pending_check_requests": pending_check_requests.duplicate(true),
 		"pending_called_checks": pending_called_checks.duplicate(true),
 		"pending_attacks": pending_attacks.duplicate(true),
+		"cancelled_attacks": cancelled_attacks.duplicate(true),
+		"closing_state": closing_state.duplicate(true),
 	}
 
 
@@ -680,6 +909,8 @@ static func from_dict(data: Dictionary) -> CampaignSession:
 	session.display_name = String(data.get("display_name", "New Campaign"))
 	session.created_at = AlternityNum.as_int(data.get("created_at", 0))
 
+	var npc_data = data.get("npcs", {})
+	session.npcs = npc_data.duplicate(true) if npc_data is Dictionary else {}
 	var seats_data = data.get("seats", [])
 	session.seats = seats_data.duplicate(true) if typeof(seats_data) == TYPE_ARRAY else []
 
@@ -700,4 +931,10 @@ static func from_dict(data: Dictionary) -> CampaignSession:
 	session.pending_called_checks = called.duplicate(true) if typeof(called) == TYPE_DICTIONARY else {}
 	var attacks = data.get("pending_attacks", {})
 	session.pending_attacks = attacks.duplicate(true) if typeof(attacks) == TYPE_DICTIONARY else {}
+	var cancelled = data.get("cancelled_attacks", {})
+	session.cancelled_attacks = cancelled.duplicate(true) if typeof(cancelled) == TYPE_DICTIONARY else {}
+	var closing = data.get("closing_state", {})
+	session.closing_state = closing.duplicate(true) if typeof(closing) == TYPE_DICTIONARY else {}
+	var staged = data.get("staged_npc_attacks", [])
+	session.staged_npc_attacks = staged.duplicate(true) if typeof(staged) == TYPE_ARRAY else []
 	return session

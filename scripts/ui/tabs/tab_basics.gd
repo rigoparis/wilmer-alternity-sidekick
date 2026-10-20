@@ -75,6 +75,17 @@ func _build_identity(container: Container) -> void:
 	var palette := ctx.palette
 	var rules: AlternityRules = ctx.rules
 	var box := Widgets.section(container, "Hero", palette)
+	PortraitView.add_to(box, String(doc.raw().get("portrait", "")), doc.get_hero_name(), palette, 112)
+	var picture := Button.new()
+	picture.text = "Choose portrait"
+	picture.custom_minimum_size.y = 42
+	picture.pressed.connect(_choose_portrait)
+	box.add_child(picture)
+	if not String(doc.raw().get("portrait", "")).is_empty():
+		var remove := Button.new()
+		remove.text = "Remove portrait"
+		remove.pressed.connect(func(): doc.apply([CharacterDoc.META], func(c): c.erase("portrait")))
+		box.add_child(remove)
 
 	_text_field(box, "Hero name", doc.get_hero_name(), func(value: String): doc.set_hero_name(value))
 	_text_field(box, "Player", doc.get_player_name(), func(value: String): doc.set_player_name(value))
@@ -86,6 +97,29 @@ func _build_identity(container: Container) -> void:
 	_build_setting_picker(box)
 
 	_build_age_picker(box)
+
+
+func _choose_portrait() -> void:
+	var dialog := FileDialog.new()
+	dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
+	dialog.access = FileDialog.ACCESS_FILESYSTEM
+	dialog.use_native_dialog = true
+	dialog.filters = PackedStringArray(["*.png,*.jpg,*.jpeg,*.webp ; Portrait images"])
+	add_child(dialog)
+	dialog.canceled.connect(dialog.queue_free)
+	dialog.file_selected.connect(func(path: String):
+		var result := CharacterPortrait.import_file(path)
+		dialog.queue_free()
+		if result.has("error"):
+			var notice := AcceptDialog.new()
+			notice.dialog_text = String(result["error"])
+			add_child(notice)
+			notice.confirmed.connect(notice.queue_free)
+			notice.canceled.connect(notice.queue_free)
+			notice.popup_centered()
+			return
+		ctx.doc.apply([CharacterDoc.META], func(c): c["portrait"] = result["portrait"]))
+	dialog.popup_centered_ratio(0.8)
 
 
 func _build_career_packages(parent: Container) -> void:

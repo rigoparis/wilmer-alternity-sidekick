@@ -310,6 +310,7 @@ func _build_card(entry: Dictionary) -> void:
 	box.add_theme_constant_override("separation", Widgets.GAP_ROW)
 	margin.add_child(box)
 
+	PortraitView.add_to(box, String(entry.get("portrait", "")), String(entry.get("hero_name", "Unnamed")), _palette)
 	Widgets.text(box, String(entry.get("hero_name", "Unnamed")), _palette, Widgets.FONT_SECTION_TITLE)
 	Widgets.muted_text(box, _describe(entry), _palette, Widgets.FONT_CAPTION)
 

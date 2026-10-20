@@ -147,7 +147,7 @@ func _build_seats(parent: Container) -> void:
 		if bool(seat.get("is_gm", false)):
 			continue
 		var player_id := String(seat.get("player_id", ""))
-		var player_name := String(seat.get("player_name", "Someone"))
+		var player_name := String(seat.get("player_name", "Character"))
 
 		var row := HBoxContainer.new()
 		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL

@@ -45,8 +45,10 @@ func _init() -> void:
 	_test_promotion()
 	_test_firepower_upgrade()
 	_test_knockout_check()
+	_test_action_ledger()
 
 	finish()
+
 
 
 ## Three combatants with enough actions to reach every phase, so a test that is
@@ -589,3 +591,127 @@ func _test_knockout_check() -> void:
 		String(_rules.amazing_damage_knockout(hero, "amazing", false, true).get("reason", "")).to_lower().contains("armor"),
 		"which it says, since the GM is the one who told it so"
 	)
+
+
+## Real action budgets, postponement, and phase economy established by table policy.
+func _test_action_ledger() -> void:
+	# 1. 2 APR / Amazing acts in Good and Marginal, skipping Amazing and Ordinary.
+	var vet_round := Round.new()
+	vet_round.add_combatant("vet", "Veteran", 2)
+	vet_round.record_check("vet", "Amazing", 14, 2)
+	vet_round.start()
+
+	check_eq(vet_round.phase(), "amazing", "starts in Amazing phase")
+	check_eq(vet_round.current_actor().get("id", ""), "vet", "vet is first actor in Amazing")
+	check_eq(vet_round.status_in_phase("vet", "amazing"), Round.STATUS_WAITING, "waiting to act in Amazing")
+	check_eq(vet_round.actions_remaining("vet"), 2, "2 actions remaining in budget")
+	check_eq(vet_round.opportunities_remaining("vet"), 2, "2 opportunities remaining in round")
+
+	# Vet postpones in Amazing
+	check_true(vet_round.postpone("vet"), "vet postpones in Amazing")
+	check_eq(vet_round.status_in_phase("vet", "amazing"), Round.STATUS_POSTPONED, "marked postponed in Amazing")
+	check_eq(vet_round.actions_remaining("vet"), 2, "postponing preserves remaining budget")
+	check_true(vet_round.postpone("vet"), "postponing is idempotent")
+	check_eq(vet_round.actions_remaining("vet"), 2, "idempotent postpone does not deduct")
+
+	# Advance to Good
+	vet_round.advance_phase()
+	check_eq(vet_round.phase(), "good", "advanced to Good phase")
+	check_eq(vet_round.current_actor().get("id", ""), "vet", "vet is up to act in Good")
+	check_eq(vet_round.status_in_phase("vet", "good"), Round.STATUS_WAITING, "waiting to act in Good")
+
+	# Vet acts in Good
+	check_true(vet_round.act("vet"), "vet acts in Good")
+	check_eq(vet_round.status_in_phase("vet", "good"), Round.STATUS_COMPLETED, "action completed in Good")
+	check_eq(vet_round.actions_remaining("vet"), 1, "1 action slot spent, 1 remaining")
+	check_true(vet_round.act("vet"), "acting is idempotent")
+	check_eq(vet_round.actions_remaining("vet"), 1, "idempotent act does not deduct second slot")
+
+	# Advance to Ordinary: vet does not act, so advance_phase automatically postpones
+	vet_round.advance_phase()
+	check_eq(vet_round.phase(), "ordinary", "advanced to Ordinary phase")
+	check_eq(vet_round.status_in_phase("vet", "ordinary"), Round.STATUS_WAITING, "waiting to act in Ordinary")
+	vet_round.advance_phase()
+
+	# Now in Marginal
+	check_eq(vet_round.phase(), "marginal", "advanced to Marginal phase")
+	check_eq(vet_round.status_in_phase("vet", "ordinary"), Round.STATUS_POSTPONED, "unacted Ordinary was postponed")
+	check_eq(vet_round.actions_remaining("vet"), 1, "vet still has 1 action for Marginal")
+	check_eq(vet_round.status_in_phase("vet", "marginal"), Round.STATUS_WAITING, "waiting to act in Marginal")
+
+	# Vet acts in Marginal
+	check_true(vet_round.act("vet"), "vet acts in Marginal")
+	check_eq(vet_round.status_in_phase("vet", "marginal"), Round.STATUS_COMPLETED, "completed in Marginal")
+	check_eq(vet_round.actions_remaining("vet"), 0, "all 2 budget actions spent")
+
+	# Advance beyond Marginal: round is finished
+	vet_round.advance_phase()
+	check_true(vet_round.is_finished(), "round is finished")
+	check_eq(vet_round.actions_remaining("vet"), 0, "actions expired at round end")
+
+	# 2. 3 APR / Ordinary has only Ordinary and Marginal available; cannot act in Amazing or Good.
+	var brawler_round := Round.new()
+	brawler_round.add_combatant("brawler", "Brawler", 3)
+	brawler_round.record_check("brawler", "Ordinary", 12, 10)
+	brawler_round.start()
+
+	check_false(brawler_round.can_act_in("brawler", "amazing"), "brawler cannot act in Amazing")
+	check_false(brawler_round.can_act_in("brawler", "good"), "brawler cannot act in Good")
+	check_true(brawler_round.can_act_in("brawler", "ordinary"), "brawler can act in Ordinary")
+	check_eq(brawler_round.opportunities_remaining("brawler"), 2, "capped by 2 eligible phases (Ordinary, Marginal)")
+
+	brawler_round.advance_phase() # to Good
+	brawler_round.advance_phase() # to Ordinary
+	check_eq(brawler_round.phase(), "ordinary", "now in Ordinary")
+	check_true(brawler_round.act("brawler"), "brawler acts in Ordinary")
+	check_eq(brawler_round.actions_remaining("brawler"), 2, "2 actions remaining of 3")
+
+	brawler_round.advance_phase() # to Marginal
+	check_eq(brawler_round.phase(), "marginal", "now in Marginal")
+	check_true(brawler_round.act("brawler"), "brawler acts in Marginal")
+	check_eq(brawler_round.actions_remaining("brawler"), 1, "1 action remaining of 3")
+
+	# Round finishes: unspent 1 action expires, does not squeeze extra action
+	brawler_round.advance_phase()
+	check_true(brawler_round.is_finished(), "round finished after Marginal")
+	check_eq(brawler_round.actions_remaining("brawler"), 0, "unspent actions expire at round end")
+
+	# 3. Test undo_action
+	var undo_round := Round.new()
+	undo_round.add_combatant("scout", "Scout", 2)
+	undo_round.record_check("scout", "Good", 13, 5)
+	undo_round.start()
+	undo_round.advance_phase() # to Good
+	check_true(undo_round.act("scout"), "scout acts in Good")
+	check_eq(undo_round.actions_remaining("scout"), 1, "actions remaining is 1")
+	check_true(undo_round.undo_action("scout"), "undo action in Good")
+	check_eq(undo_round.actions_remaining("scout"), 2, "actions remaining restored to 2")
+	check_eq(undo_round.status_in_phase("scout", "good"), Round.STATUS_WAITING, "status restored to waiting")
+
+	# 4. Serialization roundtrip preserves action ledger state
+	var serialized := undo_round.to_dict()
+	var loaded := Round.from_dict(serialized)
+	check_eq(loaded.actions_remaining("scout"), 2, "serialized round preserves actions remaining")
+	check_eq(loaded.status_in_phase("scout", "good"), Round.STATUS_WAITING, "serialized round preserves status")
+
+	# 5. Version-1 legacy round migration does not refund past spent actions
+	var legacy_round_dict := {
+		"format_version": 1,
+		"round_id": "leg-1",
+		"state": Round.STATE_ACTIVE,
+		"phase_index": 2,
+		"combatants": [{
+			"id": "leg_vet",
+			"name": "Legacy Vet",
+			"kind": Round.KIND_PLAYER,
+			"degree": "Good",
+			"check_score": 14,
+			"actions": 2,
+			"base_actions": 2,
+			"out": false,
+		}]
+	}
+	var migrated := Round.from_dict(legacy_round_dict)
+	check_eq(migrated.phase(), "ordinary", "migrated round is in Ordinary")
+	check_eq(migrated.status_in_phase("leg_vet", "good"), Round.STATUS_COMPLETED, "past eligible Good phase marked completed")
+	check_eq(migrated.actions_remaining("leg_vet"), 1, "past Good action not refunded (remaining=1, not 2)")

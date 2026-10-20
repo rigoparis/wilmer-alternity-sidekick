@@ -52,12 +52,16 @@ func _run() -> void:
 	await _test_ap_lands_on_the_committed_hero()
 	await _test_a_round_of_combat()
 	await _test_an_attack_lands()
+	await _test_simultaneous_phase_damage()
+	await _test_staged_damage_crash_recovery()
 	await _test_defending()
+
 	await _test_the_scene_ends()
 	await _test_automatic_reconnect()
 	await _test_back_from_table_confirms()
 	await _test_reconnect_loses_nothing()
 	await _test_cold_start_recovers_pending_work()
+	await _test_protocol_resilience_and_isolation()
 	await _test_leaving_closes_the_table()
 
 	_teardown()
@@ -302,7 +306,7 @@ func _test_roll_reaches_the_gm_feed() -> void:
 	check_true(lines.size() > 0, "the GM's feed has something in it")
 	check_true(String(lines[0]).contains("Action check"), "the newest line is the roll")
 	check_true(String(lines[0]).contains("20"), "showing its total")
-	check_true(String(lines[0]).contains("Alice"), "and naming the player, not an id")
+	check_true(String(lines[0]).contains(_table().doc.get_hero_name()), "and naming the character, not an id")
 
 	# And it must be on disk without waiting for anyone to press save.
 	var stored = _gm_shell.campaigns.load_session(_gm_screen().session().campaign_id)
@@ -389,7 +393,7 @@ func _test_ap_lands_on_the_committed_hero() -> void:
 	check_true(lines.size() > 0, "the player's feed has something in it")
 	check_true(String(lines[0]).contains("3 AP"), "and shows the award")
 	check_true(String(lines[0]).contains(Session.AP_REASON_HEROISM), "and what it was for")
-	check_true(String(lines[0]).begins_with("You"), "addressed to them rather than to an id")
+	check_true(String(lines[0]).begins_with(table.doc.get_hero_name()), "addressed by character name rather than an id")
 
 	# The GM's copy is a ledger of what was given, not a second copy of the
 	# character. Both counting the same points is correct.
@@ -410,7 +414,7 @@ func _test_a_round_of_combat() -> void:
 	if not check(gm != null and table != null, "the GM and a player are at the table"):
 		return
 
-	gm._on_start_combat_pressed()
+	await _start_selected_combat(gm)
 	var started := await _wait_for(func(): return table.active_round != null)
 	check_true(started, "starting combat reaches the player")
 	if not started:
@@ -587,6 +591,149 @@ func _test_an_attack_lands() -> void:
 	await _wait_for(func(): return _table().active_round == null)
 
 
+func _test_simultaneous_phase_damage() -> void:
+	var gm = _gm_screen()
+	var table = _table()
+	if not check(gm != null and table != null and table.doc != null, "a player is at the table with a hero"):
+		return
+
+	# Start combat round
+	gm._fight = ActionRound.new(1)
+	gm._fight.add_combatant(_joined_player_id, "Player", 2, ActionRound.KIND_PLAYER)
+	gm._fight.record_check(_joined_player_id, "good", 14, 5)
+	gm._publish_round()
+	gm._on_start_round_pressed()
+	gm._on_advance_phase_pressed() # Now in Good phase
+
+	var running := await _wait_for(func(): return table.active_round != null and table.active_round.phase() == "good")
+	check_true(running, "combat is in Good phase on player side")
+	if not running:
+		return
+
+	var before_wound := AlternityNum.as_int(table.doc.raw().get("damage", {}).get("wound", 0))
+
+	# Attack declared in Good phase against player
+	var attack := CombatAttack.declare(_joined_player_id, "Alien", "Plasma blast", "Good", 6, "w", "hi", "O")
+	attack.round_id = gm._fight.round_id
+	attack.phase = "good"
+	gm.transport().send_attack(attack.to_dict(), _joined_player_id)
+
+	var arrived := await _wait_for(func(): return not _table().incoming_attacks.is_empty())
+	check_true(arrived, "combat attack reaches player")
+	if not arrived:
+		return
+
+	var landed: CombatAttack = table.next_attack()
+	check_eq(landed.phase, "good", "attack carries active phase")
+
+	# Player resolves attack with 2 points absorbed
+	var outcome: Dictionary = table.apply_attack(landed, 2)
+	check_true(table.is_phase_staging_active(landed), "phase staging is active during combat phase")
+	check_true(table.has_staged_damage(), "attack damage is staged")
+	check_eq(
+		AlternityNum.as_int(table.doc.raw().get("damage", {}).get("wound", 0)), before_wound,
+		"player doc is untouched during the phase per PHB p. 50 simultaneous resolution"
+	)
+	check_eq(table.rules.dazed_penalty(table.doc.raw()), 0, "no same-phase dazed penalty applied to player doc")
+
+
+	table.report_attack(landed, 2, outcome)
+	var resolved_by_gm := await _wait_for(func():
+		return _gm_screen().session().pending_attacks_for(_joined_player_id).is_empty()
+	)
+	check_true(resolved_by_gm, "attack resolved on GM session")
+
+	# GM advances phase from Good to Ordinary
+	_gm_screen()._on_advance_phase_pressed()
+	var advanced := await _wait_for(func(): return table.active_round != null and table.active_round.phase() == "ordinary")
+
+	check_true(advanced, "phase advances to ordinary on player side")
+
+	check_false(table.has_staged_damage(), "staged damage committed upon phase advance")
+	check_eq(
+		AlternityNum.as_int(table.doc.raw().get("damage", {}).get("wound", 0)), before_wound + 4,
+		"committed damage now appears on player doc in next phase"
+	)
+
+	# Clean up combat
+	_gm_screen()._on_end_combat_pressed()
+	await _wait_for(func(): return table.active_round == null)
+
+
+func _test_staged_damage_crash_recovery() -> void:
+	var gm = _gm_screen()
+	var table = _table()
+	if not check(gm != null and table != null and table.doc != null, "player and GM are ready"):
+		return
+
+	# Start combat round in Good phase
+	gm._fight = ActionRound.new(2)
+	gm._fight.add_combatant(_joined_player_id, "Player", 2, ActionRound.KIND_PLAYER)
+	gm._fight.record_check(_joined_player_id, "good", 14, 5)
+	gm._publish_round()
+	gm._on_start_round_pressed()
+	gm._on_advance_phase_pressed() # Good phase
+
+	var running := await _wait_for(func(): return table.active_round != null and table.active_round.phase() == "good")
+	if not check(running, "combat is in Good phase"):
+		return
+
+	# Reset damage on doc so we test clean staging without hitting track caps
+	table.doc.apply([CharacterDoc.DAMAGE], func(c):
+		c["damage"] = {"stun": 0, "wound": 0, "mortal": 0, "fatigue": 0}
+		c["applied_attacks"] = []
+	)
+	table.store.save(table.doc)
+	var before_wound := AlternityNum.as_int(table.doc.raw().get("damage", {}).get("wound", 0))
+
+	# Attack declared in Good phase
+	var attack := CombatAttack.declare(_joined_player_id, "Boss", "Heavy Laser", "Good", 6, "w", "hi", "O")
+	attack.round_id = gm._fight.round_id
+	attack.phase = "good"
+	gm.transport().send_attack(attack.to_dict(), _joined_player_id)
+
+	var arrived := await _wait_for(func(): return not _table().incoming_attacks.is_empty())
+	if not check(arrived, "heavy attack reaches player"):
+		return
+
+	var landed: CombatAttack = table.next_attack()
+	var outcome: Dictionary = table.apply_attack(landed, 2)
+	table.report_attack(landed, 2, outcome)
+
+	check_true(table.has_staged_damage(), "attack is staged in memory")
+	check_eq(AlternityNum.as_int(table.doc.raw().get("damage", {}).get("wound", 0)), before_wound, "doc unchanged before commit")
+
+	# Simulate crash / process restart by constructing a fresh TableSession with a fresh PlayerIdentity loaded from disk
+	var cid: String = table.campaign_id()
+	var reloaded_ident := PlayerIdentity.new(table.identity.directory())
+	var fresh_doc = table.store.load_doc(table.doc.source_file)
+	var fresh_session := TableSession.new(null, reloaded_ident, table.store, table.rules, table.campaign_name)
+	fresh_session.doc = fresh_doc
+
+	check_true(fresh_session.has_staged_damage(), "fresh session recovers staged attacks from uncommitted journal")
+	check_eq(AlternityNum.as_int(fresh_doc.raw().get("damage", {}).get("wound", 0)), before_wound, "fresh doc still has uncommitted wounds")
+
+	# Reconcile from host where attack is still pending or not should NOT erase uncommitted attacks
+	reloaded_ident.reconcile_attacks(cid, [])
+	check_false(reloaded_ident.uncommitted_attacks(cid).is_empty(), "reconciliation refuses to erase uncommitted attacks")
+
+	# Commit staged damage on fresh session
+	fresh_session.commit_staged_damage()
+	check_eq(AlternityNum.as_int(fresh_doc.raw().get("damage", {}).get("wound", 0)), before_wound + 4, "committed damage applied to character")
+	check_true(reloaded_ident.uncommitted_attacks(cid).is_empty(), "uncommitted journal cleared after commit")
+	check_true(fresh_doc.has_applied_attack(landed.attack_id), "character doc marks applied attack ID")
+
+	# Re-commit / repeated crash recovery does not reapply duplicate damage
+	fresh_session.commit_staged_damage()
+	check_eq(AlternityNum.as_int(fresh_doc.raw().get("damage", {}).get("wound", 0)), before_wound + 4, "no duplicate damage on re-commit")
+
+	# Clean up combat
+	_gm_screen()._on_end_combat_pressed()
+	await _wait_for(func(): return table.active_round == null)
+
+
+
+
 ## Depth-first search for a named node, for asserting a screen built a control.
 func _find_named(node: Node, wanted: String) -> Node:
 	if node.name == wanted:
@@ -615,7 +762,7 @@ func _test_defending() -> void:
 	if not check(gm != null and table != null and table.doc != null, "a player is at the table"):
 		return
 
-	gm._on_start_combat_pressed()
+	await _start_selected_combat(gm)
 	var started := await _wait_for(func(): return _table().active_round != null)
 	if not check(started, "combat starts"):
 		return
@@ -715,6 +862,8 @@ func _test_defending() -> void:
 	check_true(reported, "and the GM is told it was turned aside")
 
 	# A new round is a new dodge: it covers this one and no more.
+	while not _gm_screen()._fight.is_finished():
+		await _gm_screen()._on_advance_phase_pressed()
 	_gm_screen()._on_next_round_pressed()
 	var fresh := await _wait_for(func():
 		return _table().active_round != null and _table().active_round.number > 1)
@@ -832,7 +981,7 @@ func _test_reconnect_loses_nothing() -> void:
 	var campaign_id: String = _gm_screen().session().campaign_id
 	# Leave while initiative is still owed. Rejoining has to restore this current
 	# state, not merely the event history.
-	_gm_screen()._on_start_combat_pressed()
+	await _start_selected_combat(_gm_screen())
 	var rolling := await _wait_for(func(): return table.active_round != null and table.owes_action_check())
 	check_true(rolling, "initiative is waiting when the player disconnects")
 	var seq_before: int = AlternityNum.as_int(
@@ -976,6 +1125,144 @@ func _test_cold_start_recovers_pending_work() -> void:
 	check_true(settled, "the recovered result settles the GM's pending attack")
 
 
+func _test_protocol_resilience_and_isolation() -> void:
+	var tbl = _table()
+	if not check(tbl != null, "table session exists for protocol resilience test"):
+		return
+	var cid: String = tbl.campaign_id()
+	check_false(cid.is_empty(), "table has active campaign ID")
+
+	var received_packets: Array = []
+	var listener = func(pid: String, data: Dictionary):
+		received_packets.append({"player_id": pid, "data": data})
+	_gm_screen().transport().phase_committed_received.connect(listener)
+
+	# 1. Misses: repeatable acknowledgments
+	var miss_atk := CombatAttack.declare(_joined_player_id, "Enemy", "Pistol", "Failure", 0, "s", "li", "O")
+	miss_atk.round_id = "test-round-1"
+	miss_atk.phase = "ordinary"
+	tbl.apply_attack(miss_atk, 0)
+	check_true(tbl.identity.has_attack_applied(cid, miss_atk.attack_id), "miss recorded in identity applied")
+
+	received_packets.clear()
+	tbl._on_phase_commit_requested("test-round-1", "ordinary", "op-1", [miss_atk.attack_id])
+	var arrived: bool = await _wait_for(func(): return not received_packets.is_empty())
+	check_true(arrived, "phase commit arrived at GM for miss")
+	if not received_packets.is_empty():
+		var ack_ids: Array = received_packets[0]["data"].get("attack_ids", [])
+		check_true(ack_ids.has(miss_atk.attack_id), "miss attack ID acknowledged on first commit request")
+
+	# Retry of commit request for miss
+	received_packets.clear()
+	tbl._on_phase_commit_requested("test-round-1", "ordinary", "op-1", [miss_atk.attack_id])
+	arrived = await _wait_for(func(): return not received_packets.is_empty())
+	check_true(arrived, "retry phase commit arrived at GM for miss")
+	if not received_packets.is_empty():
+		var retry_ids: Array = received_packets[0]["data"].get("attack_ids", [])
+		check_true(retry_ids.has(miss_atk.attack_id), "miss attack ID acknowledged on retry commit request")
+
+	# 2. Hit attack: staged, committed, and retry repeatable acknowledgment
+	var hit_atk := CombatAttack.declare(_joined_player_id, "Enemy", "Laser", "Good", 3, "w", "hi", "O")
+	hit_atk.round_id = "test-round-1"
+	hit_atk.phase = "ordinary"
+	if tbl.active_round == null:
+		tbl.active_round = ActionRound.new(1)
+		tbl.active_round.round_id = "test-round-1"
+		tbl.active_round.state = ActionRound.STATE_ACTIVE
+		tbl.active_round.phase_index = ActionRound.PHASES.find("ordinary")
+	tbl.apply_attack(hit_atk, 0)
+	check_true(tbl.has_staged_damage(), "hit attack is staged")
+	var commit_res: Dictionary = tbl.commit_staged_damage()
+	check_true(bool(commit_res.get("ok", false)), "staged damage commit succeeded")
+
+	received_packets.clear()
+	tbl._on_phase_commit_requested("test-round-1", "ordinary", "op-2", [hit_atk.attack_id])
+	arrived = await _wait_for(func(): return not received_packets.is_empty())
+	check_true(arrived, "phase commit arrived at GM for hit")
+	if not received_packets.is_empty():
+		var ack_hit_ids: Array = received_packets[0]["data"].get("attack_ids", [])
+		check_true(ack_hit_ids.has(hit_atk.attack_id), "hit attack ID acknowledged after commit")
+
+	# Retry of commit request for hit after staged attacks cleared
+	received_packets.clear()
+	tbl._on_phase_commit_requested("test-round-1", "ordinary", "op-2", [hit_atk.attack_id])
+	arrived = await _wait_for(func(): return not received_packets.is_empty())
+	check_true(arrived, "retry phase commit arrived at GM for hit")
+	if not received_packets.is_empty():
+		var retry_hit_ids: Array = received_packets[0]["data"].get("attack_ids", [])
+		check_true(retry_hit_ids.has(hit_atk.attack_id), "hit attack ID acknowledged on retry after memory cleared")
+
+	_gm_screen().transport().phase_committed_received.disconnect(listener)
+
+	# 3. Two-campaign and two-character isolation
+	var bound_key: String = tbl._character_key()
+	var saved_source: String = tbl.doc.source_file
+	tbl.doc.source_file = "renamed-character.json"
+	check_eq(tbl._character_key(), bound_key, "renaming the character file preserves pending-effect identity")
+	var renamed_copy := CharacterDoc.from_dict(tbl.rules, tbl.doc.to_dict(), "renamed-character.json")
+	check_eq(String(renamed_copy.raw().get("combat_character_key", "")), bound_key, "stable combat identity survives character serialization")
+	tbl.doc.source_file = saved_source
+	var own_progress: Dictionary = tbl.identity.attack_progress(cid, hit_atk.attack_id)
+	check_true(tbl._can_acknowledge_attack(own_progress, "test-round-1", "ordinary"), "durable own commit can be acknowledged")
+	var wrong_hero := own_progress.duplicate(true)
+	wrong_hero["character_key"] = "another-character.json"
+	check_false(tbl._can_acknowledge_attack(wrong_hero, "test-round-1", "ordinary"), "another character's result cannot be acknowledged")
+	var only_prepared := own_progress.duplicate(true)
+	only_prepared["committed"] = false
+	check_false(tbl._can_acknowledge_attack(only_prepared, "test-round-1", "ordinary"), "prepared is not proof of durable commit")
+	check_false(tbl._can_acknowledge_attack(own_progress, "old-round", "ordinary"), "wrong round cannot be acknowledged")
+	var cancelled_progress := own_progress.duplicate(true)
+	cancelled_progress["cancelled"] = true
+	check_false(tbl._can_acknowledge_attack(cancelled_progress, "test-round-1", "ordinary"), "cancelled work cannot be acknowledged")
+	var other_camp := "campaign_isolation_test"
+	var other_char_key := "OtherHero.json"
+	var foreign_atk := CombatAttack.declare("foreign_player", "Enemy", "Blaster", "Good", 5, "w", "hi", "O")
+	tbl.identity.remember_attack_applied(other_camp, foreign_atk.to_dict(), 0, {"wound": 5}, false, other_char_key, "foreign_player")
+
+	var foreign_uncommitted: Array = tbl.identity.uncommitted_attacks(cid, tbl._character_key())
+	for item in foreign_uncommitted:
+		var a: Dictionary = item.get("attack", {})
+		check_false(String(a.get("attack_id", "")) == foreign_atk.attack_id, "foreign attack is never recovered in active campaign")
+
+	var other_uncommitted: Array = tbl.identity.uncommitted_attacks(other_camp, tbl._character_key())
+	check_true(other_uncommitted.is_empty(), "different character in other campaign has no uncommitted attacks")
+
+	# 4. Storage failure handling
+	var original_store = tbl.store
+	var mock_script := GDScript.new()
+	mock_script.source_code = "extends \"res://scripts/core/character_store.gd\"\nfunc save(_doc): return {'ok': false, 'reason': 'Simulated disk failure'}\n"
+	mock_script.reload()
+	tbl.store = mock_script.new("user://tmp_fail/")
+
+	var fail_atk := CombatAttack.declare(_joined_player_id, "Enemy", "Laser", "Good", 2, "w", "hi", "O")
+	fail_atk.round_id = "test-round-fail"
+	fail_atk.phase = "ordinary"
+	if tbl.active_round != null:
+		tbl.active_round.round_id = "test-round-fail"
+	tbl.apply_attack(fail_atk, 0)
+	check_true(tbl.has_staged_damage(), "staged damage present for save failure test")
+
+	var failed_commit: Dictionary = tbl.commit_staged_damage()
+	check_false(bool(failed_commit.get("ok", true)), "commit_staged_damage reports failure when store.save fails")
+	check_true(tbl.has_staged_damage(), "staged attacks retained in memory on store save failure")
+	check_false(tbl.identity.is_attack_committed(cid, fail_atk.attack_id), "journal entry not marked committed on save failure")
+
+	# Commit request withholds acknowledgment when commit fails
+	var failed_commit_ack: Array = []
+	var fail_listener = func(pid: String, data: Dictionary): failed_commit_ack.append({"player_id": pid, "data": data})
+	_gm_screen().transport().phase_committed_received.connect(fail_listener)
+	tbl._on_phase_commit_requested("test-round-fail", "ordinary", "op-fail", [fail_atk.attack_id])
+	await process_frame
+	await process_frame
+	check_true(failed_commit_ack.is_empty(), "commit acknowledgment withheld when character save fails")
+	_gm_screen().transport().phase_committed_received.disconnect(fail_listener)
+
+	# Restore real store and clear fail_atk
+	tbl.store = original_store
+	var success_commit: Dictionary = tbl.commit_staged_damage()
+	check_true(bool(success_commit.get("ok", false)), "commit succeeds when real store restored")
+
+
 func _test_leaving_closes_the_table() -> void:
 	# Closing the campaign must take the socket with it, or the GM's device keeps
 	# answering for a campaign nobody is looking at.
@@ -1004,3 +1291,15 @@ func _test_leaving_closes_the_table() -> void:
 		await process_frame
 	check_eq(welcomes.size(), 0, "and nobody can join a closed table")
 	lonely.leave()
+
+
+func _start_selected_combat(gm) -> void:
+	gm._on_start_combat_pressed()
+	await process_frame
+	var picker = gm._router._host.top_route()
+	if picker != null and picker.get("_confirm") != null:
+		picker._confirm.pressed.emit()
+	await process_frame
+	await process_frame
+	gm._router.pop()
+	await process_frame

@@ -266,3 +266,22 @@ func set_ability(ability: StringName, value: int) -> void:
 	_rules.clamp_trackers(_data)
 	# Abilities feed skills, durability, equipment loads and action checks.
 	_invalidate(ALL)
+
+
+func has_applied_attack(attack_id: String) -> bool:
+	if attack_id.is_empty():
+		return false
+	var list = _data.get("applied_attacks", [])
+	return list is Array and list.has(attack_id)
+
+
+func record_applied_attack(attack_id: String) -> void:
+	if attack_id.is_empty():
+		return
+	var list = _data.get("applied_attacks", [])
+	if not (list is Array):
+		list = []
+	if not list.has(attack_id):
+		list.append(attack_id)
+		_data["applied_attacks"] = list
+		_dirty = true

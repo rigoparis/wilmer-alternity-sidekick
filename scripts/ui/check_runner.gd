@@ -30,6 +30,9 @@ const TRAY_ROUTE := preload("res://scenes/ui/routes/dice_tray_route.tscn")
 const CHECK_STEP_ROUTE := preload("res://scenes/ui/routes/check_step_route.tscn")
 const CHECK_WAITING_ROUTE := preload("res://scenes/ui/routes/check_waiting_route.tscn")
 
+var last_notation: Dictionary = {}
+var last_check: Dictionary = {}
+
 var _rules: AlternityRules
 var _router: UiRouter
 var _palette: ThemePalette
@@ -108,6 +111,7 @@ func run(doc: CharacterDoc, skill: Dictionary):
 
 ## Roll a check the GM asked for. `check` arrives with its step already set.
 func run_called(check: SkillCheck, doc: CharacterDoc, skill: Dictionary):
+	last_check = {}
 	if doc == null or check == null:
 		return null
 	var score: Dictionary = _rules.skill_score(doc.raw(), skill)
@@ -166,6 +170,7 @@ func run_requisition_check(doc: CharacterDoc, options: Dictionary = {}):
 	check.good = AlternityNum.as_int(score.get("good", 5))
 	check.amazing = AlternityNum.as_int(score.get("amazing", 2))
 	check.player_step = AlternityNum.as_int(score.get("step", 0))
+	check.step_breakdown = score.get("step_breakdown", []).duplicate(true)
 
 	if not check.is_rollable():
 		return null
@@ -182,6 +187,7 @@ func run_requisition_check(doc: CharacterDoc, options: Dictionary = {}):
 ## zero -- rolling no armor at all and walking away from the tray are different
 ## answers.
 func roll_notation(notation: String, label: String) -> int:
+	last_notation = {}
 	if _router == null:
 		return -1
 	var term := DiceNotation.parse(notation)
@@ -195,6 +201,8 @@ func roll_notation(notation: String, label: String) -> int:
 	})
 	if typeof(outcome) != TYPE_DICTIONARY or not outcome.has("total"):
 		return -1
+	last_notation = outcome.duplicate(true)
+	last_notation["label"] = label
 	return AlternityNum.as_int(outcome.get("total", 0))
 
 
@@ -280,6 +288,7 @@ func _throw(check: SkillCheck, doc: CharacterDoc):
 		return null
 
 	var resolved := SkillCheck.from_dict(outcome["check"])
+	last_check = resolved.to_dict()
 	_broadcast(resolved, outcome, doc)
 	return resolved
 
@@ -295,8 +304,10 @@ func _broadcast(check: SkillCheck, outcome: Dictionary, doc: CharacterDoc) -> vo
 	var payload := control.duplicate(true)
 	payload["label"] = check.skill_label
 	payload["check"] = check.to_dict()
+	payload["situation"] = outcome.get("situation", {}).duplicate(true)
 	if doc != null:
 		payload["character_id"] = doc.get_hero_name()
+		payload["character_name"] = doc.get_hero_name()
 	_transport.send_roll(payload)
 
 

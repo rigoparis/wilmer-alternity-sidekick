@@ -46,6 +46,7 @@ func _run() -> void:
 	await _test_feed()
 	await _test_manual_attack_steps()
 	await _test_attack_targets()
+	await _test_combat_flow_barriers_and_ledger()
 	await _test_a_blast()
 	await _test_remove_seat()
 	await _test_back_unwinds()
@@ -221,6 +222,9 @@ func _test_players_commit_their_own_character() -> void:
 	# document so the snapshot has a real character inside it.
 	var doc = CharacterDoc.new(_shell.rules)
 	doc.set_hero_name("Vance Kellar")
+	var picture := Image.create(64, 64, false, Image.FORMAT_RGB8)
+	picture.fill(Color.CORNFLOWER_BLUE)
+	doc.apply([CharacterDoc.META], func(c): c["portrait"] = CharacterPortrait.encode(picture))
 	var alice := _seat_id(gm, "Alice")
 	check_true(
 		gm.session().commit_character(alice, CharacterSnapshot.of_doc(doc)),
@@ -270,6 +274,16 @@ func _test_players_commit_their_own_character() -> void:
 	var bob := _seat_id(gm, "Bob")
 	check_false(gm.session().has_committed_character(bob), "an uncommitted seat has no character")
 	check_true(gm._summary_of(gm.session().committed_character(bob)).is_empty(), "and no numbers")
+
+	# The roster shows the committed hero's picture; a seat with no hero has none
+	# to show, and an initial would put a face on "No character yet".
+	var portraits: Array = gm._roster_list.find_children("RosterPortrait", "", true, false)
+	check_eq(portraits.size(), 1, "the roster shows a portrait for the committed hero only")
+	if portraits.size() == 1:
+		check_eq(
+			portraits[0].find_children("", "TextureRect", true, false).size(), 1,
+			"and it is their picture, not the initial"
+		)
 
 	# Opening the committed sheet presents CHARACTER_VIEW_ROUTE, and on desktop
 	# the tab context is updated to wide layout in _ready.
@@ -473,7 +487,7 @@ func _test_attack_targets() -> void:
 	gm.session().commit_character(bob, CharacterSnapshot.of_doc(bob_doc))
 	_shell.campaigns.save(gm.session())
 
-	gm._on_start_combat_pressed()
+	await _start_selected_combat(gm)
 	await process_frame
 	check_eq(gm._fight.combatants.size(), 2, "both committed players are in the fight")
 
@@ -539,13 +553,219 @@ func _test_attack_targets() -> void:
 	check_false(gm._status.text == before, "rather than silently doing nothing")
 
 	gm._on_end_combat_pressed()
+	gm._router.pop()
+	await process_frame
+
+
+func _test_combat_flow_barriers_and_ledger() -> void:
+	var gm = _gm_screen()
+	if not check(gm != null, "the GM screen is showing"):
+		return
+
+	var alice := _seat_id(gm, "Alice")
+	var bob := _seat_id(gm, "Bob")
+
+	# Add an NPC to the campaign
+	var npc_doc := CharacterDoc.new(_shell.rules)
+	npc_doc.set_hero_name("Cyber Guard")
+	var npc_id: String = gm.session().add_npc(npc_doc.to_dict())
+
+	# Start combat with Alice, Bob, and Cyber Guard
+	gm._fight = ActionRound.new(1)
+	gm._fight.add_combatant(alice, "Alice", 2, ActionRound.KIND_PLAYER)
+	gm._fight.add_combatant(bob, "Bob", 2, ActionRound.KIND_PLAYER)
+	gm._fight.add_combatant(npc_id, "Cyber Guard", 1, ActionRound.KIND_NPC)
+
+	gm._record_action_check(alice, {"degree": "Amazing", "check_score": 14, "roll": 3})
+	gm._record_action_check(bob, {"degree": "Good", "check_score": 12, "roll": 8})
+	gm._record_action_check(npc_id, {"degree": "Amazing", "check_score": 15, "roll": 2})
+	gm._on_start_round_pressed()
+	await process_frame
+
+	check_eq(gm._fight.phase(), "amazing", "starts in Amazing phase")
+	var stale_attack := CombatAttack.declare(alice, "Cyber Guard", "Laser", "Good", 2, "w", "hi", "O")
+	stale_attack.round_id = "previous-round"
+	stale_attack.phase = "amazing"
+	stale_attack.details["attacker_id"] = npc_id
+	await gm._send_attack(stale_attack)
+	check_false(gm.session().pending_attacks.has(stale_attack.attack_id), "late dice result cannot dispatch into another round")
+	check_eq(gm._fight.actions_remaining(npc_id), 1, "stale attack does not spend a new round action")
+
+	# R3: NPC attacks once in Amazing -> spends action slot
+	var attack1 := CombatAttack.declare(alice, "Cyber Guard", "Laser Rifle", "Amazing", 5, "w", "hi", "O")
+	attack1.details["attacker_id"] = npc_id
+	attack1.round_id = gm._fight.round_id
+	attack1.phase = "amazing"
+	await gm._send_attack(attack1)
+	await process_frame
+
+	check_eq(gm._fight.status_in_phase(npc_id, "amazing"), ActionRound.STATUS_COMPLETED, "NPC completed action in Amazing")
+	check_eq(gm._fight.actions_remaining(npc_id), 0, "NPC has 0 actions remaining")
+	check_false(gm._fight.can_act_in(npc_id, "amazing"), "NPC cannot act again in Amazing")
+
+	# Attempt second attack by the same NPC in Amazing phase -> rejected
+	var attack2 := CombatAttack.declare(bob, "Cyber Guard", "Laser Rifle", "Amazing", 5, "w", "hi", "O")
+	attack2.details["attacker_id"] = npc_id
+	attack2.round_id = gm._fight.round_id
+	attack2.phase = "amazing"
+	await gm._send_attack(attack2)
+	await process_frame
+	check_true(gm._status.text.contains("Action already spent or unavailable"), "second attack by completed NPC is rejected")
+
+	# Test Undo semantics:
+	# Attacker Cyber Guard has action_type "attack" -> Undo is forbidden
+	check_eq(String(gm._fight.combatant(npc_id).get("action_type_amazing", "")), "attack", "action type is attack")
+	gm._on_undo_pressed(npc_id, gm._fight.round_id, "amazing")
+	check_eq(gm._fight.status_in_phase(npc_id, "amazing"), ActionRound.STATUS_COMPLETED, "undo has no effect on rolled attack")
+
+	# Manual Done for Alice -> action_type "manual" -> Undo is allowed
+	check_true(gm._fight.can_act_in(alice, "amazing"), "Alice can act in Amazing")
+	gm._on_act_pressed(alice, gm._fight.round_id, "amazing")
+	check_eq(gm._fight.status_in_phase(alice, "amazing"), ActionRound.STATUS_COMPLETED, "Alice marked completed via Done")
+	check_eq(gm._fight.actions_remaining(alice), 1, "Alice spent 1 action")
+	gm._on_undo_pressed(alice, gm._fight.round_id, "amazing")
+	check_eq(gm._fight.status_in_phase(alice, "amazing"), ActionRound.STATUS_WAITING, "Alice status restored to waiting via Undo")
+	check_eq(gm._fight.actions_remaining(alice), 2, "Alice actions remaining restored to 2 via Undo")
+
+	# R4: Scoped postpone & command deduplication
+	var cmd_id := "cmd-postpone-1"
+	gm._on_postpone_declared(alice, gm._fight.round_id, "amazing", cmd_id)
+	check_eq(gm._fight.status_in_phase(alice, "amazing"), ActionRound.STATUS_POSTPONED, "Alice postponed via scoped command")
+
+	# Duplicate message with same command_id is ignored
+	check_true(gm._fight.is_command_processed(cmd_id), "command_id recorded in processed commands")
+
+	# Stale postpone from another round is rejected
+	gm._on_postpone_declared(bob, "stale-round-id", "amazing", "cmd-postpone-stale")
+	check_eq(gm._fight.status_in_phase(bob, "amazing"), "", "stale postpone rejected")
+
+	# R2: Phase barrier with pending unresolved attack
+	var pending_atk := CombatAttack.declare(alice, "Cyber Guard", "Laser Rifle", "Amazing", 4, "w", "hi", "O")
+	pending_atk.round_id = gm._fight.round_id
+	pending_atk.phase = "amazing"
+	gm.session().queue_attack(pending_atk.to_dict(), alice)
+	gm.refresh()
+	await process_frame
+
+	check_false(gm.session().unresolved_attacks_for_phase(gm._fight.round_id, "amazing").is_empty(), "unresolved attack is present")
+
+	# Advancing phase is blocked when unresolved attack is present
+	gm._on_advance_phase_pressed()
+	check_eq(gm._fight.phase(), "amazing", "phase advance is blocked by unresolved defense")
+
+	# Dismissing the pending attacks unblocks the barrier
+	check_true(gm.session().dismiss_pending_attack(attack1.attack_id), "dismissing attack1 succeeds")
+	check_true(gm.session().dismiss_pending_attack(pending_atk.attack_id), "dismissing pending_atk succeeds")
+	check_true(gm.session().unresolved_attacks_for_phase(gm._fight.round_id, "amazing").is_empty(), "no unresolved attacks remain")
+	gm._on_advance_phase_pressed()
+	check_eq(gm._fight.phase(), "good", "phase advances to Good after resolving/dismissing attacks")
+
+	# Player knockout propagation
+	var ko_char = CharacterDoc.new(_shell.rules)
+	ko_char.set_hero_name("Alice")
+	ko_char.apply([CharacterDoc.DAMAGE], func(c):
+		c["damage"] = {"stun": 0, "wound": 0, "mortal": 20, "fatigue": 0}
+	)
+	var ko_snapshot := CharacterSnapshot.of_doc(ko_char)
+	gm._on_character_received(alice, ko_snapshot)
+	check_true(gm._fight.is_falling(alice), "knockout in snapshot marks player falling during active phase")
+	gm._on_advance_phase_pressed()
+	check_true(gm._fight.is_out(alice), "advancing phase completes knockout, marking player out")
+
+	# In-flight closure guard prevents double-press phase skipping
+	gm._closing_in_flight = true
+	var cur_phase: String = gm._fight.phase()
+	gm._on_advance_phase_pressed()
+	check_eq(gm._fight.phase(), cur_phase, "advance phase is ignored while _closing_in_flight is true")
+	gm._closing_in_flight = false
+
+	# Host closing state persistence & resumption
+	var closing_data: Dictionary = gm.session().begin_phase_closing(gm._fight.round_id, gm._fight.phase())
+	check_true(gm.session().is_phase_closing(), "session enters phase closing state")
+	var saved_dict: Dictionary = gm.session().to_dict()
+	var resumed_sess = Session.from_dict(saved_dict)
+	check_true(resumed_sess.is_phase_closing(), "resumed session restores closing state")
+	check_eq(resumed_sess.closing_operation_id(), String(closing_data.get("operation_id", "")), "resumed session preserves operation_id")
+	gm.session().finish_phase_closing()
+	# A failed final save cannot open the next phase or discard retry state.
+	var real_campaign_store = gm._store
+	var round_before_failure_test: Dictionary = gm._fight.to_dict()
+	var fail_script := GDScript.new()
+	fail_script.source_code = "extends CampaignStore\nvar calls := 0\nfunc save(_session):\n\tcalls += 1\n\treturn {'ok': calls == 1}\n"
+	check_eq(fail_script.reload(), OK, "campaign failure fixture compiles")
+	gm._store = fail_script.new("user://__gm_commit_failure__/")
+	var phase_before_save_failure: String = gm._fight.phase()
+	await gm._on_advance_phase_pressed()
+	check_eq(gm._fight.phase(), phase_before_save_failure, "failed final save restores old phase")
+	check_true(gm.session().is_phase_closing(), "failed final save preserves closing operation")
+	gm._store = real_campaign_store
+	await gm._on_advance_phase_pressed()
+	check_false(gm.session().is_phase_closing(), "retry after storage recovery completes closure")
+	gm._fight = ActionRound.from_dict(round_before_failure_test)
+	gm._publish_round()
+
+	# Prepare-vs-dismiss race: resolved hit awaiting damage commit cannot be dismissed
+	var race_atk := CombatAttack.declare(alice, "Cyber Guard", "Laser", "Good", 4, "w", "hi", "O")
+	race_atk.round_id = gm._fight.round_id
+	race_atk.phase = gm._fight.phase()
+	gm.session().queue_attack(race_atk.to_dict(), alice)
+	gm.session().resolve_attack(race_atk.attack_id, alice, true, {"outcome": {"primary_damage": 4}})
+	check_eq(String(gm.session().pending_attacks[race_atk.attack_id].get("status", "")), "prepared", "attack status is prepared")
+	check_false(gm.session().dismiss_pending_attack(race_atk.attack_id), "prepared attack cannot be dismissed by host")
+	check_eq(gm.session().pending_attacks_for(alice, true).size(), 1, "reconnect retains prepared work for repeatable acknowledgments")
+	var before_close_phase: String = gm._fight.phase()
+	await gm._on_advance_phase_pressed()
+	check_eq(gm._fight.phase(), before_close_phase, "unhosted table cannot skip prepared player commits")
+	check_true(gm.session().is_phase_closing(), "unhosted closure stays persisted for retry")
+	check_false(gm._closing_in_flight, "retry is available after closure cannot send")
+	gm._on_end_combat_pressed()
+	check_true(gm._fight != null, "end combat cannot discard pending closure")
+	gm.session().commit_attack(race_atk.attack_id, alice)
+	await gm._on_advance_phase_pressed()
+	check_false(gm.session().is_phase_closing(), "completed closure can resume and finish")
+
+	# Amazing hit endurance-check knockout with non-exhausted damage tracks
+	gm._fight.revive(alice)
+	check_false(gm._fight.is_out(alice), "Alice revived")
+	var amazing_hit := CombatAttack.declare(alice, "Cyber Guard", "Heavy Blaster", "Amazing", 1, "s", "li", "O")
+	amazing_hit.round_id = gm._fight.round_id
+	amazing_hit.phase = gm._fight.phase()
+	amazing_hit.action_id = CampaignSession.new_id()
+	gm.session().queue_attack(amazing_hit.to_dict(), alice)
+	var resolved_endurance_fail := {
+		"attack_id": amazing_hit.attack_id,
+		"round_id": amazing_hit.round_id,
+		"phase": amazing_hit.phase,
+		"result": {
+			"knocked_out": true,
+			"endurance_failed": true,
+			"primary_damage": 1,
+			"condition": "unconscious (endurance check failed)"
+		}
+	}
+	gm._on_attack_resolved(alice, resolved_endurance_fail)
+	check_true(gm._fight.is_falling(alice), "endurance failure on Amazing hit marks player falling in current phase")
+
+	# Command deduplication across ActionRound serialization and narrative Undo
+	var test_cmd_id := "cmd-durable-round-test"
+	gm._on_postpone_declared(bob, gm._fight.round_id, gm._fight.phase(), test_cmd_id)
+	check_true(gm._fight.is_command_processed(test_cmd_id), "command recorded in fight")
+	var fight_dict: Dictionary = gm._fight.to_dict()
+	var restored_fight := ActionRound.from_dict(fight_dict)
+	check_true(restored_fight.is_command_processed(test_cmd_id), "processed command survived serialization")
+	gm._on_undo_pressed(bob, gm._fight.round_id, gm._fight.phase())
+	check_false(gm._fight.is_command_processed(test_cmd_id), "narrative Undo clears processed command for player")
+
+	# Clean up combat
+	gm._on_end_combat_pressed()
+	gm.session().remove_npc(npc_id)
 	await process_frame
 
 
 ## Everything the combat section is currently saying, as one string.
 func _combat_lines(gm) -> String:
 	var lines: Array = []
-	_gather_labels(gm._combat_body, lines)
+	_gather_labels(gm._router._host.top_route() if gm._router.is_presenting() else gm._combat_body, lines)
 	return "
 ".join(lines)
 
@@ -560,7 +780,7 @@ func _gather_labels(node: Node, into: Array) -> void:
 ## The Attack buttons on the combat section, keyed by the seat each aims at.
 func _attack_buttons(gm) -> Dictionary:
 	var out: Dictionary = {}
-	_gather_attack_buttons(gm._combat_body, out)
+	_gather_attack_buttons(gm._router._host.top_route() if gm._router.is_presenting() else gm._combat_body, out)
 	return out
 
 
@@ -608,9 +828,11 @@ func _test_a_blast() -> void:
 	# everybody was standing in the blast would be a screen that kills the party.
 	check_eq(route.caught().size(), 0, "nobody is in the blast to begin with")
 
-	route._on_zone_pressed("close", "amazing", HBoxContainer.new())
-	route._on_zone_pressed("middle", "good", HBoxContainer.new())
-	route._on_zone_pressed("outer", "ordinary", HBoxContainer.new())
+	var zone_row := HBoxContainer.new()
+	route.add_child(zone_row)
+	route._on_zone_pressed("close", "amazing", zone_row)
+	route._on_zone_pressed("middle", "good", zone_row)
+	route._on_zone_pressed("outer", "ordinary", zone_row)
 
 	var bands: Dictionary = {}
 	for target in route.caught():
@@ -623,7 +845,7 @@ func _test_a_blast() -> void:
 
 	# Hitting the deck drops a band, and out of the outer band it drops them out
 	# of the blast entirely.
-	route._on_zone_pressed("flat", "amazing", HBoxContainer.new())
+	route._on_zone_pressed("flat", "amazing", zone_row)
 	var dropped: Dictionary = {}
 	for target in route.caught():
 		dropped[String(target["player_id"])] = target
@@ -633,7 +855,7 @@ func _test_a_blast() -> void:
 		"while the band they were actually standing in is still on the record"
 	)
 
-	route._on_zone_pressed("flat", "ordinary", HBoxContainer.new())
+	route._on_zone_pressed("flat", "ordinary", zone_row)
 	var escaped := true
 	for target in route.caught():
 		if String(target["player_id"]) == "flat":
@@ -700,7 +922,7 @@ func _test_remove_seat() -> void:
 
 	# Their history stays, and must still render without a seat to name them.
 	var line: String = gm._describe_event({"kind": Session.EVENT_CHAT, "player_id": bob, "at": 1, "payload": {"text": "hi"}})
-	check_true(line.contains("departed"), "events from a removed seat still render readably")
+	check_true(line.to_lower().contains("departed"), "events from a removed seat still render readably")
 	check_false(line.contains(bob), "and never fall back to showing a raw id")
 
 
@@ -835,3 +1057,13 @@ func _seat_id_of(session, player_name: String) -> String:
 		if String(seat.get("player_name", "")) == player_name:
 			return String(seat.get("player_id", ""))
 	return ""
+
+
+func _start_selected_combat(gm) -> void:
+	gm._on_start_combat_pressed()
+	await process_frame
+	var picker = gm._router._host.top_route()
+	if picker != null and picker.get("_confirm") != null:
+		picker._confirm.pressed.emit()
+	await process_frame
+	await process_frame

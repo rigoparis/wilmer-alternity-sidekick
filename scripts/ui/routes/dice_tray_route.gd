@@ -721,6 +721,8 @@ func _roll_check() -> void:
 	var graded: Dictionary = _rules.resolve_check(
 		control_face, situation.total, _check.ordinary, _situation_notation()
 	)
+	graded["control"] = control.to_dict()
+	graded["situation"] = situation.to_dict()
 	_check.resolve(graded)
 
 	_resolved = {

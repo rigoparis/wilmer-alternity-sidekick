@@ -4486,6 +4486,14 @@ func requisition_check_score(character: Dictionary, options: Dictionary = {}) ->
 	else:
 		base_check = skill_score(character, bureaucracy)
 
+	var breakdown: Array = base_check.get("step_breakdown", []).duplicate(true)
+	for spec in [
+		["availability", "Common", AlternityRulesConstants.REQUISITION_AVAILABILITY_MODIFIERS],
+		["urgency", "standard", AlternityRulesConstants.REQUISITION_URGENCY_MODIFIERS],
+		["necessity", "useful", AlternityRulesConstants.REQUISITION_NECESSITY_MODIFIERS],
+	]:
+		var choice := String(options.get(spec[0], spec[1]))
+		breakdown.append({"label": "%s: %s" % [String(spec[0]).capitalize(), choice], "steps": spec[2].get(choice, 0)})
 	var step := _as_int(base_check.get("step", 0)) + requisition_step_modifier(options)
 	return {
 		"ordinary": _as_int(base_check.get("ordinary", 10)),
@@ -4493,6 +4501,7 @@ func requisition_check_score(character: Dictionary, options: Dictionary = {}) ->
 		"amazing": _as_int(base_check.get("amazing", 2)),
 		"marginal": _as_int(base_check.get("marginal", 11)),
 		"step": step,
+		"step_breakdown": breakdown,
 		"die": action_step_die(step),
 		"outcomes": AlternityRulesConstants.REQUISITION_OUTCOMES,
 	}

@@ -209,6 +209,7 @@ func list() -> Array:
 		records.append({
 			"file_name": file_name,
 			"hero_name": String(data.get("hero_name", "New Hero")),
+			"portrait": String(data.get("portrait", "")),
 			"species_id": AlternityNum.as_int(data.get("species_id", 0)),
 			"profession_id": AlternityNum.as_int(data.get("profession_id", 0)),
 			"level": level,

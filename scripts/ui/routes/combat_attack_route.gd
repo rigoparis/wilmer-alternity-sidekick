@@ -2,16 +2,9 @@ extends RouteScene
 ##
 ## Declaring one attack against one player.
 ##
-## The GM is running something with no character sheet, so this collects the
-## three things an attack needs that a sheet would otherwise supply: what is
-## swinging, what it is swinging with, and how hard it is to connect. The dice
-## are thrown afterwards, by the screen -- this route only decides what to throw.
-##
-## The weapon comes out of the equipment catalogue rather than being typed. Every
-## weapon in the book already carries its damage triple, its impact type, its
-## firepower grade and its range bands, so picking one fills in four fields that
-## a GM would otherwise get wrong at speed. It is also how an enemy gets a weapon
-## before NPC stat blocks exist.
+## Choose a campaign NPC to derive the skill score and character modifiers, or
+## enter a manual attacker. Weapon catalogue data supplies damage and range;
+## the GM adds situational modifiers and the target's awareness.
 ##
 ## Closes with a declaration dictionary, or null if the GM backed out.
 ##
@@ -29,7 +22,11 @@ var _target_name: String = ""
 
 ## The catalogue entry chosen, or {} while none is.
 var _weapon: Dictionary = {}
+var _npcs: Dictionary = {}
+var _attacker_id: String = ""
+var _npc_score: Dictionary = {}
 
+var _reason_field: LineEdit
 var _attacker_field: LineEdit
 var _score_stepper: NumberStepper
 var _manual_stepper: NumberStepper
@@ -55,6 +52,7 @@ func configure(props: Dictionary) -> void:
 	_rules = props.get("rules")
 	_target_id = String(props.get("target_id", ""))
 	_target_name = String(props.get("target_name", "them"))
+	_npcs = props.get("npcs", {})
 	_build()
 
 
@@ -133,6 +131,21 @@ func _build() -> void:
 func _build_attacker(parent: Container) -> void:
 	var section := Widgets.section(parent, "Who is attacking", _palette)
 
+	var picker := OptionButton.new()
+	picker.name = "NpcAttackerPicker"
+	picker.fit_to_longest_item = false
+	picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	picker.add_item("Manual attacker")
+	picker.set_item_metadata(0, "")
+	for id in _npcs:
+		picker.add_item(String(_npcs[id].get("hero_name", "NPC")))
+		picker.set_item_metadata(picker.item_count - 1, id)
+	picker.item_selected.connect(func(index: int):
+		_attacker_id = String(picker.get_item_metadata(index))
+		if not _attacker_id.is_empty():
+			_attacker_field.text = String(_npcs[_attacker_id].get("hero_name", "NPC"))
+		_update_npc_score())
+	section.add_child(picker)
 	_attacker_field = LineEdit.new()
 	_attacker_field.name = "AttackerField"
 	_attacker_field.text = "A thug"
@@ -141,7 +154,7 @@ func _build_attacker(parent: Container) -> void:
 	_attacker_field.custom_minimum_size = Vector2(0, 40)
 	Widgets.field_row(section, "Name", _attacker_field, _palette)
 
-	# The attacker has no sheet, so the GM supplies the one number a sheet would.
+	# Manual attackers supply a score; choosing an NPC locks it to their skill.
 	# Good and Amazing derive from it the way they do for a character.
 	_score_stepper = NumberStepper.new()
 	section.add_child(_score_stepper)
@@ -157,6 +170,11 @@ func _build_attacker(parent: Container) -> void:
 		_palette, "Manual steps", 0, SkillCheck.MIN_STEP, SkillCheck.MAX_STEP, 1, 0, true
 	)
 	_manual_stepper.value_changed.connect(func(_value: int): _refresh())
+	_reason_field = LineEdit.new()
+	_reason_field.placeholder_text = "Reason for manual steps (optional)"
+	_reason_field.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_reason_field.custom_minimum_size = Vector2(1, 40)
+	section.add_child(_reason_field)
 
 	var note := Widgets.muted_text(
 		section,
@@ -231,6 +249,8 @@ func _refresh_weapons(query: String) -> void:
 	for item in _rules.equipment.filtered_equipment({"category": "Weapons"}):
 		if shown >= MAX_WEAPONS_SHOWN:
 			break
+		if not _attacker_id.is_empty() and not _rules.is_entry_available(_npcs[_attacker_id], item):
+			continue
 		var weapon_name := String(item.get("name", ""))
 		if not needle.is_empty() and not weapon_name.to_lower().contains(needle):
 			continue
@@ -256,6 +276,7 @@ func _refresh_weapons(query: String) -> void:
 func _choose_weapon(item: Dictionary) -> void:
 	var was_melee := _is_melee()
 	_weapon = item
+	_update_npc_score()
 	# The two tables share ids only where they share rows, so a switch between
 	# them drops anything the new table does not have rather than quietly
 	# applying a cover penalty to a sword.
@@ -416,6 +437,7 @@ func net_steps() -> int:
 	var total: int = _manual_stepper.value() if _manual_stepper != null else 0
 	total += _rules.net_situation_steps(_chosen.keys())
 	total += _range_step()
+	total += AlternityNum.as_int(_npc_score.get("step", 0))
 	return total
 
 
@@ -451,11 +473,11 @@ func _refresh() -> void:
 	var steps := net_steps()
 	_modifier_note.text = "%+d steps -- situation die %s" % [steps, _rules.action_step_die(steps)]
 	if _confirm != null:
-		_confirm.disabled = _weapon.is_empty()
+		_confirm.disabled = _weapon.is_empty() or (not _attacker_id.is_empty() and not bool(_npc_score.get("usable", false)))
 
 
 func _submit() -> void:
-	if _weapon.is_empty():
+	if _weapon.is_empty() or (not _attacker_id.is_empty() and not bool(_npc_score.get("usable", false))):
 		return
 	var combat: Dictionary = _weapon.get("combat", {})
 	var split: Dictionary = _rules.combat.split_weapon_type(String(combat.get("damage_type", combat.get("type", ""))))
@@ -463,6 +485,12 @@ func _submit() -> void:
 		"target_id": _target_id,
 		"target_name": _target_name,
 		"attacker_name": _attacker_field.text.strip_edges(),
+		"attacker_id": _attacker_id,
+		"skill_id": combat.get("skill_id", -1),
+		"skill_name": _rules.skill_label(_rules.get_skill_by_id(AlternityNum.as_int(combat.get("skill_id", -1)))),
+		"step_breakdown": _step_breakdown(),
+		"range_band": _band,
+		"reason": _reason_field.text.strip_edges(),
 		"attack_score": _score_stepper.value(),
 		"weapon_name": String(_weapon.get("name", "")),
 		"damage_text": String(combat.get("damage", "")),
@@ -475,3 +503,28 @@ func _submit() -> void:
 		"from_rear": _from_rear,
 		"pinned": _pinned,
 	})
+
+
+func _update_npc_score() -> void:
+	_npc_score = {}
+	_score_stepper.set_range(1, 30)
+	_attacker_field.editable = _attacker_id.is_empty()
+	if not _attacker_id.is_empty() and not _weapon.is_empty():
+		var skill: Dictionary = _rules.get_skill_by_id(AlternityNum.as_int(_weapon.get("combat", {}).get("skill_id", -1)))
+		_npc_score = _rules.skill_score(_npcs[_attacker_id], skill)
+		if not _rules.is_entry_available(_npcs[_attacker_id], _weapon) or not _rules.is_entry_available(_npcs[_attacker_id], skill):
+			_npc_score["usable"] = false
+		var score := AlternityNum.as_int(_npc_score.get("ordinary", 0))
+		_score_stepper.set_range(score, score)
+		_score_stepper.set_value_silent(score)
+	_refresh()
+
+
+func _step_breakdown() -> Array:
+	var rows: Array = _npc_score.get("step_breakdown", []).duplicate(true)
+	rows.append({"label": "GM manual adjustment", "steps": _manual_stepper.value(), "reason": _reason_field.text.strip_edges()})
+	rows.append({"label": "Range: " + _band, "steps": _range_step()})
+	for row in _rules.attack_modifiers_for("melee" if _is_melee() else "ranged"):
+		if _chosen.has(String(row.get("id", ""))):
+			rows.append(row.duplicate(true))
+	return rows

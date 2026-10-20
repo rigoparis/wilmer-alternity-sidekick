@@ -30,6 +30,25 @@ development machine.
 - **`core/session/character_snapshot.gd`** — the read-only view of a hero a
   player's device sends the GM.
 
+### GM-owned NPCs and roll details
+
+The GM screen's **Add NPC** opens the full character editor. NPCs are stored in
+`CampaignSession.npcs`, keyed by stable `npc_` identifiers, and saved in the
+campaign header. They do not create player seats or receive AP awards intended
+for players. Sheet edits save through `NpcCharacterStore`; checks use the same
+physical tray and rules as player characters. Starting combat includes the NPCs;
+NPCs added later can join through **Join combat**. Select an NPC in the attack
+form to use its weapon skill score and modifiers. Damage to an NPC resolves on
+the GM's device; damage to a player character still resolves on its owner's device.
+
+Both table logs offer **Open breakdown** for rolls and attacks. New check results
+retain the control and situation `RollResult`s, including notation, each face,
+signed totals, source, and cocked-dice rethrows. Attacks retain the declaration,
+participants' names, skill, modifier reasons, resistance/dodge, to-hit result,
+damage dice, armor dice, and any knockout check. The log reads recorded facts;
+renaming or deleting an NPC cannot change an old result. Older log entries remain
+readable, but dice details that were never saved cannot be reconstructed.
+
 ### The wire
 
 - **`core/session/net_transport.gd`** — the interface. Signals for connection,
@@ -241,3 +260,29 @@ These are the things a development machine cannot settle.
    `CheckRunner.check_arrived` still has no listener — the table view is driven
    by `TableSession.check_arrived` instead — so that signal is currently dead
    weight and should either be used or removed.
+
+
+### Portraits and encounter flow (October 2026)
+
+- Choose/remove portraits on the Basics tab, including campaign NPC sheets.
+  Images are center-cropped to 256px JPEGs inside character JSON, so exports and
+  snapshots carry the image without depending on another device's file paths.
+- New events retain character names. Public rosters refresh after character
+  commits; legacy events without identity fall back to known seats or a departed
+  character label. Check difficulty dialogs can address Everyone or one player;
+  pending targeted calls survive reconnect only for that recipient.
+- Start combat opens a participant picker. Players start selected; NPCs require
+  explicit selection. The Encounter page shows readiness, current phase actors,
+  other participants, phase order, and remaining action opportunities.
+- NPC action checks can be rolled or manually placed into a starting phase.
+  Existing action-check-score ordering still breaks ties. Defeated participants
+  do not block initiative in later rounds.
+- Players can open Encounter from their Table tab. The existing initiative
+  banner still prompts participating players wherever they are in the sheet.
+- Public round projections carry ordering instead of NPC action-check scores.
+  Pre-combat NPC rolls stay GM-only, including reconnect replay; public NPC roll
+  details omit private check targets and carried modifiers. NPC sheets never
+  enter public seat lists or round packets.
+- Remaining actions count current/future phase opportunities under the existing
+  model; they are not individually marked as spent within a phase. Maps,
+  movement, and dedicated attacker/defender screens remain future work.

@@ -46,6 +46,10 @@ func _path() -> String:
 	return _dir + FILE_NAME
 
 
+func directory() -> String:
+	return _dir
+
+
 func player_name() -> String:
 	return _player_name
 
@@ -142,7 +146,9 @@ func remember_attack_applied(
 	attack: Dictionary,
 	absorbed: int,
 	outcome: Dictionary,
-	parried: bool
+	parried: bool,
+	character_key: String = "",
+	player_id: String = ""
 ) -> void:
 	var attack_id := String(attack.get("attack_id", ""))
 	if campaign_id.is_empty() or attack_id.is_empty():
@@ -150,13 +156,23 @@ func remember_attack_applied(
 	var campaign = _attack_progress.get(campaign_id, {})
 	if typeof(campaign) != TYPE_DICTIONARY:
 		campaign = {}
-	campaign[attack_id] = {
-		"attack": attack.duplicate(true),
-		"absorbed": absorbed,
-		"outcome": outcome.duplicate(true),
-		"parried": parried,
-		"resolved": {},
-	}
+	var progress = campaign.get(attack_id, {})
+	if typeof(progress) != TYPE_DICTIONARY:
+		progress = {}
+	progress["applied"] = true
+	progress["attack"] = attack.duplicate(true)
+	progress["absorbed"] = absorbed
+	progress["outcome"] = outcome.duplicate(true)
+	progress["parried"] = parried
+	if not character_key.is_empty():
+		progress["character_key"] = character_key
+	if not player_id.is_empty():
+		progress["player_id"] = player_id
+	if not progress.has("resolved"):
+		progress["resolved"] = {}
+	if not progress.has("committed"):
+		progress["committed"] = false
+	campaign[attack_id] = progress
 	_attack_progress[campaign_id] = campaign
 	_save()
 
@@ -185,14 +201,104 @@ func attack_progress(campaign_id: String, attack_id: String) -> Dictionary:
 	return progress.duplicate(true) if typeof(progress) == TYPE_DICTIONARY else {}
 
 
+func has_attack_applied(campaign_id: String, attack_id: String) -> bool:
+	var progress := attack_progress(campaign_id, attack_id)
+	return bool(progress.get("applied", false))
+
+
+func remember_attack_committed(campaign_id: String, attack_id: String) -> void:
+	if campaign_id.is_empty() or attack_id.is_empty():
+		return
+	var campaign = _attack_progress.get(campaign_id, {})
+	if typeof(campaign) != TYPE_DICTIONARY:
+		campaign = {}
+	var progress = campaign.get(attack_id, {})
+	if typeof(progress) != TYPE_DICTIONARY:
+		progress = {}
+	progress["committed"] = true
+	campaign[attack_id] = progress
+	_attack_progress[campaign_id] = campaign
+	_save()
+
+
+func remember_attack_cancelled(campaign_id: String, attack_id: String) -> void:
+	if campaign_id.is_empty() or attack_id.is_empty():
+		return
+	var campaign = _attack_progress.get(campaign_id, {})
+	if typeof(campaign) != TYPE_DICTIONARY:
+		campaign = {}
+	var progress = campaign.get(attack_id, {})
+	if typeof(progress) != TYPE_DICTIONARY:
+		progress = {}
+	progress["cancelled"] = true
+	campaign[attack_id] = progress
+	_attack_progress[campaign_id] = campaign
+	_save()
+
+
+func is_attack_cancelled(campaign_id: String, attack_id: String) -> bool:
+	var progress := attack_progress(campaign_id, attack_id)
+	return bool(progress.get("cancelled", false))
+
+
+func is_attack_committed(campaign_id: String, attack_id: String) -> bool:
+	var progress := attack_progress(campaign_id, attack_id)
+	return bool(progress.get("committed", false))
+
+
+func uncommitted_attacks(campaign_id: String = "", character_key: String = "") -> Array:
+	if campaign_id.is_empty():
+		return []
+	var campaign = _attack_progress.get(campaign_id, {})
+	if typeof(campaign) != TYPE_DICTIONARY:
+		return []
+	var list: Array = []
+	for attack_id in campaign.keys():
+		var progress = campaign[attack_id]
+		if typeof(progress) == TYPE_DICTIONARY:
+			if bool(progress.get("cancelled", false)):
+				continue
+			if bool(progress.get("applied", false)) and not bool(progress.get("committed", false)):
+				if not character_key.is_empty():
+					var key := String(progress.get("character_key", ""))
+					if not key.is_empty() and key != character_key:
+						continue
+				var item: Dictionary = progress.duplicate(true)
+				item["campaign_id"] = campaign_id
+				list.append(item)
+	return list
+
+
+func attacks_for_phase(campaign_id: String, round_id: String, phase: String) -> Array:
+	if campaign_id.is_empty():
+		return []
+	var campaign = _attack_progress.get(campaign_id, {})
+	if typeof(campaign) != TYPE_DICTIONARY:
+		return []
+	var list: Array = []
+	for attack_id in campaign.keys():
+		var progress = campaign[attack_id]
+		if typeof(progress) == TYPE_DICTIONARY:
+			var attack: Dictionary = progress.get("attack", {})
+			if String(attack.get("round_id", "")) == round_id and String(attack.get("phase", "")) == phase:
+				list.append(progress.duplicate(true))
+	return list
+
+
 ## The GM's welcome lists every attack it still considers outstanding. Anything
-## absent was acknowledged and can leave the local idempotency journal.
+## absent was acknowledged and can leave the local idempotency journal, provided
+## its staged damage has already been committed to the character file.
 func reconcile_attacks(campaign_id: String, pending_attack_ids: Array) -> void:
 	var campaign = _attack_progress.get(campaign_id, {})
 	if typeof(campaign) != TYPE_DICTIONARY:
 		return
 	var changed := false
 	for attack_id in campaign.keys():
+		var progress = campaign.get(attack_id, {})
+		if typeof(progress) == TYPE_DICTIONARY:
+			# A staged attack that has not been committed must NEVER be wiped by reconciliation!
+			if bool(progress.get("applied", false)) and not bool(progress.get("committed", false)):
+				continue
 		if not pending_attack_ids.has(String(attack_id)):
 			campaign.erase(attack_id)
 			changed = true

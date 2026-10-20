@@ -80,6 +80,22 @@ signal action_check_received(player_id: String, result: Dictionary)
 @warning_ignore("unused_signal")
 signal defence_declared(player_id: String, defence: Dictionary)
 
+## A player declared they are postponing their action in this phase.
+@warning_ignore("unused_signal")
+signal postpone_declared(player_id: String, round_id: String, phase_id: String, command_id: String)
+
+## The GM requests participants to commit staged damage at phase end.
+@warning_ignore("unused_signal")
+signal phase_commit_requested(round_id: String, phase_id: String, operation_id: String, expected_attack_ids: Array)
+
+## A participant reports their staged damage has been committed.
+@warning_ignore("unused_signal")
+signal phase_committed_received(player_id: String, data: Dictionary)
+
+## An attack was cancelled/dismissed by the GM before resolution.
+@warning_ignore("unused_signal")
+signal attack_cancelled(attack_id: String)
+
 ## An attack landed on this device's character.
 ##
 ## Client side. Already rolled: the GM is the attacker and has decided both
@@ -185,6 +201,32 @@ func send_roll(_roll: Dictionary) -> void:
 ## Send a chat message. Empty `to_player_id` means the whole table.
 func send_chat(_text: String, _to_player_id: String = "") -> void:
 	_not_implemented("send_chat")
+
+
+## Tell the GM that this player is postponing their action in this phase.
+func send_postpone(_round_id: String, _phase_id: String, _command_id: String = "") -> void:
+	_not_implemented("send_postpone")
+
+
+## Tell players to commit staged damage at phase end.
+func send_phase_commit(_round_id: String, _phase_id: String, _operation_id: String = "", _expected_attack_ids: Array = []) -> void:
+	_not_implemented("send_phase_commit")
+
+
+## Confirm to GM that staged damage has been committed.
+func send_phase_committed(_data: Dictionary) -> void:
+	_not_implemented("send_phase_committed")
+
+
+## Notify a player that an attack was cancelled/dismissed.
+func send_cancel_attack(_attack_id: String, _target_player_id: String = "") -> void:
+	_not_implemented("send_cancel_attack")
+
+
+## Whether a player seat is currently connected.
+func is_player_connected(_player_id: String) -> bool:
+	return false
+
 
 
 func _not_implemented(what: String) -> Error:

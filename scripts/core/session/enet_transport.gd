@@ -72,6 +72,8 @@ const MSG_CHECK_DISMISS := "check_dismiss"
 ## The fight. The host owns the round and sends it whole on every change; a
 ## player device answers with its action check when one is owed.
 const MSG_ROUND := "round"
+const MSG_ROSTER := "roster"
+signal roster_changed
 const MSG_ACTION_CHECK := "action_check"
 
 ## A player declared a dodge, and how well they rolled it.
@@ -82,6 +84,10 @@ const MSG_ACTION_CHECK := "action_check"
 ## other way, on the attack result, because it answers one attack rather than
 ## the round.
 const MSG_DEFENCE := "defence"
+const MSG_POSTPONE := "postpone"
+const MSG_PHASE_COMMIT := "phase_commit"
+const MSG_PHASE_COMMITTED := "phase_committed"
+const MSG_CANCEL_ATTACK := "cancel_attack"
 
 ## An attack, and what the target made of it. Two messages because they travel
 ## in opposite directions and mean different things: one is a settled fact about
@@ -398,7 +404,13 @@ func send_round(round_data: Dictionary) -> void:
 	if _role != Role.GM:
 		push_error("EnetTransport.send_round is the host's job")
 		return
-	_send_to_peer(MultiplayerPeer.TARGET_PEER_BROADCAST, {"kind": MSG_ROUND, "round": round_data})
+	var public_round := ActionRound.from_dict(round_data).to_public_dict() if not round_data.is_empty() else {}
+	_send_to_peer(MultiplayerPeer.TARGET_PEER_BROADCAST, {"kind": MSG_ROUND, "round": public_round})
+
+
+func send_roster() -> void:
+	if _role == Role.GM and _session != null:
+		_send_to_peer(MultiplayerPeer.TARGET_PEER_BROADCAST, {"kind": MSG_ROSTER, "seats": _session.public_seats()})
 
 
 ## Send a declared attack to the seat it lands on.
@@ -439,11 +451,67 @@ func send_defence(defence: Dictionary) -> void:
 	_send_to_host({"kind": MSG_DEFENCE, "defence": defence})
 
 
+## Tell the GM about postponing an action in this phase.
+func send_postpone(round_id: String, phase_id: String, command_id: String = "") -> void:
+	if _role == Role.GM:
+		return
+	_send_to_host({
+		"kind": MSG_POSTPONE,
+		"round_id": round_id,
+		"phase_id": phase_id,
+		"command_id": command_id,
+	})
+
+
+## Tell players to commit staged damage at phase end.
+func send_phase_commit(round_id: String, phase_id: String, operation_id: String = "", expected_attack_ids: Array = []) -> void:
+	if _role != Role.GM:
+		return
+	_send_to_peer(MultiplayerPeer.TARGET_PEER_BROADCAST, {
+		"kind": MSG_PHASE_COMMIT,
+		"round_id": round_id,
+		"phase_id": phase_id,
+		"operation_id": operation_id,
+		"expected_attack_ids": expected_attack_ids,
+	})
+
+
+## Notify a player that an attack was cancelled/dismissed.
+func send_cancel_attack(attack_id: String, target_player_id: String = "") -> void:
+	if _role != Role.GM or _peer == null:
+		return
+	var msg := {
+		"kind": MSG_CANCEL_ATTACK,
+		"attack_id": attack_id,
+	}
+	if target_player_id.is_empty():
+		_send_to_peer(MultiplayerPeer.TARGET_PEER_BROADCAST, msg)
+		return
+	var target := AlternityNum.as_int(_player_to_peer.get(target_player_id, 0))
+	if target > 0:
+		_send_to_peer(target, msg)
+
+
+## Confirm to GM that staged damage has been committed.
+func send_phase_committed(data: Dictionary) -> void:
+	if _role == Role.GM:
+		return
+	_send_to_host({
+		"kind": MSG_PHASE_COMMITTED,
+		"data": data,
+	})
+
+
+func is_player_connected(player_id: String) -> bool:
+	return _player_to_peer.has(player_id)
+
+
 ## Answer the action check the round is waiting on.
 func send_action_check(result: Dictionary) -> void:
 	if _role == Role.GM:
 		return
 	_send_to_host({"kind": MSG_ACTION_CHECK, "result": result})
+
 
 
 ## Ask the GM to set the difficulty of a check.
@@ -530,11 +598,13 @@ func _deliver(event: Dictionary) -> void:
 	if _peer == null:
 		return
 	var payload = event.get("payload", {})
+	if typeof(payload) == TYPE_DICTIONARY and bool(payload.get("gm_only", false)):
+		return
 	var to := ""
 	if typeof(payload) == TYPE_DICTIONARY:
 		to = String(payload.get("to", ""))
 
-	var message := {"kind": MSG_EVENT, "event": event}
+	var message := {"kind": MSG_EVENT, "event": CampaignSession.public_event(event)}
 	if to.is_empty():
 		_send_to_peer(MultiplayerPeer.TARGET_PEER_BROADCAST, message)
 		return
@@ -572,10 +642,8 @@ func _handle_as_host(from_peer: int, message: Dictionary) -> void:
 			if player_id.is_empty():
 				return
 			var resolved: Dictionary = message.get("attack", {}) if typeof(message.get("attack")) == TYPE_DICTIONARY else {}
-			# Only the addressed seat can settle a pending attack, and a repeated
-			# result is ignored. This makes reconnect retries idempotent instead of
-			# logging or applying the same hit twice.
-			if _session.resolve_attack(String(resolved.get("attack_id", "")), player_id):
+			var is_combat: bool = _session != null and _session.has_round()
+			if _session.resolve_attack(String(resolved.get("attack_id", "")), player_id, is_combat, resolved):
 				attack_resolved.emit(player_id, resolved)
 		MSG_DEFENCE:
 			var player_id := String(_peer_to_player.get(from_peer, ""))
@@ -585,6 +653,21 @@ func _handle_as_host(from_peer: int, message: Dictionary) -> void:
 			# Whose dodge it is comes from the socket, for the same reason an
 			# action check does: a device speaks only for itself.
 			defence_declared.emit(player_id, defence)
+		MSG_POSTPONE:
+			var player_id := String(_peer_to_player.get(from_peer, ""))
+			if player_id.is_empty():
+				return
+			var round_id := String(message.get("round_id", ""))
+			var phase_id := String(message.get("phase_id", ""))
+			var command_id := String(message.get("command_id", ""))
+			postpone_declared.emit(player_id, round_id, phase_id, command_id)
+		MSG_PHASE_COMMITTED:
+			var player_id := String(_peer_to_player.get(from_peer, ""))
+			if player_id.is_empty():
+				return
+			var data: Dictionary = message.get("data", {}) if typeof(message.get("data")) == TYPE_DICTIONARY else {}
+			phase_committed_received.emit(player_id, data)
+
 		MSG_ACTION_CHECK:
 			var player_id := String(_peer_to_player.get(from_peer, ""))
 			if player_id.is_empty():
@@ -625,6 +708,7 @@ func _handle_as_host(from_peer: int, message: Dictionary) -> void:
 			if not _session.commit_character(player_id, snapshot):
 				return
 			character_received.emit(player_id, snapshot)
+			send_roster()
 		MSG_CHAT:
 			var player_id := String(_peer_to_player.get(from_peer, ""))
 			if player_id.is_empty():
@@ -704,9 +788,9 @@ func _handle_hello(from_peer: int, message: Dictionary) -> void:
 		# Current state belongs in the welcome, not in a later broadcast. A
 		# returning player is not fully reconnected until they know the fight the
 		# GM is currently running.
-		"round": _session.current_round(),
+		"round": ActionRound.from_dict(_session.current_round()).to_public_dict() if not _session.current_round().is_empty() else {},
 		"pending_checks": _session.pending_checks_for(player_id),
-		"pending_attacks": _session.pending_attacks_for(player_id),
+		"pending_attacks": _session.pending_attacks_for(player_id, true),
 	})
 
 	# Replay what they missed. A first-time joiner asks from 0 and gets the tail
@@ -723,6 +807,7 @@ func _handle_hello(from_peer: int, message: Dictionary) -> void:
 		_log_and_broadcast(CampaignSession.EVENT_JOIN, player_id, {"player_name": player_name})
 
 	player_connected.emit(player_id, is_reconnect)
+	send_roster()
 
 
 ## Turn what a client addressed a line to into a seat id.
@@ -787,6 +872,11 @@ func _report_disconnect() -> void:
 
 func _handle_as_client(message: Dictionary) -> void:
 	match String(message.get("kind", "")):
+		MSG_ROSTER:
+			var seats = message.get("seats", [])
+			if seats is Array:
+				_table_seats = seats.duplicate(true)
+				roster_changed.emit()
 		MSG_TABLE_INFO:
 			if AlternityNum.as_int(message.get("protocol", 0)) != PROTOCOL_VERSION:
 				transport_error.emit("This app is a different version from the GM's.")
@@ -862,6 +952,16 @@ func _handle_as_client(message: Dictionary) -> void:
 			if typeof(round_data) != TYPE_DICTIONARY:
 				return
 			round_updated.emit(round_data)
+		MSG_PHASE_COMMIT:
+			var round_id := String(message.get("round_id", ""))
+			var phase_id := String(message.get("phase_id", message.get("phase", "")))
+			var op_id := String(message.get("operation_id", ""))
+			var expected: Array = message.get("expected_attack_ids", []) if typeof(message.get("expected_attack_ids")) == TYPE_ARRAY else []
+			phase_commit_requested.emit(round_id, phase_id, op_id, expected)
+		MSG_CANCEL_ATTACK:
+			var attack_id := String(message.get("attack_id", ""))
+			if not attack_id.is_empty():
+				attack_cancelled.emit(attack_id)
 		MSG_CHECK_RULING:
 			var check = message.get("check", {})
 			if typeof(check) != TYPE_DICTIONARY:

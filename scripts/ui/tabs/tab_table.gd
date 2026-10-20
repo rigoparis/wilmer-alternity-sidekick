@@ -1,4 +1,6 @@
 extends SheetTab
+signal encounter_changed
+var _inside_encounter := false
 ##
 ## The table, as a tab on the player's own sheet.
 ##
@@ -278,6 +280,12 @@ func _render_combat(table: TableSession) -> void:
 	heading.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	heading.custom_minimum_size = Vector2(1, 0)
 
+	if not _inside_encounter:
+		var open := Button.new()
+		open.text = "Open encounter"
+		open.custom_minimum_size.y = 44
+		open.pressed.connect(_open_encounter)
+		_combat_body.add_child(open)
 	var mine: Dictionary = table.my_combatant()
 	if mine.is_empty():
 		Widgets.muted_text(_combat_body, "You are not in this fight.", ctx.palette, Widgets.FONT_CAPTION)
@@ -320,16 +328,48 @@ func _render_combat(table: TableSession) -> void:
 	# they reached cannot tell a good action check from a bad one.
 	_render_my_phases(fight, mine)
 
-	if table.acting_now():
+	var my_id := String(mine.get("id", ""))
+	if fight.state == ActionRound.STATE_ACTIVE:
+		var my_status := fight.status_in_phase(my_id, fight.phase())
+		if fight.current_actor().get("id", "") == my_id:
+			var turn := Widgets.text(_combat_body, "It is your turn to act now.", ctx.palette, Widgets.FONT_BODY, ctx.palette.accent)
+			turn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			turn.custom_minimum_size = Vector2(1, 0)
+		elif my_status == ActionRound.STATUS_WAITING:
+			var waiting := Widgets.text(_combat_body, "Waiting to act in %s phase." % fight.phase_name(), ctx.palette, Widgets.FONT_DETAIL)
+			waiting.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			waiting.custom_minimum_size = Vector2(1, 0)
+		elif my_status == ActionRound.STATUS_COMPLETED:
+			var done := Widgets.muted_text(_combat_body, "Action completed in %s phase." % fight.phase_name(), ctx.palette, Widgets.FONT_CAPTION)
+			done.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			done.custom_minimum_size = Vector2(1, 0)
+		elif my_status == ActionRound.STATUS_POSTPONED:
+			var post := Widgets.muted_text(_combat_body, "Action postponed in %s phase." % fight.phase_name(), ctx.palette, Widgets.FONT_CAPTION)
+			post.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			post.custom_minimum_size = Vector2(1, 0)
+
+		if my_status == ActionRound.STATUS_WAITING:
+			var postpone_btn := Button.new()
+			postpone_btn.name = "PostponeActionButton"
+			postpone_btn.text = "Postpone action"
+			postpone_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			postpone_btn.custom_minimum_size = Vector2(0, 38)
+			postpone_btn.pressed.connect(func():
+				table.send_postpone(fight.phase())
+				_on_round_changed()
+			)
+			_combat_body.add_child(postpone_btn)
+	elif table.acting_now():
 		var turn := Widgets.text(_combat_body, "It is your turn now.", ctx.palette, Widgets.FONT_BODY, ctx.palette.accent)
 		turn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		turn.custom_minimum_size = Vector2(1, 0)
 
 	_render_dodge(table, fight, mine)
 
+
 	var order: Array = []
 	for entry in fight.acting_now():
-		order.append(String(entry.get("name", "someone")))
+		order.append(String(entry.get("name", "character")))
 	if not order.is_empty():
 		var line := Widgets.muted_text(
 			_combat_body, "This phase: " + " . ".join(order), ctx.palette, Widgets.FONT_CAPTION
@@ -510,6 +550,7 @@ func _on_resolve_attack_pressed(attack: CombatAttack) -> void:
 	if ctx == null or ctx.table == null or ctx.checks == null or ctx.doc == null:
 		return
 
+	attack.details["armor_rolls"] = []
 	var absorbed := 0
 	for layer in ctx.rules.combat.armor_layers(ctx.doc.raw(), attack.impact_type):
 		var rolled: int = await ctx.checks.roll_notation(
@@ -523,6 +564,7 @@ func _on_resolve_attack_pressed(attack: CombatAttack) -> void:
 		if rolled < 0:
 			return
 		# Layers do not add up: every one is rolled, and the best of them answers.
+		attack.details["armor_rolls"].append(ctx.checks.last_notation.duplicate(true))
 		absorbed = maxi(absorbed, rolled)
 
 	var knockout: Dictionary = ctx.table.knockout_check_for(attack)
@@ -533,7 +575,12 @@ func _on_resolve_attack_pressed(attack: CombatAttack) -> void:
 		down = not await _survives_the_hit(knockout)
 		if not is_instance_valid(self):
 			return
+		if down:
+			outcome["knocked_out"] = true
+			outcome["endurance_failed"] = true
 
+	if bool(knockout.get("required", false)):
+		attack.details["knockout_check"] = ctx.checks.last_check.duplicate(true)
 	ctx.table.report_attack(attack, absorbed, outcome, down)
 	_on_round_changed()
 	save_requested.emit()
@@ -656,16 +703,23 @@ func _render_my_phases(fight: ActionRound, mine: Dictionary) -> void:
 				reached.append(String(ActionRound.PHASE_NAMES.get(phase_id, phase_id)))
 				break
 
-	var text := "You rolled %s, so you act in: %s" % [
+	var my_id := String(mine.get("id", ""))
+	var rem := fight.actions_remaining(my_id)
+	var opps := fight.opportunities_remaining(my_id)
+	var text := "You rolled %s, so you act in: %s (%d action%s left · %d phase opportunit%s)" % [
 		String(ActionRound.PHASE_NAMES.get(earned, earned)),
 		", ".join(reached) if not reached.is_empty() else "nothing this round",
+		rem, "" if rem == 1 else "s",
+		opps, "y" if opps == 1 else "ies"
 	]
 	var line := Widgets.text(_combat_body, text, ctx.palette, Widgets.FONT_DETAIL)
 	line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	line.custom_minimum_size = Vector2(1, 0)
 
 
+
 func _on_round_changed() -> void:
+	encounter_changed.emit()
 	if ctx != null and ctx.table != null:
 		_render_combat(ctx.table)
 
@@ -681,10 +735,11 @@ func _on_action_check_wanted() -> void:
 func _on_roll_action_check_pressed() -> void:
 	if ctx == null or ctx.table == null or ctx.checks == null:
 		return
+	var round_id := ctx.table.active_round.round_id if ctx.table.active_round != null else ""
 	var rolled = await ctx.checks.run_action_check(ctx.doc)
 	if not is_instance_valid(self) or rolled == null:
 		return
-	ctx.table.send_action_check(rolled)
+	ctx.table.send_action_check(rolled, round_id)
 	_on_round_changed()
 
 
@@ -751,6 +806,14 @@ func _render_feed(table: TableSession) -> void:
 		row.add_theme_color_override("font_color", ctx.palette.text)
 		row.add_theme_font_size_override("font_size", Widgets.FONT_DETAIL)
 		_feed_list.add_child(row)
+		if String(event.get("kind", "")) in [CampaignSession.EVENT_ROLL, CampaignSession.EVENT_ATTACK, CampaignSession.EVENT_CHECK]:
+			var details := Button.new()
+			details.text = "Open breakdown"
+			details.custom_minimum_size.y = 36
+			details.pressed.connect(func():
+				ctx.router.push(preload("res://scenes/ui/routes/roll_detail_route.tscn"), {
+					"palette": ctx.palette, "event": event, "summary": table.describe(event)}))
+			_feed_list.add_child(details)
 
 
 # --- Reacting --------------------------------------------------------------
@@ -816,3 +879,20 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed(&"table_chat") and _chat_field != null:
 		_chat_field.grab_focus()
 		get_viewport().set_input_as_handled()
+
+
+func _open_encounter() -> void:
+	await ctx.router.push(preload("res://scenes/ui/routes/encounter_route.tscn"), {"palette": ctx.palette, "controller": self})
+
+
+func encounter_round() -> ActionRound:
+	return ctx.table.active_round if ctx != null and ctx.table != null else null
+
+
+func encounter_controls(container: VBoxContainer) -> void:
+	var original := _combat_body
+	_combat_body = container
+	_inside_encounter = true
+	_render_combat(ctx.table)
+	_inside_encounter = false
+	_combat_body = original
